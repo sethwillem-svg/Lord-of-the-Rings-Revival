@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Run datagen
+        run: ./gradlew runData
+
+      - name: Check generated resources are committed
+        run: |
+          git add -N src/generated
+          git diff --exit-code -- src/generated ':!**/.cache/**' || (echo "::error::Run ./gradlew runData and commit src/generated" && exit 1)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lotrrevival-jar
+          path: build/libs/*.jar

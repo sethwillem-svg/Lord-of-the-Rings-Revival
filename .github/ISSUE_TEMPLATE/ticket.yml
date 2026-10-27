@@ -1,0 +1,35 @@
+name: Ticket
+description: A 1–2 day unit of work from an approved spec
+title: "[pod] "
+labels: ["type:ticket"]
+body:
+  - type: input
+    id: spec
+    attributes:
+      label: Spec
+      description: Path to the approved spec
+      placeholder: specs/world/shire-biomes.md
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Exactly what this ticket delivers
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      value: |
+        - [ ] Builds, datagen output committed
+        - [ ] GameTest or in-world check described in PR
+        - [ ] Matches the spec's numbers
+    validations:
+      required: true
+  - type: input
+    id: shared
+    attributes:
+      label: Shared files touched
+      description: ModRegistries, DataGenerators, build.gradle, etc. (for locking)

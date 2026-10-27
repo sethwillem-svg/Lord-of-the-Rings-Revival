@@ -1,0 +1,12 @@
+name: Spec request
+description: Ask a pod lead to write a behavior spec for a system
+title: "spec: "
+labels: ["type:spec"]
+body:
+  - type: textarea
+    id: system
+    attributes:
+      label: System
+      description: Which feature from the original mod, and what you know about how it behaves
+    validations:
+      required: true
