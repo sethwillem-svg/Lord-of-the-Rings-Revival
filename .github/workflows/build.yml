@@ -33,3 +33,32 @@ jobs:
         with:
           name: lotrrevival-jar
           path: build/libs/*.jar
+
+  # Boots a real headless NeoForge client with the mod, joins a world, runs GameTests, exits.
+  # Catches crashes on load, registry errors and render-side exceptions without a human.
+  runtime-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: lotrrevival-jar
+          path: build/libs
+
+      - name: Stage mod for test client
+        run: |
+          mkdir -p run/mods
+          cp $(ls build/libs/*.jar | grep -v -- '-sources' | head -1) run/mods/
+
+      - name: Run headless client
+        uses: headlesshq/mc-runtime-test@5.0.0
+        with:
+          mc: 1.21.1
+          modloader: neoforge
+          mc-runtime-test: neoforge
+          java: '21'

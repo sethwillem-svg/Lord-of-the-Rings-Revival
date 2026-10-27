@@ -27,7 +27,11 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Add here additional repositories if required by some of the dependencies below.
+    // CurseForge maven, used for NovoAtlas (image-based world generation, LGPL-3.0)
+    exclusiveContent {
+        forRepository { maven { url = "https://cursemaven.com" } }
+        filter { includeGroup "curse.maven" }
+    }
 }
 
 base {
@@ -116,6 +120,11 @@ configurations {
 }
 
 dependencies {
+    // NovoAtlas 1.8.0+1.21.1 (NeoForge). Generates Middle-earth from painted heightmap + biome map images.
+    // localRuntime = present in dev runs, not forced on dependents. The World pod makes it a hard
+    // dependency (here and in neoforge.mods.toml) once the Middle-earth dimension datapack lands.
+    localRuntime "curse.maven:novoatlas-1297254:${novoatlas_file_id}"
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

@@ -92,3 +92,12 @@ Unofficial fan project. Not affiliated with the Tolkien Estate or Middle-earth E
 # stop your mod loading on the server for example.
 #[features.${mod_id}]
 #openGLVersion="[3.2,)"
+
+# NovoAtlas: image-based world generation for the Middle-earth dimension.
+# Optional until the dimension datapack lands; the World pod switches this to "required".
+[[dependencies.${mod_id}]]
+    modId="novoatlas"
+    type="optional"
+    versionRange="[1.8.0,)"
+    ordering="NONE"
+    side="BOTH"

@@ -26,6 +26,10 @@ Requires JDK 21.
 ./gradlew runGameTestServer
 ```
 
+## Tooling
+
+See [docs/tooling.md](docs/tooling.md). Label an issue `claude` to have a cloud agent implement it.
+
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md). AI agents must read [AGENTS.md](AGENTS.md) first.

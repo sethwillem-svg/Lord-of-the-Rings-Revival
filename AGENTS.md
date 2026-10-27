@@ -37,7 +37,7 @@ Client-only code goes in `client/<pod>/`. Base package: `io.github.sethwillemsvg
    ```
 5. **PR** to `main` using the PR template. Link the issue (`Closes #42`) and the spec.
 6. **Review**: the pod lead reviews. Anything touching `core/`, `datagen/DataGenerators.java`, `build.gradle` or `gradle.properties` also needs Opus 1.
-7. **Merge**: squash merge by Opus 1 only, after CI is green. Player-visible changes also need the `playtested` label from the human maintainer.
+7. **Merge**: squash merge by Opus 1 only, after CI (`build` and `runtime-test`) is green. Player-visible changes also need the `playtested` label from the human maintainer.
 
 ## 4. Code rules
 
@@ -59,3 +59,7 @@ Before editing a shared file (`ModRegistries`, `DataGenerators`, `build.gradle`,
 ## 6. Commits
 
 Conventional style: `feat(world): add Shire biome`, `fix(npc): hobbit pathing`, `spec(progression): mini-quests`. Small, focused commits.
+
+## 7. Tooling
+
+See [docs/tooling.md](docs/tooling.md): cloud agents via the `claude` label, the headless runtime test, NovoAtlas worldgen, local agent definitions in `.claude/agents/`, and the art MCP servers.
