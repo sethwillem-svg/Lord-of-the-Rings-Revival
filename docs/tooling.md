@@ -44,4 +44,23 @@ The Middle-earth maps must be **our own drawings**. Don't trace Mevans' map or T
 
 ## 6. Cloud Claude sessions (claude.ai/code)
 
-To let cloud sessions build the mod, allow these domains in claude.ai → Settings → Capabilities: `maven.neoforged.net`, `services.gradle.org`, `maven.parchmentmc.org`, `cursemaven.com`, `libraries.minecraft.net`, `piston-meta.mojang.com`, `piston-data.mojang.com`, `resources.download.minecraft.net`.
+To let cloud sessions build the mod, allow these domains in claude.ai → Settings → Capabilities:
+
+```
+maven.neoforged.net
+plugins.gradle.org
+services.gradle.org
+downloads.gradle.org
+repo.maven.apache.org
+repo1.maven.org
+maven.parchmentmc.org
+api.foojay.io
+libraries.minecraft.net
+launchermeta.mojang.com
+piston-meta.mojang.com
+piston-data.mojang.com
+resources.download.minecraft.net
+cursemaven.com
+edge.forgecdn.net
+mediafilez.forgecdn.net
+```
