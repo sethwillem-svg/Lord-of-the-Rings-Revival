@@ -710,7 +710,8 @@ public final class BannerTest {
     public static void placingTheItemClaimsOrIsRefused(GameTestHelper helper) {
         ServerPlayer first = survivalPlayer(helper);
         ServerPlayer second = survivalPlayer(helper);
-        BlockPos base = helper.absolutePos(new BlockPos(1, 1, 1));
+        // Above the template's barrier layer, so the cell above the base is plain air.
+        BlockPos base = helper.absolutePos(new BlockPos(1, 4, 1));
         BlockPos at = base.above();
         BlockPos otherBase = base.offset(20, 0, 0);
         BlockPos other = otherBase.above();
