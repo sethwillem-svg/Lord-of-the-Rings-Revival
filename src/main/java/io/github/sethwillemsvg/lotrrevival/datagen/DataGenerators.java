@@ -57,6 +57,10 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
 
+        // Core: combat foundation (#107), generic gear providers driven by GearCatalog
+        io.github.sethwillemsvg.lotrrevival.datagen.combat.CombatDatagen.gather(event, lookup);
+        // End Core: combat foundation
+
         // World
         WorldDatagen.gather(event, registryLookup);
 

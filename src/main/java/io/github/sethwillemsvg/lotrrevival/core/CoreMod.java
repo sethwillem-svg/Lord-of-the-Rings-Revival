@@ -13,6 +13,9 @@ public final class CoreMod {
     private CoreMod() {}
 
     public static void init(IEventBus modBus) {
+        // Core: combat foundation (#107). Runs every core.combat.gear.* holder; later gear tickets never edit CoreMod.
+        io.github.sethwillemsvg.lotrrevival.core.combat.CombatItems.init(modBus);
+        // End Core: combat foundation
         ModDataRegistries.register(modBus);
         AlignmentAttachments.init();
         modBus.addListener(CorePayloads::register);

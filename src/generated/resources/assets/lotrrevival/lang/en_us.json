@@ -410,6 +410,8 @@
   "item.lotrrevival.silver_coin_100": "Silver Coin (100)",
   "item.lotrrevival.wooden_mug": "Wooden Mug",
   "itemGroup.lotrrevival": "The Lord of the Rings: Revival",
+  "itemGroup.lotrrevival.combat": "Combat",
+  "itemGroup.lotrrevival.materials": "Materials",
   "key.categories.lotrrevival": "The Lord of the Rings: Revival",
   "key.lotrrevival.open_menu": "Open Middle-earth Menu",
   "npc.lotrrevival.friendlyfire.hint": "Your blow did nothing: the folk of this faction are your friends. To hit friendly NPCs on purpose, use /lotr npc friendlyfire on. This hint is shown only once.",
