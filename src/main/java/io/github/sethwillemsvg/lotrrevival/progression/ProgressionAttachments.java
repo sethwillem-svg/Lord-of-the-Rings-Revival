@@ -44,6 +44,15 @@ public final class ProgressionAttachments {
                             .serialize(QuestGiverData.CODEC)
                             .build());
 
+    /** {@code lotrrevival:cosmetics}: players only, saved, copied on death. Change the shield through {@code ShieldService}. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<io.github.sethwillemsvg.lotrrevival.progression.shield.Cosmetics>> COSMETICS =
+            ModRegistries.ATTACHMENT_TYPES.register(
+                    "cosmetics",
+                    () -> AttachmentType.builder(() -> io.github.sethwillemsvg.lotrrevival.progression.shield.Cosmetics.EMPTY)
+                            .serialize(io.github.sethwillemsvg.lotrrevival.progression.shield.Cosmetics.CODEC)
+                            .copyOnDeath()
+                            .build());
+
     private ProgressionAttachments() {}
 
     /** Touch from {@link ProgressionMod#init} so the class loads before registration. */
