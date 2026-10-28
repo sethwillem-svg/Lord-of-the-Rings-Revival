@@ -80,7 +80,6 @@ public final class GeneralAchievements extends AchievementTabProvider {
                 .text("Hunter of Heads", "Complete five bounties.")
                 .build());
 
-        explorer(out, 10,Items.LEATHER_BOOTS, "Wayfarer", "Set foot in 10 different biomes.");
         // Banners (#119): the first protecting banner a player raises.
         out.accept(row("banner_protector")
                 .icon(Items.GOLD_BLOCK)
