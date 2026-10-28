@@ -18,6 +18,7 @@ public final class NpcMod {
     public static void init(IEventBus modBus) {
         NpcEntityTypes.init(modBus);
         NpcItems.init(modBus);
+        io.github.sethwillemsvg.lotrrevival.npc.friendlyfire.NpcPlayerPrefs.init();
         NeoForge.EVENT_BUS.addListener(NpcMod::onAddReloadListeners);
         NpcAttachments.init();
         NpcAnchorEvents.register();
