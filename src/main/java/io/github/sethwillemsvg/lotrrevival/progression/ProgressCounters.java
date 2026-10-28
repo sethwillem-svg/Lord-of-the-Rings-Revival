@@ -19,13 +19,16 @@ import net.minecraft.resources.ResourceLocation;
  * @param lastBiome last biome seen by the poll, in any dimension
  * @param killsByFaction kill counts keyed by faction id
  * @param tradesTotal completed trades
+ * @param questBookGiven whether the first-entry quest book was given
  */
 public record ProgressCounters(
         Set<ResourceLocation> visitedBiomes,
         Optional<ResourceLocation> lastBiome,
         Map<ResourceLocation, Integer> killsByFaction,
-        int tradesTotal) {
-    public static final ProgressCounters EMPTY = new ProgressCounters(Set.of(), Optional.empty(), Map.of(), 0);
+        int tradesTotal,
+        boolean questBookGiven) {
+    public static final ProgressCounters EMPTY =
+            new ProgressCounters(Set.of(), Optional.empty(), Map.of(), 0, false);
 
     private static final Codec<Set<ResourceLocation>> ID_SET = ResourceLocation.CODEC
             .listOf()
@@ -37,7 +40,8 @@ public record ProgressCounters(
                     Codec.unboundedMap(ResourceLocation.CODEC, Codec.INT)
                             .optionalFieldOf("kills_by_faction", Map.of())
                             .forGetter(ProgressCounters::killsByFaction),
-                    Codec.INT.optionalFieldOf("trades_total", 0).forGetter(ProgressCounters::tradesTotal))
+                    Codec.INT.optionalFieldOf("trades_total", 0).forGetter(ProgressCounters::tradesTotal),
+                    Codec.BOOL.optionalFieldOf("quest_book_given", false).forGetter(ProgressCounters::questBookGiven))
             .apply(i, ProgressCounters::new));
 
     public ProgressCounters {
@@ -48,20 +52,24 @@ public record ProgressCounters(
     public ProgressCounters withVisitedBiome(ResourceLocation biome) {
         Set<ResourceLocation> next = new LinkedHashSet<>(visitedBiomes);
         next.add(biome);
-        return new ProgressCounters(next, lastBiome, killsByFaction, tradesTotal);
+        return new ProgressCounters(next, lastBiome, killsByFaction, tradesTotal, questBookGiven);
     }
 
     public ProgressCounters withLastBiome(ResourceLocation biome) {
-        return new ProgressCounters(visitedBiomes, Optional.of(biome), killsByFaction, tradesTotal);
+        return new ProgressCounters(visitedBiomes, Optional.of(biome), killsByFaction, tradesTotal, questBookGiven);
     }
 
     public ProgressCounters withKill(ResourceLocation faction) {
         Map<ResourceLocation, Integer> next = new HashMap<>(killsByFaction);
         next.merge(faction, 1, Integer::sum);
-        return new ProgressCounters(visitedBiomes, lastBiome, next, tradesTotal);
+        return new ProgressCounters(visitedBiomes, lastBiome, next, tradesTotal, questBookGiven);
     }
 
     public ProgressCounters withTrade() {
-        return new ProgressCounters(visitedBiomes, lastBiome, killsByFaction, tradesTotal + 1);
+        return new ProgressCounters(visitedBiomes, lastBiome, killsByFaction, tradesTotal + 1, questBookGiven);
+    }
+
+    public ProgressCounters withQuestBookGiven() {
+        return new ProgressCounters(visitedBiomes, lastBiome, killsByFaction, tradesTotal, true);
     }
 }

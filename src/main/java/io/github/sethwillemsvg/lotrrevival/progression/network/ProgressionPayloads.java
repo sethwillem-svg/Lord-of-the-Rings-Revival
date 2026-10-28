@@ -84,6 +84,28 @@ public final class ProgressionPayloads {
                 FellowshipPositions.setViewing(player, payload.open());
             }
         });
+        registrar.playToServer(AbandonQuestPayload.TYPE, AbandonQuestPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.quest.QuestLogActions.abandon(player, payload);
+            }
+        });
+        registrar.playToServer(RemoveQuestPayload.TYPE, RemoveQuestPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.quest.QuestLogActions.remove(player, payload);
+            }
+        });
+        registrar.playToServer(TrackQuestPayload.TYPE, TrackQuestPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.quest.QuestLogActions.track(player, payload);
+            }
+        });
+        registrar.playToServer(
+                DeleteQuestRecordPayload.TYPE, DeleteQuestRecordPayload.STREAM_CODEC, (payload, ctx) -> {
+                    if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                        io.github.sethwillemsvg.lotrrevival.progression.quest.QuestLogActions.deleteRecord(
+                                player, payload);
+                    }
+                });
         // Later tickets: registrar.playToClient(...), registrar.playToServer(...)
     }
 }

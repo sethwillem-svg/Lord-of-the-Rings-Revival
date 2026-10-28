@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:book"
+    },
+    {
+      "item": "lotrrevival:silver_coin"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:quest_book"
+  }
+}
