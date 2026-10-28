@@ -35,6 +35,7 @@
   "brewing.lotrrevival.status.empty": "Empty",
   "brewing.lotrrevival.status.full": "%s (%s), %s left",
   "brewing.lotrrevival.status.ready": "Ready to brew %s",
+  "chat.lotrrevival.achievement.earned": "%1$s has earned the achievement %2$s",
   "commands.lotrrevival.alignment.add": "Changed alignment with %s by %s for %s player(s).",
   "commands.lotrrevival.alignment.add.spread": "Applied a kill worth %2$s against %1$s to %3$s player(s).",
   "commands.lotrrevival.alignment.fixed": "%s has a fixed alignment that cannot be changed.",
@@ -237,5 +238,6 @@
   "relation.lotrrevival.friend": "Friend",
   "relation.lotrrevival.mortal_enemy": "Mortal enemy",
   "relation.lotrrevival.neutral": "Neutral",
+  "toast.lotrrevival.achievement": "Achievement Earned",
   "tooltip.lotrrevival.alcohol": "Alcohol: %s%%"
 }
