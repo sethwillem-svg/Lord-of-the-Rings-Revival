@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.rank_easterling_r8.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:red_banner"
+  },
+  "rank": {
+    "faction": "lotrrevival:easterling",
+    "rank": "r8"
+  },
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "fallback": "r8",
+    "translate": "faction.lotrrevival.easterling.rank.r8"
+  }
+}

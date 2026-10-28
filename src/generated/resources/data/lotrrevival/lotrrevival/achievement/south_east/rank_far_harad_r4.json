@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.rank_far_harad_r4.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:red_sand"
+  },
+  "rank": {
+    "faction": "lotrrevival:far_harad",
+    "rank": "r4"
+  },
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "fallback": "r4",
+    "translate": "faction.lotrrevival.far_harad.rank.r4"
+  }
+}

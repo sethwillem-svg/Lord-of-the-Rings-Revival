@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.kill_dunedain_north.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:iron_sword"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:dunedain_north"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "translate": "achievement.lotrrevival.eriador.kill_dunedain_north.title"
+  }
+}

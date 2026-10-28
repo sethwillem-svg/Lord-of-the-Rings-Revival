@@ -145,7 +145,8 @@ public final class AchievementAwardTest {
         try {
             AchievementEntries.withOverrides(Map.of(ENEMY_ONLY, enemyOnly()));
             AdvancementHolder holder = impossible(helper, ENEMY_ONLY);
-            Alignment.set(player, Factions.GONDOR, 10.0f, COMMAND);
+            // Below the first rank (10), so no real rank entry is earned along the way.
+            Alignment.set(player, Factions.GONDOR, 5.0f, COMMAND);
             int before = ProgressionApi.achievementCount(player);
             player.getAdvancements().award(holder, "c");
             helper.assertTrue(done(player, holder), "advancement recorded");
@@ -189,7 +190,8 @@ public final class AchievementAwardTest {
             flush(player);
             expect(helper, seen, 0, base, base + 1, "earn");
 
-            Alignment.set(player, Factions.GONDOR, 10.0f, COMMAND);
+            // Below the first rank (10), so no real rank entry is earned along the way.
+            Alignment.set(player, Factions.GONDOR, 5.0f, COMMAND);
             flush(player);
             expect(helper, seen, 1, base + 1, base, "alignment flip to ally");
 

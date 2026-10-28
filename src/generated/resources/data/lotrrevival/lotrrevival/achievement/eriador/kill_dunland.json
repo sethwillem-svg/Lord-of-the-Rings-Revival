@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.kill_dunland.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:stone_axe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:dunland"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "translate": "achievement.lotrrevival.eriador.kill_dunland.title"
+  }
+}

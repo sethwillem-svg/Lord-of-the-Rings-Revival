@@ -1,0 +1,201 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "faction": "lotrrevival:hobbit",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c1": {
+      "conditions": {
+        "faction": "lotrrevival:bree",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c10": {
+      "conditions": {
+        "faction": "lotrrevival:dale",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c11": {
+      "conditions": {
+        "faction": "lotrrevival:durins_folk",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c12": {
+      "conditions": {
+        "faction": "lotrrevival:dorwinion",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c13": {
+      "conditions": {
+        "faction": "lotrrevival:lothlorien",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c14": {
+      "conditions": {
+        "faction": "lotrrevival:rohan",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c15": {
+      "conditions": {
+        "faction": "lotrrevival:isengard",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c16": {
+      "conditions": {
+        "faction": "lotrrevival:fangorn",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c17": {
+      "conditions": {
+        "faction": "lotrrevival:gondor",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c18": {
+      "conditions": {
+        "faction": "lotrrevival:mordor",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c19": {
+      "conditions": {
+        "faction": "lotrrevival:easterling",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c2": {
+      "conditions": {
+        "faction": "lotrrevival:dunedain_north",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c20": {
+      "conditions": {
+        "faction": "lotrrevival:near_harad",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c21": {
+      "conditions": {
+        "faction": "lotrrevival:far_harad",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c22": {
+      "conditions": {
+        "faction": "lotrrevival:harad_jungle",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c23": {
+      "conditions": {
+        "faction": "lotrrevival:half_troll",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c3": {
+      "conditions": {
+        "faction": "lotrrevival:blue_mountains",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c4": {
+      "conditions": {
+        "faction": "lotrrevival:high_elf",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c5": {
+      "conditions": {
+        "faction": "lotrrevival:angmar",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c6": {
+      "conditions": {
+        "faction": "lotrrevival:dunland",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c7": {
+      "conditions": {
+        "faction": "lotrrevival:gundabad",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c8": {
+      "conditions": {
+        "faction": "lotrrevival:wood_elf",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c9": {
+      "conditions": {
+        "faction": "lotrrevival:dol_guldur",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    }
+  },
+  "requirements": [
+    [
+      "c",
+      "c1",
+      "c2",
+      "c3",
+      "c4",
+      "c5",
+      "c6",
+      "c7",
+      "c8",
+      "c9",
+      "c10",
+      "c11",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c21",
+      "c22",
+      "c23"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

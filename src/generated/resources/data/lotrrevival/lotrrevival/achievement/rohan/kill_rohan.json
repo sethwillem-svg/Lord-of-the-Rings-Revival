@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rohan.kill_rohan.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:trident"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:rohan"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "rohan",
+  "title": {
+    "translate": "achievement.lotrrevival.rohan.kill_rohan.title"
+  }
+}

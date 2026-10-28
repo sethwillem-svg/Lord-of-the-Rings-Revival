@@ -3,7 +3,7 @@ package io.github.sethwillemsvg.lotrrevival.progression.datagen.achievement;
 import io.github.sethwillemsvg.lotrrevival.progression.achievement.AchievementTab;
 import java.util.function.Consumer;
 
-/** Rows of the rhovanion tab. Empty until its content ticket. */
+/** Rows of the rhovanion tab. Faction rank entries and first-kill entries. */
 public final class RhovanionAchievements extends AchievementTabProvider {
     public RhovanionAchievements() {
         super(AchievementTab.RHOVANION);
@@ -11,6 +11,7 @@ public final class RhovanionAchievements extends AchievementTabProvider {
 
     @Override
     public void addRows(Consumer<AchievementRow> out) {
-        // Content tickets add rows here.
+        AchievementFactions.addRankRows(AchievementTab.RHOVANION, out);
+        AchievementFactions.addKillRows(AchievementTab.RHOVANION, out);
     }
 }

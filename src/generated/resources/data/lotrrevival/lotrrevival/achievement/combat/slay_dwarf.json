@@ -1,0 +1,23 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.combat.slay_dwarf.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:iron_pickaxe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:blue_mountains",
+        "lotrrevival:durins_folk"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "combat",
+  "title": {
+    "translate": "achievement.lotrrevival.combat.slay_dwarf.title"
+  }
+}

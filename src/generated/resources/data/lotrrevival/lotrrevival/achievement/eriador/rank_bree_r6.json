@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.rank_bree_r6.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:lantern"
+  },
+  "rank": {
+    "faction": "lotrrevival:bree",
+    "rank": "r6"
+  },
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "fallback": "r6",
+    "translate": "faction.lotrrevival.bree.rank.r6"
+  }
+}

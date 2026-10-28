@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rohan.kill_isengard.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:iron_axe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:isengard"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "rohan",
+  "title": {
+    "translate": "achievement.lotrrevival.rohan.kill_isengard.title"
+  }
+}

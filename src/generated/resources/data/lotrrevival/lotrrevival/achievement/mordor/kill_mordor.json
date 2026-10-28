@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.mordor.kill_mordor.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:netherite_sword"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:mordor"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "mordor",
+  "title": {
+    "translate": "achievement.lotrrevival.mordor.kill_mordor.title"
+  }
+}

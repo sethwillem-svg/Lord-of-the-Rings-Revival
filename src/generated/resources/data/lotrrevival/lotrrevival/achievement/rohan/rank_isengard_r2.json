@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rohan.rank_isengard_r2.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:blast_furnace"
+  },
+  "rank": {
+    "faction": "lotrrevival:isengard",
+    "rank": "r2"
+  },
+  "sort_group": "special",
+  "tab": "rohan",
+  "title": {
+    "fallback": "r2",
+    "translate": "faction.lotrrevival.isengard.rank.r2"
+  }
+}

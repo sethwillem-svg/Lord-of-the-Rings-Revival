@@ -49,7 +49,9 @@ public final class AchievementDatagen {
                 lang.add(tab.langKey(), tabName(tab));
             }
             for (AchievementRow row : AchievementTable.rows()) {
-                lang.add(row.titleKey(), row.title());
+                if (!row.usesCoreTitle()) {
+                    lang.add(row.titleKey(), row.title());
+                }
                 lang.add(row.descriptionKey(), row.description());
             }
         });
@@ -94,6 +96,8 @@ public final class AchievementDatagen {
     }
 
     private static final class Backing implements AdvancementSubProvider {
+        private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(AchievementDatagen.class);
+
         @Override
         public void generate(HolderLookup.Provider registries, Consumer<AdvancementHolder> writer) {
             List<AchievementRow> rows = AchievementTable.rows();
@@ -102,11 +106,18 @@ public final class AchievementDatagen {
                 advancements.put(row.id(), row.toAdvancement());
             }
             HolderLookup.RegistryLookup<Faction> factions = registries.lookupOrThrow(ModDataRegistries.FACTION);
+            AchievementFactions.validateCoverage(
+                    rows, faction -> factions.get(faction).map(holder -> holder.value()));
             AchievementValidator.validate(
                     rows,
                     AchievementTable.entries(rows),
                     advancements,
                     faction -> factions.get(faction).map(holder -> holder.value().ranks()));
+            Map<AchievementTab, Integer> perTab = new java.util.EnumMap<>(AchievementTab.class);
+            for (AchievementRow row : rows) {
+                perTab.merge(row.tab(), 1, Integer::sum);
+            }
+            LOGGER.info("Achievement table: {} entries {}", rows.size(), perTab);
             advancements.forEach((id, advancement) -> writer.accept(new AdvancementHolder(id, advancement)));
         }
     }

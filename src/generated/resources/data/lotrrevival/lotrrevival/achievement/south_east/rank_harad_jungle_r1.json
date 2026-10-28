@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.rank_harad_jungle_r1.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:vine"
+  },
+  "rank": {
+    "faction": "lotrrevival:harad_jungle",
+    "rank": "r1"
+  },
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "fallback": "r1",
+    "translate": "faction.lotrrevival.harad_jungle.rank.r1"
+  }
+}

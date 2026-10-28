@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.rank_blue_mountains_r4.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:iron_pickaxe"
+  },
+  "rank": {
+    "faction": "lotrrevival:blue_mountains",
+    "rank": "r4"
+  },
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "fallback": "r4",
+    "translate": "faction.lotrrevival.blue_mountains.rank.r4"
+  }
+}

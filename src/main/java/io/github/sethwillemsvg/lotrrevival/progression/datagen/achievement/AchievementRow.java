@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementRequirements;
 import net.minecraft.advancements.Criterion;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -23,7 +24,9 @@ import net.minecraft.world.item.ItemStack;
  * One row of the achievement table. Yields both halves under the same id ({@code lotrrevival:<tab>/<name>}):
  * the display entry and the backing advancement (one criterion, no display block).
  *
- * @param title English title (our own text)
+ * @param extraCriteria further criteria besides {@code criterion}; the advancement completes when all of them
+ *     (or, with {@code anyCriterion}, any one of them) are met
+ * @param title English title (our own text); unused for rank rows, whose title is Core's rank name
  * @param description English description (our own text)
  */
 public record AchievementRow(
@@ -32,6 +35,8 @@ public record AchievementRow(
         Item icon,
         SortGroup sortGroup,
         Criterion<?> criterion,
+        List<Criterion<?>> extraCriteria,
+        boolean anyCriterion,
         List<Requirement> requires,
         Optional<RankRequirement> rank,
         boolean counted,
@@ -59,7 +64,7 @@ public record AchievementRow(
         return new AchievementEntry(
                 tab,
                 new ItemStack(icon),
-                Component.translatable(titleKey()),
+                rank.map(AchievementRow::coreRankTitle).orElseGet(() -> Component.translatable(titleKey())),
                 Component.translatable(descriptionKey()),
                 sortGroup,
                 requires,
@@ -67,26 +72,53 @@ public record AchievementRow(
                 counted);
     }
 
+    /** True when the title is Core's rank lang key instead of a key of our own (rank rows). */
+    public boolean usesCoreTitle() {
+        return rank.isPresent();
+    }
+
+    /** Core's rank name key, with the rank id as fallback until Core ships rank names. */
+    private static Component coreRankTitle(RankRequirement rank) {
+        return Component.translatableWithFallback(
+                "faction." + rank.faction().location().getNamespace() + "." + rank.faction().location().getPath()
+                        + ".rank." + rank.rank(),
+                rank.rank());
+    }
+
     /** The backing advancement: criteria only, never a display block. */
     public Advancement toAdvancement() {
-        return Advancement.Builder.advancement().addCriterion("c", criterion).build(id).value();
+        Advancement.Builder builder = Advancement.Builder.advancement().addCriterion("c", criterion);
+        for (int n = 0; n < extraCriteria.size(); n++) {
+            builder.addCriterion("c" + (n + 1), extraCriteria.get(n));
+        }
+        if (anyCriterion) {
+            builder.requirements(AdvancementRequirements.Strategy.OR);
+        }
+        return builder.build(id).value();
     }
 
     public AchievementRow withId(ResourceLocation newId) {
-        return new AchievementRow(newId, tab, icon, sortGroup, criterion, requires, rank, counted, title, description);
+        return new AchievementRow(
+                newId, tab, icon, sortGroup, criterion, extraCriteria, anyCriterion, requires, rank, counted, title,
+                description);
     }
 
     public AchievementRow withTab(AchievementTab newTab) {
-        return new AchievementRow(id, newTab, icon, sortGroup, criterion, requires, rank, counted, title, description);
+        return new AchievementRow(
+                id, newTab, icon, sortGroup, criterion, extraCriteria, anyCriterion, requires, rank, counted, title,
+                description);
     }
 
     public AchievementRow withRequires(List<Requirement> newRequires) {
-        return new AchievementRow(id, tab, icon, sortGroup, criterion, newRequires, rank, counted, title, description);
+        return new AchievementRow(
+                id, tab, icon, sortGroup, criterion, extraCriteria, anyCriterion, newRequires, rank, counted, title,
+                description);
     }
 
     public AchievementRow withRank(RankRequirement newRank) {
         return new AchievementRow(
-                id, tab, icon, sortGroup, criterion, List.of(), Optional.of(newRank), counted, title, description);
+                id, tab, icon, sortGroup, criterion, extraCriteria, anyCriterion, List.of(), Optional.of(newRank),
+                counted, title, description);
     }
 
     /** Fluent builder: {@code (tab, name, icon, sort_group, criterion, requires? | rank?, counted?)} plus text. */
@@ -96,6 +128,8 @@ public record AchievementRow(
         private Item icon;
         private SortGroup sortGroup = SortGroup.OTHER;
         private Criterion<?> criterion;
+        private final List<Criterion<?>> extraCriteria = new ArrayList<>();
+        private boolean anyCriterion;
         private List<Requirement> requires = List.of();
         private Optional<RankRequirement> rank = Optional.empty();
         private boolean counted = true;
@@ -119,6 +153,18 @@ public record AchievementRow(
 
         public Builder criterion(Criterion<?> criterion) {
             this.criterion = criterion;
+            return this;
+        }
+
+        /** Adds a further criterion; the entry then needs all criteria, or any one after {@link #anyCriterion()}. */
+        public Builder alsoCriterion(Criterion<?> extra) {
+            this.extraCriteria.add(extra);
+            return this;
+        }
+
+        /** Completes the entry when any one criterion is met instead of all of them. */
+        public Builder anyCriterion() {
+            this.anyCriterion = true;
             return this;
         }
 
@@ -147,7 +193,16 @@ public record AchievementRow(
             return this;
         }
 
+        /** Description only, for rank rows whose title is Core's rank name. */
+        public Builder description(String description) {
+            this.description = description;
+            return this;
+        }
+
         public AchievementRow build() {
+            if (rank.isPresent() && title == null) {
+                title = rank.get().rank();
+            }
             if (icon == null || criterion == null || title == null || description == null) {
                 throw new IllegalStateException(
                         "Achievement row " + tab.id() + "/" + name + " needs icon, criterion and text");
@@ -162,6 +217,8 @@ public record AchievementRow(
                     icon,
                     sortGroup,
                     criterion,
+                    List.copyOf(extraCriteria),
+                    anyCriterion,
                     requires,
                     rank,
                     counted,

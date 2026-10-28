@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.shire.kill_hobbit.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:wooden_sword"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:hobbit"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "shire",
+  "title": {
+    "translate": "achievement.lotrrevival.shire.kill_hobbit.title"
+  }
+}
