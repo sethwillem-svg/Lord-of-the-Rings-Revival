@@ -26,6 +26,7 @@ public final class NpcTrade {
         NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent event) -> event.addListener(new NpcTradeData()));
         NeoForge.EVENT_BUS.addListener(NpcTrade::onJoin);
         NeoForge.EVENT_BUS.addListener(NpcTrade::onTick);
+        NpcTradeMenus.init();
     }
 
     /** Traders roll their stock when they enter the world after spawning (loaded traders already have it). */

@@ -23,6 +23,7 @@ public final class NpcMod {
         NpcAttachments.init();
         NpcAnchorEvents.register();
         io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTrade.init();
+        modBus.addListener(io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradePayloads::register);
         NpcConfig.register(net.neoforged.fml.ModLoadingContext.get().getActiveContainer());
         NeoForge.EVENT_BUS.addListener(io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcSpawner::onLevelTick);
     }
