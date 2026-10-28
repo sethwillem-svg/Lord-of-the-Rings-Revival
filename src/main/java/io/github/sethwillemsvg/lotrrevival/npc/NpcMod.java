@@ -3,6 +3,7 @@ package io.github.sethwillemsvg.lotrrevival.npc;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntityTypes;
 import io.github.sethwillemsvg.lotrrevival.npc.item.NpcItems;
+import io.github.sethwillemsvg.lotrrevival.npc.name.NpcNames;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
@@ -19,5 +20,6 @@ public final class NpcMod {
 
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new NpcRoleData());
+        event.addListener(new NpcNames());
     }
 }

@@ -6,7 +6,9 @@ import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleStats;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntityTypes;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcRole;
+import io.github.sethwillemsvg.lotrrevival.npc.name.NpcNames;
 import io.github.sethwillemsvg.lotrrevival.npc.item.NpcItems;
+import com.google.gson.JsonArray;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -33,6 +35,7 @@ public final class NpcDataGen {
         ExistingFileHelper files = event.getExistingFileHelper();
 
         generator.addProvider(event.includeServer(), new RoleProvider(output));
+        generator.addProvider(event.includeServer(), new NameBankProvider(output));
         generator.addProvider(event.includeServer(), new EntityTags(output, lookup, files));
         generator.addProvider(event.includeClient(), new ItemModels(output, files));
     }
@@ -70,6 +73,31 @@ public final class NpcDataGen {
         @Override
         public String getName() {
             return "NPC roles";
+        }
+    }
+
+    /** {@code npc_names/<bank>.json}: JSON lists of first and family names. */
+    static final class NameBankProvider implements DataProvider {
+        private final PackOutput.PathProvider paths;
+
+        NameBankProvider(PackOutput output) {
+            this.paths = output.createPathProvider(PackOutput.Target.DATA_PACK, NpcNames.DIRECTORY);
+        }
+
+        @Override
+        public CompletableFuture<?> run(CachedOutput cache) {
+            return CompletableFuture.allOf(NpcNameBanks.all().entrySet().stream()
+                    .map(entry -> {
+                        JsonArray array = new JsonArray();
+                        entry.getValue().forEach(array::add);
+                        return DataProvider.saveStable(cache, array, paths.json(LOTRRevival.id(entry.getKey())));
+                    })
+                    .toArray(CompletableFuture[]::new));
+        }
+
+        @Override
+        public String getName() {
+            return "NPC name banks";
         }
     }
 
