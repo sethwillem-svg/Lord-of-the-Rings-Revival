@@ -2,161 +2,270 @@
 
 - **Pod:** world
 - **Lead:** Opus 2
-- **Status:** draft
-- **Depends on:** `specs/core/core-apis.md` (faction registry and ids, shared constants, attachments, tags; in progress), NovoAtlas 1.8.2+1.21.1 (NeoForge, LGPL-3.0), map art issue #9 (original drawings)
+- **Status:** draft (revised for the maintainer's Legacy-scale decisions)
+- **Depends on:** `specs/core/core-apis.md` (faction registry and ids, shared constants, attachments, tags), NovoAtlas 1.8.2+1.21.1 (NeoForge, LGPL-3.0), map art issue #9 (original drawings)
+- **Later World specs that build on this one:** `specs/world/portal.md`, `specs/world/roads.md`, `specs/world/rivers.md`, `specs/world/waypoints-and-travel.md`, `specs/world/structures.md`, `specs/world/biomes-eriador.md`, `specs/world/ores.md`, `specs/world/spawn-tables.md`
 
 ## Summary
 
-Middle-earth is its own dimension, `lotrrevival:middle_earth`, generated from two painted images: a 16-bit heightmap that fixes the terrain shape and a biome map whose flat colours pick the biome for every 32x32-block cell. NovoAtlas turns those images into terrain; vanilla's noise pipeline only adds caves, aquifers and surface detail. Every world has the same geography: the Shire is always west of the Brandywine and Bree is always on the East Road. Seeds only vary trees, ores, small structures and caves. Roads, rivers and structures are added on top of the image terrain by this pod. The Progression pod's map GUI is rendered from the same images, so the in-game map always matches the terrain. G2 ships only the Shire-to-Bree pilot region on a full-size canvas. The rest of the canvas is ocean until later maps are drawn.
+Middle-earth is its own dimension, `lotrrevival:middle_earth`, at the original mod's (Legacy's) scale: one biome-map pixel is 128 x 128 blocks, the canvas is 409,600 x 512,000 blocks, and Hobbiton to Bree is about 12,800 blocks. Block (0, 0) sits next to the Hobbiton landing point.
+
+The terrain has two layers, as in Legacy:
+
+1. **Painted base terrain.** A 16-bit heightmap at 64 blocks per pixel fixes the large shapes: coasts, mountain ranges, valleys, the downs and Bree-hill. NovoAtlas reads it.
+2. **Procedural detail.** Small hills, dips and per-biome roughness are noise added on top of the painted height. A generated relief image sets how strong the noise is in each region.
+
+Both layers are combined in our own noise settings, using vanilla density functions plus NovoAtlas's height-from-map function. The biome map uses flat colours at 128 blocks per pixel. Its borders are jittered so they do not look like squares.
+
+The canvas is fixed from day one, so coordinates never change. G2 paints only the Shire-to-Bree pilot window. The rest of the canvas is placeholder ocean until later regions are painted. Every world has the same geography, and seeds only vary small hills, trees, ores, caves and scattered structures.
 
 ## Player-facing behavior
 
-1. A player enters Middle-earth through a portal (placeholder below; `specs/world/portal.md` owns the real mechanic) and arrives at the **landing point** in the Shire, on or next to the East Road.
-2. The terrain is fixed and hand-drawn. The Shire has low rolling green hills cut by the Brandywine. The Old Forest is a dark tangle east of the river, the Barrow-downs are bare round hills beyond it, and Bree-land sits at the crossing of the East Road and the Greenway. The Midgewater Marshes and the start of the Lone-lands lie further east.
-3. Biome names show on F3 and in `/locate biome lotrrevival:<id>`. Biome borders follow the painted map: they are stepped at 32-block cells, softened by vanilla's grass and foliage colour blending.
-4. Roads are visible worn paths (dirt path, coarse dirt and gravel, with more cobble near Bree). They follow the terrain, cross small streams on plank bridges, and run into landmark structures such as the Brandywine Bridge and Bree.
-5. No vanilla hostile mobs (zombies, creepers, skeletons, spiders, witches, slimes, phantoms) spawn in Middle-earth. Passive vanilla animals do. Night and dark-place threats come from the NPC pod's mobs and factions per biome (table below).
-6. Beyond the drawn canvas the world is endless ocean (edge pixels are clamped), never void.
-7. The map GUI shows the same coastlines, rivers, biomes and roads the player walks through. One heightmap pixel is 8 blocks and one biome pixel is 32 blocks.
+1. A player enters Middle-earth through a portal (placeholder below; `specs/world/portal.md` owns the real mechanic). They arrive at the **landing point** in the Shire, near Hobbiton and the East Road, a few hundred blocks from block (0, 0).
+2. Distances match the original mod: the Brandywine Bridge is about 4,900 blocks from Hobbiton, Bree is about 12,800 and Weathertop is about 10,700 beyond Bree (straight-line distances). On foot, Hobbiton to Bree takes about 50 minutes, and on a horse about 15 to 25 minutes. Fast travel between waypoints is the normal way to cross regions (see `waypoints-and-travel.md`).
+3. The terrain has hand-painted large shapes and procedural small ones:
+   - The Shire is low and gently rolling, with the White Downs higher in the west.
+   - The Brandywine is a broad river a few dozen blocks wide.
+   - The Old Forest is a dark tangle east of the river, and the Barrow-downs are bare round hills beyond it.
+   - Bree-land sits around Bree-hill where the East Road meets the Greenway. The Midgewater Marshes and the Lone-lands lie further east.
+   - Within one biome the small hills differ from world to world. Coasts, ranges and valleys never do.
+4. Biome names show on F3 and in `/locate biome lotrrevival:<id>`. Biome borders follow the painted map within about 48 blocks and have irregular edges.
+5. Roads are about 8 to 9 blocks wide. They run through corridors where the procedural bumps fade out within 32 blocks of the road. They cross water on bridges and enter landmarks such as the Brandywine Bridge and Bree.
+6. No vanilla hostile mobs (zombies, creepers, skeletons, spiders, witches, slimes, phantoms) spawn in Middle-earth. Passive vanilla animals do. Threats come from the NPC pod's factions per biome (table below).
+7. The unpainted part of the canvas is open ocean. Beyond the canvas edge the ocean continues forever (edge pixels are clamped). The world is never void.
+8. The map GUI shows the same coastlines, biomes, rivers and roads the player walks through.
 
 ## Rules and numbers
 
-### Scale and world size
+### Canvas, scale and origin
 
 | Thing | Value | Notes |
 | --- | --- | --- |
-| Heightmap resolution | 1 px = 8 x 8 blocks | `horizontal_scale.value = 8` |
-| Heightmap interpolation | `bicubic` | Wiki recommends bicubic for scale 2-5 and lanczos above 5. Bicubic is the performance default; see Open questions |
-| Biome map resolution | 1 px = 32 x 32 blocks | Exactly 1/4 of the heightmap in each axis (`biome_cell_color_map` samples one pixel per 4x4-block biome cell, scaled by 8) |
-| Canvas, heightmap | 5120 x 4096 px | 16-bit grayscale PNG, lossless. About 42 MB in RAM (2 bytes per pixel) |
-| Canvas, biome map | 1280 x 1024 px | 8-bit RGB PNG, flat colours, no anti-aliasing. About 5 MB in RAM |
-| World size | 40,960 x 32,768 blocks | x in [-20480, 20480), z in [-16384, 16384) |
-| Map origin | Image centre = block (0, 0) | `center_offset = [0, 0]`. Up in the image is north (-z) |
-| Image wrapping | `clamp_to_edge` | Canvas border is deep ocean at least 64 heightmap px (512 blocks) wide, so clamping gives endless ocean |
-| Hobbiton to Bree target | about 3,000 blocks by road | About 12 min on foot, about 4 min on horseback. Sets the overall scale (about 23 blocks per mile) |
-| Shire width (W-E) | about 2,700 blocks | Reference for the map artist |
+| Biome map | 3,200 x 4,000 px, **128 blocks per px** | 8-bit RGB PNG, flat key colours, no anti-aliasing. Same scale and extent as Legacy |
+| Heightmap (base terrain) | 6,400 x 8,000 px, **64 blocks per px** | 16-bit grayscale PNG. Exactly 2x the biome map in each axis |
+| Relief map (detail strength) | 1,600 x 2,000 px, 256 blocks per px | 8-bit grayscale, **generated by datagen** from the biome map (below), never hand-painted |
+| Canvas in blocks | 409,600 x 512,000 | x from -103,680 to +305,920, z from -93,440 to +418,560 |
+| Origin | Block (0, 0) is image coordinate (1,620, 1,460) on the heightmap, which is (810, 730) on the biome map | Image coordinates are measured from the image's top-left corner, and pixel k spans [k, k+1). The artist paints Hobbiton at this point. Up in the image is north (-z) |
+| Projection (canonical) | block x = 64 x (u - 1,620), block z = 64 x (v - 1,460), where (u, v) are continuous heightmap image coordinates | Biome-map coordinate = heightmap coordinate / 2. Relief coordinate = heightmap coordinate / 4. Core owns the helper (requested below) |
+| Image wrapping | `clamp_to_edge` | The canvas border is ocean at least 16 heightmap px (1,024 blocks) wide |
+| Distance targets for the artist (straight line, from Legacy) | Hobbiton to Brandywine Bridge 4,900; Hobbiton to Bree 12,800; Bree to Weathertop 10,700; Mithlond to Bree 30,200; Hobbiton to Rivendell 45,800 | Later regions: Edoras to Minas Tirith 31,900, Hobbiton to Minas Tirith 102,000, Hobbiton to Umbar 133,300 |
+
+**NovoAtlas `center_offset`.** The 1.8.2 source shifts the map by `center_offset x image width (or height) in pixels` **blocks** (quarts for the biome map), before dividing by `horizontal_scale`. The wiki says the units are image widths, which is only true at scale 1. Our projection test locks in the source behavior. To put block 0 at image index P, use `offset = (W/2 - P) x scale / W`. The bicubic and bilinear samplers treat pixel k's value as sitting at index k, so a heightmap pixel centre is at index u - 0.5. Datagen computes the offsets from the origin constants:
+
+| map_info | Image | `horizontal_scale` | Index of block 0 | `center_offset` |
+| --- | --- | --- | --- | --- |
+| `lotrrevival:middle_earth` (terrain) | heightmap 6,400 x 8,000 | 64, `bicubic` | (1,619.5, 1,459.5) | (15.805, 20.324) |
+| `lotrrevival:middle_earth_biomes` (biome source) | biome map 3,200 x 4,000 (sampled per 4-block quart, nearest) | 32 (quarts per px, which is 128 blocks) | (810, 730) | (7.9, 10.16) |
+| `lotrrevival:middle_earth_relief` (detail strength) | relief 1,600 x 2,000 | 256, `bilinear` | (404.5, 364.5) | (63.28, 81.344) |
+
+These are three map_infos because NovoAtlas's biome-cell source always reads its map at 1/4 of its map_info's scale (quart coordinates). One shared map_info would make biome pixels 256 blocks wide. Every map_info must also name a `height_map` and `surface_biomes`, so the biome and relief map_infos reuse the same image keys. Images are loaded once per key, so this costs no extra memory. The float error in these offsets is below 0.01 blocks.
+
+### Memory and size
+
+NovoAtlas loads every image on the server when data packs load, never on the client. It stores heightmaps as 2 bytes per pixel and biome maps as 4 bytes per pixel.
+
+| Image | Pixels | Resident RAM | Extra at load (decode buffer) |
+| --- | --- | --- | --- |
+| Heightmap 6,400 x 8,000, 16-bit | 51.2 M | **102.4 MB** | +102.4 MB (16-bit gray decode) |
+| Biome map 3,200 x 4,000, RGB | 12.8 M | **51.2 MB** | +38.4 MB (RGB decode) |
+| Relief 1,600 x 2,000, 8-bit | 3.2 M | **6.4 MB** (stored as 16-bit) | +3.2 MB |
+| **Total** | | **about 160 MB** | Peak at startup about 305 MB. On `/reload` the old images stay live until the swap, so the peak is about 465 MB |
+
+- This cost applies from the first G2 build, even while the canvas is mostly blank ocean, because the image dimensions are fixed. The recommended minimum heap for a server or single-player is 4 GB (modpacks usually give 6 to 8 GB).
+- **Alternatives considered.** A heightmap at 32 blocks per pixel (12,800 x 16,000) would need 409.6 MB resident and about 820 MB at load, which is not feasible. At 128 blocks per pixel (Legacy's resolution) it would be 25.6 MB, but valleys and coasts narrower than about 256 blocks could not be painted. 64 blocks per pixel is the target and is feasible.
+- **Disk.** A fully painted 16-bit heightmap is likely 30 to 60 MB as a PNG. Early on it is mostly flat ocean and compresses to a few MB. Jar size and Git storage are an open question.
 
 ### Vertical scale
 
 | Thing | Value | Notes |
 | --- | --- | --- |
-| Dimension height | `min_y = -64`, `height = 384`, `logical_height = 384` | Same as overworld; build limit 319 |
-| `starting_y` | 0 | Black pixel (value 0) is y = 0 |
-| `vertical_scale` | 0.005 | y = 0 + 0.005 x value, so 200 heightmap units = 1 block |
-| Sea level | 63 | Set in our noise settings; heightmap value 12,600 |
-| Max painted value | 60,000 (y = 300) | Leaves 19 blocks for trees and structures. Validator rejects higher values |
-| Pilot water | All pilot rivers, lakes and marsh pools sit at sea level (y 63) | No `fluid_height_map` in the pilot. Rule for artists: dry land is never painted below y 64 (value 12,800), or it floods |
-| Deep ocean floor | y 20-40 | Gulf of Lune, canvas border |
+| Dimension height | `min_y = -64`, `height = 384`, `logical_height = 384` | Same as the overworld. Build limit 319 |
+| Heightmap encoding | `starting_y` 0, `vertical_scale` 0.005 | y = value x 0.005, so 200 units = 1 block |
+| Sea level | 63 | Value 12,600 |
+| Legacy-to-ours height rule | ours = 63 + 1.3 x (Legacy y - 63) above sea level | Legacy runs y 0-255. For example, Legacy Misty Mountains summits of about y 200 become about y 241. Plains change by 1 to 2 blocks |
+| Max surface | painted y + biome detail amplitude must not exceed 300 | Leaves 19 blocks for trees and structures. The validator checks this per pixel |
+| Water in the pilot | All rivers, lakes and marsh pools sit at sea level (y 63) | No `fluid_height_map` in the pilot. Dry land is painted at least 64 + the biome's amplitude, or its dips flood |
+| Placeholder ocean floor | y 40 (value 8,000) | Also the canvas border |
 
-### Generator configuration
+### Terrain generation: painted base plus procedural detail
 
-| Field | Value | Notes |
-| --- | --- | --- |
-| `generator.type` | `novoatlas:image_map` | |
-| `generator.settings` | `lotrrevival:middle_earth` | Our noise settings: overworld copy, sea level 63, aquifers on, ore veins off, our own surface rules |
-| `underground_density_function` | `novoatlas:no_cave_entrances` | Caves exist underground but do not break the painted surface |
-| `enable_carvers` | `false` | Pilot keeps drawn terrain intact; ravines revisited later |
-| `biome_source.type` | `novoatlas:biome_cell_color_map` | |
-| `biome_source.default_biome` | `lotrrevival:ocean` | Used outside the map and for unmapped colours |
-| `surface_biomes.strict` | `true` (required) | See edge cases: in 1.8.2 the non-strict nearest-colour fallback compares only the blue channel, so a stray colour picks an effectively random biome |
-| `cave_biomes` | none in pilot | Later: dwarf mines and Moria layers |
+**Verified against the NovoAtlas 1.8.2+1.21.1 source and wiki:**
 
-### Pilot biome colour table (Shire to Bree)
+- **The `novoatlas:image_map` chunk generator cannot carry noise detail.** At construction it replaces the noise router's preliminary-surface and final-density functions. Final density becomes `min(heightmap density, underground_density_function)`, where the heightmap density is a clamped linear ramp of `(painted height - y)` over 128 blocks. Our noise settings' `final_density` is thrown away. The underground function can only remove material, never raise the surface above the painted height. The wiki states this and says there is no way around it.
+- **The height can be read as a density function.** `novoatlas:get_preliminary_height_from_map` (fields `map_info`, `lower_bound`, `upper_bound`) returns the interpolated painted height minus 8, clamped to the bounds, per (x, z). The height is rounded to whole blocks.
+  - `novoatlas:heightmap` (a density ramp with `transition_range`) and the deprecated `novoatlas:initial_density_heightmap` also work.
+  - `novoatlas:get_height_from_map` is a **stub that always returns 0 in 1.8.2+1.21.1**. Never use it.
+- **The biome source works with any chunk generator.** `novoatlas:biome_cell_color_map` takes its own `map_info` and has no tie to the image_map generator. No NovoAtlas mixin depends on the image_map generator; the only one is a TerraBlender compatibility patch.
 
-Colours are key colours for the biome map only, chosen fresh for this repo. The GUI map uses a separate display colour per biome (biomes spec). Heights are painting guides in block y. Faction ids are provisional until `specs/core/core-apis.md` merges. Core owns the names, and this table updates to match.
+**Decision: use the vanilla `minecraft:noise` chunk generator with our own noise settings.** Its density functions read the painted height through NovoAtlas's density function type. Noise detail is then possible with data only, using no Java and no NovoAtlas changes:
 
-| Hex | Biome id | Terrain and vegetation | y range | Factions that spawn |
-| --- | --- | --- | --- | --- |
-| `#1F3A93` | `lotrrevival:ocean` | Open sea, sand and gravel floor. Also the unpainted canvas | 20-55 floor | none |
-| `#D8CB8E` | `lotrrevival:shore` | Sand and gravel beaches, sparse grass | 62-66 | none |
-| `#3B7DD8` | `lotrrevival:river` | Brandywine, Water and Withywindle channels. Reeds, clay and gravel bed | bed 54-61 | none (shore biome's faction spawns allowed on banks) |
-| `#2E64B5` | `lotrrevival:lake` | Still pools and small lakes, lily pads, reeds | bed 52-61 | none |
-| `#78B048` | `lotrrevival:shire` | Rolling farmland and meadows, hedgerows, scattered oak and apple trees, many flowers | 66-95 | `lotrrevival:hobbit` |
-| `#3E7A2C` | `lotrrevival:shire_woodlands` | Oak and birch woods with clearings, ferns (Green Hill Country, Woody End) | 68-100 | `lotrrevival:hobbit` (fewer), `lotrrevival:high_elf` (rare travellers) |
-| `#5F8F6E` | `lotrrevival:shire_marshes` | Flat wet meadows and reed beds, shallow pools, willows (the Marish) | 63-67 | `lotrrevival:hobbit` |
-| `#9A9A62` | `lotrrevival:shire_moors` | Open heath and gorse, exposed stone, few trees (North Moors) | 80-115 | `lotrrevival:hobbit` (rare) |
-| `#1F4A24` | `lotrrevival:old_forest` | Very dense, dark old-growth forest, huge oaks and willows, thick undergrowth, little light at the floor | 70-95 | none; hostile trees (NPC pod, unaligned) |
-| `#A3B56B` | `lotrrevival:barrow_downs` | Treeless round grassy hills, standing stones, mist in low ground | 75-125 | Barrow-wights at night (hostile; faction per core, likely `lotrrevival:angmar`) |
-| `#9CC25A` | `lotrrevival:bree_land` | Mixed farmland and copses around Bree-hill | 68-115 | `lotrrevival:bree`, `lotrrevival:ranger_north` (rare) |
-| `#2F6B3A` | `lotrrevival:chetwood` | Mixed oak and spruce forest east of Bree | 72-105 | `lotrrevival:ranger_north`, `lotrrevival:bree` (rare) |
-| `#4F7A63` | `lotrrevival:midgewater_marshes` | Bog, pools and sedge, dead trees. Swarming insects (ambient) | 63-66 | `lotrrevival:ranger_north` (rare) |
-| `#B8AE6E` | `lotrrevival:lone_lands` | Dry rolling grassland and scrub, rocky ridges toward the Weather Hills | 75-150 | `lotrrevival:ranger_north`; `lotrrevival:angmar` raiding parties at night (rare) |
-| `#8FA866` | `lotrrevival:far_downs` | Low open downs, sheep-country grass, scattered stones | 80-115 | `lotrrevival:hobbit` (rare), `lotrrevival:bree` travellers (rare) |
-| `#6E9A5A` | `lotrrevival:tower_hills` | Higher wooded hills topped by old elven towers (structure) | 90-145 | `lotrrevival:high_elf` |
-| `#7A8270` | `lotrrevival:ered_luin_foothills` | Steep stony foothills, spruce and pine, exposed rock and gravel | 100-170 | `lotrrevival:blue_mountains`, `lotrrevival:high_elf` (rare) |
+```
+surface_y   = cache_2d( base + detail )
+base        = get_preliminary_height_from_map(map_info = lotrrevival:middle_earth, lower -64, upper 320) + 8
+amplitude   = get_preliminary_height_from_map(map_info = lotrrevival:middle_earth_relief, lower -8, upper 64) + 8
+detail      = amplitude x (0.7 x noise(lotrrevival:relief_large) + 0.3 x noise(lotrrevival:relief_small))
+final_density = min( interpolated( clamp((surface_y - y) / 128, -1, 1) ), lotrrevival:middle_earth/underground )
+initial_density_without_jaggedness = clamp((surface_y - 8 - y) / 128, -1, 1)
+```
 
-That is 17 biomes; the issue's 11 required regions are all present, plus water, shore and Chetwood. All biomes are tagged `#lotrrevival:is_middle_earth` and not `#minecraft:is_overworld`, so vanilla structures and mods keyed on the overworld tag skip them (see Edge cases). Each biome also gets the `#c:` convention tags that fit (for example `#c:is_forest`, `#c:is_swamp`) so seasons and compat mods still work.
+- `- y` is built with `minecraft:y_clamped_gradient` (from_y -64 to to_y 320, from_value 64 to to_value -320). Everything else is vanilla `add`, `mul`, `clamp`, `cache_2d`, `interpolated` and `noise`.
+- `interpolated` evaluates at cell corners (4 x 8 x 4 blocks; noise size_horizontal 1, size_vertical 2) and the 2D terms are cached per column. The painted height is therefore sampled about 25 times per chunk (5 x 5 cell-corner columns, cached across y). NovoAtlas's own generator samples it once per block, about 98,000 times per chunk, so this should be faster. The benchmark below confirms it. Terrain features smaller than 4 blocks horizontally come from surface rules and features, as in vanilla.
+- `lotrrevival:middle_earth/underground` is a copy of NovoAtlas's `novoatlas:no_cave_entrances` (caves underground, no openings through the painted surface). The noise settings can also reference `novoatlas:no_cave_entrances` directly.
+- **Detail noise.** Two vanilla noise registry entries of our own: `relief_large` (features about 150 blocks across) and `relief_small` (about 40 blocks). The combined value stays roughly in -1 to 1. Exact octaves are set in ticket 1 and tuned in playtest. The noise is seeded by the world seed, as in Legacy, so small hills differ per world (see Open questions).
+- **Relief map (per-biome roughness).** Datagen reads the biome map and the colour table's `amplitude` (blocks, 0-31). It writes one value per biome pixel, blurs it with a Gaussian of radius 3 biome px (384 blocks) so strength never steps at a border, downsamples to 256 blocks per px, and saves it as `middle_earth_relief.png` with `vertical_scale` 0.125 (value 8 = 1 block). It is regenerated on every build, so it always matches the biome map.
+- **Corridors (added in a later ticket, still World-owned Java).** Two World-pod density function types are registered through `ModRegistries`:
+  - `lotrrevival:map_corridors` multiplies the detail by a mask. The mask is 0 within a road's half-width and ramps to 1 at 32 blocks beyond it (Legacy flattens terrain within 32 blocks of roads). It is also 0 within each landmark's radius, ramping to 1 over 64 blocks.
+  - `lotrrevival:river_cut` lowers the surface along river polylines (Rivers below).
+
+  Neither needs NovoAtlas classes: they take other density functions as inputs. Until they land, roads and rivers are not carved.
+- **Fallback.** Wiring is confirmed from source reading only. Ticket 1's GameTest proves it at runtime. If the noise settings cannot resolve a `map_info` reference when the registry loads, the smallest fix is one World-pod density function type, `lotrrevival:map_height`, that samples the map_info itself. That makes NovoAtlas a compile dependency of the `world` package (`implementation` instead of `localRuntime`; LGPL allows this as a separate jar). It needs Opus 1's review. NovoAtlas itself does not need to change.
+- **`fluid_height_map` is not used.** That option only exists in the image_map generator. The vanilla aquifer at sea level 63 gives the same result as the pilot's sea-level water. Upland lakes need a later solution (Out of scope).
+
+### Biome source and borders
+
+- The biome source is `lotrrevival:jittered_map`, a World-pod biome source that wraps `novoatlas:biome_cell_color_map` (map_info `lotrrevival:middle_earth_biomes`, `default_biome` `lotrrevival:ocean`, `strict: true`).
+- **Jitter.** Before it samples the wrapped source, the wrapper shifts each quart position by up to 12 quarts (48 blocks) in x and z, using two 2D noises with a wavelength of about 96 blocks. **The jitter uses a fixed seed, not the world seed**, so biome borders are identical in every world. Borders end up within 48 blocks of the painted edge and irregular, standing in for Legacy's fuzzed borders.
+- **Rivers.** If the quart's centre lies inside a river polyline's water width, the wrapper returns `lotrrevival:river` before the map is consulted. As in Legacy, the river biome is never painted on the 128-block map.
+- `strict: true` is required. In 1.8.2 the non-strict nearest-colour fallback compares only the blue channel, so a stray colour becomes an effectively random biome.
+- **Beaches** are not painted at 128-block resolution. A surface rule puts sand, with gravel 1 time in 20, on any land surface between y 60 and 65 that is within 4 blocks of water. `lotrrevival:shore` exists for wide strands that are at least one biome pixel across.
+
+### Placeholder (unpainted canvas)
+
+- Every unpainted heightmap pixel has value 8,000 (y 40), and every unpainted biome pixel is ocean `#1F3A93`. The result is open sea.
+- **G2 pilot window:** blocks x from -24,576 to +24,576 and z from -12,288 to +12,288. That is heightmap px 1,236 to 2,004 by 1,268 to 1,652, or 768 x 384 px.
+  - The artist paints the Shire to Bree plus the Tower Hills and Ered Luin foothills to the west and the start of the Lone-lands to the east.
+  - The land inside the window slopes to sea over at least 1,024 blocks at its edges, so for now the pilot is an island.
+- Later regions are painted window by window on the same canvas. Painting into ocean that already exists in a world leaves seams in that world's chunks. Before the first public release this is accepted. After release, the rules for map edits under Edge cases apply.
+- The validator records the painted windows in `map_regions.json` (below). Pixels outside every window must still be placeholder values.
+
+### Pilot biome colour table and spawns
+
+- **Colours** are key colours chosen fresh for this repo. The GUI map uses a separate display colour per biome.
+- **Height columns.** "Base y" is the typical painted height. "Amp" is the detail amplitude in blocks, which becomes the relief map. Both come from Legacy's base height and variation, using the 1.3x rule: base y ≈ 63 + 1.3 x 18 x base and amp ≈ 1.3 x 18 x variation, rounded. They are estimates, tuned in playtest.
+- **Factions** use core's ids. Shares are the normal spawn weights from Legacy. The NPC pod owns the spawn lists and the zero-weight groups that only spawn under conquest.
+- **Pseudo-factions** (`ruffians`, `hostile_trees`, `unaligned_hostile`) are requested from core (below).
+
+| Hex | Biome id | Terrain and vegetation | Base y | Amp | Factions (spawn share) | Invasions (NPC pod; R/U/C) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `#1F3A93` | `lotrrevival:ocean` | Open sea, sand and gravel floor. Also the placeholder | 40 | 2 | none | none |
+| `#D8CB8E` | `lotrrevival:shore` | Wide sand and gravel strands, sparse grass | 64 | 1 | none | none |
+| (not painted) | `lotrrevival:river` | Set by the wrapper inside river polylines. Reeds, clay and gravel bed | bed 54-60 | 0 | none (bank spawns use the neighbouring biome) | none |
+| `#2E64B5` | `lotrrevival:lake` | Painted lakes at least 2 biome px (256 blocks) across. Lily pads, reeds | bed 52-60 | 0 | none | none |
+| `#78B048` | `lotrrevival:shire` | Rolling farmland and meadows, hedgerows, oak and chestnut, orchards, many flowers | 67 | 7 | `hobbit` 100% | none |
+| `#3E7A2C` | `lotrrevival:shire_woodlands` | Dense pine and oak woods with clearings (Green Hill Country, Woody End) | 70 | 12 | `hobbit` 100% | none |
+| `#5F8F6E` | `lotrrevival:shire_marshes` | Flat wet meadows, reed beds, shallow pools, swamp oaks (the Marish) | 64 | 2 | `hobbit` 100% | none |
+| `#9A9A62` | `lotrrevival:shire_moors` | Wet open heath, large oaks and chestnuts, exposed stone (North Moors) | 72 | 14 | `hobbit` 100% | none |
+| `#C9D7A0` | `lotrrevival:white_downs` | Shire sub-biome: high chalky downs, oak and chestnut, flower fields. Replaces the draft's `far_downs` | 77 | 14 | `hobbit` 100% | none |
+| `#1F4A24` | `lotrrevival:old_forest` | Very dense, dark old-growth forest, tall and dark oaks, thick undergrowth | 68 | 7 | `hostile_trees` 100% (huorn-like trees, NPC pod) | none |
+| `#A3B56B` | `lotrrevival:barrow_downs` | Treeless round grassy hills, a few dead oaks, standing stones, mist in low ground | 70 | 9 | `unaligned_hostile` 100% (Barrow-wights) | none |
+| `#9CC25A` | `lotrrevival:bree_land` | Mixed farmland, copses and orchards around Bree-hill | 65 | 5 | `bree` 95%, `ruffians` 5% (`dunedain_north` by conquest only) | `gundabad` R |
+| `#2F6B3A` | `lotrrevival:chetwood` | Dense oak and beech woods east of Bree (bandit woods) | 68 | 9 | `ruffians` 100% | `gundabad` R |
+| `#4F7A63` | `lotrrevival:midgewater_marshes` | Bog, pools and sedge, swamp oaks, dead trees. Swarming insects (ambient) | 64 | 2 | `gundabad` 63%, `angmar` 32% (Angmar hillmen), `dunedain_north` 5% | `gundabad` R, `dunedain_north` R |
+| `#B8AE6E` | `lotrrevival:lone_lands` | Dry rolling grassland and scrub, exposed stone and ruins toward the Weather Hills | 67 | 9 | `gundabad` 63%, `angmar` 32% (Angmar hillmen), `dunedain_north` 5% | `gundabad` C, `dunedain_north` C, `angmar` C (hillmen) / U (orcs), `high_elf` R |
+| `#6E9A5A` | `lotrrevival:tower_hills` | Higher hills, birch and aspen, flower fields, elven towers (landmark) | 75 | 12 | `high_elf` 50% (Lindon elves), `dunedain_north` 50% | `gundabad` R |
+| `#7A8270` | `lotrrevival:ered_luin_foothills` | Steep stony foothills, spruce, fir and pine, exposed rock and gravel | 75 | 21 | `gundabad` 90%, `blue_mountains` 10% (dwarf travellers; dwarves live in the mountains proper) | `gundabad` R |
+
+- That is 17 biomes. The issue's 11 required regions are all present, plus water, shore, Chetwood and the White Downs.
+- Barrow-wights belong to an unaligned hostile group, not `angmar`. This answers the draft's open question 8.
+- Bandits (NPC pod) never appear in the Shire biomes, the Old Forest or the Barrow-downs. They are most frequent in the Lone-lands.
+- All biomes are tagged `#lotrrevival:is_middle_earth` and not `#minecraft:is_overworld`. Each also gets the `#c:` convention tags that fit (`#c:is_forest`, `#c:is_swamp`, ...).
+- Biomes have no carvers.
 
 ### Roads
 
+The road data format is unchanged, scaled to the new canvas. Full behavior is owned by `specs/world/roads.md`. Numbers follow Legacy.
+
 | Thing | Value | Notes |
 | --- | --- | --- |
-| Definition | Polyline per road, control points in **heightmap pixel coordinates** (floats) | Pixel coordinates stay valid if the scale changes later. Converted to blocks by the shared projection |
-| Smoothing | Centripetal Catmull-Rom through control points, sampled every 1 block | Plus deterministic per-position jitter of plus or minus 1 block from world seed and position |
-| Width | 3 blocks core plus a 1-block ragged edge on each side (50% per block) | `width` overridable per road |
-| Materials | From the biome's road palette: Shire, Bree-land and Far Downs use 70% dirt path, 20% coarse dirt, 10% gravel; Bree-land swaps 15% to cobblestone within 128 blocks of Bree; Lone-lands use 50% dirt path, 30% gravel, 20% left as grass (fading road) | Palette lives on the road style, keyed by biome |
-| Vertical | Replaces the top surface block; never digs more than 1 block or builds more than 1 block up. Clears plants and snow layers on the road | Steep sections stay rough, which is intended |
-| Water crossing | Crossings of 24 blocks or less: plank bridge, deck at water level + 2, fence rails. Longer: road stops at the bank and a fixed landmark (for example the Brandywine Bridge) must cover it | Validator warns on uncovered long crossings |
-| Structures | Road blocks never overwrite blocks inside a structure's bounding box; towns supply their own streets | |
-| Pilot roads | Great East Road (canvas west edge, Michel Delving, Hobbiton, Bywater, Frogmorton, Brandywine Bridge, Bree, Weathertop direction to the pilot's east edge); Greenway (north-south through Bree); Bucklebury Ferry lane; three Shire lanes | Exact points come from the map art in #9 |
+| Definition | One polyline per road, control points in **heightmap pixel coordinates** (floats; 1 block = 0.015625 px) | Pilot roads: Great East Road (west window edge, Michel Delving, Hobbiton, Bywater, Frogmorton, Brandywine Bridge, Bree, then on toward Weathertop to the east window edge), Greenway (north-south through Bree), Bucklebury Ferry lane, Old Forest road to Buckland, three Shire lanes. The art in #9 supplies the points |
+| Smoothing | Centripetal Catmull-Rom through the points, sampled every block, plus deterministic jitter of ±1 block | |
+| Width | Every block within **4 blocks** of the centre line is road, so roads are about 8-9 blocks wide | `width` overridable per road |
+| Depth | Road material replaces the top 4 blocks | Slabs on the top layer where the surface steps down half a block |
+| Terrain | Within 32 blocks of the road edge, procedural detail fades to 0 (`map_corridors`). The road runs on the smooth painted base | |
+| Materials | From the biome's road style. Path style (dirt path, coarse dirt, gravel) in all pilot biomes except the Lone-lands. Lone-lands: Arnor style (mossy and cracked old stone brick), each block placed with 40% probability, otherwise grass (a worn road) | |
+| Bridges | Where the road meets water, the deck rises 1 block per 2 blocks of water depth, capped at 5 blocks above the water surface, with slabs for half steps. Fence rails on the edges, and a pillar down to the bed every 8 blocks along each edge | Landmark bridges (Brandywine Bridge) replace generated ones inside their bounding box |
+| Structures | Road blocks never overwrite blocks inside a structure's bounding box. Towns lay their own streets | |
 | Map | Every road with `show_on_map: true` is drawn on the GUI map | |
 
 ### Rivers
 
-- Rivers are carved into the **heightmap** as channels and painted as `lotrrevival:river` in the biome map. Water fills to sea level automatically.
-- A channel must be at least 2 heightmap px (16 blocks) wide, or bicubic smoothing fills it in. Narrower streams wait for a later `stream` feature (see Open questions).
-- The river biome strip is at least 1 biome px (32 blocks) wide, so banks within about 8 blocks of the water may report `river`. This is acceptable.
-- Rivers above sea level (upland lakes, Misty Mountains streams) need a `fluid_height_map`. It is out of the pilot and specced with the first region that needs it. When added, the fluid map is 0 everywhere except at painted water surfaces, so depressions never flood by accident.
+- Rivers are polylines in a World datapack registry, `lotrrevival:river`, using the same point format as roads plus a `width` (water width in blocks, either per river or per point) and a `depth`.
+- Pilot rivers: Brandywine (24-40 wide), the Water (10-14), Withywindle (8-12), plus the streams the art shows (3-6). There is no minimum width.
+- `lotrrevival:river_cut` lowers the surface inside the water width to the bed (y 63 - depth; depth is 3-8 by width) and blends the banks back to the terrain over 8 blocks. Water fills to sea level through the aquifer.
+- **Artist rule:** paint river valleys in the heightmap down to y 64-66 so the cut stays shallow. A valley needs to be at least 2 heightmap px (128 blocks) wide.
+- Rivers above sea level (upland lakes, mountain streams) are out of the pilot and specced in `rivers.md`.
 
 ### Structures on the image terrain
 
-Two placement kinds, both owned by `specs/world/structures.md`:
+Owned by `specs/world/structures.md`:
 
-1. **Landmarks** at fixed coordinates (Bree, Brandywine Bridge, Bucklebury Ferry, Weathertop ruin at the pilot's east edge, the elven towers on the Tower Hills). They use a world-pod placement type `lotrrevival:fixed` that takes a list of positions in heightmap pixel coordinates and generates exactly once at each. Terrain under them is flattened by vanilla's structure terrain adaptation, which NovoAtlas 1.8 supports.
-2. **Scattered** structures (hobbit holes, barrow tombs, ranger camps, ruins) use vanilla `random_spread` structure sets, filtered by biome tags `#lotrrevival:has_structure/<name>`.
+1. **Landmarks** at fixed heightmap-pixel positions: Bree, Staddle, Combe, Archet, Brandywine Bridge, Bucklebury Ferry, the Weathertop ruin (just outside the pilot window, added with the Lone-lands region), and the elven towers on the Tower Hills.
+   - They use a World-pod placement type `lotrrevival:fixed` that generates exactly once at each listed position.
+   - Each landmark also has a corridor radius, where detail is suppressed. Vanilla structure terrain adaptation does the final flattening.
+   - Legacy's fixed hills (Bree-hill, Weathertop, the hill at Bag End) are painted into the heightmap, not added as boosts.
+2. **Scattered** structures use vanilla `random_spread` sets filtered by `#lotrrevival:has_structure/<name>`.
+   - They skip chunks within 16 blocks of a road and within 256 blocks of a landmark.
+   - Because our scale now matches Legacy, Legacy's per-biome densities apply directly.
 
-The generation order is fixed: structures, then roads, then biome decoration (trees and flowers skip road blocks).
+Generation order: structures, then roads, then biome decoration (trees and flowers skip road blocks).
+
+### Waypoints, fast travel and respawn
+
+These follow Legacy and are specced later in `specs/world/waypoints-and-travel.md`:
+
+- Fixed waypoints are positioned in heightmap pixel coordinates.
+- Regions unlock when the player enters any biome tied to them.
+- A faction waypoint needs alignment of 0 or more with its faction.
+- Fast-travel time cost: min 3 min, max 30 min, falling with uses.
+- There is a 10-second countdown.
+- Companions within 256 blocks come along.
+
+This spec only guarantees that biome ids and the projection are stable inputs. Middle-earth respawning near the death point belongs to `portal.md`.
 
 ### Ores and spawn tables
 
-Ores are biome features from `specs/world/ores.md` (pilot: coal, iron, copper and tin everywhere underground; silver only in `ered_luin_foothills`). Ore blocks come from core. Per-biome passive animals are in the biome JSON. Faction NPC spawns follow the table above, in the format defined by `specs/world/spawn-tables.md`; NPC entity types come from the NPC pod. The `monster` spawn category holds no vanilla mobs in any Middle-earth biome.
+- Ores are biome features from `specs/world/ores.md` (Legacy's base set in every biome). Ore blocks come from core.
+- Per-biome passive animals are in the biome JSON.
+- Faction NPC spawns follow the table above, in the format defined by `specs/world/spawn-tables.md`. NPC entity types come from the NPC pod.
+- The `monster` spawn category holds no vanilla mobs in any Middle-earth biome.
 
 ### Reaching the dimension (placeholder)
 
-- Until the portal spec lands: `/lotrrevival middleearth` (permission level 2) teleports the player to the landing point; run in Middle-earth, it returns them to their overworld spawn. A GameTest helper does the same.
-- Landing point: a single block position in `data/lotrrevival/lotrrevival/middle_earth.json` (`landing_point`, heightmap pixel coords), placed in the Shire next to the East Road. The player is put on the highest solid block there.
-- The real portal (original-mod-style ring portal, return trips, cooldowns) belongs to `specs/world/portal.md`. This spec only fixes the landing point and the dimension key.
+- Until the portal spec lands, `/lotrrevival middleearth` (permission level 2) teleports the player to the landing point. Run inside Middle-earth, it returns them to their overworld spawn. A GameTest helper does the same.
+- The landing point is in `data/lotrrevival/lotrrevival/middle_earth.json` (`landing_point`, heightmap pixel coordinates). It is within 512 blocks of block (0, 0), in the Shire, next to the East Road. The player is placed on the highest solid block there.
 
 ### Map GUI (Progression pod) reading the same images
 
-- The GUI does not read server datapack images at runtime: clients may not have them, and a 42 MB heightmap is too large to send.
-- Instead, a **world-pod datagen provider** renders GUI map tiles at build time from the heightmap, the biome map, each biome's display colour and the road polylines. It writes them to `src/generated/resources/assets/lotrrevival/textures/gui/map/z<zoom>/<x>_<z>.png` (256 px tiles, zoom levels 0-3, zoom 3 = 1 tile px per 8 blocks) plus a small `map_index.json` (canvas size, tile counts, scale).
-- Shading is a hillshade from the heightmap (light from the north-west) multiplied over the display colours, with water from biome ids, and roads drawn on top.
-- Block-to-map conversion uses one shared projection: canvas size, blocks per pixel and origin. Those constants live in core (requested below) so World and Progression never disagree.
-- If a server overrides the map datapack, client tiles will not match. That is acceptable and documented.
+- The GUI does not read server images. A **World-pod datagen provider** renders tiles at build time from the heightmap, the biome map (with jitter applied), the display colours, and the road and river polylines.
+- Tiles are written to `src/generated/resources/assets/lotrrevival/textures/gui/map/z<zoom>/<x>_<z>.png`: 256 px tiles at zoom levels 0-4. Zoom 4 is 64 blocks per tile pixel (heightmap native) and zoom 0 is 1,024. A `map_index.json` lists canvas size, origin, scale and the tiles present.
+- **Tiles that are only ocean are not written.** The GUI fills them with the sea colour. While only the pilot is painted, the full set is a few dozen tiles.
+- Shading is a hillshade from the heightmap (light from the north-west) multiplied over the display colours.
+- Block-to-map conversion uses core's projection (requested below). If a server overrides the map datapack, client tiles will not match. That is accepted and documented.
 
 ### When NovoAtlas becomes required
 
-NovoAtlas flips from optional to required **in the same PR that adds `data/lotrrevival/dimension/middle_earth.json`**. Without NovoAtlas, that file names an unknown generator type and the world fails to load. That PR:
+The pin in `gradle.properties` is already **1.8.2+1.21.1** (CurseForge file 9191380), and the optional range in `neoforge.mods.toml` is `[1.8.2,)`. 1.8.0 must not be used: 1.8.1 and 1.8.2 fix quart/block mix-ups in biome sampling. NovoAtlas flips to required **in the same PR that adds `data/lotrrevival/dimension/middle_earth.json`**. That PR:
 
-- bumps NovoAtlas to **1.8.2+1.21.1** (1.8.1 and 1.8.2 fix quart/block mix-ups in biome sampling that break the 4:1 biome map; 1.8.0 must not be used);
-- changes `localRuntime` to a normal compile and runtime dependency in `build.gradle` (we use its type ids only in JSON; compile access is for GameTests);
-- sets `type="required"` and `versionRange="[1.8.2,1.9)"` for `novoatlas` in `neoforge.mods.toml`, `side="BOTH"`;
-- touches shared files `build.gradle`, `gradle.properties`, `DataGenerators` and the mods.toml template, so Opus 1 must review it.
+- changes `localRuntime` to a normal runtime dependency (and to compile, only if the fallback above is needed);
+- sets `type="required"` and `versionRange="[1.8.2,1.9)"` in `neoforge.mods.toml`;
+- touches `build.gradle`, `gradle.properties`, `DataGenerators` and the mods.toml template, so Opus 1 reviews it.
 
 ## Edge cases
 
-- **Multiplayer:** generation is server-side. Clients need NovoAtlas only because the mods.toml requires both sides (see Open questions). GUI tiles ship in our jar, so every client sees the same map.
-- **Death, logout, dimension change:** logging out in Middle-earth logs back in there (vanilla). Dying in Middle-earth with no bed or anchor set there respawns at the landing point, not the overworld spawn. The respawn rule is implemented with the portal spec and uses a core attachment for each player's last Middle-earth position.
-- **Unmapped colours:** with `strict: true`, any biome map colour not in the table becomes `lotrrevival:ocean`. The build validator fails on any unmapped pixel, so this only happens with a third-party datapack override. Never set `strict: false`: in 1.8.2 the nearest-colour fallback reads only the blue channel, so a stray green pixel can become a lake. Report this upstream.
-- **Map edits after release:** terrain is a pure function of the images, so editing an already-generated area leaves seams at chunk borders in existing worlds. After the first public release, map edits are limited to areas marked "unreleased" on the canvas, or ship with a changelog note telling players to trim or regenerate affected regions.
-- **Outside the canvas:** clamped edge pixels give endless deep ocean. A world border is not set because 1.21.1 shares one border across dimensions (see Open questions).
-- **Structures across the map edge:** none. Landmark positions must lie at least 512 blocks inside the canvas (validated).
-- **Vanilla structures:** none spawn, because our biomes are not in any `#minecraft:has_structure/*` tag. Strongholds, mineshafts, trial chambers and ancient cities are absent, and `/locate structure` for them fails.
-- **Third-party mods** that add features or spawns to `#c:is_overworld` or `#minecraft:is_overworld` biomes skip Middle-earth. Mods keyed on plain `#c:` vegetation tags may still add content (accepted).
-- **Same terrain in every world:** seeds change only decoration, scattered structures and caves. `/seed` does not affect landmarks or roads.
-- **Performance:** each density evaluation samples the heightmap with bicubic interpolation. Chunk generation time is benchmarked (acceptance tests) and lanczos is only adopted if it stays in budget.
-- **Interaction with other systems:** waypoints (Progression) and invasion zones (NPC) are positioned in heightmap pixel coordinates through the shared projection, never as raw block numbers copied from a test world.
+- **Multiplayer:** generation is server-side. NovoAtlas's map_info registry has no network codec, and its density function and biome source types are not synced, so a server-only install may work (see Open questions). GUI tiles ship in our jar.
+- **Death, logout, dimension change:** logging out in Middle-earth logs back in there (vanilla). Respawn rules belong to the portal spec and use a core attachment for each player's last Middle-earth position.
+- **Unmapped colours:** with `strict: true`, any colour not in the table becomes `lotrrevival:ocean`. The build validator fails on unmapped pixels, so this only happens with a third-party datapack override.
+- **Border jitter near water:** jitter can report `ocean` or `lake` up to 48 blocks onto land at a painted coast, or the land biome up to 48 blocks out to sea. Surface rules choose beach blocks by height, not by biome, so the ground still looks right. Spawns follow the reported biome (accepted).
+- **Map edits after release:** base terrain is a pure function of the images. Editing an area that worlds have already generated leaves seams at chunk borders. Before release, any window can be repainted. After the first public release, edits are limited to windows not yet listed as released in `map_regions.json`, or ship with a changelog note telling players to trim affected regions.
+- **Outside the canvas:** clamped edge pixels give endless ocean. No world border is set, because 1.21.1 shares one border across dimensions. The canvas edge is more than 93,000 blocks from the origin.
+- **Max height:** a painted value plus its biome amplitude above y 300 fails the validator. Corridors and river cuts only lower terrain.
+- **Same terrain in every world:** painted shapes, biome borders (fixed-seed jitter), roads, rivers and landmarks are identical in every world. Small hills (up to each biome's amplitude) vary with the seed.
+- **Structures near the canvas edge:** none. Landmark and road points must be at least 1,024 blocks inside the canvas and inside a painted window (validated).
+- **Vanilla structures:** none spawn, because our biomes are not in any `#minecraft:has_structure/*` tag.
+- **Third-party mods** that add to `#c:is_overworld` or `#minecraft:is_overworld` biomes skip Middle-earth. Mods keyed on plain `#c:` vegetation tags may still add content (accepted).
+- **Cave biomes later:** NovoAtlas's cave-biome layer looks up the surface height through the biome source's map_info, which here has the biome scale (32), not the terrain scale (64). Cave biome layers (Moria, dwarf halls) therefore cannot use NovoAtlas's `cave_biomes` with this setup. They get their own solution in a later spec.
+- **Reload memory spike:** `/reload` briefly holds two copies of every image (about 465 MB peak). Servers with less than 2 GB of free heap may stall. This is documented in the server notes.
+- **Interaction with other systems:** waypoints (World), invasion zones (NPC) and map markers (Progression) are positioned in heightmap pixel coordinates through the shared projection, never as raw block numbers copied from a test world.
 
 ## Data and APIs
 
@@ -164,88 +273,138 @@ NovoAtlas flips from optional to required **in the same PR that adds `data/lotrr
 
 | Path | Authored by | Content |
 | --- | --- | --- |
-| `src/main/resources/data/lotrrevival/novoatlas/heightmap/middle_earth.png` | Hand-drawn (#9) | 16-bit grayscale terrain, 5120 x 4096 |
-| `src/main/resources/data/lotrrevival/novoatlas/biome_map/middle_earth.png` | Hand-drawn (#9) | 8-bit RGB key colours, 1280 x 1024 |
-| `src/main/resources/data/lotrrevival/lotrrevival/road/<road>.json` | Hand-authored | `{ "style": "lotrrevival:<style>", "width": 3, "show_on_map": true, "points": [[px, pz], ...] }` |
+| `src/main/resources/data/lotrrevival/novoatlas/heightmap/middle_earth.png` | Hand-drawn (#9) | 16-bit grayscale, 6,400 x 8,000 |
+| `src/main/resources/data/lotrrevival/novoatlas/biome_map/middle_earth.png` | Hand-drawn (#9) | 8-bit RGB key colours, 3,200 x 4,000 |
+| `src/generated/resources/data/lotrrevival/novoatlas/heightmap/middle_earth_relief.png` | Datagen | 8-bit grayscale, 1,600 x 2,000 |
+| `src/main/resources/data/lotrrevival/lotrrevival/road/<road>.json` | Hand-authored | `{ "style": "lotrrevival:<style>", "width": 4, "show_on_map": true, "points": [[px, pz], ...] }` (`width` is the half-width in blocks) |
+| `src/main/resources/data/lotrrevival/lotrrevival/river/<river>.json` | Hand-authored | `{ "width": 30, "depth": 6, "show_on_map": true, "points": [[px, pz, width?], ...] }` |
 | `src/main/resources/data/lotrrevival/lotrrevival/middle_earth.json` | Hand-authored | `{ "landing_point": [px, pz] }` |
-| `src/generated/resources/data/lotrrevival/novoatlas/map_info/middle_earth.json` | Datagen | `height_map`, `starting_y: 0`, `scaling` (`vertical_scale: 0.005`, `horizontal_scale: {value: 8, interpolation: "bicubic"}`), `center_offset: [0, 0]`, `image_wrapping: "clamp_to_edge"`, `surface_biomes` (`map`, `strict: true`, `biomes` from the colour table) |
-| `src/generated/resources/data/lotrrevival/dimension/middle_earth.json` | Datagen | Generator config above |
+| `src/main/resources/data/lotrrevival/lotrrevival/map_regions.json` | Hand-authored | Painted windows `{ "id", "min": [px, pz], "max": [px, pz], "released": false }` |
+| `src/generated/resources/data/lotrrevival/novoatlas/map_info/middle_earth*.json` | Datagen | The three map_infos (table above). All have `starting_y` 0, `image_wrapping` `clamp_to_edge` and `surface_biomes` (`map`, `strict: true`, `biomes` from the colour table). The terrain one has `vertical_scale` 0.005; the relief one has `vertical_scale` 0.125 |
+| `src/generated/resources/data/lotrrevival/dimension/middle_earth.json` | Datagen | `minecraft:noise` generator, settings `lotrrevival:middle_earth`, biome source `lotrrevival:jittered_map` |
 | `src/generated/resources/data/lotrrevival/dimension_type/middle_earth.json` | Datagen | Overworld-like: skylight, beds work, respawn anchors do not, natural, `min_y -64`, `height 384` |
-| `src/generated/resources/data/lotrrevival/worldgen/noise_settings/middle_earth.json` | Datagen | See Generator configuration |
+| `src/generated/resources/data/lotrrevival/worldgen/noise_settings/middle_earth.json` | Datagen | Sea level 63, aquifers on, ore veins off, our surface rules, and the router from "Terrain generation" |
+| `src/generated/resources/data/lotrrevival/worldgen/noise/relief_*.json`, `worldgen/density_function/middle_earth/*.json` | Datagen | Detail noises and named density functions |
 | `src/generated/resources/data/lotrrevival/worldgen/biome/*.json`, `tags/worldgen/biome/*.json` | Datagen | Pilot biomes and tags |
 | `src/generated/resources/assets/lotrrevival/textures/gui/map/**` | Datagen | GUI tiles and `map_index.json` |
 
-- The colour table is a single Java source of truth in the `world` package. Datagen writes `map_info` from it as plain JSON, so no NovoAtlas classes are needed at datagen time. Images are the only hand-made worldgen binaries, an allowed exception to datagen-first like textures.
-- A **map validator** runs in `./gradlew build` (JUnit, no game needed) and fails when:
-  - the heightmap is not 16-bit grayscale;
-  - either image's sides are not multiples of 16;
-  - the heightmap is not exactly 4x the biome map;
-  - any value is over 60,000;
-  - any biome map colour is not in the table;
-  - the table has a duplicate colour or an unregistered biome id;
-  - a road or landmark point is outside the canvas or within 512 blocks of its edge.
+- The colour table (hex, biome id, base y, amplitude, display colour) is a single Java source of truth in the `world` package. Datagen writes the map_infos and the relief image from it, so no NovoAtlas classes are needed at datagen time.
+- The hand-drawn images are the only hand-made worldgen binaries. They are an allowed exception to datagen-first, like textures.
+- A **map validator** runs in `./gradlew build` (JUnit, no game needed). It fails when:
+  - the heightmap is not 16-bit grayscale at 6,400 x 8,000, or the biome map is not 3,200 x 4,000;
+  - painted y + the biome's amplitude exceeds 300 at any heightmap pixel;
+  - any biome map colour is not in the table, or the table has a duplicate colour or an unregistered biome id;
+  - any pixel outside every `map_regions.json` window is not placeholder (value 8,000 / ocean colour);
+  - a road, river, landmark or landing point lies outside a painted window or within 1,024 blocks of the canvas edge;
+  - the committed relief image differs from what datagen produces.
 
 ### Requested from core (via `pod:core` issues; do not implement in `world`)
 
-- Faction registry and ids used above (`specs/core/core-apis.md`).
-- Shared constants: dimension key `lotrrevival:middle_earth`, and map projection constants (heightmap canvas 5120 x 4096, 8 blocks per pixel, biome pixel 32 blocks, origin at image centre) with block-to-pixel conversion helpers used by World and Progression.
-- Tag keys: `#lotrrevival:is_middle_earth`, `#lotrrevival:has_structure/<name>`.
-- Registration through `ModRegistries`: a new datapack registry `lotrrevival:road` (needs Opus 1 approval), the `lotrrevival:fixed` structure placement type, and the road feature type.
-- Player attachment for the last Middle-earth position and return position (portal spec).
-- Ore blocks (tin, silver) for the ores spec.
+- **Pseudo-factions** (core open question 7). Hidden factions, not pledgeable, with no alignment display:
+  - `unaligned_hostile`: Barrow-wights and other undead and monsters. Hostile to every player and every faction.
+  - `hostile_trees`: Old Forest trees. Mortal enemy of `hobbit`, `bree` and `dunedain_north`, and hostile to players regardless of alignment.
+  - `ruffians`: Bree-land and Chetwood bandits. Hostile to players, enemies of `bree` and `hobbit`.
+
+  Core picks the final ids, and this table updates to match. The NPC lead confirms the membership.
+- **Shared constants:** dimension key `lotrrevival:middle_earth` (already in core), and map projection constants: heightmap canvas 6,400 x 8,000, 64 blocks per px, biome map 2x coarser, relief 4x coarser, origin (1,620, 1,460). Plus block/pixel conversion helpers for World and Progression.
+- **Tag keys:** `#lotrrevival:is_middle_earth` and `#lotrrevival:has_structure/<name>` (biome `region/<region>` and `faction_home/<faction>` are already in core's list).
+- **Registration through `ModRegistries`** (needs Opus 1 approval):
+  - datapack registries `lotrrevival:road` and `lotrrevival:river`, and later `lotrrevival:waypoint` (reserved in core);
+  - density function types `lotrrevival:map_corridors` and `lotrrevival:river_cut` (plus `lotrrevival:map_height` only if the fallback is needed);
+  - biome source type `lotrrevival:jittered_map`;
+  - placement type `lotrrevival:fixed` and the road feature type.
+- **Player attachment** for the last Middle-earth position and return position (portal spec).
+- **Blocks:** tin and silver ores (ores spec), and Arnor-style old stone brick with mossy and cracked variants, slabs and stairs (Lone-lands road style).
 
 ## Out of scope
 
-- The map images themselves (#9) and every region beyond Shire to Bree.
-- Portal mechanics, return travel and respawn rules (`specs/world/portal.md`).
-- Detailed biome decoration, surface rules and sub-biome variants (`specs/world/biomes-eriador.md`), structures, ores and spawn tables (their own specs).
-- Fluid heightmap, upland lakes, cave biome layers (Moria, dwarf halls), custom sky, fog and weather.
-- Map GUI behavior (Progression); this spec only supplies tiles and the projection.
+- The map images themselves (#9) and every region beyond the pilot window.
+- Portal mechanics, return travel and respawn rules (`portal.md`).
+- Waypoints and fast travel (`waypoints-and-travel.md`).
+- Full road styles and bridges (`roads.md`), and rivers above sea level (`rivers.md`).
+- Detailed biome decoration, surface rules and vegetation variants (`biomes-eriador.md`), structures, ores and spawn lists (their own specs).
+- Upland lakes, cave biome layers (Moria, dwarf halls), custom sky, fog and weather.
+- Map GUI behavior (Progression). This spec only supplies tiles and the projection.
 
 ## Acceptance tests
 
-- [ ] Unit (build): map validator passes on the committed pilot images and fails on fixtures with an unmapped colour, a wrong size ratio or a value over 60,000.
-- [ ] Unit (build): projection round-trips: block to pixel to block within 8 blocks; the image centre maps to (0, 0); the north edge is negative z.
-- [ ] GameTest: the `lotrrevival:middle_earth` level exists, and its generator and biome source are the NovoAtlas types.
-- [ ] GameTest: the biome at the landing point is `lotrrevival:shire`, and the biome at a fixture point on the Brandywine is `lotrrevival:river`.
-- [ ] GameTest: the surface height at three fixture pixels equals the painted value x 0.005, give or take 2 blocks.
+- [ ] Unit (build): the map validator passes on the committed images. It fails on fixtures with an unmapped colour, a wrong size, a value + amplitude over 300, and paint outside a window.
+- [ ] Unit (build): the projection round-trips block → pixel → block within 1 block. Image coordinate (1,620, 1,460) maps to (0, 0). North is negative z. The datagen `center_offset` values reproduce the canonical projection when fed through NovoAtlas's index formula, within 0.05 blocks.
+- [ ] Unit (build): the relief image is regenerated byte-identically from the biome map and colour table.
+- [ ] GameTest: the `lotrrevival:middle_earth` level exists. Its generator is `minecraft:noise` with our settings, and its biome source is `lotrrevival:jittered_map` wrapping the NovoAtlas cell source. This proves the map_info reference resolves inside noise settings; if it fails, take the fallback.
+- [ ] GameTest: the biome at the landing point is `lotrrevival:shire`. A fixture point at the centre of the Brandywine polyline is `lotrrevival:river`. A point 200 blocks inside a painted Old Forest area is `lotrrevival:old_forest`.
+- [ ] GameTest: at three fixture pixels, surface height = painted y ± (biome amplitude + 2). On a road centre line, it is painted y ± 2.
+- [ ] GameTest: biome borders are identical for two different world seeds at 20 fixture points near borders.
 - [ ] GameTest: no vanilla monster appears in any Middle-earth biome's spawn list.
-- [ ] Runtime test (CI): headless client joins, runs `/lotrrevival middleearth`, and generates 400 chunks around the landing point without errors.
-- [ ] Benchmark: average chunk generation time in Middle-earth is at most 1.5x a vanilla overworld chunk on the same machine.
-- [ ] Playtest: walk the East Road from the landing point to Bree. It is about 3,000 blocks, the road is unbroken except at landmarks, the Brandywine Bridge connects, F3 biome names match the painted map, and there are no vanilla hostiles at night.
-- [ ] Playtest: GUI map tiles line up with the terrain at the Brandywine, Bree-hill and the Old Forest edge within one map pixel.
+- [ ] Runtime test (CI): a headless client joins, runs `/lotrrevival middleearth`, and generates 400 chunks around the landing point without errors.
+- [ ] Benchmark: average chunk generation time in Middle-earth is at most 1.5x a vanilla overworld chunk on the same machine. Server heap after load is at most 200 MB above a vanilla baseline.
+- [ ] Playtest: ride the East Road from the landing point to Bree (about 12,800 blocks straight-line):
+  - the road is unbroken except at landmarks;
+  - bridges form over streams;
+  - the Brandywine Bridge connects;
+  - F3 biome names match the painted map within 48 blocks;
+  - small hills look natural, and there are no vanilla hostiles at night.
+- [ ] Playtest: GUI map tiles line up with the terrain at the Brandywine, Bree-hill and the Old Forest edge within one zoom-4 pixel (64 blocks).
 
 ## Tickets
 
 Filled in after approval. Proposed split (1-2 days each):
 
-1. NovoAtlas 1.8.2 required: dependency bump, mods.toml, dimension, dimension type and noise settings datagen, placeholder command, blank ocean canvas (shared-file lock: `build.gradle`, `gradle.properties`, `DataGenerators`).
-2. Colour table, pilot biome JSONs and tags datagen, and `map_info` datagen.
-3. Map validator (JUnit) and projection unit tests (after the core constants land).
-4. Road registry, road feature and road styles.
-5. Fixed structure placement type (structures spec supplies the pieces).
-6. GUI map tile renderer (datagen) and `map_index.json`, handed to Progression.
+1. NovoAtlas required, dimension, dimension type, noise settings with the pure-data base + detail router, the three map_infos, the all-placeholder canvas, and the placeholder command. Shared-file lock: `build.gradle`, `gradle.properties`, `DataGenerators`.
+2. Colour table, pilot biome JSONs and tags, and relief-image datagen.
+3. Map validator, `map_regions.json`, and projection unit tests (after core's constants land).
+4. `lotrrevival:jittered_map` biome source (fixed-seed jitter, river override).
+5. River registry and `lotrrevival:river_cut`; `lotrrevival:map_corridors`.
+6. Road registry, road feature, path and Arnor styles, bridges.
+7. Fixed structure placement type (the structures spec supplies the pieces).
+8. GUI map tile renderer (datagen) and `map_index.json`, handed to Progression.
+
+## Resolved by maintainer decisions
+
+- **World scale:** Legacy's. Biome map at 128 blocks per px, a 409,600 x 512,000-block canvas, and the origin at Hobbiton. This replaces the draft's 8/32-block scale and 40,960 x 32,768 canvas.
+- **Elevation:** painted at 64 blocks per px with procedural detail on top. Feasible with data only, by moving off the image_map generator (see Terrain generation).
+- **Interpolation:** bicubic. It is sampled per cell corner and column-cached, and the detail noise hides interpolation artefacts, so lanczos is not needed.
+- **Biome cell size:** 128-block biome pixels with fixed-seed border jitter (the draft's question 2).
+- **Streams narrower than 16 blocks:** rivers are polylines of any width (the draft's question 6).
+- **Undead factions:** Barrow-wights are unaligned hostile, not Angmar (the draft's question 8).
+- **Pilot spawns:**
+  - Old Forest has hostile trees only.
+  - Chetwood has ruffians.
+  - The Ered Luin foothills are mostly Gundabad.
+  - Tower Hills is split between Lindon elves (`high_elf`) and `dunedain_north`.
+  - Midgewater is about 2/3 Gundabad and 1/3 Angmar hillmen.
+  - White Downs replaces Far Downs.
+- **Roads:** about 8-9 blocks wide, with a 32-block corridor where detail fades out, and Legacy bridges.
 
 ## Open questions
 
-1. **Interpolation:** bicubic (fast) or lanczos with window 2 (smoother at scale 8, slower)? Decide after the chunk-time benchmark.
-2. **Biome cell size:** 32-block cells give visibly stepped borders. Is that acceptable, or do we pay roughly 4x biome-map RAM for the full-resolution `novoatlas:color_map` source (8-block cells, about 80 MB)?
-3. **Bundling:** ship NovoAtlas inside our jar (jar-in-jar; LGPL-3.0 allows it as a separate replaceable jar), or make players install it? Jar-in-jar is friendlier; needs Opus 1 and a NOTICES entry.
-4. **Server-only NovoAtlas:** could NovoAtlas be required on the server only (`side="SERVER"`)? It needs a test that vanilla-plus-our-mod clients can join without it.
-5. **Carvers:** enable vanilla ravines and caves with surface openings later, or keep the painted surface pristine everywhere?
-6. **Streams narrower than 16 blocks:** a decoration feature that traces painted stream lines, or skip them?
+1. **Pseudo-factions:** core to add `unaligned_hostile`, `hostile_trees` and `ruffians` as hidden factions now, or wait for an NPC-pod request (core open question 7)? The pilot spawn table depends on them.
+2. **Detail seed:** keep small hills seeded by the world seed (Legacy-like), or pin a fixed seed so every world is identical down to the block? A fixed seed needs a custom noise density function (World pod).
+3. **Image size in git and in the jar:** a fully painted heightmap is about 30-60 MB as a PNG. Use Git LFS for `novoatlas/heightmap/*.png`? Ship it in the main jar, or as a separate data jar?
+4. **Bundling NovoAtlas:** jar-in-jar (LGPL-3.0 allows it as a separate replaceable jar) or a player install? Needs Opus 1 and a NOTICES entry.
+5. **Server-only NovoAtlas:** none of NovoAtlas's registries we use are synced, so `side="SERVER"` may work. Needs a test that clients without NovoAtlas can join.
+6. **Carvers:** enable vanilla ravines and caves with surface openings later, or keep the painted surface intact everywhere?
 7. **World edge:** add a soft barrier (fog, strong current, "Straight Road" flavour) at the canvas edge, or leave endless ocean?
-8. **Undead factions:** do Barrow-wights and other undead belong to `lotrrevival:angmar` or to an unaligned hostile group? Core and NPC leads decide.
-9. **Upstream:** report the nearest-colour channel bug to NovoAtlas (one-line fix) so non-strict mode becomes safe.
+8. **Upstream reports to NovoAtlas:**
+   - the nearest-colour channel bug;
+   - `get_height_from_map` returns 0 on 1.8.2+1.21.1;
+   - the wiki's `center_offset` units are wrong when scale is not 1;
+   - a request for an option to keep the noise settings' `final_density` in the image_map generator.
 
 ## Sources
 
-- NovoAtlas repository and README: <https://github.com/TheDeathlyCow/novoatlas>
-- NovoAtlas wiki, Formats (map info, scaling, interpolation, biome colour provider, chunk generator fields): <https://github.com/TheDeathlyCow/novoatlas/wiki/Formats>
-- NovoAtlas wiki, Getting Started (image formats, 1/4-size biome map, north-up, `fluid_height_map`, 16-bit vertical scaling, interpolation guidance): <https://github.com/TheDeathlyCow/novoatlas/wiki/Getting-Started>
-- NovoAtlas example datapacks (`avila-basic-example`, `avila-no-caves-example`, `avila-cave-biome-example`, `avila-blend-to-random-example`) and the built-in `novoatlas:caves`, `novoatlas:no_cave_entrances` and `novoatlas:no_caves` density functions, under `common/src/main/resources/` at tag `1.8.2+1.21.1`.
-- NovoAtlas changelogs `1.8.0+1.21.1` (biome cell source, `center_offset`, `image_wrapping`, interpolation, fluid heightmaps), `1.8.1+1.21.1` and `1.8.2+1.21.1` (biome sampling fixes).
-- NovoAtlas source at tag `1.8.2+1.21.1` (LGPL-3.0), read to confirm sampling behavior: height = `starting_y` + `vertical_scale` x raw sample; image centre at origin; the biome map is sampled per 4-block cell with the same horizontal scale; nearest-colour fallback channel bug.
-- Modrinth version list for NovoAtlas on NeoForge 1.21.1 (1.8.2 published 2026-10-15): <https://api.modrinth.com/v2/project/novoatlas/version>
-- Minecraft Wiki, Dimension definition and Noise settings: <https://minecraft.wiki/w/Dimension_definition>, <https://minecraft.wiki/w/Noise_settings>
-- Original LOTR Mod: player-observable behavior only (separate dimension, fixed hand-drawn geography, roads between places, no vanilla hostile mobs). No code, assets, map image or lang strings were used.
+- Behavior reference notes (our own words about Legacy): `docs/reference/legacy/biomes.md` (pilot biome table, sub-biomes and variants, rivers, beaches, fixed mountains, spawning and invasions, "Differences from our draft spec"); `docs/reference/legacy/world-map-travel.md` (dimension facts, map scale and origin, sample distances, waypoints, fast travel, roads and bridges); `docs/reference/legacy/structures.md` (placement rules, no-go zones, "Notes for our design").
+- Core spec `specs/core/core-apis.md` (faction ids, kinds, tag list, reserved registries, open question 7 on pseudo-factions).
+- NovoAtlas source at tag `1.8.2+1.21.1` (LGPL-3.0), read to confirm behavior:
+  - the image_map generator replaces the final density with `min(heightmap ramp, underground)` and the preliminary surface;
+  - `get_preliminary_height_from_map` returns painted height - 8, clamped, and `get_height_from_map` is a stub;
+  - biome-cell sampling uses quart coordinates;
+  - `center_offset` is multiplied by the image size in pixels and applied in blocks before scaling;
+  - heightmaps are stored as 2 bytes per pixel and biome maps as 4;
+  - images load on the server through a data-pack reload listener;
+  - the nearest-colour channel bug.
+- NovoAtlas wiki, Formats (generator fields, the note that `final_density` and the preliminary surface are replaced with no workaround, map info, `center_offset`) and Getting Started (image formats, interpolation guidance): <https://github.com/TheDeathlyCow/novoatlas/wiki>
+- NovoAtlas example datapacks and built-in `novoatlas:no_cave_entrances` under `common/src/main/resources/` at tag `1.8.2+1.21.1`.
+- CurseForge file list for NovoAtlas (project 1297254): NeoForge 1.8.2+1.21.1 is file 9191380, uploaded 2026-10-15.
+- Minecraft Wiki, Density function, Dimension definition and Noise settings: <https://minecraft.wiki/w/Density_function>, <https://minecraft.wiki/w/Dimension_definition>, <https://minecraft.wiki/w/Noise_settings>
+- Original LOTR Mod: player-observable behavior and numbers only, via the reference notes. No code, identifiers, assets or lang strings were used, and the original map image was neither copied nor traced.
