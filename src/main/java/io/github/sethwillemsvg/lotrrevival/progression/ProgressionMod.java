@@ -24,6 +24,7 @@ public final class ProgressionMod {
         ModDataRegistries.registerSynced(AchievementEntry.REGISTRY, AchievementEntry.CODEC);
         ModDataRegistries.registerSynced(TitleDefinition.REGISTRY, TitleDefinition.CODEC);
         QuestSystem.init(modBus);
+        io.github.sethwillemsvg.lotrrevival.progression.fellowship.FellowshipSync.init();
         modBus.addListener(ProgressionPayloads::register);
     }
 }

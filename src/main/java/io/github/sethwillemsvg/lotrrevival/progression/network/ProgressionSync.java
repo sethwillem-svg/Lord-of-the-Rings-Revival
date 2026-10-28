@@ -28,7 +28,8 @@ public final class ProgressionSync {
     public enum Type {
         ACHIEVEMENTS,
         TITLES,
-        QUESTS
+        QUESTS,
+        FELLOWSHIPS
     }
 
     private static final Map<UUID, EnumSet<Type>> DIRTY = new HashMap<>();

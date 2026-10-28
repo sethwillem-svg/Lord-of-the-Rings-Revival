@@ -37,5 +37,6 @@ public final class MenuLang {
         lang.add("gui.lotrrevival.menu.titles.applied", "Applied");
         lang.add("gui.lotrrevival.menu.titles.rejected", "The server did not accept that choice.");
         lang.add("gui.lotrrevival.menu.titles.disabled", "Titles are disabled on this server.");
+        FellowshipLang.add(lang);
     }
 }
