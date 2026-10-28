@@ -2,7 +2,7 @@
 
 - **Pod:** npc (with two small `pod:core` requests and one `pod:world` request)
 - **Lead:** Opus 3
-- **Status:** draft, revision 2 (maintainer's answers on PR #186: three discipline levels per faction replace per-faction formation picks; formation animation hooks; the content wave waits for the load test)
+- **Status:** draft, revision 3 (maintainer's answers on PR #186: three discipline levels per faction replace per-faction formation picks; formation animation hooks; the content wave waits for the load test; Bree, Dorwinion and Dol Guldur LOOSE, Dale shield wall when defending; reference machine Ryzen 5 5600 / i5-12400 class; rigid numbers are defaults to tune in playtest)
 - **Depends on:** `specs/npc/npc-base.md` (goals, targeting, routine, spawning, despawn), `specs/npc/hiring-trading.md` (hired units, squadrons, follow, guard, teleport), `specs/core/core-apis.md` (registers, attachments, payload rules, `/lotr` root), `specs/world/waypoints-travel.md` (road network), draft `specs/npc/nemesis.md` (PR #182: world events, performance governor, chunk tickets, off-screen resolution), draft `specs/world/territory.md` (PR #183: territory updates, wild marches on the events governor), draft `specs/world/structures.md` (PR #184: garrison caps, structure index, `StructureVenues`), draft `specs/core/rendering-animation.md` (PR #185: clip naming `animation.<rig>.<group>.<name>`, `ANIM_ACTION`/`ANIM_PULSE` bytes).
 - **Sources:** our own measurements and estimates of this repo's NPC code (section 0); public documentation of server-side techniques we reuse as ideas only (Sources, at the end). Nothing here comes from the original LOTR Mod.
 
@@ -26,7 +26,7 @@ Players never see this spec directly. They see a world that is full and smooth, 
 
 ## 0. Where the current NPC code spends time
 
-Read on `main` at 2f0b088 plus PR #169 (`NpcMeleeAttackGoal`). Numbers are **estimates** on a fast desktop core (Ryzen 5000 / Intel 12th gen class) from known costs of the vanilla calls involved; ticket P1 replaces them with measurements from the load test harness running against today's code.
+Read on `main` at 2f0b088 plus PR #169 (`NpcMeleeAttackGoal`). Numbers are **estimates** on the reference machine (a mid-range desktop: Ryzen 5 5600 / i5-12400 class, 16 GB) from known costs of the vanilla calls involved; ticket P1 replaces them with measurements from the load test harness running against today's code.
 
 | # | Where | What it does | Estimated cost | Why it matters |
 | --- | --- | --- | --- | --- |
@@ -179,14 +179,14 @@ Every faction has a **discipline** level in its doctrine data (`squad_doctrine/<
 | RIGID | `isengard` (Uruk-hai) | column / pike line / pike line |
 | RIGID | `easterling` (incl. Variags) | column / battalion / battalion |
 | ORGANIZED | `rohan` | column / wedge (cavalry), then loose melee / line |
-| ORGANIZED | `dale` | column / line / shield wall |
+| ORGANIZED | `dale` | column / line / shield wall (when defending) |
 | ORGANIZED | `dunedain_north` (Rangers) | open order / open order (skirmish and ambush, no lines) / open order |
 | ORGANIZED | `near_harad`, `far_harad`, `harad_jungle` | column / beast front / line |
 | ORGANIZED | Morgul and Black Númenórean units (Mordor unit groups) | column / line / line |
-| LOOSE | `mordor`, `gundabad`, `angmar` (orcs and hill-men), `dol_guldur` (proposed, orcs) | swarm |
+| LOOSE | `mordor`, `gundabad`, `angmar` (orcs and hill-men), `dol_guldur` (orcs) | swarm |
 | LOOSE | `dunland`, `half_troll`, `ruffians` | swarm |
 | LOOSE | `hobbit` (shirriffs and bounders) | swarm |
-| LOOSE (proposed, not in the maintainer's list) | `bree`, `dorwinion` | swarm |
+| LOOSE | `bree`, `dorwinion` (militia) | swarm |
 | none | trolls (any faction), Ents, beasts | no slots |
 
 Unlisted factions default to ORGANIZED with column / line / line. Unit groups are entity-type tags (`#lotrrevival:doctrine/<group>`), so new units join a group by tag.
@@ -199,7 +199,7 @@ Unlisted factions default to ORGANIZED with column / line / line. Unit groups ar
 | ORGANIZED | slots until the charge, then plain melee | 60 µs |
 | LOOSE | no slots; one bearing per member re-rolled every 200 ticks | 45 µs |
 
-RIGID is the most expensive, so it is capped: a block holds at most **16** members; a squad has at most 2 blocks; at most **12 RIGID blocks may hold formation in combat at once** server-wide (192 fighters, enough for two full armies). When a 13th block makes contact, it fights as ORGANIZED (forms up, charges, breaks) until a slot frees up; blocks nearest a player claim slots first. This is a fixed design rule, not a load reaction, so it applies near players too. Formation upkeep is cheaper in REDUCED (slot updates every 4 ticks) and blocks with no player within 144 hold formation without steering until a player comes close.
+RIGID is the most expensive, so it is capped (defaults, **tune in playtest**, like the break losses and turn rates above): a block holds at most **16** members; a squad has at most 2 blocks; at most **12 RIGID blocks may hold formation in combat at once** server-wide (192 fighters, enough for two full armies). When a 13th block makes contact, it fights as ORGANIZED (forms up, charges, breaks) until a slot frees up; blocks nearest a player claim slots first. This is a fixed design rule, not a load reaction, so it applies near players too. Formation upkeep is cheaper in REDUCED (slot updates every 4 ticks) and blocks with no player within 144 hold formation without steering until a player comes close.
 
 #### 2d. Movement and re-pathing
 
@@ -251,7 +251,7 @@ RIGID is the most expensive, so it is capped: a block holds at most **16** membe
 
 Formations need five visual states. They follow PR #185's rules (`specs/core/rendering-animation.md`): clip keys are `animation.<rig>.<group>.<name>[.<variant>]`, looping states go in the `ANIM_ACTION` byte, one-shots in `ANIM_PULSE`, and anything vanilla already syncs costs nothing. **Request to PR #185 / core:** append these values to the `AnimAction` and `AnimPulse` enums (append only, never reorder) and these clips and fallbacks to its tables.
 
-| Hook | Server sets | Clip (humanoid; orc rig the same names) | Fallback | When |
+| Hook | Server sets | Clip (humanoid; the `orc` and `half_troll` rigs of PR #185 use the same names) | Fallback | When |
 | --- | --- | --- | --- | --- |
 | Shield brace | `ANIM_ACTION = BRACE` | `animation.humanoid.defend.brace.shield` | `defend.block.shield` | RIGID front rank with a shield while an enemy is within 6 blocks in front; cleared when none is |
 | Pike lower | `ANIM_ACTION = PIKE_LOWER` | `animation.humanoid.hold.pike.lowered` | `hold.pike`, then `hold.sword` | RIGID second rank with a pike, spear or polearm while the block is in COMBAT or advancing on an enemy within 16 |
@@ -490,14 +490,14 @@ Factions: whatever hostile NPC pairs exist when the test runs (today man guards 
 
 CI runners are slower and noisier than the maintainer's server. The maintainer describes the runner as 2 CPU; GitHub's current docs give **4 vCPU** for standard Linux runners on public repos (this repo is public). The test works on either:
 
-- **Calibration:** before the scenario the test runs a fixed CPU workload in the same JVM (a set of synchronous paths and raycasts on fixed fixture terrain, the kind of work we do), giving `calib_ms`. The scale is `k = calib_ms / reference_calib_ms`, where `reference_calib_ms` is recorded once on the maintainer's server and committed as `perf/reference.json`. k is clamped to [1, 4].
+- **Calibration:** before the scenario the test runs a fixed CPU workload in the same JVM (a set of synchronous paths and raycasts on fixed fixture terrain, the kind of work we do), giving `calib_ms`. The scale is `k = calib_ms / reference_calib_ms`, where `reference_calib_ms` is recorded once on the **reference machine** (a mid-range desktop, Ryzen 5 5600 / i5-12400 class, 16 GB; maintainer decision, standing in for the server) and committed as `perf/reference.json`. k is clamped to [1, 4].
 - **Gate (S2):** mean <= **35 x k** ms, p95 <= **50 x k** ms, and fewer than 1% of ticks over **100 x k** ms. (Max alone is too noisy on shared runners; it is reported, not gated.)
 - **S1** is reported and gated at mean <= 35 x k (the maintainer's battle target).
 - **Regression check:** each run compares with the last report from `main` (artifact); more than 20% worse mean is a warning at first and becomes a failure once three consecutive main runs are within 10% of each other.
 - Path pool size on CI follows the auto rule (1 thread on 2 CPUs, 2 on 4).
 - Runs as its own CI job `perf-test` (after `build`, timeout 20 min), with a Gradle run `runPerfTest` (a `gameTestServer` run with `lotrrevival.perf=true`). It touches `build.gradle` and the workflow (needs Opus 1).
 
-#### 8d. Budget per tier (reference machine)
+#### 8d. Budget per tier (reference machine: Ryzen 5 5600 / i5-12400 class, 16 GB)
 
 Main-thread cost per NPC per tick, averaged over the run. The load test reports these and fails the ticket that breaks them (not the build) when more than 25% over:
 
@@ -588,7 +588,7 @@ Incremental; every step keeps behavior and tests green and is measured by the ha
 - Multithreaded entity ticking or tracking (Paper-fork style); we keep vanilla's single server thread for entity logic.
 - Client-side rendering performance (models, LOD meshes for large armies): a separate client spec if playtests need it.
 - Mounted combat and ranged combat AI themselves (their own specs); they must declare tiers and use the path service and index. This spec only fixes how they sit in formations (wedge charges, volleys).
-- Formation orders for hired units (hired squads fight ORGANIZED for now).
+- Formation orders for hired units (maintainer decision: a later feature; hired squads fight ORGANIZED for now).
 - The clips themselves: authored under PR #185's pipeline; this spec only names the hooks.
 - The distance-scaled tracker update mixin (separate, conditional ticket).
 - Invasion rules (invasion spec); this spec only gives them squads and budgets.
@@ -655,15 +655,11 @@ Cross-spec follow-ups (no new tickets): PR #182 ticket 13 (governor) is built on
 
 ## Open questions for the maintainer
 
-1. **Reference machine.** What CPU is your server (for `reference_calib_ms` and the per-tier budgets)? Our numbers assume a recent fast desktop core.
-2. **CI runner.** You said 2 CPU; GitHub's docs give 4 vCPU for public-repo Linux runners. Is the perf job meant to run somewhere else (self-hosted)? The test scales either way.
-3. **Radii.** FULL 48 and REDUCED 128 as you proposed. Do you want REDUCED tied to the server's view distance instead (for example, view distance x 16 minus 32)?
-4. **Unwatched battles.** Cap 160 fighters promoted with no player near, rest frozen until a player arrives or the event resolves them off-screen. OK, or resolve all unwatched loaded fights off-screen at once?
-5. **Packing travelling squads** removes their entities when their chunks unload and recreates them later from saved data. OK for patrols, caravans and warbands? (Static NPCs are never packed.)
-6. **Disciplines not in your list.** Proposed: Bree and Dorwinion LOOSE (militia), Dol Guldur LOOSE (orcs), Dale ORGANIZED with a shield wall when defending. OK?
-7. **Rigid numbers.** Break at 50% losses (dwarves 65%), turn 45°/s (phalanx 30°/s), and at most 12 rigid blocks of 16 holding formation in combat at once (extra blocks fight ORGANIZED). OK, or raise the cap if your server has room?
-8. **Hired units** fight ORGANIZED whatever their faction for now. Do you want formation orders for hired squads (a later hiring spec)?
-9. **Mixin** for distance-scaled tracking updates (P18): allowed if the numbers justify it?
+1. **CI runner.** You said 2 CPU; GitHub's docs give 4 vCPU for public-repo Linux runners. Is the perf job meant to run somewhere else (self-hosted)? The test scales either way.
+2. **Radii.** FULL 48 and REDUCED 128 as you proposed. Do you want REDUCED tied to the server's view distance instead (for example, view distance x 16 minus 32)?
+3. **Unwatched battles.** Cap 160 fighters promoted with no player near, rest frozen until a player arrives or the event resolves them off-screen. OK, or resolve all unwatched loaded fights off-screen at once?
+4. **Packing travelling squads** removes their entities when their chunks unload and recreates them later from saved data. OK for patrols, caravans and warbands? (Static NPCs are never packed.)
+5. **Mixin** for distance-scaled tracking updates (P18): allowed if the numbers justify it?
 
 ## Sources
 
