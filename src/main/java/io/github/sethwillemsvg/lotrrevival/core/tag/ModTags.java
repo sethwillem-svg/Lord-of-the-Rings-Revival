@@ -59,6 +59,7 @@ public final class ModTags {
         public static final TagKey<EntityType<?>> TROLLS = tag("trolls");
         public static final TagKey<EntityType<?>> ENTS = tag("ents");
         public static final TagKey<EntityType<?>> MOUNTS = tag("mounts");
+        public static final TagKey<EntityType<?>> NPCS = tag("npcs");
 
         private EntityTypes() {}
 
