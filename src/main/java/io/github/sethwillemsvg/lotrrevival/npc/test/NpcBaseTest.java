@@ -126,7 +126,7 @@ public final class NpcBaseTest {
         hobbit.setRole(NpcRole.VILLAGER);
         helper.assertTrue(hobbit.alignmentKillValue() == 1.0f, "villager " + hobbit.alignmentKillValue());
         hobbit.setRole(NpcRole.FARMER);
-        helper.assertTrue(hobbit.alignmentKillValue() == 1.0f, "farmer " + hobbit.alignmentKillValue());
+        helper.assertTrue(hobbit.alignmentKillValue() == 2.0f, "farmer " + hobbit.alignmentKillValue());
         hobbit.setRole(NpcRole.INNKEEPER);
         helper.assertTrue(hobbit.alignmentKillValue() == 2.0f, "innkeeper " + hobbit.alignmentKillValue());
         helper.succeed();

@@ -54,6 +54,7 @@ public final class NpcDataGen {
         generator.addProvider(event.includeServer(), new NameBankProvider(output));
         generator.addProvider(event.includeServer(), new LoadoutProvider(output));
         generator.addProvider(event.includeServer(), new NpcSpawnTableProvider(output));
+        generator.addProvider(event.includeServer(), new io.github.sethwillemsvg.lotrrevival.npc.trade.TradePoolProvider(output));
         generator.addProvider(event.includeServer(), new NpcLoot(output, lookup));
         generator.addProvider(event.includeServer(), new EntityTags(output, lookup, files));
         generator.addProvider(event.includeClient(), new ItemModels(output, files));
@@ -89,7 +90,7 @@ public final class NpcDataGen {
         private static Map<NpcRole, NpcRoleStats> hobbit() {
             Map<NpcRole, NpcRoleStats> roles = new EnumMap<>(NpcRole.class);
             roles.put(NpcRole.VILLAGER, NpcRoleStats.of(1.0f));
-            roles.put(NpcRole.FARMER, NpcRoleStats.of(1.0f));
+            roles.put(NpcRole.FARMER, NpcRoleStats.trader(0.0f, 2.0f));
             roles.put(NpcRole.TRAVELLER, NpcRoleStats.of(1.0f));
             roles.put(NpcRole.INNKEEPER, NpcRoleStats.trader(0.0f, 2.0f));
             return roles;
@@ -111,7 +112,7 @@ public final class NpcDataGen {
         private static Map<NpcRole, NpcRoleStats> breeCivilian(boolean traveller) {
             Map<NpcRole, NpcRoleStats> roles = new EnumMap<>(NpcRole.class);
             roles.put(NpcRole.VILLAGER, NpcRoleStats.of(1.0f));
-            roles.put(NpcRole.FARMER, NpcRoleStats.of(1.0f));
+            roles.put(NpcRole.FARMER, NpcRoleStats.trader(0.0f, 2.0f));
             if (traveller) {
                 roles.put(NpcRole.TRAVELLER, NpcRoleStats.of(1.0f));
             }

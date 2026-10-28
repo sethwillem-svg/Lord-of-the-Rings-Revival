@@ -1,6 +1,7 @@
 {
   "farmer": {
-    "kill_value": 1.0
+    "kill_value": 2.0,
+    "trade_min": 0.0
   },
   "innkeeper": {
     "kill_value": 2.0,
