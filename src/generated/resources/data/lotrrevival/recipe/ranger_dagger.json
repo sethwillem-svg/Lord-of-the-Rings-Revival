@@ -1,0 +1,21 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "equipment",
+  "key": {
+    "M": {
+      "tag": "c:ingots/iron"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "M",
+    "S"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:ranger_dagger"
+  },
+  "table": "lotrrevival:ranger_crafting_table"
+}
