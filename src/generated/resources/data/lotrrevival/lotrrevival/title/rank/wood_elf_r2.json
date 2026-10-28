@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:wood_elf",
+    "rank": "r2"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.wood_elf_r2"
+  }
+}

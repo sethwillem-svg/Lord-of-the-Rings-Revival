@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:dunland",
+      "lotrrevival:angmar"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_friend_of_the_hill_peoples"
+  }
+}

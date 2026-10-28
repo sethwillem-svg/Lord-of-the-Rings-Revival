@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:blue_mountains",
+      "lotrrevival:durins_folk"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_friend_of_dwarf_halls"
+  }
+}

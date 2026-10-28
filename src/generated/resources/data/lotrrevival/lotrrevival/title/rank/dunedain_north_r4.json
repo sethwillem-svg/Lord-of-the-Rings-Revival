@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:dunedain_north",
+    "rank": "r4"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.dunedain_north_r4"
+  }
+}

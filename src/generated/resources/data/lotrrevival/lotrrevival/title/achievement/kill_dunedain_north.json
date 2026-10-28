@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:eriador/kill_dunedain_north"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_dunedain_north"
+  }
+}

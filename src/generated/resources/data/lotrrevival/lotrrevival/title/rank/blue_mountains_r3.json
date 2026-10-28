@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:blue_mountains",
+    "rank": "r3"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.blue_mountains_r3"
+  }
+}

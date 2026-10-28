@@ -1,0 +1,12 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:rohan"
+    ],
+    "min": "pledge"
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.rohan_sworn_of_edoras"
+  }
+}

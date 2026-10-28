@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:gondor",
+      "lotrrevival:rohan"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_ally_of_the_west"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:dol_guldur"
+    ],
+    "min": "pledge"
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.dol_guldur_pit_warden"
+  }
+}

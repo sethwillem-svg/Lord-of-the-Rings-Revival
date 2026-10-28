@@ -1,0 +1,15 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:gondor",
+      "lotrrevival:dunedain_north",
+      "lotrrevival:rohan",
+      "lotrrevival:high_elf"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_shield_against_the_dark"
+  }
+}

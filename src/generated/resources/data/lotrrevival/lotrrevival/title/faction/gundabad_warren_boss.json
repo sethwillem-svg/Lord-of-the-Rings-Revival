@@ -1,0 +1,12 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:gundabad"
+    ],
+    "min": "pledge"
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.gundabad_warren_boss"
+  }
+}

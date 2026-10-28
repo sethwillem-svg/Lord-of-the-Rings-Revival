@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:dunland",
+    "rank": "r3"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.dunland_r3"
+  }
+}

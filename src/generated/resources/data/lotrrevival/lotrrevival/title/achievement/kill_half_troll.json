@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:south_east/kill_half_troll"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_half_troll"
+  }
+}

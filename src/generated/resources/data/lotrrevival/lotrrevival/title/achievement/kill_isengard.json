@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:rohan/kill_isengard"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_isengard"
+  }
+}

@@ -22,6 +22,7 @@ public final class NpcMod {
         NeoForge.EVENT_BUS.addListener(NpcMod::onAddReloadListeners);
         NpcAttachments.init();
         NpcAnchorEvents.register();
+        io.github.sethwillemsvg.lotrrevival.npc.hire.HireAttachments.init();
         io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTrade.init();
         modBus.addListener(io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradePayloads::register);
         NpcConfig.register(net.neoforged.fml.ModLoadingContext.get().getActiveContainer());
@@ -33,5 +34,6 @@ public final class NpcMod {
         event.addListener(new NpcNames());
         event.addListener(new NpcLoadoutData());
         event.addListener(new io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcSpawnData());
+        event.addListener(new io.github.sethwillemsvg.lotrrevival.npc.hire.NpcUnitData());
     }
 }

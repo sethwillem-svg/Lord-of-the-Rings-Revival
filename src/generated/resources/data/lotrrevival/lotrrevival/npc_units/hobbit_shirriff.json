@@ -1,0 +1,12 @@
+{
+  "unit_trader": {
+    "base_alignment": 50.0,
+    "units": [
+      {
+        "cost": 20,
+        "entity": "lotrrevival:hobbit_bounder",
+        "id": "bounder"
+      }
+    ]
+  }
+}
