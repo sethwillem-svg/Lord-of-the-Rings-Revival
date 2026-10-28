@@ -17,6 +17,7 @@ public final class CoreMod {
         AlignmentAttachments.init();
         modBus.addListener(CorePayloads::register);
         BrewingItems.init(modBus);
+        io.github.sethwillemsvg.lotrrevival.core.item.CoreItems.init(modBus);
         NeoForge.EVENT_BUS.addListener(LotrCommand::onRegisterCommands);
     }
 }

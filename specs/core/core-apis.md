@@ -356,6 +356,16 @@ dwarf, orc, troll, tree), `#lotrrevival:region/<region>`, `#lotrrevival:hidden`,
   `lotrrevival:faction`. Reserved for later, created on request: `lotrrevival:waypoint` (World),
   `lotrrevival:npc_spawn_list` (NPC), `lotrrevival:invasion` (NPC), `lotrrevival:mini_quest`
   (Progression), `lotrrevival:title` (Progression).
+  Progression's four (`achievement`, `title`, `quest_group`, `mini_quest`) have their keys in
+  `ModDataRegistries` (`achievement()` etc., generic in the value type) and are bound to a codec by
+  the owning pod with `ModDataRegistries.registerSynced(key, codec)` from its `init` (throws after
+  the registry event). Quest objective/reward dispatch uses a plain immutable map inside
+  `progression.quest`; no new `DeferredRegister`s. Pods add en_us keys with
+  `ModLangProvider.contribute(lang -> ...)`. Pods register their config in `init` through
+  `ModLoadingContext.get().getActiveContainer().registerConfig(...)` with files
+  `lotrrevival-<pod>-server.toml` / `-client.toml`. `core.api.AchievementCounters` hosts the
+  achievement count (Progression registers an `AchievementCounter`; others call `count(player)`).
+  Keybind category: `core.CoreKeys.CATEGORY`. Menu key `L` ships clashing with vanilla Advancements.
 - Each pod owns one entry class `<pod>.<Pod>Mod` (`world.WorldMod`, `npc.NpcMod`,
   `progression.ProgressionMod`, `core.CoreMod`) with `public static void init(IEventBus modBus)`.
   `LOTRRevival`'s constructor calls the four in that order after `ModRegistries.register`. Core
