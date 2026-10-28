@@ -10,6 +10,7 @@ import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.race.NpcRace;
 import io.github.sethwillemsvg.lotrrevival.npc.interact.NpcInteraction;
 import io.github.sethwillemsvg.lotrrevival.npc.name.NpcNames;
+import io.github.sethwillemsvg.lotrrevival.npc.routine.RoutineGoals;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -378,6 +379,13 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
     protected void installGoals() {
         SafetyGoals.install(this, goalSelector);
         IdleGoals.install(this, goalSelector, race);
+        RoutineGoals.install(this, goalSelector, race);
+    }
+
+    /** Home-bound (structure and anchor) NPCs never despawn; wild NPCs have no home and follow the despawn rules. */
+    @Override
+    public boolean requiresCustomPersistence() {
+        return super.requiresCustomPersistence() || homePos != null;
     }
 
     /** NPCs never pick up items. */
