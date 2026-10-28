@@ -1,0 +1,12 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:dale"
+    ],
+    "min": "pledge"
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.dale_dragon_wary_defender"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:dol_guldur",
+      "lotrrevival:angmar",
+      "lotrrevival:mordor"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_walker_of_ruined_lands"
+  }
+}

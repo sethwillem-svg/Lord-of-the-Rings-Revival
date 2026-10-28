@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:eriador/kill_dunland"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_dunland"
+  }
+}

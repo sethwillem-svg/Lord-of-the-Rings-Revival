@@ -1,0 +1,22 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:hobbit",
+      "lotrrevival:bree",
+      "lotrrevival:dunedain_north",
+      "lotrrevival:blue_mountains",
+      "lotrrevival:high_elf",
+      "lotrrevival:wood_elf",
+      "lotrrevival:dale",
+      "lotrrevival:durins_folk",
+      "lotrrevival:lothlorien",
+      "lotrrevival:rohan",
+      "lotrrevival:gondor"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_friend_of_the_free_peoples"
+  }
+}

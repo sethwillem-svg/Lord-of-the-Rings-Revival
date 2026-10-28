@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:easterling",
+    "rank": "r7"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.easterling_r7"
+  }
+}

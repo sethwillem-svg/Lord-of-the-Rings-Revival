@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:general/first_pledge_rank"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.first_pledge_rank"
+  }
+}

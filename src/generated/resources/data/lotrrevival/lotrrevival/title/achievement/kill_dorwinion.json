@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:rhovanion/kill_dorwinion"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_dorwinion"
+  }
+}

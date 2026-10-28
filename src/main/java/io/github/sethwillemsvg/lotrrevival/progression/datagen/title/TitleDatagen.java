@@ -6,9 +6,13 @@ import io.github.sethwillemsvg.lotrrevival.datagen.ModLangProvider;
 import io.github.sethwillemsvg.lotrrevival.progression.datagen.achievement.AchievementRow;
 import io.github.sethwillemsvg.lotrrevival.progression.datagen.achievement.AchievementTable;
 import io.github.sethwillemsvg.lotrrevival.progression.title.TitleDefinition;
+import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import java.util.concurrent.CompletableFuture;
@@ -53,9 +57,29 @@ public final class TitleDatagen {
                     achievementIds.add(row.id());
                 }
                 HolderLookup.RegistryLookup<Faction> factions = registries.lookupOrThrow(ModDataRegistries.FACTION);
-                TitleValidator.validate(
-                        TitleTable.rows(), achievementIds, key -> factions.get(key).map(Holder::value));
+                List<TitleRow> rows = TitleTable.rows();
+                TitleValidator.validate(rows, achievementIds, key -> factions.get(key).map(Holder::value));
+                report(rows, AchievementTable.rows());
             });
+        }
+
+        /** Prints the title count per source and lists non-rank achievements that have no title yet. */
+        private static void report(List<TitleRow> rows, List<AchievementRow> achievements) {
+            Map<String, Integer> counts = new TreeMap<>();
+            for (TitleRow row : rows) {
+                counts.merge(row.path().substring(0, row.path().indexOf('/')), 1, Integer::sum);
+            }
+            LOTRRevival.LOGGER.info("Title counts by folder: {} (total {})", counts, rows.size());
+            List<String> missing = new ArrayList<>();
+            for (AchievementRow achievement : achievements) {
+                String path = achievement.id().getPath();
+                if (achievement.rank().isEmpty() && !TitleTable.achievementPaths().contains(path)) {
+                    missing.add(path);
+                }
+            }
+            if (!missing.isEmpty()) {
+                LOTRRevival.LOGGER.warn("Achievements without a title: {}", missing);
+            }
         }
 
         @Override

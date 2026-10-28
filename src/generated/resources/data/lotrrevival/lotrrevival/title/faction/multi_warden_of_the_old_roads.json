@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:bree",
+      "lotrrevival:dunedain_north",
+      "lotrrevival:rohan"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_warden_of_the_old_roads"
+  }
+}

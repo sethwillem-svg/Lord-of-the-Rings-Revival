@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:rohan",
+      "lotrrevival:easterling",
+      "lotrrevival:dunland"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_horse_wise_wanderer"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:gundabad",
+      "lotrrevival:blue_mountains",
+      "lotrrevival:durins_folk"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_child_of_the_mountains"
+  }
+}

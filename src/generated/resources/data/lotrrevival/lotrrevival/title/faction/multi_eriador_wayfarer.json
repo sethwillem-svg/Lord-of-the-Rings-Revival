@@ -1,0 +1,16 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:hobbit",
+      "lotrrevival:bree",
+      "lotrrevival:dunedain_north",
+      "lotrrevival:blue_mountains",
+      "lotrrevival:high_elf"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_eriador_wayfarer"
+  }
+}

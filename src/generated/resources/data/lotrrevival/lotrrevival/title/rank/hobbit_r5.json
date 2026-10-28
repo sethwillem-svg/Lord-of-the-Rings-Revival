@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:hobbit",
+    "rank": "r5"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.hobbit_r5"
+  }
+}

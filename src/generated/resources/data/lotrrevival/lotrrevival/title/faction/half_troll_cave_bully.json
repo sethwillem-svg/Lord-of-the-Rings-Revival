@@ -1,0 +1,12 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:half_troll"
+    ],
+    "min": "pledge"
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.half_troll_cave_bully"
+  }
+}

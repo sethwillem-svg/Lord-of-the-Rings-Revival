@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:far_harad",
+    "rank": "r1"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.far_harad_r1"
+  }
+}

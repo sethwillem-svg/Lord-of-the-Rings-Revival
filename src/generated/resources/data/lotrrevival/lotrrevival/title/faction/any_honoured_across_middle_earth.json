@@ -1,0 +1,35 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:hobbit",
+      "lotrrevival:bree",
+      "lotrrevival:dunedain_north",
+      "lotrrevival:blue_mountains",
+      "lotrrevival:high_elf",
+      "lotrrevival:angmar",
+      "lotrrevival:dunland",
+      "lotrrevival:gundabad",
+      "lotrrevival:wood_elf",
+      "lotrrevival:dol_guldur",
+      "lotrrevival:dale",
+      "lotrrevival:durins_folk",
+      "lotrrevival:dorwinion",
+      "lotrrevival:lothlorien",
+      "lotrrevival:rohan",
+      "lotrrevival:isengard",
+      "lotrrevival:fangorn",
+      "lotrrevival:gondor",
+      "lotrrevival:mordor",
+      "lotrrevival:easterling",
+      "lotrrevival:near_harad",
+      "lotrrevival:far_harad",
+      "lotrrevival:harad_jungle",
+      "lotrrevival:half_troll"
+    ],
+    "min": 10000.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.any_honoured_across_middle_earth"
+  }
+}

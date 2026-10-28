@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:dunedain_north",
+    "rank": "r6"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.dunedain_north_r6"
+  },
+  "text_feminine": {
+    "translate": "title.lotrrevival.rank.dunedain_north_r6.feminine"
+  }
+}
