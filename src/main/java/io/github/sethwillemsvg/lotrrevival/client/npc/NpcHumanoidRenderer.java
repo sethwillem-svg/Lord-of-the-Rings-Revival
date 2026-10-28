@@ -6,9 +6,11 @@ import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntity;
 import net.minecraft.client.model.HumanoidArmorModel;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 /**
@@ -40,5 +42,29 @@ public class NpcHumanoidRenderer<T extends NpcEntity> extends HumanoidMobRendere
     protected void scale(T entity, PoseStack poseStack, float partialTick) {
         float scale = entity.race().height() / MODEL_HEIGHT;
         poseStack.scale(scale, scale, scale);
+    }
+
+    /** Not always on: only while the local player's crosshair is on the NPC within 8 blocks. */
+    @Override
+    protected boolean shouldShowName(T entity) {
+        return NpcNameplates.shouldShow(entity);
+    }
+
+    @Override
+    protected void renderNameTag(
+            T entity,
+            Component displayName,
+            PoseStack poseStack,
+            MultiBufferSource buffer,
+            int packedLight,
+            float partialTick) {
+        int color = NpcNameplates.color(entity);
+        super.renderNameTag(
+                entity,
+                displayName.copy().withStyle(style -> style.withColor(color)),
+                poseStack,
+                buffer,
+                packedLight,
+                partialTick);
     }
 }

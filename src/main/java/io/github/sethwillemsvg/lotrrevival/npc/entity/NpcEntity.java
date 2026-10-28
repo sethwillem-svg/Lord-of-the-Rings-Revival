@@ -8,13 +8,23 @@ import io.github.sethwillemsvg.lotrrevival.npc.ai.SafetyGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcLoadoutData;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.race.NpcRace;
+import io.github.sethwillemsvg.lotrrevival.npc.interact.NpcInteraction;
+import io.github.sethwillemsvg.lotrrevival.npc.name.NpcNames;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -64,6 +74,9 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
     private BlockPos homePos;
 
     private int homeRadius;
+
+    /** Game time of the last line spoken to each player. Transient on purpose: a reload resets cooldowns. */
+    private final Map<UUID, Long> speechCooldowns = new HashMap<>();
 
     protected NpcEntity(
             EntityType<? extends NpcEntity> type,
@@ -230,6 +243,10 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
         setGender(random.nextBoolean() ? NpcGender.MALE : NpcGender.FEMALE);
         setRole(initialRole(random));
         setNameSeed(random.nextLong());
+        if (getNpcName().isEmpty()) {
+            // Rolled once; an empty or missing bank leaves the name empty and the race name is displayed instead.
+            NpcNames.roll(race, getGender(), getNameSeed()).ifPresent(this::setNpcName);
+        }
         NpcLoadoutData.apply(this, random);
         return data;
     }
@@ -293,6 +310,51 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
             }
         }
         return NpcRole.VILLAGER;
+    }
+
+    // ------------------------------------------------------------------ display name and interaction
+
+    /** The name without a title: the name tag if any, else the generated name, else the race name. */
+    public Component speakerName() {
+        if (hasCustomName()) {
+            return getCustomName();
+        }
+        String name = getNpcName();
+        return name.isEmpty() ? Component.translatable("npc.lotrrevival.race." + race.id()) : Component.literal(name);
+    }
+
+    /** {@code Name, Title}; a name tag replaces the whole thing, and the villager has no title. */
+    @Override
+    protected Component getTypeName() {
+        Component name = speakerName();
+        return titleKey()
+                .<Component>map(key -> Component.translatable("npc.lotrrevival.titled_name", name, Component.translatable(key)))
+                .orElse(name);
+    }
+
+    /** Starts the per-player talk cooldown if it is over. Returns false while the player is still cooling down. */
+    public boolean tryStartSpeechCooldown(UUID player, long gameTime, int cooldownTicks) {
+        Long last = speechCooldowns.get(player);
+        if (last != null && gameTime - last < cooldownTicks) {
+            return false;
+        }
+        if (speechCooldowns.size() > 16) {
+            speechCooldowns.values().removeIf(time -> gameTime - time >= cooldownTicks);
+        }
+        speechCooldowns.put(player, gameTime);
+        return true;
+    }
+
+    @Override
+    protected InteractionResult mobInteract(Player player, InteractionHand hand) {
+        if (hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS;
+        }
+        // Name tags and other items with an entity use are handled before this is reached.
+        if (player instanceof ServerPlayer serverPlayer) {
+            NpcInteraction.onRightClick(this, serverPlayer);
+        }
+        return InteractionResult.sidedSuccess(level().isClientSide);
     }
 
     // ------------------------------------------------------------------ behavior
