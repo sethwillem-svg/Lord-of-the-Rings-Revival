@@ -86,6 +86,7 @@ public final class HiredUnits {
             unit.setItemSlot(original.getKey(), original.getValue().copy());
         }
         set(unit, HiredUnit.NONE);
+        io.github.sethwillemsvg.lotrrevival.npc.hire.progress.UnitLevels.removeHealthBonus(unit);
         unit.setTarget(null);
         unit.getNavigation().stop();
 

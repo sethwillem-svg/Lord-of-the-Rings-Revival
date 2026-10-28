@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "lotrrevival:mossy_arnor_brick"
+  },
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:mossy_arnor_brick_stairs"
+  }
+}

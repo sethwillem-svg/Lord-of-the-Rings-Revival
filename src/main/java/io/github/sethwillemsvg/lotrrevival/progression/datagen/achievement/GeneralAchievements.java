@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.minecraft.advancements.Criterion;
+import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.critereon.ImpossibleTrigger;
 import net.minecraft.advancements.critereon.ChangeDimensionTrigger;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
@@ -62,6 +64,31 @@ public final class GeneralAchievements extends AchievementTabProvider {
                                         "Many Banners of Shadow",
                                         "Earn a rank with Gundabad, Angmar, Isengard and Mordor."),
                         Factions.GUNDABAD, Factions.ANGMAR, Factions.ISENGARD, Factions.MORDOR)
+                .build());
+
+        // Awarded by code when bounties are completed (progression.bounty).
+        out.accept(row("first_bounty")
+                .icon(Items.GOLD_INGOT)
+                .sortGroup(SortGroup.SPECIAL)
+                .criterion(CriteriaTriggers.IMPOSSIBLE.createCriterion(new ImpossibleTrigger.TriggerInstance()))
+                .text("Price Paid", "Collect your first bounty.")
+                .build());
+        out.accept(row("bounty_hunter")
+                .icon(Items.GOLDEN_SWORD)
+                .sortGroup(SortGroup.SPECIAL)
+                .criterion(CriteriaTriggers.IMPOSSIBLE.createCriterion(new ImpossibleTrigger.TriggerInstance()))
+                .text("Hunter of Heads", "Complete five bounties.")
+                .build());
+
+        // Banners (#119): the first protecting banner a player raises.
+        out.accept(row("banner_protector")
+                .icon(Items.GOLD_BLOCK)
+                .sortGroup(SortGroup.SPECIAL)
+                .criterion(ProgressionTriggers.PLACE_BANNER
+                        .get()
+                        .createCriterion(new net.minecraft.advancements.critereon.PlayerTrigger.TriggerInstance(
+                                Optional.empty())))
+                .text("Banner Raiser", "Raise a banner on a block of gold, silver or bronze and claim the land around it.")
                 .build());
 
         explorer(out, 10, Items.LEATHER_BOOTS, "Wayfarer", "Set foot in 10 different biomes.");

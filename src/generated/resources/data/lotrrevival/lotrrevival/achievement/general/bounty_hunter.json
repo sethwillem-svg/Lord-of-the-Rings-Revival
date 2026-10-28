@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.bounty_hunter.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:golden_sword"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.bounty_hunter.title"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "group": "lotrrevival:hobbits"
+      },
+      "trigger": "lotrrevival:complete_mini_quest"
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

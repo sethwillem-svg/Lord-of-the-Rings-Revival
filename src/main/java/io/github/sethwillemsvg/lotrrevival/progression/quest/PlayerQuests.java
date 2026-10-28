@@ -145,6 +145,10 @@ public record PlayerQuests(
         return new PlayerQuests(active, tracked, log, completedByFaction, completedTotal, failedTotal + 1, bountiesCompleted);
     }
 
+    public PlayerQuests withBountiesCompleted(int bounties) {
+        return new PlayerQuests(active, tracked, log, completedByFaction, completedTotal, failedTotal, bounties);
+    }
+
     public PlayerQuests withoutQuestsOrLog() {
         return new PlayerQuests(List.of(), Optional.empty(), List.of(), completedByFaction, completedTotal, failedTotal, bountiesCompleted);
     }

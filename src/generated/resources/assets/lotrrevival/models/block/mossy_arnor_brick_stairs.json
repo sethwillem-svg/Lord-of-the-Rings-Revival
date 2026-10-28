@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/stairs",
+  "textures": {
+    "bottom": "lotrrevival:block/mossy_arnor_brick",
+    "side": "lotrrevival:block/mossy_arnor_brick",
+    "top": "lotrrevival:block/mossy_arnor_brick"
+  }
+}

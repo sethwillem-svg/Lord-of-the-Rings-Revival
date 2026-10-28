@@ -33,9 +33,13 @@ public final class QuestDatagen {
 
     /** Adds the {@code quest_group} and {@code mini_quest} entries to the shared registry builder. */
     public static void addRegistries(RegistrySetBuilder registries) {
-        registries.add(QuestGroup.REGISTRY, context -> context.register(
-                TEST_GROUP,
-                new QuestGroup(Factions.GONDOR, Optional.empty(), false, 0.0f, 1.0f, 0xC0C0C0, Optional.empty(), List.of())));
+        registries.add(QuestGroup.REGISTRY, context -> {
+            context.register(
+                    TEST_GROUP,
+                    new QuestGroup(
+                            Factions.GONDOR, Optional.empty(), false, 0.0f, 1.0f, 0xC0C0C0, Optional.empty(), List.of()));
+            QuestOfferContent.registerGroups(context);
+        });
         registries.add(QuestTemplate.REGISTRY, context -> {
             context.register(
                     TEST_COLLECT,
@@ -53,11 +57,15 @@ public final class QuestDatagen {
                                     Optional.of(Factions.MORDOR), Optional.empty(), new CountRange(5, 10)),
                             1.0f,
                             List.of()));
+            BountyDatagen.registerTemplates(context);
+            QuestOfferContent.registerTemplates(context);
         });
     }
 
     /** Adds the lang contribution. */
     public static void gather() {
+        BountyDatagen.gather();
+        QuestOfferContent.gatherLang();
         ModLangProvider.contribute(lang -> {
             lang.add("item.lotrrevival.quest_book", "Quest Book");
 

@@ -34,6 +34,7 @@ public final class DataGenerators {
         AchievementDatagen.addRegistries(registries);
         TitleDatagen.addRegistries(registries);
         QuestDatagen.addRegistries(registries);
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.shield.ShieldDatagen.addRegistries(registries);
         DatapackBuiltinEntriesProvider entries = generator.addProvider(
                 event.includeServer(),
                 new DatapackBuiltinEntriesProvider(output, lookup, registries, Set.of(LOTRRevival.MOD_ID)));
@@ -51,11 +52,33 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeClient(), new BrewingProviders.BlockStates(output, event.getExistingFileHelper()));
         generator.addProvider(event.includeServer(), new BrewingProviders.Loot(output, lookup));
-        generator.addProvider(
-                event.includeServer(), new BrewingProviders.BlockTags(output, lookup, event.getExistingFileHelper()));
+        BrewingProviders.contributeVanillaTags();
         // End Core: brewing
+        // Core: gold ring and Arnor bricks
+        ArnorProviders.contributeLang();
+        generator.addProvider(event.includeServer(), new ArnorProviders.RecipeData(output, lookup));
+        generator.addProvider(
+                event.includeClient(), new ArnorProviders.BlockStates(output, event.getExistingFileHelper()));
+        generator.addProvider(event.includeServer(), new ArnorProviders.Loot(output, lookup));
+        ArnorProviders.contributeVanillaTags();
+        // End Core: gold ring and Arnor bricks
+        generator.addProvider(
+                event.includeServer(), new RoadSurfaceTags(output, lookup, event.getExistingFileHelper()));
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
+
+        // Core: metals and ores (#108)
+        MaterialProviders.gather(event);
+        // End Core: metals and ores
+        // Core: combat foundation (#107), generic gear providers driven by GearCatalog
+        io.github.sethwillemsvg.lotrrevival.datagen.combat.CombatDatagen.gather(event, lookup);
+        // End Core: combat foundation
+        // Core: faction crafting tables
+        FactionTableProviders.gather(event);
+        // End Core: faction crafting tables
+
+        // Core: the only writers of minecraft: block and item tags; systems contribute entries above.
+        VanillaTagProviders.gather(event);
 
         // World
         WorldDatagen.gather(event, registryLookup);
@@ -66,8 +89,16 @@ public final class DataGenerators {
         TitleDatagen.registerLang();
         TitleDatagen.gather(event, registryLookup);
 
+        // Progression: shield names and Shields page lang (entries ride in the shared registry provider)
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.shield.ShieldDatagen.registerLang();
+
         // Progression: mini-quest lang (registry entries are added above)
         QuestDatagen.gather();
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.quest.QuestBookDatagen.gather(event);
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.quest.QuestOfferContent.gatherTags(event, registryLookup);
+
+        // Progression: single entry point for the pod's own providers (banners now, later tickets add theirs inside)
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.ProgressionDataProviders.gather(event);
 
         // NPC
         io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcDataGen.gather(event);

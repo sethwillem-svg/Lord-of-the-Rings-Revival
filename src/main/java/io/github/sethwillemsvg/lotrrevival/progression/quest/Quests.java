@@ -75,8 +75,11 @@ public final class Quests {
 
     private Quests() {}
 
-    public static void setCoinPayout(CoinPayout payout) {
+    /** Replaces the payout (null pays nothing) and returns the previous one, so tests can restore it. */
+    public static CoinPayout setCoinPayout(CoinPayout payout) {
+        CoinPayout previous = coinPayout;
         coinPayout = payout == null ? (player, coins, giver) -> {} : payout;
+        return previous;
     }
 
     // ------------------------------------------------------------------ reads
@@ -319,6 +322,23 @@ public final class Quests {
         return TurnIn.NOTHING;
     }
 
+    /** Marks a live, active quest's objective done (bounty: the target was killed); it is then ready to turn in. */
+    public static boolean markObjectiveDone(ServerPlayer player, UUID questId) {
+        Optional<QuestInstance> found = get(player).find(questId);
+        if (found.isEmpty() || found.get().state() != QuestStatus.ACTIVE) {
+            return false;
+        }
+        QuestInstance instance = found.get();
+        return advance(player, instance, Math.max(1, instance.count() - instance.progress())) != instance;
+    }
+
+    /** Counts one completed bounty and returns the new tally. */
+    public static int incrementBountiesCompleted(ServerPlayer player) {
+        int next = get(player).bountiesCompleted() + 1;
+        store(player, get(player).withBountiesCompleted(next));
+        return next;
+    }
+
     // ------------------------------------------------------------------ completion
 
     public static Optional<QuestRecord> complete(ServerPlayer player, UUID questId, boolean force) {
@@ -352,9 +372,12 @@ public final class Quests {
             return Optional.empty();
         }
 
-        RewardBuilder rewards = new RewardBuilder(
-                QuestRewards.rollAlignment(instance.alignmentBase(), random),
-                QuestRewards.rollCoins(instance.coinBase(), random).coins());
+        // Bounty quests (they name a target) pay exactly the values fixed at offer time, without variance.
+        RewardBuilder rewards = instance.objectiveData().bountyTarget().isPresent()
+                ? new RewardBuilder(instance.alignmentBase(), instance.coinBase())
+                : new RewardBuilder(
+                        QuestRewards.rollAlignment(instance.alignmentBase(), random),
+                        QuestRewards.rollCoins(instance.coinBase(), random).coins());
         for (QuestReward extra : template.get().value().extraRewards()) {
             extra.grant(rewards);
         }
@@ -558,6 +581,37 @@ public final class Quests {
             updateHolder(player.getServer(), instance.giver(), player.getUUID(), false);
         }
         store(player, get(player).withoutQuestsOrLog());
+    }
+
+    /** A giver counts as moved when it is further than this (blocks) from the stored position. */
+    public static final double GIVER_MOVE_THRESHOLD = 16.0;
+
+    /**
+     * Refreshes {@code giver_pos} of the player's live quests from {@code giver} when the giver moved more than
+     * {@link #GIVER_MOVE_THRESHOLD} blocks (or changed dimension, or had no stored position).
+     *
+     * @return whether anything changed
+     */
+    public static boolean updateGiverPos(ServerPlayer player, UUID giver, GlobalPos pos) {
+        PlayerQuests quests = get(player);
+        boolean changed = false;
+        for (QuestInstance instance : quests.active()) {
+            if (!instance.live() || !instance.giver().equals(giver)) {
+                continue;
+            }
+            Optional<GlobalPos> stored = instance.giverPos();
+            boolean moved = stored.isEmpty()
+                    || !stored.get().dimension().equals(pos.dimension())
+                    || stored.get().pos().distSqr(pos.pos()) > GIVER_MOVE_THRESHOLD * GIVER_MOVE_THRESHOLD;
+            if (moved) {
+                quests = quests.replace(instance.withGiverPos(Optional.of(pos)));
+                changed = true;
+            }
+        }
+        if (changed) {
+            store(player, quests);
+        }
+        return changed;
     }
 
     // ------------------------------------------------------------------ plumbing

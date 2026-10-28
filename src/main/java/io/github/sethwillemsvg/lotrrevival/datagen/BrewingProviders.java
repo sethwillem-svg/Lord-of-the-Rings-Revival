@@ -26,7 +26,6 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
-import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
@@ -110,20 +109,10 @@ final class BrewingProviders {
         }
     }
 
-    static final class BlockTags extends BlockTagsProvider {
-        BlockTags(PackOutput output, CompletableFuture<HolderLookup.Provider> lookup, ExistingFileHelper helper) {
-            super(output, lookup, LOTRRevival.MOD_ID, helper);
-        }
-
-        @Override
-        protected void addTags(HolderLookup.Provider provider) {
-            tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_AXE).add(BrewingBlocks.BARREL.get());
-        }
-
-        @Override
-        public String getName() {
-            return "Brewing block tags";
-        }
+    /** Brewing's vanilla block tags, written by {@link VanillaTagProviders}. */
+    static void contributeVanillaTags() {
+        VanillaTagProviders.contributeBlocks(
+                tag -> tag.apply(net.minecraft.tags.BlockTags.MINEABLE_WITH_AXE).add(BrewingBlocks.BARREL.get()));
     }
 
     /** Core item tags (coins). */

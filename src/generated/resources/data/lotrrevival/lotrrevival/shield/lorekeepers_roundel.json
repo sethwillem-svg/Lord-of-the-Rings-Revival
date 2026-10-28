@@ -1,0 +1,8 @@
+{
+  "sort": 1,
+  "texture": "lotrrevival:textures/entity/shield/lorekeepers_roundel.png",
+  "unlock": {
+    "type": "achievement_count",
+    "min": 50
+  }
+}

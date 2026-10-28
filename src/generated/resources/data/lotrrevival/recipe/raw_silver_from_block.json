@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "lotrrevival:raw_silver_block"
+    }
+  ],
+  "result": {
+    "count": 9,
+    "id": "lotrrevival:raw_silver"
+  }
+}

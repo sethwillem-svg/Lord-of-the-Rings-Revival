@@ -61,6 +61,7 @@ public final class QuestCommands {
                                 .executes(QuestCommands::complete))));
         root.then(Commands.literal("clear")
                 .then(Commands.argument("player", EntityArgument.player()).executes(QuestCommands::clear)));
+        root.then(io.github.sethwillemsvg.lotrrevival.progression.quest.offer.OfferCommand.node());
         dispatcher.register(root);
     }
 

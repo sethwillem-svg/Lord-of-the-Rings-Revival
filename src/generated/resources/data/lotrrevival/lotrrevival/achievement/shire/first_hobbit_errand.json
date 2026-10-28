@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.shire.first_hobbit_errand.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:bread"
+  },
+  "sort_group": "other",
+  "tab": "shire",
+  "title": {
+    "translate": "achievement.lotrrevival.shire.first_hobbit_errand.title"
+  }
+}

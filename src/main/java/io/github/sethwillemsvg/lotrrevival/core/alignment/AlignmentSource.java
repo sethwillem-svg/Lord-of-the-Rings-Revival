@@ -17,6 +17,9 @@ public record AlignmentSource(ResourceLocation type, Optional<ResourceLocation> 
     public static final ResourceLocation DRAIN = LOTRRevival.id("drain");
     public static final ResourceLocation COMMAND = LOTRRevival.id("command");
 
+    /** Bounty hunter or bounty target swings (Progression). */
+    public static final ResourceLocation BOUNTY = LOTRRevival.id("bounty");
+
     public static AlignmentSource of(ResourceLocation type) {
         return new AlignmentSource(type, Optional.empty(), Optional.empty());
     }
@@ -32,6 +35,11 @@ public record AlignmentSource(ResourceLocation type, Optional<ResourceLocation> 
     /** A one-off event; {@code detail} names it (for example {@code lotrrevival:npc_marriage}). */
     public static AlignmentSource event(ResourceLocation detail, Vec3 pos) {
         return new AlignmentSource(EVENT, Optional.of(detail), Optional.ofNullable(pos));
+    }
+
+    /** A bounty resolution; {@code detail} optionally names the faction the bounty was for. */
+    public static AlignmentSource bounty(ResourceLocation faction) {
+        return new AlignmentSource(BOUNTY, Optional.ofNullable(faction), Optional.empty());
     }
 
     public static AlignmentSource command() {

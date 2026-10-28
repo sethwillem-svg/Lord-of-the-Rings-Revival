@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.first_bounty.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:gold_ingot"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.first_bounty.title"
+  }
+}

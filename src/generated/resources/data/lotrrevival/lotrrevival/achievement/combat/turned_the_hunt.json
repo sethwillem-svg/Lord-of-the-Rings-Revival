@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.combat.turned_the_hunt.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:crossbow"
+  },
+  "sort_group": "special",
+  "tab": "combat",
+  "title": {
+    "translate": "achievement.lotrrevival.combat.turned_the_hunt.title"
+  }
+}

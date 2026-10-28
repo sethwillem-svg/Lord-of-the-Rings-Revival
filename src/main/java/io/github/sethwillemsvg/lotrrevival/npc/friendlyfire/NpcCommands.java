@@ -23,7 +23,25 @@ public final class NpcCommands {
                         .then(Commands.literal("npc")
                                 .then(Commands.literal("friendlyfire")
                                         .then(Commands.literal("on").executes(ctx -> setFriendlyFire(ctx, true)))
-                                        .then(Commands.literal("off").executes(ctx -> setFriendlyFire(ctx, false))))));
+                                        .then(Commands.literal("off").executes(ctx -> setFriendlyFire(ctx, false))))
+                                .then(Commands.literal("unitdeathmessages")
+                                        .then(Commands.literal("on").executes(ctx -> setUnitDeathMessages(ctx, true)))
+                                        .then(Commands.literal("off")
+                                                .executes(ctx -> setUnitDeathMessages(ctx, false))))));
+    }
+
+    private static int setUnitDeathMessages(CommandContext<CommandSourceStack> ctx, boolean on)
+            throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        NpcPlayerPrefs.set(player, NpcPlayerPrefs.get(player).withUnitDeathMessages(on));
+        ctx.getSource()
+                .sendSuccess(
+                        () -> Component.translatable(
+                                on
+                                        ? "commands.lotrrevival.npc.unitdeathmessages.on"
+                                        : "commands.lotrrevival.npc.unitdeathmessages.off"),
+                        false);
+        return 1;
     }
 
     private static int setFriendlyFire(CommandContext<CommandSourceStack> ctx, boolean allow)

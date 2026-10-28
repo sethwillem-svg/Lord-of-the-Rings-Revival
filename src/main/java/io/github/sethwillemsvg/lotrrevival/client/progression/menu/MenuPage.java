@@ -7,7 +7,8 @@ import net.minecraft.client.gui.screens.Screen;
 public enum MenuPage {
     HUB,
     ACHIEVEMENTS,
-    TITLES;
+    TITLES,
+    SHIELDS;
 
     private static MenuPage last = HUB;
 
@@ -33,6 +34,7 @@ public enum MenuPage {
             case TITLES -> io.github.sethwillemsvg.lotrrevival.client.progression.ClientTitles.enabled()
                     ? new TitlesScreen()
                     : new MenuHubScreen();
+            case SHIELDS -> new ShieldsScreen();
         };
     }
 }

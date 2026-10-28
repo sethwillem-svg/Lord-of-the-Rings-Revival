@@ -1,0 +1,12 @@
+{
+  "group": "lotrrevival:hobbits",
+  "objective": {
+    "type": "lotrrevival:kill_entity",
+    "count": {
+      "max": 20,
+      "min": 10
+    },
+    "entity": "minecraft:spider"
+  },
+  "reward_factor": 0.5
+}

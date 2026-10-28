@@ -1,0 +1,14 @@
+{
+  "group": "lotrrevival:hobbits",
+  "objective": {
+    "type": "lotrrevival:collect",
+    "count": {
+      "max": 3,
+      "min": 1
+    },
+    "item": {
+      "items": "minecraft:pumpkin_pie"
+    }
+  },
+  "reward_factor": 3.0
+}

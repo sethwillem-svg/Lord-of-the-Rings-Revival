@@ -1,0 +1,21 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:polished_blackstone_bricks"
+    },
+    "P": {
+      "tag": "minecraft:planks"
+    }
+  },
+  "pattern": [
+    "PP",
+    "CC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:mordor_crafting_table"
+  },
+  "table": "lotrrevival:mordor_crafting_table"
+}

@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 200,
+  "experience": 2.0,
+  "ingredient": {
+    "item": "lotrrevival:raw_mithril"
+  },
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:mithril_ingot"
+  }
+}

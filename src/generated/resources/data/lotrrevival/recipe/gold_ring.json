@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": {
+      "item": "minecraft:gold_nugget"
+    }
+  },
+  "pattern": [
+    " N ",
+    "N N",
+    " N "
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:gold_ring"
+  }
+}
