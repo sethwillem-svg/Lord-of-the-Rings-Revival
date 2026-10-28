@@ -52,6 +52,15 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.BlockTags(output, lookup, event.getExistingFileHelper()));
         // End Core: brewing
+        // Core: gold ring and Arnor bricks
+        ArnorProviders.contributeLang();
+        generator.addProvider(event.includeServer(), new ArnorProviders.RecipeData(output, lookup));
+        generator.addProvider(
+                event.includeClient(), new ArnorProviders.BlockStates(output, event.getExistingFileHelper()));
+        generator.addProvider(event.includeServer(), new ArnorProviders.Loot(output, lookup));
+        generator.addProvider(
+                event.includeServer(), new ArnorProviders.Tags(output, lookup, event.getExistingFileHelper()));
+        // End Core: gold ring and Arnor bricks
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
 
