@@ -18,6 +18,7 @@ public final class NpcLang {
         // Name followed by role title.
         lang.add("npc.lotrrevival.titled_name", "%1$s, %2$s");
         NpcSpeechLang.addTo(lang);
+        io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradeLang.addTo(lang);
         lang.addEntityType(NpcEntityTypes.HOBBIT_BOUNDER, "Hobbit Bounder");
         lang.addEntityType(NpcEntityTypes.HOBBIT_SHIRRIFF, "Hobbit Shirriff");
         lang.addEntityType(NpcEntityTypes.BREE_HOBBIT, "Bree Hobbit");
