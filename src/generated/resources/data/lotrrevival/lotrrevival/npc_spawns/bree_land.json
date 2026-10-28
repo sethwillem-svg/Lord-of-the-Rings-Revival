@@ -1,0 +1,25 @@
+{
+  "entries": [
+    {
+      "type": "lotrrevival:bree_man",
+      "chance": 500,
+      "group_max": 3,
+      "group_min": 1,
+      "weight": 8
+    },
+    {
+      "type": "lotrrevival:bree_hobbit",
+      "chance": 500,
+      "group_max": 3,
+      "group_min": 1,
+      "weight": 4
+    },
+    {
+      "type": "lotrrevival:bree_guard",
+      "chance": 500,
+      "group_max": 2,
+      "group_min": 1,
+      "weight": 2
+    }
+  ]
+}
