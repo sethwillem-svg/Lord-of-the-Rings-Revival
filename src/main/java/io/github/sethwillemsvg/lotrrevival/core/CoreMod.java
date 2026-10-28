@@ -19,6 +19,9 @@ public final class CoreMod {
         BrewingItems.init(modBus);
         io.github.sethwillemsvg.lotrrevival.core.item.CoreItems.init(modBus);
         io.github.sethwillemsvg.lotrrevival.core.coin.CoinItems.init(modBus);
+        // Core: metals and ores (#108)
+        io.github.sethwillemsvg.lotrrevival.core.material.MaterialItems.init(modBus);
+        // End Core: metals and ores
         NeoForge.EVENT_BUS.addListener(LotrCommand::onRegisterCommands);
     }
 }

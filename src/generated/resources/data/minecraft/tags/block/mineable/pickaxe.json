@@ -1,0 +1,21 @@
+{
+  "values": [
+    "lotrrevival:tin_ore",
+    "lotrrevival:deepslate_tin_ore",
+    "lotrrevival:raw_tin_block",
+    "lotrrevival:tin_block",
+    "lotrrevival:silver_ore",
+    "lotrrevival:deepslate_silver_ore",
+    "lotrrevival:raw_silver_block",
+    "lotrrevival:silver_block",
+    "lotrrevival:bronze_block",
+    "lotrrevival:morgul_iron_ore",
+    "lotrrevival:deepslate_morgul_iron_ore",
+    "lotrrevival:raw_morgul_iron_block",
+    "lotrrevival:orc_steel_block",
+    "lotrrevival:mithril_ore",
+    "lotrrevival:deepslate_mithril_ore",
+    "lotrrevival:raw_mithril_block",
+    "lotrrevival:mithril_block"
+  ]
+}
