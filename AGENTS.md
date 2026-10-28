@@ -10,6 +10,8 @@ Rules for every AI agent (and human) working in this repo. Read this before touc
 - **No original textures, models, sounds, structures or lang strings.** All assets are made new for this repo.
 - Never commit decompiled sources, original jars or extracted assets. Keep them outside the repo.
 
+- **Behavior notes** about the original live in [`docs/reference/`](docs/reference/), written in our own words. Everyone may read them; only leads add to them.
+
 If you're unsure whether something crosses the line, stop and ask in the ticket.
 
 ## 2. Team and ownership
