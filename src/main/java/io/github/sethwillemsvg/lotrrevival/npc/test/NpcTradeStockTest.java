@@ -200,6 +200,8 @@ public final class NpcTradeStockTest {
     public static void hobbitFarmerHealsLikeTraderAndKillValueTwo(GameTestHelper helper) {
         NpcEntity farmer = helper.spawn(NpcEntityTypes.HOBBIT.get(), new BlockPos(3, 1, 3));
         farmer.setRole(NpcRole.FARMER);
+        // Shield from outside damage: the CI runtime-test runs inside a real world with mobs and nights.
+        farmer.setInvulnerable(true);
         farmer.setHealth(8.0f);
         helper.assertTrue(farmer.getRole().isTrader(), "farmer is a trader role");
         helper.assertTrue(farmer.alignmentKillValue() == 2.0f, "kill value " + farmer.alignmentKillValue());

@@ -24,6 +24,9 @@ jobs:
       - name: Run datagen
         run: ./gradlew runData
 
+      - name: Run GameTests
+        run: ./gradlew runGameTestServer
+
       - name: Check generated resources are committed
         run: |
           git add -N src/generated
@@ -65,3 +68,6 @@ jobs:
           modloader: neoforge
           mc-runtime-test: neoforge
           java: '21'
+          # Client smoke test only: boot, join a world, exit. GameTests run in the build job on the
+          # GameTest server; in a client world, test areas outside simulation distance never tick.
+          headlessmc-command: --jvm "-DMcRuntimeGameTest=false"
