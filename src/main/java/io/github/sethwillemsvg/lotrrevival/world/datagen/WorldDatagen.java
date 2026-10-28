@@ -5,7 +5,6 @@ import io.github.sethwillemsvg.lotrrevival.core.ModDimensions;
 import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthBiomes;
 import java.util.OptionalLong;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
@@ -26,7 +25,6 @@ import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider;
 import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 
@@ -34,24 +32,22 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
 public final class WorldDatagen {
     private WorldDatagen() {}
 
-    public static void gather(GatherDataEvent event) {
-        var generator = event.getGenerator();
-        PackOutput output = generator.getPackOutput();
-        CompletableFuture<HolderLookup.Provider> lookup = event.getLookupProvider();
-        ExistingFileHelper existing = event.getExistingFileHelper();
-
-        RegistrySetBuilder registries = new RegistrySetBuilder()
+    /** Adds the World pod's datapack registry entries to the shared builder (one provider per mod). */
+    public static void addRegistries(RegistrySetBuilder registries) {
+        registries
                 .add(Registries.DIMENSION_TYPE, WorldDatagen::bootstrapDimensionTypes)
                 .add(Registries.BIOME, WorldDatagen::bootstrapBiomes);
-        var entries = generator.addProvider(
-                event.includeServer(),
-                new DatapackBuiltinEntriesProvider(output, lookup, registries, Set.of(LOTRRevival.MOD_ID)));
+    }
+
+    /** Adds the World pod's other providers; {@code registryLookup} includes the shared datapack entries. */
+    public static void gather(GatherDataEvent event, CompletableFuture<HolderLookup.Provider> registryLookup) {
+        var generator = event.getGenerator();
+        PackOutput output = generator.getPackOutput();
+        ExistingFileHelper existing = event.getExistingFileHelper();
 
         generator.addProvider(event.includeServer(), new MiddleEarthWorldgenProvider(output));
         generator.addProvider(event.includeServer(), new ReliefImageProvider(output));
-        generator.addProvider(
-                event.includeServer(),
-                new MiddleEarthBiomeTags(output, entries.getRegistryProvider(), existing));
+        generator.addProvider(event.includeServer(), new MiddleEarthBiomeTags(output, registryLookup, existing));
     }
 
     private static void bootstrapDimensionTypes(BootstrapContext<DimensionType> context) {
