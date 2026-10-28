@@ -211,6 +211,14 @@ public final class Gear {
                 recipes);
     }
 
+    /**
+     * Stackable ammunition (crossbow bolts): a flat generated model, the given item tags and recipes.
+     */
+    public static DeferredItem<Item> ammo(
+            String id, String name, Supplier<? extends Item> factory, List<TagKey<Item>> tags, GearRecipe... recipes) {
+        return ranged(id, name, factory, GearKind.AMMO, ModelKind.GENERATED, tags, recipes);
+    }
+
     private static DeferredItem<Item> ranged(
             String id,
             String name,

@@ -7,5 +7,7 @@ public enum GearKind {
     TOOL,
     BOW,
     CROSSBOW,
-    SLING
+    SLING,
+    /** Stackable ammunition such as crossbow bolts. */
+    AMMO
 }

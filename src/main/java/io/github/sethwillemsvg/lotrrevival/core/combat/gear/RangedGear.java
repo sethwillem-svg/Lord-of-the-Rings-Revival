@@ -9,5 +9,7 @@ public final class RangedGear {
     private RangedGear() {}
 
     /** Loads the class so its static gear fields register. Called from {@code CombatItems.init}. */
-    public static void init() {}
+    public static void init() {
+        CrossbowGear.init();
+    }
 }

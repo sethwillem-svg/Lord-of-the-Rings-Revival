@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/crossbow",
+  "textures": {
+    "layer0": "lotrrevival:item/bronze_crossbow_pulling_0"
+  }
+}
