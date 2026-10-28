@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.mordor.rank_mordor_r2.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:magma_block"
+  },
+  "rank": {
+    "faction": "lotrrevival:mordor",
+    "rank": "r2"
+  },
+  "sort_group": "special",
+  "tab": "mordor",
+  "title": {
+    "fallback": "r2",
+    "translate": "faction.lotrrevival.mordor.rank.r2"
+  }
+}

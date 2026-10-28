@@ -1,0 +1,47 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "faction": "lotrrevival:gundabad",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c1": {
+      "conditions": {
+        "faction": "lotrrevival:angmar",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c2": {
+      "conditions": {
+        "faction": "lotrrevival:isengard",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c3": {
+      "conditions": {
+        "faction": "lotrrevival:mordor",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ],
+    [
+      "c1"
+    ],
+    [
+      "c2"
+    ],
+    [
+      "c3"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

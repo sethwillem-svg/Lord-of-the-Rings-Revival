@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.free_peoples_friend.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:golden_apple"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.free_peoples_friend.title"
+  }
+}

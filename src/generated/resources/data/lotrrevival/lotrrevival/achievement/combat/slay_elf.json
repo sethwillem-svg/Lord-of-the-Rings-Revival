@@ -1,0 +1,25 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.combat.slay_elf.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:bow"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:high_elf",
+        "lotrrevival:wood_elf",
+        "lotrrevival:lothlorien",
+        "lotrrevival:dorwinion"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "combat",
+  "title": {
+    "translate": "achievement.lotrrevival.combat.slay_elf.title"
+  }
+}

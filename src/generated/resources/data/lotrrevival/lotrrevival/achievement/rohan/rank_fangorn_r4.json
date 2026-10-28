@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rohan.rank_fangorn_r4.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:oak_sapling"
+  },
+  "rank": {
+    "faction": "lotrrevival:fangorn",
+    "rank": "r4"
+  },
+  "sort_group": "special",
+  "tab": "rohan",
+  "title": {
+    "fallback": "r4",
+    "translate": "faction.lotrrevival.fangorn.rank.r4"
+  }
+}

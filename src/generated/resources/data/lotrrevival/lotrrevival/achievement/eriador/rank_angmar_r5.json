@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.rank_angmar_r5.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:packed_ice"
+  },
+  "rank": {
+    "faction": "lotrrevival:angmar",
+    "rank": "r5"
+  },
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "fallback": "r5",
+    "translate": "faction.lotrrevival.angmar.rank.r5"
+  }
+}

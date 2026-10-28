@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.kill_bree.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:iron_axe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:bree"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "translate": "achievement.lotrrevival.eriador.kill_bree.title"
+  }
+}

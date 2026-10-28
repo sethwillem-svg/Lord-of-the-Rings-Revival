@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.kill_high_elf.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:bow"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:high_elf"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "translate": "achievement.lotrrevival.eriador.kill_high_elf.title"
+  }
+}

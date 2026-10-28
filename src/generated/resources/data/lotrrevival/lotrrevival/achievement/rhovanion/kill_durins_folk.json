@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_durins_folk.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:iron_axe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:durins_folk"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_durins_folk.title"
+  }
+}

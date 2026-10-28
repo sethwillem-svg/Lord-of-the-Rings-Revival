@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.shadow_friend.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:wither_rose"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.shadow_friend.title"
+  }
+}

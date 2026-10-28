@@ -1,6 +1,8 @@
 package io.github.sethwillemsvg.lotrrevival.progression;
 
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModRegistries;
+import io.github.sethwillemsvg.lotrrevival.progression.quest.PlayerQuests;
+import io.github.sethwillemsvg.lotrrevival.progression.quest.QuestGiverData;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 
@@ -13,6 +15,23 @@ public final class ProgressionAttachments {
                     () -> AttachmentType.builder(() -> ProgressCounters.EMPTY)
                             .serialize(ProgressCounters.CODEC)
                             .copyOnDeath()
+                            .build());
+
+    /** {@code lotrrevival:quests}: players only, saved, copied on death. Change it through {@code Quests}. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<PlayerQuests>> QUESTS =
+            ModRegistries.ATTACHMENT_TYPES.register(
+                    "quests",
+                    () -> AttachmentType.builder(() -> PlayerQuests.EMPTY)
+                            .serialize(PlayerQuests.CODEC)
+                            .copyOnDeath()
+                            .build());
+
+    /** {@code lotrrevival:quest_giver}: entities, saved with the entity. Offers arrive with a later ticket. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<QuestGiverData>> QUEST_GIVER =
+            ModRegistries.ATTACHMENT_TYPES.register(
+                    "quest_giver",
+                    () -> AttachmentType.builder(() -> QuestGiverData.EMPTY)
+                            .serialize(QuestGiverData.CODEC)
                             .build());
 
     private ProgressionAttachments() {}

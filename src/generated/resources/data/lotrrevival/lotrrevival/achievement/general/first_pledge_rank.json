@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.first_pledge_rank.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:white_banner"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.first_pledge_rank.title"
+  }
+}

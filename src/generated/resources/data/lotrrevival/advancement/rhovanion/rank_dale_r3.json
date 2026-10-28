@@ -1,0 +1,17 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "faction": "lotrrevival:dale",
+        "rank": "r3"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

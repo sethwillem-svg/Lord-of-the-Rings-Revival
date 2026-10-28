@@ -14,6 +14,7 @@ import io.github.sethwillemsvg.lotrrevival.npc.race.NpcRace;
 import io.github.sethwillemsvg.lotrrevival.npc.interact.NpcInteraction;
 import io.github.sethwillemsvg.lotrrevival.npc.name.NpcNames;
 import io.github.sethwillemsvg.lotrrevival.npc.interact.Hireable;
+import io.github.sethwillemsvg.lotrrevival.npc.routine.RoutineGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcDespawn;
 import java.util.HashMap;
 import java.util.Map;
@@ -420,12 +421,19 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
     protected void installGoals() {
         SafetyGoals.install(this, goalSelector);
         IdleGoals.install(this, goalSelector, race);
+        RoutineGoals.install(this, goalSelector, race);
         CombatGoals.install(this, goalSelector, targetSelector, race);
     }
 
     /** Retaliation state (hit and kill reactions); see {@link Retaliation}. */
     public Retaliation retaliation() {
         return retaliation;
+    }
+
+    /** Home-bound (structure and anchor) NPCs never despawn; wild NPCs have no home and follow the despawn rules. */
+    @Override
+    public boolean requiresCustomPersistence() {
+        return super.requiresCustomPersistence() || homePos != null;
     }
 
     /**

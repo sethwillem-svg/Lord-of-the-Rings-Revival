@@ -1,0 +1,16 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "faction": "lotrrevival:durins_folk"
+      },
+      "trigger": "lotrrevival:kill_faction_npc"
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

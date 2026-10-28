@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.shire.rank_hobbit_r4.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:bread"
+  },
+  "rank": {
+    "faction": "lotrrevival:hobbit",
+    "rank": "r4"
+  },
+  "sort_group": "special",
+  "tab": "shire",
+  "title": {
+    "fallback": "r4",
+    "translate": "faction.lotrrevival.hobbit.rank.r4"
+  }
+}

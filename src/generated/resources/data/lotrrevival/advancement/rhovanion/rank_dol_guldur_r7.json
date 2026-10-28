@@ -1,0 +1,17 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "faction": "lotrrevival:dol_guldur",
+        "rank": "r7"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

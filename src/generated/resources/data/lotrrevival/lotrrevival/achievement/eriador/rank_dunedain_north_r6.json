@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.rank_dunedain_north_r6.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:spyglass"
+  },
+  "rank": {
+    "faction": "lotrrevival:dunedain_north",
+    "rank": "r6"
+  },
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "fallback": "r6",
+    "translate": "faction.lotrrevival.dunedain_north.rank.r6"
+  }
+}
