@@ -1,6 +1,10 @@
 package io.github.sethwillemsvg.lotrrevival.datagen;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.data.DataGenerator;
+import net.minecraft.data.PackOutput;
+import java.util.concurrent.CompletableFuture;
+import net.neoforged.neoforge.common.data.DatapackBuiltinEntriesProvider;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 
 /**
@@ -12,6 +16,16 @@ public final class DataGenerators {
 
     public static void gatherData(GatherDataEvent event) {
         DataGenerator generator = event.getGenerator();
+        PackOutput output = generator.getPackOutput();
+        CompletableFuture<HolderLookup.Provider> lookup = event.getLookupProvider();
+
+        // Core: faction registry entries, then tags built against the generated registry contents.
+        DatapackBuiltinEntriesProvider factions =
+                generator.addProvider(event.includeServer(), FactionProviders.entries(output, lookup));
+        generator.addProvider(
+                event.includeServer(),
+                new FactionProviders.Tags(output, factions.getRegistryProvider(), event.getExistingFileHelper()));
+        generator.addProvider(event.includeClient(), new ModLangProvider(output));
         // Pods add providers here, for example:
         // generator.addProvider(event.includeServer(), new ModRecipeProvider(generator.getPackOutput(), event.getLookupProvider()));
     }

@@ -1,0 +1,26 @@
+{
+  "color": "#8A5A3C",
+  "disapproves_civilian_kills": true,
+  "kinds": [
+    "free",
+    "dwarf"
+  ],
+  "pledge_rank": "r3",
+  "region": "westlands",
+  "relations": {
+    "lotrrevival:angmar": "mortal_enemy",
+    "lotrrevival:blue_mountains": "ally",
+    "lotrrevival:bree": "friend",
+    "lotrrevival:dale": "ally",
+    "lotrrevival:dol_guldur": "mortal_enemy",
+    "lotrrevival:dunland": "friend",
+    "lotrrevival:gundabad": "mortal_enemy",
+    "lotrrevival:half_troll": "mortal_enemy",
+    "lotrrevival:hobbit": "ally",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:isengard": "mortal_enemy",
+    "lotrrevival:mordor": "mortal_enemy",
+    "lotrrevival:utumno": "mortal_enemy"
+  },
+  "sort_order": 110
+}

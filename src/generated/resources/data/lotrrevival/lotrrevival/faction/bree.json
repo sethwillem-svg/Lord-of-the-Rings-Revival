@@ -1,0 +1,61 @@
+{
+  "color": "#A8794A",
+  "disapproves_civilian_kills": true,
+  "kinds": [
+    "free",
+    "men"
+  ],
+  "pledge_rank": "r3",
+  "ranks": [
+    {
+      "id": "r1",
+      "threshold": 10.0
+    },
+    {
+      "id": "r2",
+      "threshold": 50.0
+    },
+    {
+      "id": "r3",
+      "threshold": 100.0
+    },
+    {
+      "id": "r4",
+      "threshold": 200.0
+    },
+    {
+      "id": "r5",
+      "threshold": 500.0
+    },
+    {
+      "id": "r6",
+      "threshold": 1000.0
+    },
+    {
+      "id": "r7",
+      "threshold": 2000.0
+    }
+  ],
+  "region": "westlands",
+  "relations": {
+    "lotrrevival:angmar": "mortal_enemy",
+    "lotrrevival:blue_mountains": "friend",
+    "lotrrevival:dale": "friend",
+    "lotrrevival:dol_guldur": "mortal_enemy",
+    "lotrrevival:dunedain_north": "friend",
+    "lotrrevival:durins_folk": "friend",
+    "lotrrevival:gundabad": "mortal_enemy",
+    "lotrrevival:half_troll": "mortal_enemy",
+    "lotrrevival:high_elf": "friend",
+    "lotrrevival:hobbit": "ally",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:hostile_trees": "mortal_enemy",
+    "lotrrevival:isengard": "mortal_enemy",
+    "lotrrevival:lothlorien": "friend",
+    "lotrrevival:mordor": "mortal_enemy",
+    "lotrrevival:ruffians": "enemy",
+    "lotrrevival:utumno": "mortal_enemy",
+    "lotrrevival:wood_elf": "friend"
+  },
+  "sort_order": 20
+}

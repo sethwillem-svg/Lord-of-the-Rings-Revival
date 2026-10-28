@@ -1,0 +1,15 @@
+{
+  "color": "#5A4A3A",
+  "fixed_alignment": 0.0,
+  "hidden": true,
+  "kinds": [
+    "men"
+  ],
+  "ranks": [],
+  "region": "deeps",
+  "relations": {
+    "lotrrevival:bree": "enemy",
+    "lotrrevival:hobbit": "enemy"
+  },
+  "sort_order": 290
+}

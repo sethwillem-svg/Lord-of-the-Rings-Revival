@@ -1,0 +1,49 @@
+{
+  "color": "#2E8F7A",
+  "kinds": [
+    "free",
+    "men"
+  ],
+  "pledge_rank": "r3",
+  "ranks": [
+    {
+      "id": "r1",
+      "threshold": 10.0
+    },
+    {
+      "id": "r2",
+      "threshold": 50.0
+    },
+    {
+      "id": "r3",
+      "threshold": 100.0
+    },
+    {
+      "id": "r4",
+      "threshold": 200.0
+    },
+    {
+      "id": "r5",
+      "threshold": 500.0
+    },
+    {
+      "id": "r6",
+      "threshold": 1000.0
+    },
+    {
+      "id": "r7",
+      "threshold": 3000.0
+    }
+  ],
+  "region": "harad",
+  "relations": {
+    "lotrrevival:fangorn": "ally",
+    "lotrrevival:far_harad": "mortal_enemy",
+    "lotrrevival:half_troll": "mortal_enemy",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:mordor": "mortal_enemy",
+    "lotrrevival:near_harad": "enemy",
+    "lotrrevival:utumno": "mortal_enemy"
+  },
+  "sort_order": 230
+}

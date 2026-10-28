@@ -1,0 +1,48 @@
+{
+  "color": "#7A4F4F",
+  "kinds": [
+    "men"
+  ],
+  "pledge_rank": "r3",
+  "ranks": [
+    {
+      "id": "r1",
+      "threshold": 10.0
+    },
+    {
+      "id": "r2",
+      "threshold": 50.0
+    },
+    {
+      "id": "r3",
+      "threshold": 100.0
+    },
+    {
+      "id": "r4",
+      "threshold": 200.0
+    },
+    {
+      "id": "r5",
+      "threshold": 500.0
+    },
+    {
+      "id": "r6",
+      "threshold": 1000.0
+    },
+    {
+      "id": "r7",
+      "threshold": 2000.0
+    }
+  ],
+  "region": "westlands",
+  "relations": {
+    "lotrrevival:dunedain_north": "enemy",
+    "lotrrevival:durins_folk": "friend",
+    "lotrrevival:gondor": "enemy",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:isengard": "friend",
+    "lotrrevival:rohan": "mortal_enemy",
+    "lotrrevival:utumno": "mortal_enemy"
+  },
+  "sort_order": 130
+}

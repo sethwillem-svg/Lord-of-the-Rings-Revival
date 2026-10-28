@@ -1,0 +1,23 @@
+{
+  "color": "#8A4FA8",
+  "disapproves_civilian_kills": true,
+  "kinds": [
+    "free",
+    "men",
+    "elf"
+  ],
+  "pledge_rank": "r3",
+  "region": "rhun",
+  "relations": {
+    "lotrrevival:angmar": "mortal_enemy",
+    "lotrrevival:dol_guldur": "mortal_enemy",
+    "lotrrevival:gundabad": "mortal_enemy",
+    "lotrrevival:half_troll": "mortal_enemy",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:isengard": "mortal_enemy",
+    "lotrrevival:mordor": "mortal_enemy",
+    "lotrrevival:utumno": "mortal_enemy",
+    "lotrrevival:wood_elf": "ally"
+  },
+  "sort_order": 190
+}

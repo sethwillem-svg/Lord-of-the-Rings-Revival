@@ -1,0 +1,47 @@
+{
+  "color": "#2F6B3A",
+  "disapproves_civilian_kills": true,
+  "kinds": [
+    "free",
+    "tree"
+  ],
+  "pledge_rank": "r3",
+  "ranks": [
+    {
+      "id": "r1",
+      "threshold": 10.0
+    },
+    {
+      "id": "r2",
+      "threshold": 50.0
+    },
+    {
+      "id": "r3",
+      "threshold": 100.0
+    },
+    {
+      "id": "r4",
+      "threshold": 250.0
+    },
+    {
+      "id": "r5",
+      "threshold": 500.0
+    }
+  ],
+  "region": "westlands",
+  "relations": {
+    "lotrrevival:angmar": "mortal_enemy",
+    "lotrrevival:dol_guldur": "mortal_enemy",
+    "lotrrevival:gundabad": "mortal_enemy",
+    "lotrrevival:half_troll": "mortal_enemy",
+    "lotrrevival:harad_jungle": "ally",
+    "lotrrevival:high_elf": "ally",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:isengard": "mortal_enemy",
+    "lotrrevival:lothlorien": "ally",
+    "lotrrevival:mordor": "mortal_enemy",
+    "lotrrevival:utumno": "mortal_enemy",
+    "lotrrevival:wood_elf": "ally"
+  },
+  "sort_order": 150
+}
