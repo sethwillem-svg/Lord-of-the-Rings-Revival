@@ -9,9 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client end of the quest offer payloads. The offer screen and the marker renderer are the next ticket; for now the
- * handlers keep the marker state as plain data and log, so the protocol is exercised end to end. Plain data only,
- * no client-only classes.
+ * Client end of the quest offer payloads: keeps the marker state read by {@link OfferMarkerRenderer} and hands the
+ * open and close payloads to the {@link OfferScreen}.
  */
 public final class ClientQuestOffers {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientQuestOffers.class);
@@ -34,17 +33,13 @@ public final class ClientQuestOffers {
         LOGGER.debug("Quest offer marker for entity {}: {}", payload.entityId(), payload.group());
     }
 
+    /** Opens the offer screen. Runs only on a client (the payload handler is a client-side lambda). */
     public static void onOpen(OpenQuestOfferPayload payload) {
-        LOGGER.debug(
-                "Open quest offer from entity {}: {} x{} ({})",
-                payload.entityId(),
-                payload.template(),
-                payload.count(),
-                payload.openingKey());
+        OfferScreen.open(payload);
     }
 
     public static void onClosed(QuestOfferClosedPayload payload) {
-        LOGGER.debug("Quest offer screen of entity {} closed: {}", payload.entityId(), payload.reason());
+        OfferScreen.closeFor(payload);
     }
 
     public static void reset() {
