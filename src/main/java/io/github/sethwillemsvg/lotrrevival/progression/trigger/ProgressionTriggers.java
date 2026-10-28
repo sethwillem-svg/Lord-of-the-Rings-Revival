@@ -31,6 +31,11 @@ public final class ProgressionTriggers {
     public static final DeferredHolder<CriterionTrigger<?>, EarnTitleTrigger> EARN_TITLE =
             ModRegistries.TRIGGER_TYPES.register("earn_title", EarnTitleTrigger::new);
 
+    // Banners (#119): fired when a player places a protecting banner.
+    public static final DeferredHolder<CriterionTrigger<?>, net.minecraft.advancements.critereon.PlayerTrigger>
+            PLACE_BANNER = ModRegistries.TRIGGER_TYPES.register(
+                    "place_banner", net.minecraft.advancements.critereon.PlayerTrigger::new);
+
     private ProgressionTriggers() {}
 
     /** Touch from {@code ProgressionMod.init} so the class loads before registration. */

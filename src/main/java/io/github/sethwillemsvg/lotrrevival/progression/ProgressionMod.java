@@ -31,6 +31,7 @@ public final class ProgressionMod {
         QuestSystem.init(modBus);
         BountySystem.init(modBus);
         io.github.sethwillemsvg.lotrrevival.progression.fellowship.FellowshipSync.init();
+        io.github.sethwillemsvg.lotrrevival.progression.banner.BannerSystem.init(modBus);
         modBus.addListener(ProgressionPayloads::register);
     }
 }

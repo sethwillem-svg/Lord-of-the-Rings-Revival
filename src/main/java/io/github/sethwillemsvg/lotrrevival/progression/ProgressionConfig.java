@@ -23,6 +23,11 @@ public final class ProgressionConfig {
 
     public static final ModConfigSpec.IntValue FELLOWSHIP_MAX_SIZE;
     public static final ModConfigSpec.BooleanValue FELLOWSHIP_CREATION_ENABLED;
+    // Banners (#119)
+    public static final ModConfigSpec.BooleanValue BANNER_PROTECTION_ENABLED;
+    public static final ModConfigSpec.BooleanValue BANNER_SELF_PROTECTION_ENABLED;
+    public static final ModConfigSpec.IntValue BANNER_WARNING_COOLDOWN_TICKS;
+    public static final ModConfigSpec.BooleanValue BANNER_EXPLOSION_PROTECTION;
 
     public static final ModConfigSpec.ConfigValue<String> QUEST_TRACKER_SIDE;
 
@@ -49,6 +54,16 @@ public final class ProgressionConfig {
                 .defineInRange("fellowshipMaxSize", -1, -1, 1000);
         FELLOWSHIP_CREATION_ENABLED = server.comment("Let players create fellowships (ops can always use the command).")
                 .define("fellowshipCreationEnabled", true);
+        BANNER_PROTECTION_ENABLED = server.comment("Banners on bronze, silver or gold blocks protect land.")
+                .define("bannerProtectionEnabled", true);
+        BANNER_SELF_PROTECTION_ENABLED = server.comment("Honour the per-banner self-protection setting "
+                        + "(nobody but the owner can break a protecting banner).")
+                .define("bannerSelfProtectionEnabled", true);
+        BANNER_WARNING_COOLDOWN_TICKS = server.comment("Minimum ticks between 'land is protected' warnings per player.")
+                .defineInRange("bannerWarningCooldownTicks", 20, 0, 1200);
+        BANNER_EXPLOSION_PROTECTION = server.comment("Explosions cannot destroy blocks inside protected land "
+                        + "unless the responsible player has Full permission there.")
+                .define("bannerExplosionProtection", true);
         server.pop();
         SERVER_SPEC = server.build();
 

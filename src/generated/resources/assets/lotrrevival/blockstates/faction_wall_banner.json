@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "lotrrevival:block/faction_banner",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "lotrrevival:block/faction_banner"
+    },
+    "facing=south": {
+      "model": "lotrrevival:block/faction_banner",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "lotrrevival:block/faction_banner",
+      "y": 270
+    }
+  }
+}
