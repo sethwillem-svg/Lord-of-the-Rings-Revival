@@ -74,6 +74,9 @@ public final class DataGenerators {
         // Core #105: bronze and silver banner-base metals
         BannerMetalProviders.gather(event);
         // End Core #105
+        // Core: combat foundation (#107), generic gear providers driven by GearCatalog
+        io.github.sethwillemsvg.lotrrevival.datagen.combat.CombatDatagen.gather(event, lookup);
+        // End Core: combat foundation
 
         // World
         WorldDatagen.gather(event, registryLookup);

@@ -25,8 +25,20 @@ public final class ModTags {
     public static final class Blocks {
         public static final TagKey<Block> CRAFTING_TABLES = tag("crafting_tables");
         public static final TagKey<Block> ROAD_SURFACES = tag("road_surfaces");
+        /** {@code lotrrevival:forges/any}: every forge block. */
+        public static final TagKey<Block> FORGES_ANY = tag("forges/any");
 
         private Blocks() {}
+
+        /** {@code lotrrevival:crafting_tables/<group>}: faction tables sharing recipes (for example {@code orc}). */
+        public static TagKey<Block> craftingTables(String group) {
+            return tag("crafting_tables/" + group);
+        }
+
+        /** {@code lotrrevival:ores/<material>}: ore blocks of one material (mirrors {@code c:ores/<material>}). */
+        public static TagKey<Block> ores(String material) {
+            return tag("ores/" + material);
+        }
 
         private static TagKey<Block> tag(String path) {
             return TagKey.create(Registries.BLOCK, LOTRRevival.id(path));
@@ -34,16 +46,29 @@ public final class ModTags {
     }
 
     public static final class Items {
+        public static final TagKey<Item> WEAPONS_SWORDS = tag("weapons/swords");
         public static final TagKey<Item> WEAPONS_DAGGERS = tag("weapons/daggers");
         public static final TagKey<Item> WEAPONS_SPEARS = tag("weapons/spears");
+        public static final TagKey<Item> WEAPONS_POLEARMS = tag("weapons/polearms");
         public static final TagKey<Item> WEAPONS_PIKES = tag("weapons/pikes");
+        public static final TagKey<Item> WEAPONS_LANCES = tag("weapons/lances");
         public static final TagKey<Item> WEAPONS_BATTLEAXES = tag("weapons/battleaxes");
         public static final TagKey<Item> WEAPONS_HAMMERS = tag("weapons/hammers");
         public static final TagKey<Item> WEAPONS_THROWING = tag("weapons/throwing");
+        public static final TagKey<Item> WEAPONS_BOWS = tag("weapons/bows");
+        public static final TagKey<Item> WEAPONS_CROSSBOWS = tag("weapons/crossbows");
+        public static final TagKey<Item> WEAPONS_SLINGS = tag("weapons/slings");
+        public static final TagKey<Item> BOLTS = tag("bolts");
+        public static final TagKey<Item> PEBBLES = tag("pebbles");
         public static final TagKey<Item> POISONABLE = tag("poisonable");
         public static final TagKey<Item> COINS = tag("coins");
 
         private Items() {}
+
+        /** {@code lotrrevival:armor/<faction>}: armour pieces that belong to a faction's sets. */
+        public static TagKey<Item> armor(ResourceKey<Faction> faction) {
+            return tag("armor/" + faction.location().getPath());
+        }
 
         private static TagKey<Item> tag(String path) {
             return TagKey.create(Registries.ITEM, LOTRRevival.id(path));
@@ -60,6 +85,8 @@ public final class ModTags {
         public static final TagKey<EntityType<?>> ENTS = tag("ents");
         public static final TagKey<EntityType<?>> MOUNTS = tag("mounts");
         public static final TagKey<EntityType<?>> NPCS = tag("npcs");
+        /** Entities that ignore poisoned weapons (for example elves). Filled by the NPC pod. */
+        public static final TagKey<EntityType<?>> POISON_IMMUNE = tag("poison_immune");
 
         private EntityTypes() {}
 
