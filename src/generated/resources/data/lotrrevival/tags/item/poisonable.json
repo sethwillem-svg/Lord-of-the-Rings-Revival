@@ -1,5 +1,9 @@
 {
   "values": [
-    "lotrrevival:ranger_dagger"
+    "lotrrevival:bronze_dagger",
+    "lotrrevival:iron_dagger",
+    "lotrrevival:ranger_dagger",
+    "lotrrevival:gondor_dagger",
+    "lotrrevival:mordor_dagger"
   ]
 }

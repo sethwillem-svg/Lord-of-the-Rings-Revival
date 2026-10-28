@@ -1,5 +1,12 @@
 {
   "values": [
-    "lotrrevival:bronze_helmet"
+    "lotrrevival:bronze_helmet",
+    "lotrrevival:shire_helmet",
+    "lotrrevival:bree_helmet",
+    "lotrrevival:ranger_helmet",
+    "lotrrevival:arnor_helmet",
+    "lotrrevival:gondor_helmet",
+    "lotrrevival:gondor_levy_helmet",
+    "lotrrevival:mordor_helmet"
   ]
 }

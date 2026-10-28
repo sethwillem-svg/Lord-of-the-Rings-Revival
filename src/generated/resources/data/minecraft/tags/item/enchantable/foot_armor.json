@@ -1,5 +1,12 @@
 {
   "values": [
-    "lotrrevival:bronze_boots"
+    "lotrrevival:bronze_boots",
+    "lotrrevival:shire_boots",
+    "lotrrevival:bree_boots",
+    "lotrrevival:ranger_boots",
+    "lotrrevival:arnor_boots",
+    "lotrrevival:gondor_boots",
+    "lotrrevival:gondor_levy_boots",
+    "lotrrevival:mordor_boots"
   ]
 }

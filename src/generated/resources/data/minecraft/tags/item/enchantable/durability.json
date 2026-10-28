@@ -5,6 +5,17 @@
     "lotrrevival:iron_dagger",
     "lotrrevival:iron_spear",
     "lotrrevival:iron_pike",
-    "lotrrevival:iron_hammer"
+    "lotrrevival:iron_hammer",
+    "lotrrevival:ranger_dagger",
+    "lotrrevival:ranger_spear",
+    "lotrrevival:gondor_dagger",
+    "lotrrevival:gondor_spear",
+    "lotrrevival:gondor_pike",
+    "lotrrevival:gondor_hammer",
+    "lotrrevival:gondor_lance",
+    "lotrrevival:mordor_dagger",
+    "lotrrevival:mordor_spear",
+    "lotrrevival:mordor_pike",
+    "lotrrevival:mordor_hammer"
   ]
 }
