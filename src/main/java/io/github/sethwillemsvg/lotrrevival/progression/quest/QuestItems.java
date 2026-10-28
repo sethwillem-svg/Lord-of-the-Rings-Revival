@@ -10,9 +10,9 @@ import net.neoforged.neoforge.registries.DeferredItem;
 
 /** Items of the quest system. */
 public final class QuestItems {
-    /** {@code lotrrevival:quest_book}: will open the quest log screen (screen and art in later tickets). */
-    public static final DeferredItem<Item> QUEST_BOOK =
-            ModRegistries.ITEMS.registerSimpleItem("quest_book", new Item.Properties().stacksTo(1));
+    /** {@code lotrrevival:quest_book}: using it opens the quest log screen on the client. */
+    public static final DeferredItem<Item> QUEST_BOOK = ModRegistries.ITEMS.registerItem(
+            "quest_book", QuestBookItem::new, new Item.Properties().stacksTo(1));
 
     private QuestItems() {}
 

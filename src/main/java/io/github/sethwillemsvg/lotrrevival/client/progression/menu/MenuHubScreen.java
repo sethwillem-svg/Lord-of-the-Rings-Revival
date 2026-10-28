@@ -23,6 +23,7 @@ public final class MenuHubScreen extends MenuScreen {
     protected void buildPage() {
         List<Entry> entries = new ArrayList<>();
         entries.add(new Entry("achievements", MenuPage.ACHIEVEMENTS));
+        entries.add(new Entry("quests", null, io.github.sethwillemsvg.lotrrevival.client.progression.quest.log.QuestLogScreen::openFromMenu));
         entries.add(new Entry("map", null));
         entries.add(new Entry("factions", null));
         entries.add(new Entry("fellowships", null));
@@ -43,13 +44,15 @@ public final class MenuHubScreen extends MenuScreen {
             int x = left + 10 + (n % columns) * (buttonWidth + gap);
             int y = startY + (n / columns) * rowHeight;
             Button button = Button.builder(Component.translatable("gui.lotrrevival.menu." + entry.key), b -> {
-                        if (entry.page != null) {
+                        if (entry.action != null) {
+                            entry.action.run();
+                        } else if (entry.page != null) {
                             MenuPage.open(entry.page);
                         }
                     })
                     .bounds(x, y, buttonWidth, 18)
                     .build();
-            if (entry.page == null) {
+            if (entry.page == null && entry.action == null) {
                 button.active = false;
                 button.setTooltip(Tooltip.create(Component.translatable("gui.lotrrevival.menu.coming_later")));
             }
@@ -91,5 +94,9 @@ public final class MenuHubScreen extends MenuScreen {
         });
     }
 
-    private record Entry(String key, MenuPage page) {}
+    private record Entry(String key, MenuPage page, Runnable action) {
+        Entry(String key, MenuPage page) {
+            this(key, page, null);
+        }
+    }
 }
