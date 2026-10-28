@@ -1,6 +1,10 @@
 package io.github.sethwillemsvg.lotrrevival.npc.entity;
 
+import io.github.sethwillemsvg.lotrrevival.core.alignment.Alignment;
+import io.github.sethwillemsvg.lotrrevival.core.faction.AlignmentCreditor;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.HiredUnit;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.HiredUnits;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionMember;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.IdleGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.combat.CombatGoals;
@@ -57,7 +61,7 @@ import net.minecraft.world.level.pathfinder.PathType;
  *
  * <p>Kill alignment is applied by core from {@link FactionMember}; npc code never calls it.
  */
-public abstract class NpcEntity extends PathfinderMob implements FactionMember {
+public abstract class NpcEntity extends PathfinderMob implements FactionMember, Hireable, AlignmentCreditor {
     private static final EntityDataAccessor<Integer> DATA_ROLE =
             SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_GENDER =
@@ -422,10 +426,64 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
         CombatGoals.install(this, goalSelector, targetSelector, race);
     }
 
-    /** Home-bound (structure and anchor) NPCs never despawn; wild NPCs have no home and follow the despawn rules. */
+    /** Home-bound (structure and anchor) and hired NPCs never despawn; wild NPCs follow the despawn rules. */
     @Override
     public boolean requiresCustomPersistence() {
-        return super.requiresCustomPersistence() || homePos != null;
+        return super.requiresCustomPersistence() || homePos != null || isHired();
+    }
+
+    // ------------------------------------------------------------------ hiring (state lives in npc.hire)
+
+    /** Required alignment while hired, else the role's hire minimum (0 if the role does not hire). */
+    @Override
+    public float hireMin() {
+        HiredUnit state = HiredUnits.get(this);
+        if (state.isHired()) {
+            return state.requiredAlignment();
+        }
+        return NpcRoleData.stats(getType(), getRole()).flatMap(stats -> stats.hireMin()).orElse(0.0f);
+    }
+
+    /** Unit prices are per player and come from the unit list ({@code HireCost}); a unit itself has none. */
+    @Override
+    public int hireCost() {
+        return 0;
+    }
+
+    @Override
+    public Optional<UUID> owner() {
+        return HiredUnits.get(this).owner();
+    }
+
+    @Override
+    public CommandState commandState() {
+        HiredUnit state = HiredUnits.get(this);
+        return state.isHired() ? state.command().state() : CommandState.NONE;
+    }
+
+    @Override
+    public boolean isHired() {
+        return HiredUnits.get(this).isHired();
+    }
+
+    /** The owner while this unit is hired and the owner is online, for kill crediting. */
+    @Override
+    public Optional<UUID> creditedPlayer() {
+        return Optional.ofNullable(HiredUnits.onlineOwner(this)).map(Player::getUUID);
+    }
+
+    /** Self-defence: killing a unit that a command sword sent at you costs no alignment while you are in good standing. */
+    @Override
+    public boolean grantsAlignmentOnKill(ServerPlayer killer) {
+        HiredUnit state = HiredUnits.get(this);
+        if (state.isHired()
+                && state.command().swordOrder()
+                && getTarget() == killer
+                && !state.owner().filter(killer.getUUID()::equals).isPresent()
+                && Alignment.get(killer, faction) > 0.0f) {
+            return false;
+        }
+        return true;
     }
 
     /**

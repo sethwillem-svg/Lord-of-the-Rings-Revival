@@ -473,6 +473,8 @@
   "npc.lotrrevival.title.hobbit_bounder": "Bounder",
   "npc.lotrrevival.title.hobbit_shirriff": "Shirriff",
   "npc.lotrrevival.titled_name": "%1$s, %2$s",
+  "npc.lotrrevival.unit.deserted": "%s has deserted you.",
+  "npc.lotrrevival.unit.dismissed": "%s has left your service.",
   "pledge.lotrrevival.broken.below_rank": "Your pledge to %s is broken: you no longer meet its requirements.",
   "pledge.lotrrevival.broken.command": "Your pledge to %s was ended.",
   "pledge.lotrrevival.broken.killed_ally": "Your pledge to %s is broken: you killed their people again.",
