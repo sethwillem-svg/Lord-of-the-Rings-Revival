@@ -10,6 +10,8 @@ import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.race.NpcRace;
 import io.github.sethwillemsvg.lotrrevival.npc.interact.NpcInteraction;
 import io.github.sethwillemsvg.lotrrevival.npc.name.NpcNames;
+import io.github.sethwillemsvg.lotrrevival.npc.interact.Hireable;
+import io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcDespawn;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +67,7 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
     static final String TAG_NAME_SEED = "NameSeed";
     static final String TAG_HOME_POS = "HomePos";
     static final String TAG_HOME_RADIUS = "HomeRadius";
+    static final String TAG_WILD = "Wild";
 
     private final NpcRace race;
     private final ResourceKey<Faction> faction;
@@ -74,6 +77,9 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
     private BlockPos homePos;
 
     private int homeRadius;
+
+    /** Set by the wild spawner. Only wild NPCs count toward the spawn cap and take part in despawning. */
+    private boolean wild;
 
     /** Game time of the last line spoken to each player. Transient on purpose: a reload resets cooldowns. */
     private final Map<UUID, Long> speechCooldowns = new HashMap<>();
@@ -197,9 +203,36 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
         this.homeRadius = 0;
     }
 
+    public boolean isWild() {
+        return wild;
+    }
+
+    public void setWild(boolean wild) {
+        this.wild = wild;
+    }
+
+    /** Whether a civilian of this type may be given the role at spawn (used by the wild spawner to filter roles). */
+    public boolean canSpawnWithRole(NpcRole role) {
+        return canRollRole(role);
+    }
+
+    /** Vanilla's despawn rules only apply to wild NPCs that are not home-bound, hired, name-tagged or in a fight. */
+    @Override
+    public boolean removeWhenFarAway(double distanceToClosestPlayer) {
+        return NpcDespawn.mayDespawn(
+                wild,
+                homePos != null,
+                hasCustomName(),
+                this instanceof Hireable hireable && hireable.isHired(),
+                getTarget() instanceof Player);
+    }
+
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        if (wild) {
+            tag.putBoolean(TAG_WILD, true);
+        }
         tag.putString(TAG_ROLE, getRole().getSerializedName());
         tag.putString(TAG_GENDER, getGender().getSerializedName());
         tag.putString(TAG_NAME, getNpcName());
@@ -214,6 +247,7 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        wild = tag.getBoolean(TAG_WILD);
         if (tag.contains(TAG_ROLE, Tag.TAG_STRING)) {
             NpcRole.byName(tag.getString(TAG_ROLE)).ifPresent(this::setRole);
         }
