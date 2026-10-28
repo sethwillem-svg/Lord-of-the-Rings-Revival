@@ -57,6 +57,10 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
 
+        // Core: faction crafting tables
+        FactionTableProviders.gather(event);
+        // End Core: faction crafting tables
+
         // World
         WorldDatagen.gather(event, registryLookup);
 

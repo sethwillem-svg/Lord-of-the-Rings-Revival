@@ -1,0 +1,21 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:stone_bricks"
+    },
+    "P": {
+      "tag": "minecraft:planks"
+    }
+  },
+  "pattern": [
+    "PP",
+    "CC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:ranger_crafting_table"
+  },
+  "table": "lotrrevival:ranger_crafting_table"
+}

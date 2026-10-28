@@ -118,6 +118,9 @@ final class BrewingProviders {
         @Override
         protected void addTags(HolderLookup.Provider provider) {
             tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_AXE).add(BrewingBlocks.BARREL.get());
+            // Faction crafting tables share this file (two providers cannot both write mineable/axe).
+            io.github.sethwillemsvg.lotrrevival.core.table.FactionTables.ALL.forEach(
+                    entry -> tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_AXE).add(entry.block().get()));
         }
 
         @Override
