@@ -127,9 +127,11 @@ In every case, record pass C numbers as the shader-user expectation.
 
 ## 3. Render budgets and targets
 
-**Reference PC** ("a decent PC"; Seth confirms his real hardware, see open questions): 6-core desktop CPU of the Ryzen 5 5600 or Core i5-12400 class, RTX 3060 or RX 6600 class GPU, 16 GB RAM, 1080p, Java 21, 4 to 6 GB heap, render distance 12, Sodium installed (pass B).
+**Reference PC** ("a decent PC"; maintainer decision: calibrate against this mid-range machine, since Seth's own specs are not shared): 6-core desktop CPU of the Ryzen 5 5600 or Core i5-12400 class, RTX 3060 or RX 6600 class GPU, 16 GB RAM, 1080p, Java 21, 4 to 6 GB heap, render distance 12, Sodium installed (pass B).
 
 These are initial targets. R0-4 revises them from the benchmark, then they are frozen for the content wave.
+
+The harness still works on any machine, Seth's included. Every run records its own hardware line, and the gate compares the contenders and tiers **relative to each other on the same machine**: `azure_lod` against `baseline` and `keyframe`, and T0 against T1 and T2 costs. If the machine is clearly faster or slower than the reference PC, Opus 1 scales the absolute FPS targets by the ratio of that machine's `baseline` results to the reference expectation, and notes this in `docs/perf/results/`.
 
 | Scenario | Target | Notes |
 | --- | --- | --- |
@@ -194,7 +196,8 @@ A **rig** is a bone hierarchy that animations are written against. Races with th
 | Rig | Used by | Notes |
 | --- | --- | --- |
 | `humanoid` | men of every faction (Gondor, Rohan, Dale, Bree, Rangers, Harad, Easterlings, Dunlendings, hill-men, ruffians, Morgul and Black Númenórean units), elves, dwarves, hobbits (shirriffs, bounders) | One shared rig with proportion variants per race (maintainer decision: hobbits and dwarves included) |
-| `orc` | orcs, goblins, Uruk-hai, half-orcs, half-trolls | Hunched and heavier; own clip set; same bone names as `humanoid`, so weapon and formation clips can be ported. Half-trolls use it at a larger scale. |
+| `orc` | orcs, goblins, Uruk-hai, half-orcs | Hunched and heavier; own clip set; same bone names as `humanoid`, so weapon and formation clips can be ported. |
+| `half_troll` | half-trolls | Own rig (maintainer decision): bulkier proportions (broad shoulders, thick limbs, short neck), the same bone names as `humanoid` so held-item and armour anchors work, but its own clip set because the mass and timing differ |
 | `troll` | trolls of every kind | Own bones (no fingers, heavy club arm), own clip set (section 5c). Never takes a formation slot. |
 | `horse` | horses and war-horses ridden by cavalry | Clip set in section 5c; owned by the mounts spec |
 | `warg`, `spider`, ... | later specs | Each gets its own table when its spec is written |
@@ -259,7 +262,8 @@ Clip keys inside the animation file are `animation.<rig>.<group>.<name>[.<varian
 | **Formation, all disciplines** | `move.flee` (rout), `emote.order` | `humanoid`, `orc` |
 | **Formation, RIGID and ORGANIZED** | `defend.brace.shield`, `hold.pike.lowered`, `ranged.bow.ready` (with `ranged.bow.draw` and `ranged.bow.release` for volleys in rank), `move.march` | `humanoid`, `orc`. Needed for the RIGID factions Gondor, dwarves, elves, Uruk-hai and Easterlings, and the ORGANIZED factions Rohan, Dale, Rangers, Harad and Morgul. The rig carries them once for all. |
 | **Cavalry** | `ride.idle`, `ride.lance.couched` (couched-lance charge); the horse plays `move.gallop` and `move.charge` | `humanoid` riders (Rohan, Gondor knights, Dale, Harad, Easterlings) and `horse`. `orc` riders use the warg spec later. |
-| **LOOSE flavour** | `emote.war_cry`, `move.charge` (berserk charge), `emote.taunt` | `orc` (orcs, goblins, half-trolls) and `humanoid` (Dunlendings, hill-men, ruffians; shirriffs use `emote.war_cry` only, played as a shout) |
+| **LOOSE flavour** | `emote.war_cry`, `move.charge` (berserk charge), `emote.taunt` | `orc` (orcs, goblins), `half_troll` and `humanoid` (Dunlendings, hill-men, ruffians; shirriffs use `emote.war_cry` only, played as a shout) |
+| **Half-troll** | the **Base** set re-animated for the heavier body, the **LOOSE flavour** set and `attack.smash.1` (heavy two-handed overhead smash) | `half_troll` only. Half-trolls are LOOSE and never take a formation slot, but they do play `move.flee` when routing (add it to the set). |
 | **Troll** | `move.idle`, `move.walk`, `move.run`, `move.charge`, `move.flee`, `react.hurt`, `react.death`, `attack.smash.1` (overhead two-handed smash), `attack.smash.2` (sweeping swat), `emote.war_cry` (roar) | `troll` only. No formation clips: trolls never take a slot (PR #186 section 2b). |
 
 Discipline mostly changes **which** of these clips the server asks for (section 6), not the clip set. RIGID blocks brace, lower pikes and march in step. ORGANIZED squads march, then charge and break into normal combat clips. LOOSE swarms war-cry, berserk-charge and flee when their captain dies. Everything not listed falls back.
@@ -284,7 +288,7 @@ Discipline mostly changes **which** of these clips the server asks for (section 
 | `ride.lance.couched` | `hold.spear` |
 | `emote.order` | `emote.point` |
 | `emote.war_cry` | `emote.taunt`, then none |
-| `attack.smash.*` (troll) | `attack.unarmed.1` of the troll rig |
+| `attack.smash.*` (troll, half-troll) | `attack.unarmed.1` of the same rig |
 | `work.*`, `pose.kneel` | `move.idle` |
 | `social.*`, `emote.*` | none (base continues) |
 | `react.death.*` | `react.death` |
@@ -376,7 +380,7 @@ The troll smash is an ordinary attack (vanilla swing) resolved to `attack.smash.
 - It applies to **T1 and T2 only**. T0 stays on the AzureLib path with all its layers.
 - It uses Flywheel's entity visualizer API: one `TransformedInstance` per **bone part** of the rig, with instancers keyed by (rig, part, texture atlas page). A dynamic visual writes bone matrices each frame (T1: from the AzureLib bone snapshot or our sampler at 10 Hz; T2: cached key pose matrices). Skins use a per-rig texture atlas so the number of instancers stays small.
 - Held items in T1 and T2 use per-item-model instances (Flywheel library model support) for the main hand only. Armour uses per-piece instanced models built from the vanilla armour model geometry and our armour textures.
-- **Shaders:** Flywheel turns itself off when a shader pack is in use (`VisualizationManager.supportsVisualization` is false). The visualizer then hands the entity back to the normal renderer, so shader users just get the AzureLib path. Iris Flywheel Compat and Colorwheel are user choices and not tested by us beyond one smoke playtest.
+- **Shaders:** Flywheel turns itself off when a shader pack is in use (`VisualizationManager.supportsVisualization` is false). The visualizer then hands the entity back to the normal renderer, so shader users just get the AzureLib path. This is accepted (maintainer decision): with a shader pack and no compat mod, NPCs render normally through AzureLib with its LOD, just without the instancing boost. Players who install **Iris Flywheel Compat** (patches shader packs; works with many common packs, partial with advanced ones) or **Colorwheel** (needs a shader pack that supports it) get the instanced path back with shaders. These are user choices that we document but do not bundle, and we test them with one smoke playtest only. The player FAQ (`docs/faq.md`, "Why are big battles slower with shaders?") and `docs/playtest/animation.md` both say this.
 - **Exit criteria for the spike (R2-1):** at least 2x lower entity CPU at 400 NPCs in `battle` (pass B) with no visible pose errors. If it does not reach that, the code is dropped.
 
 Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywheel, and Create draws trains and contraptions with it. Neither animates skinned characters, so this phase is a real spike.
@@ -432,7 +436,7 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
   - Server: `AnimSync.setAction` with an unchanged value leaves the entity data clean (no packet); a change marks it dirty once.
 - **runtime-test** (headless client smoke): AzureLib is inside our jar, so the staging step is unchanged. R1-1 adds `-Dlotrrevival.strictAssets=true` to the JVM args so a broken geo or animation file fails CI. Note that a headless client may not draw frames, so render-path bugs are found by the benchmark and playtests, not CI.
 - **Bench** is never run in CI (needs a GPU). The `bench` source set must still compile in `./gradlew build` so it does not rot.
-- **Playtests** (`docs/playtest/animation.md`, written by R1-4): village of 30, a 200-fighter battle, the same with Sodium, Iris and Entity Culling, Animation quality presets, `debug_tier_colors`, and Epic Fight installed.
+- **Playtests** (`docs/playtest/animation.md`, written by R1-4): village of 30, a 200-fighter battle, the same with Sodium, Iris and Entity Culling, Animation quality presets, `debug_tier_colors`, and Epic Fight installed. If R2 ships, add a shaders-plus-Flywheel case: with Iris alone the battle falls back to AzureLib rendering (expected); with Iris plus Iris Flywheel Compat or Colorwheel the instanced path is active again.
 
 ## Rules and numbers
 
@@ -546,7 +550,7 @@ Every NPC type of every faction gets a model; none stays on the vanilla biped. T
 2. Formation packs for both rigs (rout and order, then brace, pike lowered, bow ready and volley, march).
 3. Cavalry (`humanoid` rider and `horse`).
 4. LOOSE flavour (war-cry, berserk charge, taunt).
-5. The `troll` rig and its set.
+5. The `half_troll` rig and its set, then the `troll` rig and its set.
 6. The weapon-class attack packs, work, social and emote.
 
 Each art ticket links section 5 and must pass the validator in `strictAssets` mode. Sizing comes from pilot #10's numbers. Opus 3 opens these, ordered so the factions in the first battle playtests (Gondor, Mordor orcs, Rohan, Uruk-hai) are complete first.
@@ -556,7 +560,7 @@ Each art ticket links section 5 and must pass the validator in `strictAssets` mo
 | # | Ticket | Days | Agent | Blocked by |
 | --- | --- | --- | --- | --- |
 | R2-1 | Optional Flywheel visualizer for T1 and T2 humanoids (per-bone instances, atlas, main-hand items), fallback when Flywheel reports no support; bench contender `azure_lod_flw`; meets the 2x exit criterion or is dropped | 2 | sonnet-1 | R1-4, the gate |
-| R2-2 | Flywheel armour pieces in T1 and T2, Iris Flywheel Compat smoke playtest | 1.5 | sonnet-2 | R2-1 |
+| R2-2 | Flywheel armour pieces in T1 and T2; Iris Flywheel Compat and Colorwheel smoke playtest; FAQ entry in `docs/faq.md` (create it if missing) and the playtest note on the shader fallback | 1.5 | sonnet-2 | R2-1 |
 
 ### Phase R3: compatibility polish
 
@@ -569,9 +573,7 @@ Each art ticket links section 5 and must pass the validator in `strictAssets` mo
 
 ## Open questions for the maintainer
 
-1. **Reference PC:** what CPU, GPU and RAM does Seth play on? The section 3 targets assume a Ryzen 5 5600 or i5-12400 class CPU with an RTX 3060 or RX 6600 class GPU.
-2. **Flywheel phase:** accept that shader users never get the instanced path, even if R2 succeeds?
-3. **Half-trolls on the `orc` rig** (scaled up) as proposed in section 5b, or a rig of their own?
+None open.
 
 ## Maintainer decisions (PR #185)
 
@@ -584,3 +586,6 @@ Each art ticket links section 5 and must pass the validator in `strictAssets` mo
    - Adaptive crowd detail is on by default.
    - AzureLib is bumped at most once per milestone, each time with a benchmark rerun.
    - Epic Fight compatibility is weapon-type data only: no `impact` or `armor_negation` tuning, and the optional armour files are dropped.
+5. **Half-trolls get their own `half_troll` rig and clip set** (section 5b and 5c).
+6. **Shader users and Flywheel:** accepted. Without a compat mod they fall back to normal AzureLib rendering. Iris Flywheel Compat or Colorwheel restores the boost, and this is documented in the FAQ and the playtest notes (section 8).
+7. **Reference PC:** Seth's specs are not shared, so the targets are calibrated against the mid-range reference PC (Ryzen 5 5600 or i5-12400, RTX 3060 or RX 6600, 16 GB). The harness compares results relative to the machine it runs on, so Seth's runs are still valid (section 3).
