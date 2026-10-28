@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.npc.datagen;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
+import io.github.sethwillemsvg.lotrrevival.core.item.CoreItems;
 import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleStats;
@@ -163,6 +164,10 @@ public final class NpcDataGen {
                     .add(NpcEntityTypes.HOBBIT_BOUNDER.get())
                     .add(NpcEntityTypes.HOBBIT_SHIRRIFF.get())
                     .add(NpcEntityTypes.BREE_HOBBIT.get());
+            tag(ModTags.EntityTypes.NPCS).add(NpcEntityTypes.HOBBIT.get());
+            for (var type : NpcEntityTypes.standardTypes()) {
+                tag(ModTags.EntityTypes.NPCS).add(type.get());
+            }
             tag(ModTags.EntityTypes.MEN)
                     .add(NpcEntityTypes.BREE_MAN.get())
                     .add(NpcEntityTypes.BREE_GUARD.get());
@@ -309,15 +314,23 @@ public final class NpcDataGen {
         public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> output) {
             for (EntityType<?> civilian : List.of(
                     NpcEntityTypes.HOBBIT.get(), NpcEntityTypes.BREE_HOBBIT.get(), NpcEntityTypes.BREE_MAN.get())) {
-                output.accept(civilian.getDefaultLootTable(), bread(true));
+                output.accept(civilian.getDefaultLootTable(), withCoins(bread(true)));
             }
             for (EntityType<?> fighter : List.of(
                     NpcEntityTypes.HOBBIT_BOUNDER.get(),
                     NpcEntityTypes.HOBBIT_SHIRRIFF.get(),
                     NpcEntityTypes.BREE_GUARD.get())) {
-                output.accept(fighter.getDefaultLootTable(), bread(false));
+                output.accept(fighter.getDefaultLootTable(), withCoins(bread(false)));
             }
-            // TODO(core silver coins): add a 0-2 lotrrevival:silver_coin pool, killed by player, once core registers it.
+        }
+
+        /** Adds a pool of 0-2 silver coins that only drops when a player made the kill. */
+        private static LootTable.Builder withCoins(LootTable.Builder table) {
+            return table.withPool(LootPool.lootPool()
+                    .setRolls(ConstantValue.exactly(1.0f))
+                    .when(net.minecraft.world.level.storage.loot.predicates.LootItemKilledByPlayerCondition.killedByPlayer())
+                    .add(LootItem.lootTableItem(CoreItems.SILVER_COIN.get())
+                            .apply(SetItemCountFunction.setCount(UniformGenerator.between(0.0f, 2.0f)))));
         }
 
         /** 0-1 bread; civilians gain up to +1 per looting level. */
