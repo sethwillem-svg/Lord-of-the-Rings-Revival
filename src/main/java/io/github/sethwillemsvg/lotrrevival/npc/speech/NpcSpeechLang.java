@@ -77,6 +77,7 @@ public final class NpcSpeechLang {
                 "Law in the Shire is mostly returning lost sheep. Still, someone has to do it.",
                 "You have a good name among us. I shall remember it.",
                 "If you ever need honest help, the Shirriff's door is open."));
+        io.github.sethwillemsvg.lotrrevival.npc.hire.progress.UnitSpeechLines.addHobbit(hobbit);
         LINES.put(NpcRace.HOBBIT, hobbit);
 
         Map<String, List<String>> man = new LinkedHashMap<>();
@@ -134,6 +135,7 @@ public final class NpcSpeechLang {
                 "A pint for the weary? On the house, this once.",
                 "Warm yourself by the fire. You are among friends here.",
                 "Half the news of the road passes through this room, you know. Ask away."));
+        io.github.sethwillemsvg.lotrrevival.npc.hire.progress.UnitSpeechLines.addMan(man);
         LINES.put(NpcRace.MAN, man);
     }
 

@@ -56,6 +56,7 @@ public final class NpcDataGen {
         generator.addProvider(event.includeServer(), new LoadoutProvider(output));
         generator.addProvider(event.includeServer(), new NpcSpawnTableProvider(output));
         io.github.sethwillemsvg.lotrrevival.npc.hire.HireDataGen.gather(event);
+        io.github.sethwillemsvg.lotrrevival.npc.hire.progress.UnitProgressDataGen.gather(event);
         generator.addProvider(event.includeServer(), new io.github.sethwillemsvg.lotrrevival.npc.trade.TradePoolProvider(output));
         generator.addProvider(event.includeServer(), new NpcLoot(output, lookup));
         generator.addProvider(event.includeServer(), new EntityTags(output, lookup, files));
