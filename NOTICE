@@ -1,0 +1,17 @@
+The Lord of the Rings: Revival
+Copyright (c) sethwillem-svg and contributors
+
+This mod bundles the following third-party software, unmodified and as a separate
+jar inside this mod's jar (jar-in-jar), so it can be replaced by the user:
+
+NovoAtlas
+  Author:   TheDeathlyCow (based on the Atlas mod by itsmiir)
+  Version:  1.8.2+1.21.1 (NeoForge)
+  License:  GNU Lesser General Public License v3.0 (LGPL-3.0)
+  Source:   https://github.com/TheDeathlyCow/novoatlas
+  Used for: generating the Middle-earth dimension from painted heightmap and biome map images.
+
+NovoAtlas itself bundles TwelveMonkeys ImageIO (BSD-3-Clause), which is carried inside its jar.
+
+The LGPL-3.0 license text is in COPYING.LESSER and applies to NovoAtlas as published by its authors.
+Our own code is also licensed under LGPL-3.0; our assets are CC BY-NC-SA 4.0 (see ASSETS_LICENSE).

@@ -1,5 +1,6 @@
 package io.github.sethwillemsvg.lotrrevival.datagen;
 
+import io.github.sethwillemsvg.lotrrevival.world.datagen.WorldDatagen;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
@@ -26,6 +27,9 @@ public final class DataGenerators {
                 event.includeServer(),
                 new FactionProviders.Tags(output, factions.getRegistryProvider(), event.getExistingFileHelper()));
         generator.addProvider(event.includeClient(), new ModLangProvider(output));
+
+        // World
+        WorldDatagen.gather(event);
         // Pods add providers here, for example:
         // generator.addProvider(event.includeServer(), new ModRecipeProvider(generator.getPackOutput(), event.getLookupProvider()));
     }

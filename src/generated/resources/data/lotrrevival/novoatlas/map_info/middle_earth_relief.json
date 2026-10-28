@@ -1,0 +1,34 @@
+{
+  "center_offset": [
+    63.28,
+    81.344
+  ],
+  "height_map": "lotrrevival:middle_earth_relief",
+  "image_wrapping": "clamp_to_edge",
+  "scaling": {
+    "horizontal_scale": {
+      "interpolation": "novoatlas:bilinear",
+      "value": 256.0
+    },
+    "vertical_scale": 0.125
+  },
+  "starting_y": 0,
+  "surface_biomes": {
+    "biomes": [
+      {
+        "biome": "lotrrevival:ocean",
+        "color": "#1F3A93"
+      },
+      {
+        "biome": "lotrrevival:shire",
+        "color": "#78B048"
+      },
+      {
+        "biome": "lotrrevival:old_forest",
+        "color": "#1F4A24"
+      }
+    ],
+    "map": "lotrrevival:middle_earth",
+    "strict": true
+  }
+}

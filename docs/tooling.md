@@ -21,7 +21,7 @@ What speeds this project up, and how to set each piece up.
 
 ## 3. Worldgen from images: NovoAtlas
 
-[NovoAtlas](https://github.com/TheDeathlyCow/novoatlas) (LGPL-3.0) builds terrain and biomes from a painted heightmap and biome map. It's wired in as a dev-runtime dependency (`novoatlas_file_id` in `gradle.properties`). The World pod makes it required once the dimension datapack lands.
+[NovoAtlas](https://github.com/TheDeathlyCow/novoatlas) (LGPL-3.0) builds terrain and biomes from a painted heightmap and biome map. It is **bundled in our jar** with ModDevGradle jar-in-jar (`jarJar` in `build.gradle`, version pinned by `novoatlas_file_id` in `gradle.properties`) and is a `required` dependency in `neoforge.mods.toml`. It is also on the runtime classpath for `runClient`, `runServer` and `runGameTestServer`. We do not compile against it: the World pod wires it through data (map_infos, density functions, biome source). Credit is in [NOTICE](../NOTICE). Verify the bundle with `unzip -l build/libs/*.jar | grep jarjar`.
 
 The Middle-earth maps must be **our own drawings**. Don't trace Mevans' map or Tolkien's published maps.
 

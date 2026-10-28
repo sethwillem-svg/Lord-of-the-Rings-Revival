@@ -40,4 +40,5 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). AI agents must read [AGENTS.md](AGENTS.
 
 - **Code:** [GNU LGPL v3.0](COPYING.LESSER) (which builds on the [GPL v3.0](LICENSE)).
 - **Assets** (textures, models, sounds, structures, lang text): [CC BY-NC-SA 4.0](ASSETS_LICENSE).
+- **Bundled libraries:** [NovoAtlas](https://github.com/TheDeathlyCow/novoatlas) (LGPL-3.0, by TheDeathlyCow) is included unmodified as a separate jar inside our jar. See [NOTICE](NOTICE).
 - Tolkien's names, places and characters are not covered by either license and belong to their respective owners.
