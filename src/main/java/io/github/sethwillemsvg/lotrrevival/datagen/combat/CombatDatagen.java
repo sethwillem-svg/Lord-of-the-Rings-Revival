@@ -41,6 +41,10 @@ public final class CombatDatagen {
         ModLangProvider.contribute(lang -> {
             lang.add("itemGroup.lotrrevival." + CombatItems.COMBAT_TAB_ID, "Combat");
             lang.add("itemGroup.lotrrevival." + CombatItems.MATERIALS_TAB_ID, "Materials");
+            lang.addEntityType(
+                    io.github.sethwillemsvg.lotrrevival.core.combat.throwing.ThrowingEntities.THROWN_SPEAR, "Thrown Spear");
+            lang.addEntityType(
+                    io.github.sethwillemsvg.lotrrevival.core.combat.throwing.ThrowingEntities.THROWN_AXE, "Thrown Axe");
             for (GearEntry entry : GearCatalog.entries()) {
                 lang.addItem(entry.item(), entry.name());
             }
