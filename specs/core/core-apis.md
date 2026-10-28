@@ -55,7 +55,7 @@ live in server config so they can be tuned without code changes.
 | Thing | Value | Notes |
 | --- | --- | --- |
 | Storage type | `float`, rounded to 0.1 on every write | Display always shows one decimal with a sign |
-| Range | -100,000.0 to +100,000.0 | Clamped on write |
+| Range | -10,000.0 to +10,000.0 (Legacy's range; maintainer decision) | Clamped on write |
 | Starting value | 0.0 | Absent map entries read as 0.0 |
 | Utumno | fixed -66,666.0 | Any faction with `fixed_alignment` ignores every change, including commands |
 | Creative / spectator | never targeted, alignment still changes | |
@@ -646,8 +646,6 @@ Command feedback uses `commands.lotrrevival.<path>` lang keys.
 
 ## Open questions
 
-1. **Range.** Is ±100,000 right, or should we cap lower (±10,000, the original's command range) to
-   keep numbers readable?
 2. **Woodland Realm hostility.** The reference notes disagree: `factions-alignment.md` says hard
    hostility below +50; `npcs.md` describes a chance-based grey zone above 0 (factor 20). This spec
    uses the hard threshold 50. Switch to threshold 0 plus `suspicion {ceiling 50, factor 20}`?
