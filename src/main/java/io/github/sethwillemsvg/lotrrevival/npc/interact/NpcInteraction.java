@@ -12,6 +12,9 @@ public final class NpcInteraction {
     private NpcInteraction() {}
 
     public static void onRightClick(NpcEntity npc, ServerPlayer player) {
+        if (io.github.sethwillemsvg.lotrrevival.npc.hire.command.UnitCommandMenus.openFor(npc, player)) {
+            return;
+        }
         if (!player.isShiftKeyDown() && npc.getRole().isTrader()) {
             NpcInteractEvent.Kind kind = npc.getRole() == NpcRole.UNIT_TRADER
                     ? NpcInteractEvent.Kind.HIRE
