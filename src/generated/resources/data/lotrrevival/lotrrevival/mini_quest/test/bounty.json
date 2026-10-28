@@ -1,0 +1,7 @@
+{
+  "group": "lotrrevival:test",
+  "objective": {
+    "type": "lotrrevival:bounty"
+  },
+  "reward_factor": 1.0
+}

@@ -11,6 +11,8 @@ import io.github.sethwillemsvg.lotrrevival.progression.trigger.KillFactionNpcTri
 import io.github.sethwillemsvg.lotrrevival.progression.trigger.ProgressionTriggers;
 import java.util.Optional;
 import java.util.function.Consumer;
+import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.critereon.ImpossibleTrigger;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -36,6 +38,14 @@ public final class CombatAchievements extends AchievementTabProvider {
                 Factions.BLUE_MOUNTAINS, Factions.DURINS_FOLK);
         kind(out, "slay_tree", FactionKind.TREE, Items.IRON_AXE, "Timber",
                 "Fell one of the walking trees for the first time.");
+
+        // Awarded by code when a bounty target kills the hunter sent after them (progression.bounty).
+        out.accept(row("turned_the_hunt")
+                .icon(Items.CROSSBOW)
+                .sortGroup(SortGroup.SPECIAL)
+                .criterion(CriteriaTriggers.IMPOSSIBLE.createCriterion(new ImpossibleTrigger.TriggerInstance()))
+                .text("The Hunted Bites Back", "Slay the bounty hunter who came for your head.")
+                .build());
     }
 
     @SafeVarargs
