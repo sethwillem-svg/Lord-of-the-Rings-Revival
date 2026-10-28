@@ -2,13 +2,15 @@
   "default": {
     "head": [
       {
-        "dye": 5996346,
-        "item": "minecraft:leather_helmet"
+        "item": "lotrrevival:shire_helmet"
       }
     ],
     "mainhand": [
       {
-        "item": "minecraft:iron_sword"
+        "item": "lotrrevival:bronze_dagger"
+      },
+      {
+        "item": "lotrrevival:iron_dagger"
       }
     ]
   }
