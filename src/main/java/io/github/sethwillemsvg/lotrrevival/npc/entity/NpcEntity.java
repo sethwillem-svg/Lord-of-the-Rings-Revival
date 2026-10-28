@@ -9,6 +9,7 @@ import io.github.sethwillemsvg.lotrrevival.core.faction.FactionMember;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.IdleGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.combat.CombatGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.combat.NpcCombat;
+import io.github.sethwillemsvg.lotrrevival.npc.ai.combat.Retaliation;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.NpcGroundNavigation;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.SafetyGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcLoadoutData;
@@ -93,6 +94,8 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember, 
 
     /** Game time of the last line spoken to each player. Transient on purpose: a reload resets cooldowns. */
     private final Map<UUID, Long> speechCooldowns = new HashMap<>();
+
+    private final Retaliation retaliation = new Retaliation(this);
 
     protected NpcEntity(
             EntityType<? extends NpcEntity> type,
@@ -426,6 +429,11 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember, 
         CombatGoals.install(this, goalSelector, targetSelector, race);
     }
 
+    /** Retaliation state (hit and kill reactions); see {@link Retaliation}. */
+    public Retaliation retaliation() {
+        return retaliation;
+    }
+
     /** Home-bound (structure and anchor) and hired NPCs never despawn; wild NPCs follow the despawn rules. */
     @Override
     public boolean requiresCustomPersistence() {
@@ -487,12 +495,18 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember, 
     }
 
     /**
-     * The attacker slot of target priority ("whoever attacked me"), or null. The retaliation ticket overrides this;
-     * the combat target goal takes it ahead of every other candidate.
+     * The attacker slot of target priority ("whoever attacked me"), or null. The combat target goal takes it ahead
+     * of every other candidate.
      */
     @Nullable
     public LivingEntity retaliationTarget() {
-        return null;
+        return retaliation.target();
+    }
+
+    @Override
+    protected void customServerAiStep() {
+        super.customServerAiStep();
+        retaliation.tick();
     }
 
     /** NPC melee deals 75% of the held weapon's attack damage (unarmed: the race value); see {@link NpcCombat}. */

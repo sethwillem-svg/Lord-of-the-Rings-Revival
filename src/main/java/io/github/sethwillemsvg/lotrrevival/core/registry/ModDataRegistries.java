@@ -51,6 +51,23 @@ public final class ModDataRegistries {
         return ResourceKey.createRegistryKey(LOTRRevival.id("mini_quest"));
     }
 
+    // World-owned registries (waypoints and roads), bound by the World pod through registerSynced.
+
+    /** {@code lotrrevival:waypoint}. */
+    public static <T> ResourceKey<Registry<T>> waypoint() {
+        return ResourceKey.createRegistryKey(LOTRRevival.id("waypoint"));
+    }
+
+    /** {@code lotrrevival:waypoint_region}. */
+    public static <T> ResourceKey<Registry<T>> waypointRegion() {
+        return ResourceKey.createRegistryKey(LOTRRevival.id("waypoint_region"));
+    }
+
+    /** {@code lotrrevival:road}. */
+    public static <T> ResourceKey<Registry<T>> road() {
+        return ResourceKey.createRegistryKey(LOTRRevival.id("road"));
+    }
+
     /**
      * Registers a datapack registry that is synced to clients (the codec doubles as network codec).
      * Pods call this from their {@code init}, before {@code DataPackRegistryEvent.NewRegistry} fires.

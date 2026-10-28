@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:hobbit",
+    "rank": "r3"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.hobbit_hearthwarden"
+  },
+  "text_feminine": {
+    "translate": "title.lotrrevival.rank.hobbit_hearthwarden.feminine"
+  }
+}

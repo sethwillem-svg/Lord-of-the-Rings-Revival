@@ -42,6 +42,23 @@ public abstract class ValidateMapTask extends DefaultTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract DirectoryProperty getImagesDir();
 
+    /** Expected generated-JSON files for the byte-for-byte golden test. Defaults to buildSrc/src/test/resources/golden. */
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract DirectoryProperty getGoldenDir();
+
+    /** Core's {@code Factions.java}, compared with the validator's copy of the faction ids. */
+    @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract RegularFileProperty getFactionSource();
+
+    public ValidateMapTask() {
+        var project = getProject().getLayout().getProjectDirectory();
+        getGoldenDir().convention(project.dir("buildSrc/src/test/resources/golden"));
+        getFactionSource()
+                .convention(project.file("src/main/java/io/github/sethwillemsvg/lotrrevival/core/faction/Factions.java"));
+    }
+
     /** Marker so the task is up to date when nothing changed. */
     @OutputFile
     public abstract RegularFileProperty getMarker();
@@ -50,6 +67,17 @@ public abstract class ValidateMapTask extends DefaultTask {
     public void validate() throws IOException {
         BiomeTable table = BiomeTable.parse(getBiomeTableSource().get().getAsFile().toPath());
         String selfTest = MapValidator.selfTest(table);
+        if (selfTest != null) {
+            throw new GradleException(selfTest);
+        }
+
+        selfTest = TravelValidator.selfTest(table);
+        if (selfTest == null) {
+            selfTest = TravelJson.goldenTest(getGoldenDir().get().getAsFile().toPath());
+        }
+        if (selfTest == null) {
+            selfTest = FactionIds.compareWithCore(getFactionSource().get().getAsFile().toPath());
+        }
         if (selfTest != null) {
             throw new GradleException(selfTest);
         }
@@ -66,6 +94,12 @@ public abstract class ValidateMapTask extends DefaultTask {
         ImageIO.setUseCache(false);
         BufferedImage heightImage = readHeightmap(images.resolve("data/lotrrevival/novoatlas/heightmap/middle_earth.png"), problems);
         BufferedImage biomeImage = readBiomeMap(images.resolve("data/lotrrevival/novoatlas/biome_map/middle_earth.png"), problems);
+        if (biomeImage != null) {
+            TravelSource travel = TravelSource.load(getSourceDir().get().getAsFile().toPath());
+            problems.addAll(TravelValidator.validate(
+                            travel, table, windows, new TravelValidator.GridLookup(new BiomeImage(biomeImage), table))
+                    .lines());
+        }
         if (heightImage != null && biomeImage != null) {
             problems.addAll(MapValidator.validateImages(
                             new HeightImage(heightImage), new BiomeImage(biomeImage), table, windows, landing, source.landmarks)

@@ -18,10 +18,12 @@ public final class NpcMod {
     public static void init(IEventBus modBus) {
         NpcEntityTypes.init(modBus);
         NpcItems.init(modBus);
+        io.github.sethwillemsvg.lotrrevival.npc.friendlyfire.NpcPlayerPrefs.init();
         NeoForge.EVENT_BUS.addListener(NpcMod::onAddReloadListeners);
         NpcAttachments.init();
         NpcAnchorEvents.register();
         io.github.sethwillemsvg.lotrrevival.npc.hire.HireAttachments.init();
+        io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTrade.init();
         NpcConfig.register(net.neoforged.fml.ModLoadingContext.get().getActiveContainer());
         NeoForge.EVENT_BUS.addListener(io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcSpawner::onLevelTick);
     }
