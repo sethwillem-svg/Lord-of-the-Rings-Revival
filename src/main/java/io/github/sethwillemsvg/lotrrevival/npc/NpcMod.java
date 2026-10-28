@@ -1,5 +1,6 @@
 package io.github.sethwillemsvg.lotrrevival.npc;
 
+import io.github.sethwillemsvg.lotrrevival.npc.data.NpcLoadoutData;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntityTypes;
 import io.github.sethwillemsvg.lotrrevival.npc.item.NpcItems;
@@ -19,5 +20,6 @@ public final class NpcMod {
 
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new NpcRoleData());
+        event.addListener(new NpcLoadoutData());
     }
 }

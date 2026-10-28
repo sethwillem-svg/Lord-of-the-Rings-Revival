@@ -27,6 +27,10 @@ public record NpcRoleStats(Optional<Float> tradeMin, Optional<Float> hireMin, fl
         return new NpcRoleStats(Optional.empty(), Optional.empty(), killValue);
     }
 
+    public static NpcRoleStats unitTrader(float tradeMin, float hireMin, float killValue) {
+        return new NpcRoleStats(Optional.of(tradeMin), Optional.of(hireMin), killValue);
+    }
+
     public static NpcRoleStats trader(float tradeMin, float killValue) {
         return new NpcRoleStats(Optional.of(tradeMin), Optional.empty(), killValue);
     }
