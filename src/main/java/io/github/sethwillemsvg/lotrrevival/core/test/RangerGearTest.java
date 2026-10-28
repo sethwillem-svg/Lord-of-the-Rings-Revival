@@ -134,7 +134,9 @@ public final class RangerGearTest {
                 1, 3, List.of(new ItemStack(Items.IRON_INGOT), new ItemStack(Items.IRON_INGOT), new ItemStack(Items.STICK)));
         Optional<ItemStack> result = craft(helper, sword, rangerTable);
         helper.assertTrue(result.isPresent() && result.get().is(item("ranger_sword")), "ranger sword on the ranger table");
-        helper.assertTrue(craft(helper, sword, FactionTables.GONDOR.block().get()).isEmpty(), "not on the Gondor table");
+        // The Gondor table has its own sword with this shape; it must never give the Ranger one.
+        Optional<ItemStack> gondor = craft(helper, sword, FactionTables.GONDOR.block().get());
+        helper.assertTrue(gondor.isEmpty() || !gondor.get().is(item("ranger_sword")), "no ranger sword on the Gondor table");
         helper.assertTrue(craft(helper, sword, Blocks.CRAFTING_TABLE).isEmpty(), "not on the vanilla table");
         // The vanilla table only ever produces the vanilla iron sword for this grid.
         Optional<RecipeHolder<CraftingRecipe>> vanilla =

@@ -544,9 +544,10 @@ public final class AlignmentTest {
     public static void commandsWork(GameTestHelper helper) {
         ServerPlayer p = helper.makeMockServerPlayerInLevel();
         try {
-            var server = helper.getLevel().getServer();
-            var source = server.createCommandSourceStack().withPermission(4).withSuppressedOutput();
-            String name = p.getGameProfile().getName();
+            // Mock players all share one name and other tests' mocks may be online at the same time,
+            // so run the commands as this player and target it with @s instead of by name.
+            var source = p.createCommandSourceStack().withPermission(4).withSuppressedOutput();
+            String name = "@s";
             run(helper, source, "lotr alignment set " + name + " gondor 600");
             expect(helper, p, Factions.GONDOR, 600.0f);
             run(helper, source, "lotr alignment add " + name + " gondor -100.5");
