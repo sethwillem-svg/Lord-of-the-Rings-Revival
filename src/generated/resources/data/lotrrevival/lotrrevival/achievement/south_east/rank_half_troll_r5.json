@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.rank_half_troll_r5.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:bone"
+  },
+  "rank": {
+    "faction": "lotrrevival:half_troll",
+    "rank": "r5"
+  },
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "fallback": "r5",
+    "translate": "faction.lotrrevival.half_troll.rank.r5"
+  }
+}

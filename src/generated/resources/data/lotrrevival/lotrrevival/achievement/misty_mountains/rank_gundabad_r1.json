@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.misty_mountains.rank_gundabad_r1.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:cobbled_deepslate"
+  },
+  "rank": {
+    "faction": "lotrrevival:gundabad",
+    "rank": "r1"
+  },
+  "sort_group": "special",
+  "tab": "misty_mountains",
+  "title": {
+    "fallback": "r1",
+    "translate": "faction.lotrrevival.gundabad.rank.r1"
+  }
+}

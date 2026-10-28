@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.lothlorien.kill_lothlorien.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:bow"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:lothlorien"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "lothlorien",
+  "title": {
+    "translate": "achievement.lotrrevival.lothlorien.kill_lothlorien.title"
+  }
+}

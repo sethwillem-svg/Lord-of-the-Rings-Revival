@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.gondor.kill_gondor.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:diamond_sword"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:gondor"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "gondor",
+  "title": {
+    "translate": "achievement.lotrrevival.gondor.kill_gondor.title"
+  }
+}

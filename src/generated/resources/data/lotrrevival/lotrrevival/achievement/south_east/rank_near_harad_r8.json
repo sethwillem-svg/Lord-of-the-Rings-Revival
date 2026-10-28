@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.rank_near_harad_r8.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:chiseled_sandstone"
+  },
+  "rank": {
+    "faction": "lotrrevival:near_harad",
+    "rank": "r8"
+  },
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "fallback": "r8",
+    "translate": "faction.lotrrevival.near_harad.rank.r8"
+  }
+}

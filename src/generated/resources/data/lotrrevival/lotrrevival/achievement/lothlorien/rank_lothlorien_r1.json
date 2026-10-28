@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.lothlorien.rank_lothlorien_r1.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:golden_carrot"
+  },
+  "rank": {
+    "faction": "lotrrevival:lothlorien",
+    "rank": "r1"
+  },
+  "sort_group": "special",
+  "tab": "lothlorien",
+  "title": {
+    "fallback": "r1",
+    "translate": "faction.lotrrevival.lothlorien.rank.r1"
+  }
+}

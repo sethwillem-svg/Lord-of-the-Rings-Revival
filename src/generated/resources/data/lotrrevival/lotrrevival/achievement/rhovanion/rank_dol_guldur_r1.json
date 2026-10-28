@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.rank_dol_guldur_r1.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:spider_eye"
+  },
+  "rank": {
+    "faction": "lotrrevival:dol_guldur",
+    "rank": "r1"
+  },
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "fallback": "r1",
+    "translate": "faction.lotrrevival.dol_guldur.rank.r1"
+  }
+}

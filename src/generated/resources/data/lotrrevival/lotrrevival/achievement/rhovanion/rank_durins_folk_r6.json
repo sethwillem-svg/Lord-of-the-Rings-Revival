@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.rank_durins_folk_r6.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:anvil"
+  },
+  "rank": {
+    "faction": "lotrrevival:durins_folk",
+    "rank": "r6"
+  },
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "fallback": "r6",
+    "translate": "faction.lotrrevival.durins_folk.rank.r6"
+  }
+}

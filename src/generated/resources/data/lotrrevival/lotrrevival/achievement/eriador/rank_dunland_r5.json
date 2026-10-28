@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.rank_dunland_r5.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:leather"
+  },
+  "rank": {
+    "faction": "lotrrevival:dunland",
+    "rank": "r5"
+  },
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "fallback": "r5",
+    "translate": "faction.lotrrevival.dunland.rank.r5"
+  }
+}

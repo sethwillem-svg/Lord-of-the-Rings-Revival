@@ -3,6 +3,7 @@ package io.github.sethwillemsvg.lotrrevival.datagen;
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.progression.datagen.achievement.AchievementDatagen;
 import io.github.sethwillemsvg.lotrrevival.progression.datagen.title.TitleDatagen;
+import io.github.sethwillemsvg.lotrrevival.progression.datagen.quest.QuestDatagen;
 import io.github.sethwillemsvg.lotrrevival.world.datagen.WorldDatagen;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistrySetBuilder;
@@ -32,6 +33,7 @@ public final class DataGenerators {
         WorldDatagen.addRegistries(registries);
         AchievementDatagen.addRegistries(registries);
         TitleDatagen.addRegistries(registries);
+        QuestDatagen.addRegistries(registries);
         DatapackBuiltinEntriesProvider entries = generator.addProvider(
                 event.includeServer(),
                 new DatapackBuiltinEntriesProvider(output, lookup, registries, Set.of(LOTRRevival.MOD_ID)));
@@ -63,6 +65,9 @@ public final class DataGenerators {
         // Progression: titles lang (the entries ride in the shared registry provider)
         TitleDatagen.registerLang();
         TitleDatagen.gather(event, registryLookup);
+
+        // Progression: mini-quest lang (registry entries are added above)
+        QuestDatagen.gather();
 
         // NPC
         io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcDataGen.gather(event);

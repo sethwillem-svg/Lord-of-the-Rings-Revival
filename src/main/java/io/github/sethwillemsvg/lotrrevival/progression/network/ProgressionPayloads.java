@@ -1,5 +1,6 @@
 package io.github.sethwillemsvg.lotrrevival.progression.network;
 
+import io.github.sethwillemsvg.lotrrevival.client.progression.ClientQuests;
 import io.github.sethwillemsvg.lotrrevival.client.progression.AchievementToastHandler;
 import io.github.sethwillemsvg.lotrrevival.client.progression.ClientAchievements;
 import io.github.sethwillemsvg.lotrrevival.client.progression.ClientTitles;
@@ -17,6 +18,14 @@ public final class ProgressionPayloads {
 
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = CoreNetwork.registrar(event);
+        registrar.playToClient(
+                QuestsFullPayload.TYPE,
+                QuestsFullPayload.STREAM_CODEC,
+                (payload, ctx) -> ClientQuests.applyFull(payload));
+        registrar.playToClient(
+                QuestsDeltaPayload.TYPE,
+                QuestsDeltaPayload.STREAM_CODEC,
+                (payload, ctx) -> ClientQuests.applyDelta(payload));
         registrar.playToClient(
                 AchievementsFullPayload.TYPE,
                 AchievementsFullPayload.STREAM_CODEC,

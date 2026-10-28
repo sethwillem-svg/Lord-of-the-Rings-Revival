@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rohan.kill_fangorn.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:wooden_axe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:fangorn"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "rohan",
+  "title": {
+    "translate": "achievement.lotrrevival.rohan.kill_fangorn.title"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rohan.rank_rohan_r3.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:saddle"
+  },
+  "rank": {
+    "faction": "lotrrevival:rohan",
+    "rank": "r3"
+  },
+  "sort_group": "special",
+  "tab": "rohan",
+  "title": {
+    "fallback": "r3",
+    "translate": "faction.lotrrevival.rohan.rank.r3"
+  }
+}

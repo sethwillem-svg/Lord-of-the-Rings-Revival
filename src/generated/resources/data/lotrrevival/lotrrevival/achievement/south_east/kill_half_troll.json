@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.kill_half_troll.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:mace"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:half_troll"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "translate": "achievement.lotrrevival.south_east.kill_half_troll.title"
+  }
+}
