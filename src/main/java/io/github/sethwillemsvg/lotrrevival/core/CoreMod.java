@@ -20,5 +20,8 @@ public final class CoreMod {
         io.github.sethwillemsvg.lotrrevival.core.item.CoreItems.init(modBus);
         io.github.sethwillemsvg.lotrrevival.core.coin.CoinItems.init(modBus);
         NeoForge.EVENT_BUS.addListener(LotrCommand::onRegisterCommands);
+        // Core #105: bronze and silver banner-base metals
+        io.github.sethwillemsvg.lotrrevival.core.metal.BannerMetals.init(modBus);
+        // End Core #105
     }
 }

@@ -57,6 +57,10 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
 
+        // Core #105: bronze and silver banner-base metals
+        BannerMetalProviders.gather(event);
+        // End Core #105
+
         // World
         WorldDatagen.gather(event, registryLookup);
 
