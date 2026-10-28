@@ -8,6 +8,6 @@ public enum GearKind {
     BOW,
     CROSSBOW,
     SLING,
-    /** Ammunition (pebbles): a flat generated model, tags and recipes only. */
+    /** Stackable ammunition (pebbles, crossbow bolts): a flat generated model, tags and recipes only. */
     AMMO
 }

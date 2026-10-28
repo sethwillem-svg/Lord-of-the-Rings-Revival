@@ -20,6 +20,8 @@
     "lotrrevival:ranger_bow",
     "lotrrevival:gondor_bow",
     "lotrrevival:mordor_bow",
-    "lotrrevival:sling"
+    "lotrrevival:sling",
+    "lotrrevival:bronze_crossbow",
+    "lotrrevival:iron_crossbow"
   ]
 }

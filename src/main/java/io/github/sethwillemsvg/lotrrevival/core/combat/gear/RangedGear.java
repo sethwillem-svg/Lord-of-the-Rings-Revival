@@ -68,5 +68,6 @@ public final class RangedGear {
     /** Loads the class so its static gear fields register. Called from {@code CombatItems.init}. */
     public static void init() {
         PebbleTypes.init();
+        CrossbowGear.init();
     }
 }
