@@ -2,15 +2,29 @@ package io.github.sethwillemsvg.lotrrevival.datagen;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Factions;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
 
 /** English (en_us) lang entries. Replaces the hand-written lang file. */
-final class ModLangProvider extends LanguageProvider {
+public final class ModLangProvider extends LanguageProvider {
+    private static final List<Consumer<LanguageProvider>> CONTRIBUTORS = new ArrayList<>();
+
     ModLangProvider(PackOutput output) {
         super(output, LOTRRevival.MOD_ID, "en_us");
+    }
+
+    /**
+     * Lets a pod add en_us keys (only one provider may write en_us.json). Call from the pod's
+     * {@code init} or its datagen entry point; contributors run, in registration order, at the end of
+     * {@code addTranslations}. Keys that collide with Core's fail the datagen run.
+     */
+    public static synchronized void contribute(Consumer<LanguageProvider> contributor) {
+        CONTRIBUTORS.add(contributor);
     }
 
     private static final Map<String, String> FACTION_NAMES = new LinkedHashMap<>();
@@ -50,6 +64,8 @@ final class ModLangProvider extends LanguageProvider {
     @Override
     protected void addTranslations() {
         add("itemGroup.lotrrevival", "The Lord of the Rings: Revival");
+        add("key.categories.lotrrevival", "The Lord of the Rings: Revival");
+        add("item.lotrrevival.silver_coin", "Silver Coin");
 
         for (var key : Factions.REAL) {
             check(key.location().getPath());
@@ -113,6 +129,11 @@ final class ModLangProvider extends LanguageProvider {
 
         addBrewing();
         io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcLang.addTo(this);
+        List<Consumer<LanguageProvider>> contributors;
+        synchronized (ModLangProvider.class) {
+            contributors = new ArrayList<>(CONTRIBUTORS);
+        }
+        contributors.forEach(contributor -> contributor.accept(this));
     }
 
     // Core: brewing
