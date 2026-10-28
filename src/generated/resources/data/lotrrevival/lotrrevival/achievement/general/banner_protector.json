@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.banner_protector.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:gold_block"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.banner_protector.title"
+  }
+}

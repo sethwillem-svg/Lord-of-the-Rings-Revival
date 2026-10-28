@@ -64,6 +64,17 @@ public final class GeneralAchievements extends AchievementTabProvider {
                         Factions.GUNDABAD, Factions.ANGMAR, Factions.ISENGARD, Factions.MORDOR)
                 .build());
 
+        // Banners (#119): the first protecting banner a player raises.
+        out.accept(row("banner_protector")
+                .icon(Items.GOLD_BLOCK)
+                .sortGroup(SortGroup.SPECIAL)
+                .criterion(ProgressionTriggers.PLACE_BANNER
+                        .get()
+                        .createCriterion(new net.minecraft.advancements.critereon.PlayerTrigger.TriggerInstance(
+                                Optional.empty())))
+                .text("Banner Raiser", "Raise a banner on a block of gold, silver or bronze and claim the land around it.")
+                .build());
+
         explorer(out, 10, Items.LEATHER_BOOTS, "Wayfarer", "Set foot in 10 different biomes.");
         explorer(out, 20, Items.CHAINMAIL_BOOTS, "Far Wanderer", "Set foot in 20 different biomes.");
         explorer(out, 30, Items.IRON_BOOTS, "Long Road Walker", "Set foot in 30 different biomes.");

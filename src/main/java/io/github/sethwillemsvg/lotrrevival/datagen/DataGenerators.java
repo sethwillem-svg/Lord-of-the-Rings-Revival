@@ -69,6 +69,9 @@ public final class DataGenerators {
         // Progression: mini-quest lang (registry entries are added above)
         QuestDatagen.gather();
 
+        // Progression: single entry point for the pod's own providers (banners now, later tickets add theirs inside)
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.ProgressionDataProviders.gather(event);
+
         // NPC
         io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcDataGen.gather(event);
         // Pods add providers here, for example:

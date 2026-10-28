@@ -21,6 +21,12 @@ public final class ProgressionConfig {
     public static final ModConfigSpec.BooleanValue STRICT_FACTION_TITLES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ACHIEVEMENT_BROADCAST_DENYLIST;
 
+    // Banners (#119)
+    public static final ModConfigSpec.BooleanValue BANNER_PROTECTION_ENABLED;
+    public static final ModConfigSpec.BooleanValue BANNER_SELF_PROTECTION_ENABLED;
+    public static final ModConfigSpec.IntValue BANNER_WARNING_COOLDOWN_TICKS;
+    public static final ModConfigSpec.BooleanValue BANNER_EXPLOSION_PROTECTION;
+
     public static final ModConfigSpec.ConfigValue<String> QUEST_TRACKER_SIDE;
 
     static {
@@ -42,6 +48,16 @@ public final class ProgressionConfig {
                         List.of("lotrrevival:shire/kill_hobbit"),
                         () -> "lotrrevival:shire/kill_hobbit",
                         o -> o instanceof String);
+        BANNER_PROTECTION_ENABLED = server.comment("Banners on bronze, silver or gold blocks protect land.")
+                .define("bannerProtectionEnabled", true);
+        BANNER_SELF_PROTECTION_ENABLED = server.comment("Honour the per-banner self-protection setting "
+                        + "(nobody but the owner can break a protecting banner).")
+                .define("bannerSelfProtectionEnabled", true);
+        BANNER_WARNING_COOLDOWN_TICKS = server.comment("Minimum ticks between 'land is protected' warnings per player.")
+                .defineInRange("bannerWarningCooldownTicks", 20, 0, 1200);
+        BANNER_EXPLOSION_PROTECTION = server.comment("Explosions cannot destroy blocks inside protected land "
+                        + "unless the responsible player has Full permission there.")
+                .define("bannerExplosionProtection", true);
         server.pop();
         SERVER_SPEC = server.build();
 
