@@ -2,10 +2,16 @@ package io.github.sethwillemsvg.lotrrevival.world.road;
 
 import com.mojang.serialization.Codec;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.IntUnaryOperator;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.block.PipeBlock;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.tags.BlockTags;
@@ -82,7 +88,65 @@ public final class RoadFeature extends Feature<NoneFeatureConfiguration> {
         for (RoadPlanner.Column column : columns) {
             build(level, column);
         }
+        List<RoadPlanner.Bridge> bridges =
+                RoadPlanner.planBridges(network, terrain, minX, minZ, maxX, maxZ, structures);
+        buildBridges(level, bridges);
         return columns;
+    }
+
+    /** Builds bridge columns: piers first, then the deck layer, then the rails (joined to their rail neighbours). */
+    public static void buildBridges(LevelAccessor level, List<RoadPlanner.Bridge> bridges) {
+        if (bridges.isEmpty()) {
+            return;
+        }
+        Set<Long> rails = new HashSet<>();
+        for (RoadPlanner.Bridge b : bridges) {
+            if (b.rail()) {
+                rails.add(BlockPos.asLong(b.x(), 0, b.z()));
+            }
+        }
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (RoadPlanner.Bridge b : bridges) {
+            BridgeStyle style = b.style();
+            if (b.pier()) {
+                // From just under the deck to the bed; the water around the pier stays.
+                for (int y = b.floor() + 1; y < b.deckY(); y++) {
+                    level.setBlock(pos.set(b.x(), y, b.z()), style.pier(), FLAGS);
+                }
+            }
+            level.setBlock(pos.set(b.x(), b.deckY(), b.z()), b.halfStep() ? style.deckSlab() : style.deck(), FLAGS);
+            int clearFrom = b.deckY() + 1;
+            if (b.rail()) {
+                BlockState fence = style.rail();
+                fence = connect(level, rails, fence, b.x(), b.deckY() + 1, b.z(), Direction.NORTH);
+                fence = connect(level, rails, fence, b.x(), b.deckY() + 1, b.z(), Direction.SOUTH);
+                fence = connect(level, rails, fence, b.x(), b.deckY() + 1, b.z(), Direction.EAST);
+                fence = connect(level, rails, fence, b.x(), b.deckY() + 1, b.z(), Direction.WEST);
+                level.setBlock(pos.set(b.x(), b.deckY() + 1, b.z()), fence, FLAGS);
+                clearFrom++;
+            }
+            clearAbove(level, pos, b.x(), b.z(), clearFrom);
+        }
+    }
+
+    private static BlockState connect(
+            LevelAccessor level, Set<Long> rails, BlockState fence, int x, int y, int z, Direction side) {
+        int nx = x + side.getStepX();
+        int nz = z + side.getStepZ();
+        boolean joined = rails.contains(BlockPos.asLong(nx, 0, nz))
+                || level.getBlockState(new BlockPos(nx, y, nz)).is(fence.getBlock());
+        BooleanProperty property = PipeBlock.PROPERTY_BY_DIRECTION.get(side);
+        return joined ? fence.setValue(property, true) : fence;
+    }
+
+    private static void clearAbove(LevelAccessor level, BlockPos.MutableBlockPos pos, int x, int z, int from) {
+        for (int y = from; y < from + CLEAR_HEIGHT; y++) {
+            pos.set(x, y, z);
+            BlockState above = level.getBlockState(pos);
+            if (!above.isAir() && isClearable(above)) {
+                level.setBlock(pos, Blocks.AIR.defaultBlockState(), FLAGS);
+            }
+        }
     }
 
     private static void build(LevelAccessor level, RoadPlanner.Column column) {
@@ -164,15 +228,19 @@ public final class RoadFeature extends Feature<NoneFeatureConfiguration> {
                     : level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, x, z) - 1;
             int min = level.getMinBuildHeight();
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
+            // A column that already carries a bridge (deck, rail, pier) is a water column, not ground.
+            boolean bridge = false;
             while (y >= min) {
                 pos.setY(y);
                 BlockState state = level.getBlockState(pos);
-                if (!isSkippable(state, level, pos)) {
+                if (RoadStyles.isBridgeBlock(state)) {
+                    bridge = true;
+                } else if (!(bridge && state.is(Blocks.STONE_BRICKS)) && !isSkippable(state, level, pos)) {
                     break;
                 }
                 y--;
             }
-            if (y < min) {
+            if (y < min || bridge) {
                 return RoadPlanner.NO_GROUND;
             }
             pos.setY(y);
@@ -185,6 +253,36 @@ public final class RoadFeature extends Feature<NoneFeatureConfiguration> {
                 return RoadPlanner.NO_GROUND;
             }
             return y;
+        }
+
+        @Override
+        @Nullable
+        public RoadPlanner.Water water(int x, int z) {
+            int y = startY != null
+                    ? startY.applyAsInt(x)
+                    : level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
+            int min = level.getMinBuildHeight();
+            BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
+            while (y >= min) {
+                pos.setY(y);
+                BlockState state = level.getBlockState(pos);
+                if (!RoadStyles.isBridgeBlock(state) && !isSkippable(state, level, pos)) {
+                    break;
+                }
+                y--;
+            }
+            if (y < min || !level.getFluidState(pos.setY(y)).is(FluidTags.WATER)) {
+                return null;
+            }
+            int surface = y;
+            // Water, kelp and seagrass all carry a water fluid state; the first block without one is the bed.
+            while (y >= min && level.getFluidState(pos.setY(y)).is(FluidTags.WATER)) {
+                y--;
+            }
+            if (y < min || level.getBlockState(pos.setY(y)).is(BlockTags.ICE)) {
+                return null;
+            }
+            return new RoadPlanner.Water(surface, y);
         }
 
         private static boolean isSkippable(BlockState state, LevelAccessor level, BlockPos.MutableBlockPos pos) {

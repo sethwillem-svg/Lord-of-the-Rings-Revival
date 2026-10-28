@@ -29,6 +29,124 @@ public final class RoadPlanner {
         /** Biome of the column at the given top block. */
         @Nullable
         ResourceKey<Biome> biome(int x, int z, int top);
+
+        /** The water over a column: its top water block and the top solid block under it, or null when dry. */
+        @Nullable
+        default Water water(int x, int z) {
+            return null;
+        }
+    }
+
+    /**
+     * Water over a column.
+     *
+     * @param surface y of the top water block
+     * @param floor y of the top solid block under the water
+     */
+    public record Water(int surface, int floor) {
+        /** Depth {@code d}: water surface y minus the top solid block under it. */
+        public int depth() {
+            return surface - floor;
+        }
+    }
+
+    /** Depth beyond which the deck stops rising (deck height is at most 5 blocks). */
+    public static final int MAX_DEPTH = 10;
+
+    /** Arc length between piers, in blocks. */
+    public static final int PIER_SPACING = 8;
+
+    /**
+     * One bridge column to build.
+     *
+     * @param surface y of the top water block
+     * @param floor y of the top solid block under the water
+     * @param deckY y of the deck block (a bottom slab when {@code halfStep})
+     * @param rail whether an outermost column carries a fence on the deck
+     * @param pier whether a pier runs from the deck down to the bed
+     */
+    public record Bridge(
+            int x,
+            int z,
+            int surface,
+            int floor,
+            int deckY,
+            boolean halfStep,
+            boolean rail,
+            boolean pier,
+            BridgeStyle style) {}
+
+    /**
+     * Deck y for water of depth {@code d}: {@code min(d, 10) / 2} blocks above the water surface, the remaining half
+     * as a slab. A whole height h puts the deck block at {@code surface + h}; a height of h + 0.5 puts the slab at
+     * {@code surface + h + 1}, so its top is h + 0.5 above the water's top face.
+     */
+    public static int deckY(int surface, int depth) {
+        return surface + (Math.min(depth, MAX_DEPTH) + 1) / 2;
+    }
+
+    /** Whether the deck for this depth ends in a half step. */
+    public static boolean deckHasHalf(int depth) {
+        return Math.min(depth, MAX_DEPTH) % 2 == 1;
+    }
+
+    /**
+     * Plans the bridge columns in a rectangle (inclusive): road columns over water. Structure boxes and the repair
+     * roll follow the land rules. Rails sit where the distance from the centre is above {@code width - 1}; piers
+     * where, on a rail column, floor(arc length) is a multiple of 8.
+     */
+    public static List<Bridge> planBridges(
+            RoadNetwork network, Terrain terrain, int minX, int minZ, int maxX, int maxZ, List<BoundingBox> skip) {
+        List<Bridge> out = new ArrayList<>();
+        if (network.isEmpty()) {
+            return out;
+        }
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                if (network.edgeDistance(x, z, 0) > 0) {
+                    continue;
+                }
+                Water water = terrain.water(x, z);
+                if (water == null || water.depth() < 1) {
+                    continue;
+                }
+                ResourceKey<Biome> biome = terrain.biome(x, z, water.floor());
+                if (RoadHash.unit(x, z, RoadHash.REPAIR) >= RoadStyles.forBiome(biome).repair()) {
+                    continue;
+                }
+                int deck = deckY(water.surface(), water.depth());
+                if (inBox(skip, x, z, water.floor(), deck + 1)) {
+                    continue;
+                }
+                RoadNetwork.Hit hit = network.nearest(x, z, network.maxHalfWidth() + 2.0);
+                boolean rail = hit != null && hit.distance() > hit.halfWidth() - 1;
+                boolean pier = rail && (long) Math.floor(hit.arcLength()) % PIER_SPACING == 0;
+                out.add(new Bridge(
+                        x,
+                        z,
+                        water.surface(),
+                        water.floor(),
+                        deck,
+                        deckHasHalf(water.depth()),
+                        rail,
+                        pier,
+                        RoadStyles.bridgeFor(biome)));
+            }
+        }
+        return out;
+    }
+
+    private static boolean inBox(List<BoundingBox> skip, int x, int z, int minY, int maxY) {
+        if (skip.isEmpty()) {
+            return false;
+        }
+        BoundingBox column = new BoundingBox(x, minY, z, x, maxY, z);
+        for (BoundingBox box : skip) {
+            if (box.intersects(column)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
