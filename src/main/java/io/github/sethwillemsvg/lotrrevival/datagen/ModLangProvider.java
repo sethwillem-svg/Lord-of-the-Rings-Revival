@@ -110,7 +110,26 @@ final class ModLangProvider extends LanguageProvider {
         add("pledge.lotrrevival.broken.below_rank", "Your pledge to %s is broken: you no longer meet its requirements.");
         add("pledge.lotrrevival.broken.command", "Your pledge to %s was ended.");
         add("pledge.lotrrevival.cooldown_ended", "You may pledge yourself to a faction again.");
+
+        addBrewing();
     }
+
+    // Core: brewing
+    private void addBrewing() {
+        add("item.lotrrevival.wooden_mug", "Wooden Mug");
+        add("item.lotrrevival.ale", "Ale");
+        add("item.lotrrevival.cider", "Cider");
+        add("item.lotrrevival.mead", "Mead");
+        add("item.lotrrevival.dwarven_tonic", "Dwarven Tonic");
+        add("item.lotrrevival.miruvor", "Miruvor");
+        add("drink_strength.lotrrevival.thin", "Thin");
+        add("drink_strength.lotrrevival.fair", "Fair");
+        add("drink_strength.lotrrevival.hearty", "Hearty");
+        add("drink_strength.lotrrevival.stout", "Stout");
+        add("drink_strength.lotrrevival.mighty", "Mighty");
+        add("tooltip.lotrrevival.alcohol", "Alcohol: %s%%");
+    }
+    // End Core: brewing
 
     private static void check(String id) {
         if (!FACTION_NAMES.containsKey(id)) {

@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.core;
 
 import io.github.sethwillemsvg.lotrrevival.core.alignment.AlignmentAttachments;
+import io.github.sethwillemsvg.lotrrevival.core.brewing.BrewingItems;
 import io.github.sethwillemsvg.lotrrevival.core.command.LotrCommand;
 import io.github.sethwillemsvg.lotrrevival.core.network.CorePayloads;
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
@@ -15,6 +16,7 @@ public final class CoreMod {
         ModDataRegistries.register(modBus);
         AlignmentAttachments.init();
         modBus.addListener(CorePayloads::register);
+        BrewingItems.init(modBus);
         NeoForge.EVENT_BUS.addListener(LotrCommand::onRegisterCommands);
     }
 }

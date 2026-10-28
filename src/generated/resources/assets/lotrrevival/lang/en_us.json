@@ -28,6 +28,11 @@
   "commands.lotrrevival.pledge.set.failed.on_cooldown": "%s is still on pledge cooldown.",
   "commands.lotrrevival.pledge.set.failed.rank_too_low": "%s has not reached the pledge rank with %s.",
   "commands.lotrrevival.pledge.set.failed.unknown_faction": "Cannot pledge %s: unknown faction.",
+  "drink_strength.lotrrevival.fair": "Fair",
+  "drink_strength.lotrrevival.hearty": "Hearty",
+  "drink_strength.lotrrevival.mighty": "Mighty",
+  "drink_strength.lotrrevival.stout": "Stout",
+  "drink_strength.lotrrevival.thin": "Thin",
   "faction.lotrrevival.angmar": "Angmar",
   "faction.lotrrevival.blue_mountains": "Blue Mountains",
   "faction.lotrrevival.bree": "Bree-land",
@@ -57,6 +62,12 @@
   "faction.lotrrevival.unaligned": "Unaligned",
   "faction.lotrrevival.utumno": "Utumno",
   "faction.lotrrevival.wood_elf": "Woodland Realm",
+  "item.lotrrevival.ale": "Ale",
+  "item.lotrrevival.cider": "Cider",
+  "item.lotrrevival.dwarven_tonic": "Dwarven Tonic",
+  "item.lotrrevival.mead": "Mead",
+  "item.lotrrevival.miruvor": "Miruvor",
+  "item.lotrrevival.wooden_mug": "Wooden Mug",
   "itemGroup.lotrrevival": "The Lord of the Rings: Revival",
   "pledge.lotrrevival.broken.below_rank": "Your pledge to %s is broken: you no longer meet its requirements.",
   "pledge.lotrrevival.broken.command": "Your pledge to %s was ended.",
@@ -73,5 +84,6 @@
   "relation.lotrrevival.enemy": "Enemy",
   "relation.lotrrevival.friend": "Friend",
   "relation.lotrrevival.mortal_enemy": "Mortal enemy",
-  "relation.lotrrevival.neutral": "Neutral"
+  "relation.lotrrevival.neutral": "Neutral",
+  "tooltip.lotrrevival.alcohol": "Alcohol: %s%%"
 }

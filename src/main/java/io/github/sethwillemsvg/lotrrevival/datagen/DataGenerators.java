@@ -26,6 +26,11 @@ public final class DataGenerators {
                 event.includeServer(),
                 new FactionProviders.Tags(output, factions.getRegistryProvider(), event.getExistingFileHelper()));
         generator.addProvider(event.includeClient(), new ModLangProvider(output));
+        // Core: brewing (mug and drinks)
+        generator.addProvider(
+                event.includeClient(), new BrewingProviders.ItemModels(output, event.getExistingFileHelper()));
+        generator.addProvider(event.includeServer(), new BrewingProviders.Recipes(output, lookup));
+        // End Core: brewing
         // Pods add providers here, for example:
         // generator.addProvider(event.includeServer(), new ModRecipeProvider(generator.getPackOutput(), event.getLookupProvider()));
     }
