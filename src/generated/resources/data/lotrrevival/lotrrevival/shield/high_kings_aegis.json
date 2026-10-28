@@ -1,0 +1,8 @@
+{
+  "sort": 3,
+  "texture": "lotrrevival:textures/entity/shield/high_kings_aegis.png",
+  "unlock": {
+    "type": "achievement_count",
+    "min": 200
+  }
+}

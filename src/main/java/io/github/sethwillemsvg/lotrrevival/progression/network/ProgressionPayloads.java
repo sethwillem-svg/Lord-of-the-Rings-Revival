@@ -49,6 +49,15 @@ public final class ProgressionPayloads {
                 TitleService.select(player, payload.title(), payload.color(), payload.feminine());
             }
         });
+        registrar.playToServer(SelectShieldPayload.TYPE, SelectShieldPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.shield.ShieldService.select(player, payload.shield());
+            }
+        });
+        registrar.playToClient(
+                ShieldSyncPayload.TYPE,
+                ShieldSyncPayload.STREAM_CODEC,
+                (payload, ctx) -> io.github.sethwillemsvg.lotrrevival.client.progression.shield.ClientShields.apply(payload));
         // Later tickets: registrar.playToClient(...), registrar.playToServer(...)
     }
 }

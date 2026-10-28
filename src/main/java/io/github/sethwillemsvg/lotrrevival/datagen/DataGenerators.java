@@ -34,6 +34,7 @@ public final class DataGenerators {
         AchievementDatagen.addRegistries(registries);
         TitleDatagen.addRegistries(registries);
         QuestDatagen.addRegistries(registries);
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.shield.ShieldDatagen.addRegistries(registries);
         DatapackBuiltinEntriesProvider entries = generator.addProvider(
                 event.includeServer(),
                 new DatapackBuiltinEntriesProvider(output, lookup, registries, Set.of(LOTRRevival.MOD_ID)));
@@ -65,6 +66,9 @@ public final class DataGenerators {
         // Progression: titles lang (the entries ride in the shared registry provider)
         TitleDatagen.registerLang();
         TitleDatagen.gather(event, registryLookup);
+
+        // Progression: shield names and Shields page lang (entries ride in the shared registry provider)
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.shield.ShieldDatagen.registerLang();
 
         // Progression: mini-quest lang (registry entries are added above)
         QuestDatagen.gather();

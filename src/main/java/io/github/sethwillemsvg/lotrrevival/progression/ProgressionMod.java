@@ -23,6 +23,10 @@ public final class ProgressionMod {
         TitleService.init();
         ModDataRegistries.registerSynced(AchievementEntry.REGISTRY, AchievementEntry.CODEC);
         ModDataRegistries.registerSynced(TitleDefinition.REGISTRY, TitleDefinition.CODEC);
+        io.github.sethwillemsvg.lotrrevival.progression.shield.ShieldService.init();
+        ModDataRegistries.registerSynced(
+                io.github.sethwillemsvg.lotrrevival.progression.shield.ShieldDefinition.REGISTRY,
+                io.github.sethwillemsvg.lotrrevival.progression.shield.ShieldDefinition.CODEC);
         QuestSystem.init(modBus);
         modBus.addListener(ProgressionPayloads::register);
     }

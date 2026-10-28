@@ -1,0 +1,7 @@
+{
+  "texture": "lotrrevival:textures/entity/shield/wanderers_buckler.png",
+  "unlock": {
+    "type": "achievement_count",
+    "min": 25
+  }
+}

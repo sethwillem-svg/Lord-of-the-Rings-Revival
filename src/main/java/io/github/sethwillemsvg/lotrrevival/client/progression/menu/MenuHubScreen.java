@@ -29,7 +29,7 @@ public final class MenuHubScreen extends MenuScreen {
         if (ClientTitles.enabled()) {
             entries.add(new Entry("titles", MenuPage.TITLES));
         }
-        entries.add(new Entry("shields", null));
+        entries.add(new Entry("shields", MenuPage.SHIELDS));
         entries.add(new Entry("options", null));
 
         int columns = panelHeight < 150 ? 3 : 2;
