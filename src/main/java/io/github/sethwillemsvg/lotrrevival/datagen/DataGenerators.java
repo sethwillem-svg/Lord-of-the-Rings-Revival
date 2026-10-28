@@ -97,6 +97,7 @@ public final class DataGenerators {
         // Progression: mini-quest lang (registry entries are added above)
         QuestDatagen.gather();
         io.github.sethwillemsvg.lotrrevival.progression.datagen.quest.QuestBookDatagen.gather(event);
+        io.github.sethwillemsvg.lotrrevival.progression.datagen.quest.QuestOfferContent.gatherTags(event, registryLookup);
 
         // NPC
         io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcDataGen.gather(event);

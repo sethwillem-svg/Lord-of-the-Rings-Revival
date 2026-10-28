@@ -106,6 +106,39 @@ public final class ProgressionPayloads {
                                 player, payload);
                     }
                 });
+        registrar.playToClient(
+                QuestOfferMarkerPayload.TYPE,
+                QuestOfferMarkerPayload.STREAM_CODEC,
+                (payload, ctx) -> io.github.sethwillemsvg.lotrrevival.client.progression.quest.offer.ClientQuestOffers
+                        .onMarker(payload));
+        registrar.playToClient(
+                OpenQuestOfferPayload.TYPE,
+                OpenQuestOfferPayload.STREAM_CODEC,
+                (payload, ctx) -> io.github.sethwillemsvg.lotrrevival.client.progression.quest.offer.ClientQuestOffers
+                        .onOpen(payload));
+        registrar.playToClient(
+                QuestOfferClosedPayload.TYPE,
+                QuestOfferClosedPayload.STREAM_CODEC,
+                (payload, ctx) -> io.github.sethwillemsvg.lotrrevival.client.progression.quest.offer.ClientQuestOffers
+                        .onClosed(payload));
+        registrar.playToServer(OfferScreenPayload.TYPE, OfferScreenPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.quest.offer.OfferService.screen(
+                        player, payload.entityId(), payload.open());
+            }
+        });
+        registrar.playToServer(AcceptQuestPayload.TYPE, AcceptQuestPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.quest.offer.OfferService.accept(
+                        player, payload.entityId(), payload.template(), payload.count());
+            }
+        });
+        registrar.playToServer(DeclineQuestPayload.TYPE, DeclineQuestPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.quest.offer.OfferService.decline(
+                        player, payload.entityId());
+            }
+        });
         // Later tickets: registrar.playToClient(...), registrar.playToServer(...)
     }
 }

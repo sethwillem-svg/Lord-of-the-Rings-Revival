@@ -6,9 +6,13 @@ import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryCodecs;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 
 /**
  * A quest group: an entry of the synced datapack registry {@code lotrrevival:quest_group}.
@@ -21,6 +25,8 @@ import net.minecraft.resources.ResourceLocation;
  * @param color indicator and tracker tint, packed 0xRRGGBB
  * @param firstCompletionAchievement achievement id granted on the first completion (awarded by the achievement system)
  * @param loreCategories reserved for lore book rewards
+ * @param givers optional restriction to these NPC entity types (a type or tag list); groups with it win over
+ *     groups without
  */
 public record QuestGroup(
         ResourceKey<Faction> faction,
@@ -30,7 +36,8 @@ public record QuestGroup(
         float offerRateMultiplier,
         int color,
         Optional<ResourceLocation> firstCompletionAchievement,
-        List<ResourceLocation> loreCategories) {
+        List<ResourceLocation> loreCategories,
+        Optional<HolderSet<EntityType<?>>> givers) {
     /** {@code lotrrevival:quest_group}, files at {@code data/<ns>/lotrrevival/quest_group/<name>.json}. */
     public static final ResourceKey<Registry<QuestGroup>> REGISTRY = ModDataRegistries.questGroup();
 
@@ -54,11 +61,42 @@ public record QuestGroup(
                     ResourceLocation.CODEC
                             .listOf()
                             .optionalFieldOf("lore_categories", List.of())
-                            .forGetter(QuestGroup::loreCategories))
+                            .forGetter(QuestGroup::loreCategories),
+                    RegistryCodecs.homogeneousList(Registries.ENTITY_TYPE)
+                            .optionalFieldOf("givers")
+                            .forGetter(QuestGroup::givers))
             .apply(i, QuestGroup::new));
+
+    /** A group without a {@code givers} restriction. */
+    public QuestGroup(
+            ResourceKey<Faction> faction,
+            Optional<ResourceKey<Faction>> rewardFaction,
+            boolean skipAlignmentIfEnemy,
+            float minAlignment,
+            float offerRateMultiplier,
+            int color,
+            Optional<ResourceLocation> firstCompletionAchievement,
+            List<ResourceLocation> loreCategories) {
+        this(
+                faction,
+                rewardFaction,
+                skipAlignmentIfEnemy,
+                minAlignment,
+                offerRateMultiplier,
+                color,
+                firstCompletionAchievement,
+                loreCategories,
+                Optional.empty());
+    }
 
     /** The faction that receives the alignment reward. */
     public ResourceKey<Faction> effectiveRewardFaction() {
         return rewardFaction.orElse(faction);
+    }
+
+    /** Whether an NPC of this entity type may give this group's quests (no {@code givers} list allows all). */
+    @SuppressWarnings("deprecation")
+    public boolean allowsGiver(EntityType<?> type) {
+        return givers.map(set -> set.contains(type.builtInRegistryHolder())).orElse(true);
     }
 }

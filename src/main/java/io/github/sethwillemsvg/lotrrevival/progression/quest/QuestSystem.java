@@ -12,5 +12,6 @@ public final class QuestSystem {
         ModDataRegistries.registerSynced(QuestTemplate.REGISTRY, QuestTemplate.CODEC);
         QuestItems.init(modBus);
         QuestSync.init();
+        io.github.sethwillemsvg.lotrrevival.progression.quest.offer.QuestOfferSystem.init();
     }
 }

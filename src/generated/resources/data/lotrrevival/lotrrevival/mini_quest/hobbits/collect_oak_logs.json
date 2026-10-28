@@ -1,0 +1,14 @@
+{
+  "group": "lotrrevival:hobbits",
+  "objective": {
+    "type": "lotrrevival:collect",
+    "count": {
+      "max": 40,
+      "min": 10
+    },
+    "item": {
+      "items": "#minecraft:oak_logs"
+    }
+  },
+  "reward_factor": 0.25
+}

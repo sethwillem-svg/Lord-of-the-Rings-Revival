@@ -23,6 +23,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -198,7 +199,10 @@ public final class NpcTradeStockTest {
 
     @GameTest(template = "empty")
     public static void hobbitFarmerHealsLikeTraderAndKillValueTwo(GameTestHelper helper) {
-        NpcEntity farmer = helper.spawn(NpcEntityTypes.HOBBIT.get(), new BlockPos(3, 1, 3));
+        // On the template's own block: a chunk beside the template's may not tick, and the test grid moves whenever
+        // tests are added anywhere in the mod. The template clears the floor around it, so put a block under the farmer.
+        helper.setBlock(new BlockPos(0, -1, 0), Blocks.STONE);
+        NpcEntity farmer = helper.spawn(NpcEntityTypes.HOBBIT.get(), new BlockPos(0, 0, 0));
         farmer.setRole(NpcRole.FARMER);
         // Shield from outside damage: the CI runtime-test runs inside a real world with mobs and nights.
         farmer.setInvulnerable(true);
