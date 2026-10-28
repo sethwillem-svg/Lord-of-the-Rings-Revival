@@ -7,5 +7,7 @@ public enum GearKind {
     TOOL,
     BOW,
     CROSSBOW,
-    SLING
+    SLING,
+    /** Ammunition (pebbles): a flat generated model, tags and recipes only. */
+    AMMO
 }
