@@ -46,6 +46,9 @@ public final class DataGenerators {
 
         // World
         WorldDatagen.gather(event, registryLookup);
+
+        // NPC
+        io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcDataGen.gather(event);
         // Pods add providers here, for example:
         // generator.addProvider(event.includeServer(), new ModRecipeProvider(generator.getPackOutput(), event.getLookupProvider()));
     }
