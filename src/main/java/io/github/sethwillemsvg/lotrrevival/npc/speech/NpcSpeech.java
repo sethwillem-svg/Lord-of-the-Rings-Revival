@@ -27,6 +27,9 @@ public final class NpcSpeech {
     public static final String FLEE = "flee";
     public static final String WITNESS = "witness";
     public static final String TRADER_NONE = "trader_none";
+    public static final String HIRED = "hired";
+    public static final String HIRED_KILL = "hired_kill";
+    public static final String HIRED_IDLE = "hired_idle";
 
     private NpcSpeech() {}
 
@@ -76,6 +79,10 @@ public final class NpcSpeech {
      * is above 0, else {@code neutral}. A trader whose minimum the player does not meet answers {@code neutral}.
      */
     public static String chooseCategory(NpcEntity npc, ServerPlayer player, RandomSource random) {
+        if (player.isShiftKeyDown()
+                && io.github.sethwillemsvg.lotrrevival.npc.hire.HiredUnits.isOwnedBy(npc, player.getUUID())) {
+            return HIRED;
+        }
         if (NpcStanding.isHostile(npc, player)) {
             return HOSTILE;
         }

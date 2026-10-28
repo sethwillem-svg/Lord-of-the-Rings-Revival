@@ -11,6 +11,7 @@ public final class NpcConfig {
     public static final ModConfigSpec.BooleanValue WILD_SPAWNING_ENABLED;
     public static final ModConfigSpec.IntValue SPAWN_INTERVAL;
     public static final ModConfigSpec.DoubleValue SPAWN_DAMPING;
+    public static final ModConfigSpec.BooleanValue UNITS_LEVELING;
 
     static {
         ModConfigSpec.Builder server = new ModConfigSpec.Builder();
@@ -22,6 +23,10 @@ public final class NpcConfig {
         SPAWN_DAMPING = server.comment(
                         "Multiplayer damping d: the global cap is scaled by max(0.5, 1 / (1 + d * (players - 1))).")
                 .defineInRange("spawn_damping", 0.1, 0.0, 10.0);
+        server.pop();
+        server.push("units");
+        UNITS_LEVELING = server.comment("Hired Warrior units gain XP and levels from enemy NPC kills.")
+                .define("leveling", true);
         server.pop();
         SERVER_SPEC = server.build();
     }
