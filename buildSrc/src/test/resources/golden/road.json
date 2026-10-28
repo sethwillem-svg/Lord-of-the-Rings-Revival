@@ -1,0 +1,13 @@
+{
+  "name": {
+    "fallback": "The Greenway",
+    "translate": "road.lotrrevival.greenway"
+  },
+  "points": [
+    [1815, 1300],
+    [1818, 1400],
+    [1819.5, 1466]
+  ],
+  "show_on_map": true,
+  "width": 4
+}

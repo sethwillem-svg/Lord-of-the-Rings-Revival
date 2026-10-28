@@ -40,6 +40,8 @@ pixel grid above.
 | `height.geojson` | `Point` hills (`kind: hill`, `height` blocks, `radius` px; a negative height is a dell) and `LineString` ridges (`kind: ridge`, `width` px half-width, `height` or per-vertex `heights`) | see left |
 | `water.geojson` | `LineString` rivers (`kind: river`, `width` or per-vertex `widths` in blocks, `depth`) and `Polygon` lakes (`kind: lake`, `bed` y of the lake floor) | see left |
 | `landmarks.geojson` | `Point` named places. `expect_biome` makes the validator check the biome there | `name`, `expect_biome` |
+| `waypoints.geojson` | Top-level `regions` object plus `Point` waypoints, see "Waypoints and roads" below | `id`, `name`, `region`, `lore`, `faction`, `hidden` |
+| `roads.geojson` | `LineString` roads, see "Waypoints and roads" below | `id`, `name`, `width`, `show_on_map`, `through` |
 
 The painted windows live in `src/main/resources/data/lotrrevival/lotrrevival/map_regions.json`
 (`{"regions": [{"id", "min": [u, v], "max": [u, v], "released"}]}`, `max` exclusive, even numbers). Source
@@ -70,6 +72,38 @@ All steps run at heightmap resolution inside the window:
 Every land pixel must be covered by a biome polygon, or the build fails and names the pixel. Put a large base
 polygon first and overlay the detail on top of it.
 
+## Waypoints and roads
+
+Spec: `specs/world/waypoints-travel.md`. Both files are read by `TravelSource` and turned into datapack registry
+JSON by `TravelJson`; they do not change the terrain. Ids are `snake_case` and unique. All names and lore are our
+own words (waypoint names are Tolkien place names).
+
+**`waypoints.geojson`** has a top-level `regions` object and the waypoints as `Point` features:
+
+```json
+"regions": { "bree_land": { "name": "Bree-land", "biomes": ["bree_land", "chetwood", "midgewater_marshes"] } },
+"features": [ { "type": "Feature",
+  "properties": { "id": "bree", "name": "Bree", "region": "bree_land", "faction": "bree",
+                  "lore": "The chief village of Bree-land, where the East Road meets the Greenway." },
+  "geometry": { "type": "Point", "coordinates": [1819.5, 1466] } } ]
+```
+
+- A region is a set of land biomes. Every land biome of the colour table is in exactly one region; `ocean`,
+  `shore`, `lake` and `river` are in none. A new biome must be added to a region.
+- A waypoint's biome map pixel must be one of its region's biomes. `faction` (a bare id from Core's 25 player
+  factions) and `hidden` (default false) are optional.
+
+**`roads.geojson`**: `LineString` features with `id`, `name`, `width` (half-width in blocks, default 4),
+`show_on_map` (default true) and `through` (waypoint ids the road must pass, optional). Control points follow
+the land: none on an `ocean` or `lake` pixel, all inside a painted window.
+
+**Generated output.** `rasterizeMap` also writes one JSON per entry under
+`build/generated/map/resources/data/lotrrevival/lotrrevival/{waypoint_region,waypoint,road}/<id>.json`, so the
+files ship in the jar and are never committed. Names and lore are translatable components with an English
+fallback (`waypoint.lotrrevival.<id>`, `waypoint.lotrrevival.<id>.lore`, `waypoint_region.lotrrevival.<id>`,
+`road.lotrrevival.<id>`). Region ids, biome ids and faction ids are written as `lotrrevival:<id>`. Output is
+deterministic: sorted keys, no trailing zeros, two-space indent.
+
 ## Validator
 
 `./gradlew build` runs `validateMap` (part of `check`). It first runs the validator against deliberately broken
@@ -81,7 +115,18 @@ fixtures to prove it catches them, then checks the real map:
 - every pixel outside the painted windows is the placeholder (value 8,000 / ocean colour);
 - source points, the landing point and landmarks are inside a window and 1,024 blocks from the canvas edge;
 - land biomes do not average below sea level, lakes are below it, and the outer 16 px rim of a window is flat sea floor;
-- every landmark's `expect_biome` matches, and the landing point is in the Shire.
+- every landmark's `expect_biome` matches, and the landing point is in the Shire;
+- regions: no unknown or water biome, every land biome in exactly one region;
+- waypoints: unique snake_case id, known region, inside a window and 1,024 blocks from the canvas edge, in one of
+  its region's biomes, faction one of Core's 25 (the validator keeps a copy in `FactionIds`, which is compared
+  with `core/faction/Factions.java` on every build, so adding a faction there fails the build until the copy is
+  updated);
+- roads: at least 2 points, none on a sea or lake pixel or outside a window, and every `through` waypoint within
+  `width + 16` blocks of the control polyline.
+
+The self-test also runs the waypoint rules against one broken fixture per rule, and generates one region, one
+waypoint and one road from a fixed fixture and compares them byte for byte with
+`buildSrc/src/test/resources/golden/`. If you change the JSON format on purpose, update those three files.
 
 ## Adding a region
 
