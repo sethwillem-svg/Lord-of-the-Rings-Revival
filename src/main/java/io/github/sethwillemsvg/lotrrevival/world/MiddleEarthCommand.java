@@ -42,7 +42,7 @@ public final class MiddleEarthCommand {
         }
         var landing = MiddleEarthLanding.load(server.getResourceManager());
         // Generates the chunk if needed so the player is placed on the highest solid block.
-        int y = middleEarth.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, landing.x(), landing.z());
+        int y = WorldHeights.surface(middleEarth, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, landing.x(), landing.z());
         Vec3 pos = new Vec3(landing.x() + 0.5, y, landing.z() + 0.5);
         player.teleportTo(middleEarth, pos.x, pos.y, pos.z, player.getYRot(), 0);
         return true;

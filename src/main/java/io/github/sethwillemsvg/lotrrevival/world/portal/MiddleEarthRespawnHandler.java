@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.world.portal;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.ModDimensions;
+import io.github.sethwillemsvg.lotrrevival.world.WorldHeights;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthBiomes;
 import io.github.sethwillemsvg.lotrrevival.world.WorldConfig;
 import java.util.Optional;
@@ -62,7 +63,7 @@ public final class MiddleEarthRespawnHandler {
             case FAR_OFFSET -> {
                 int x = (int) Math.floor(choice.spot().x());
                 int z = (int) Math.floor(choice.spot().z());
-                int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                int y = WorldHeights.surface(level, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
                 event.setDimensionTransition(transition(level, new Vec3(x + 0.5, y, z + 0.5)));
             }
         }
@@ -74,7 +75,7 @@ public final class MiddleEarthRespawnHandler {
 
     /** Land on the painted map: not an ocean, lake or river biome, and the top block is not a fluid. */
     private static boolean isDryLand(ServerLevel level, int x, int z) {
-        int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+        int top = WorldHeights.surface(level, Heightmap.Types.MOTION_BLOCKING, x, z);
         BlockPos surface = new BlockPos(x, top - 1, z);
         if (!level.getFluidState(surface).isEmpty()) {
             return false;
