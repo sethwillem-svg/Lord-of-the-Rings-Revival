@@ -2,6 +2,9 @@ package io.github.sethwillemsvg.lotrrevival.client.npc.trade;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.coin.Coins;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.HirePayloads;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.HirePurchase;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.UnitRowView;
 import io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradeMenu;
 import io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradeMenu.Tab;
 import io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradeMenus;
@@ -14,7 +17,9 @@ import java.util.Map;
 import java.util.Optional;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -51,6 +56,9 @@ public class NpcTradeScreen extends AbstractContainerScreen<NpcTradeMenu> {
     private Button sellButton;
     private Button breakButton;
     private Button combineButton;
+    private EditBox squadronBox;
+    private String squadronText = "";
+    private int unitScroll;
 
     public NpcTradeScreen(NpcTradeMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -94,6 +102,18 @@ public class NpcTradeScreen extends AbstractContainerScreen<NpcTradeMenu> {
                         b -> PacketDistributor.sendToServer(new TradePayloads.CoinExchange(menu.containerId, true)))
                 .bounds(leftPos + 110, topPos + 61, 56, 18)
                 .build());
+        squadronBox = new EditBox(
+                font,
+                leftPos + 8,
+                topPos + 114,
+                160,
+                14,
+                Component.translatable("npc.lotrrevival.trade.units.squadron"));
+        squadronBox.setMaxLength(HirePurchase.SQUADRON_FIELD_MAX);
+        squadronBox.setHint(Component.translatable("npc.lotrrevival.trade.units.squadron_hint"));
+        squadronBox.setValue(squadronText);
+        squadronBox.setResponder(text -> squadronText = text);
+        addRenderableWidget(squadronBox);
     }
 
     private void selectTab(Tab tab) {
@@ -109,6 +129,65 @@ public class NpcTradeScreen extends AbstractContainerScreen<NpcTradeMenu> {
         sellButton.visible = menu.tab() == Tab.SELL;
         breakButton.visible = menu.tab() == Tab.EXCHANGE;
         combineButton.visible = menu.tab() == Tab.EXCHANGE;
+        squadronBox.visible = menu.tab() == Tab.UNITS;
+        if (!squadronBox.visible && squadronBox.isFocused()) {
+            squadronBox.setFocused(false);
+        }
+    }
+
+    // ------------------------------------------------------------------ unit rows
+
+    private static final int ROW_W = 160;
+    private static final int ROW_H = 22;
+    private static final int ROW_X = 8;
+    private static final int ROW_Y = 32;
+    private static final int ROWS_SHOWN = 3;
+
+    private int rowY(int index) {
+        return topPos + ROW_Y + (index - unitScroll) * (ROW_H + 1);
+    }
+
+    private int rowAt(double mx, double my) {
+        List<UnitRowView> rows = menu.units();
+        for (int i = unitScroll; i < rows.size() && i < unitScroll + ROWS_SHOWN; i++) {
+            int y = rowY(i);
+            if (mx >= leftPos + ROW_X && mx < leftPos + ROW_X + ROW_W && my >= y && my < y + ROW_H) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static Component unitName(UnitRowView row) {
+        Component name = BuiltInRegistries.ENTITY_TYPE.get(row.entity()).getDescription();
+        return row.mount()
+                .map(mount -> (Component) Component.translatable(
+                        "npc.lotrrevival.trade.units.mounted", name, BuiltInRegistries.ENTITY_TYPE.get(mount).getDescription()))
+                .orElse(name);
+    }
+
+    private static Component reason(UnitRowView row) {
+        return Component.translatable("npc.lotrrevival.trade.units.reason." + row.blocked().name().toLowerCase());
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+        if (menu.tab() == Tab.UNITS) {
+            int max = Math.max(0, menu.units().size() - ROWS_SHOWN);
+            unitScroll = Math.max(0, Math.min(max, unitScroll - (int) Math.signum(scrollY)));
+            return true;
+        }
+        return super.mouseScrolled(mx, my, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // A focused squadron field keeps every key except Escape (so typing "e" does not close the screen).
+        if (squadronBox != null && squadronBox.visible && squadronBox.isFocused() && keyCode != 256) {
+            squadronBox.keyPressed(keyCode, scanCode, modifiers);
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     // ------------------------------------------------------------------ buy cells
@@ -147,6 +226,17 @@ public class NpcTradeScreen extends AbstractContainerScreen<NpcTradeMenu> {
                 return true;
             }
         }
+        if (button == 0 && menu.tab() == Tab.UNITS && !(squadronBox.isMouseOver(mx, my))) {
+            int row = rowAt(mx, my);
+            if (row >= 0) {
+                UnitRowView view = menu.units().get(row);
+                if (view.hirable()) {
+                    PacketDistributor.sendToServer(
+                            new HirePayloads.HireUnit(menu.containerId, view.id(), squadronText.trim()));
+                }
+                return true;
+            }
+        }
         return super.mouseClicked(mx, my, button);
     }
 
@@ -176,9 +266,36 @@ public class NpcTradeScreen extends AbstractContainerScreen<NpcTradeMenu> {
             case SELL -> drawSell(graphics);
             case EXCHANGE -> graphics.drawCenteredString(
                     font, Component.translatable("npc.lotrrevival.trade.exchange.hint"), leftPos + imageWidth / 2, topPos + 40, TEXT);
-            case UNITS -> graphics.drawCenteredString(
-                    font, Component.translatable("npc.lotrrevival.trade.units.placeholder"), leftPos + imageWidth / 2, topPos + 70, TEXT);
+            case UNITS -> drawUnits(graphics, mouseX, mouseY);
         }
+    }
+
+    private void drawUnits(GuiGraphics graphics, int mouseX, int mouseY) {
+        List<UnitRowView> rows = menu.units();
+        if (rows.isEmpty()) {
+            graphics.drawCenteredString(
+                    font, Component.translatable("npc.lotrrevival.trade.units.placeholder"), leftPos + imageWidth / 2, topPos + 50, TEXT);
+        }
+        for (int i = unitScroll; i < rows.size() && i < unitScroll + ROWS_SHOWN; i++) {
+            UnitRowView row = rows.get(i);
+            int x = leftPos + ROW_X;
+            int y = rowY(i);
+            boolean hover = mouseX >= x && mouseX < x + ROW_W && mouseY >= y && mouseY < y + ROW_H;
+            boolean on = row.hirable();
+            graphics.fill(x, y, x + ROW_W, y + ROW_H, !on ? CELL_OFF : hover ? CELL_HOVER : CELL_NORMAL);
+            graphics.drawString(font, font.substrByWidth(unitName(row), 84).getString(), x + 3, y + 3, on ? TEXT : TEXT_OFF, false);
+            Component cost = Component.translatable("npc.lotrrevival.trade.units.cost", row.cost());
+            graphics.drawString(font, cost, x + ROW_W - 3 - font.width(cost), y + 3, on ? PRICE : TEXT_OFF, false);
+            Component detail = on
+                    ? Component.translatable("npc.lotrrevival.trade.units.required", Math.round(row.required()))
+                    : reason(row);
+            graphics.drawString(font, font.plainSubstrByWidth(detail.getString(), ROW_W - 40), x + 3, y + 12, on ? TEXT_OFF : 0xFFD07060, false);
+            if (on) {
+                Component hire = Component.translatable("npc.lotrrevival.trade.units.hire");
+                graphics.drawString(font, hire, x + ROW_W - 3 - font.width(hire), y + 12, hover ? TEXT : PRICE, false);
+            }
+        }
+        graphics.drawString(font, Component.translatable("npc.lotrrevival.trade.units.squadron"), leftPos + 8, topPos + 104, TEXT, false);
     }
 
     private void drawBuy(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -234,6 +351,24 @@ public class NpcTradeScreen extends AbstractContainerScreen<NpcTradeMenu> {
     @Override
     protected void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         super.renderTooltip(graphics, mouseX, mouseY);
+        if (menu.tab() == Tab.UNITS && minecraft != null) {
+            int row = rowAt(mouseX, mouseY);
+            if (row >= 0) {
+                UnitRowView view = menu.units().get(row);
+                List<Component> lines = new ArrayList<>();
+                lines.add(unitName(view));
+                lines.add(Component.translatable("npc.lotrrevival.trade.units.required", Math.round(view.required())));
+                if (view.pledge() != io.github.sethwillemsvg.lotrrevival.npc.hire.PledgeCondition.NONE) {
+                    lines.add(Component.translatable(
+                            "npc.lotrrevival.trade.units.pledge." + view.pledge().getSerializedName()));
+                }
+                if (!view.hirable()) {
+                    lines.add(reason(view));
+                }
+                graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
+            }
+            return;
+        }
         if (menu.tab() != Tab.BUY || minecraft == null) {
             return;
         }

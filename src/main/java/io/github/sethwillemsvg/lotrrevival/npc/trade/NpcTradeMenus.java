@@ -39,6 +39,11 @@ public final class NpcTradeMenus {
         return previous;
     }
 
+    /** Opens the screen through the current {@link Opener}; used by the hiring flow for the Units tab. */
+    public static boolean openTab(ServerPlayer player, NpcEntity npc, NpcTradeMenu.Tab tab) {
+        return opener.open(player, npc, tab);
+    }
+
     /** TRADE opens the screen on Buy and takes over the interaction. HIRE belongs to the hiring purchase flow. */
     private static void onInteract(NpcInteractEvent event) {
         if (event.getKind() == NpcInteractEvent.Kind.TRADE

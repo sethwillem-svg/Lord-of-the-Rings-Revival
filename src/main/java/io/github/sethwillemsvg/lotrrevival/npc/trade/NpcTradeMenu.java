@@ -3,6 +3,9 @@ package io.github.sethwillemsvg.lotrrevival.npc.trade;
 import io.github.sethwillemsvg.lotrrevival.core.coin.Coins;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntity;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcRole;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.HirePayloads;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.HirePurchase;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.UnitRowView;
 import io.github.sethwillemsvg.lotrrevival.npc.interact.NpcStanding;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +64,8 @@ public class NpcTradeMenu extends AbstractContainerMenu {
     private List<OfferView> buys = List.of();
     private List<OfferView> sells = List.of();
     private boolean stockSent;
+    private List<UnitRowView> units = List.of();
+    private boolean unitsSent;
 
     /** Client constructor, called with the extra data written by {@link NpcTradeMenus#open}. */
     public NpcTradeMenu(int containerId, Inventory inventory, RegistryFriendlyByteBuf buf) {
@@ -183,6 +188,16 @@ public class NpcTradeMenu extends AbstractContainerMenu {
         return exchangeSlot;
     }
 
+    /** The Units tab rows as this viewer sees them (server: last computed, client: last synced). */
+    public List<UnitRowView> units() {
+        return units;
+    }
+
+    /** Client: takes the synced Units tab rows. */
+    public void applyUnits(List<UnitRowView> rows) {
+        this.units = List.copyOf(rows);
+    }
+
     /** Client: takes the synced offer lists. */
     public void applyStock(List<OfferView> buys, List<OfferView> sells) {
         this.buys = List.copyOf(buys);
@@ -259,6 +274,23 @@ public class NpcTradeMenu extends AbstractContainerMenu {
         super.broadcastChanges();
         if (npc != null && owner instanceof ServerPlayer player) {
             syncStock(player);
+            syncUnits(player);
+        }
+    }
+
+    /** Recomputes this player's Units rows (costs and reasons change with alignment and coins) and sends changes. */
+    private void syncUnits(ServerPlayer player) {
+        if (!hasUnits) {
+            return;
+        }
+        List<UnitRowView> rows = HirePurchase.rows(player, npc);
+        if (unitsSent && rows.equals(units)) {
+            return;
+        }
+        unitsSent = true;
+        units = rows;
+        if (!player.isFakePlayer()) {
+            PacketDistributor.sendToPlayer(player, new HirePayloads.Units(containerId, rows));
         }
     }
 

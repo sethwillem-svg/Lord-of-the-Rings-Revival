@@ -342,6 +342,9 @@ public final class NpcFriendlyFireTest {
             }
         };
         NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, false, NpcInteractEvent.class, listener);
+        // The Units tab handler would open a real screen on a mock connection; this test only checks the event kinds.
+        io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradeMenus.Opener previous =
+                io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradeMenus.setOpener((p, npc, tab) -> false);
         try {
             NpcInteraction.onRightClick(shirriff, player);
             helper.assertTrue(kinds.equals(List.of(NpcInteractEvent.Kind.HIRE)), "at +50: " + kinds);
@@ -350,6 +353,7 @@ public final class NpcFriendlyFireTest {
             NpcInteraction.onRightClick(shirriff, player);
             helper.assertTrue(kinds.equals(List.of(NpcInteractEvent.Kind.TALK)), "at +49: " + kinds);
         } finally {
+            io.github.sethwillemsvg.lotrrevival.npc.trade.NpcTradeMenus.setOpener(previous);
             NeoForge.EVENT_BUS.unregister(listener);
             remove(helper, player);
         }

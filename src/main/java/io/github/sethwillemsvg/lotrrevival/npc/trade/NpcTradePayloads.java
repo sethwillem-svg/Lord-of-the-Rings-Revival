@@ -36,6 +36,7 @@ public final class NpcTradePayloads {
                 TradePayloads.CoinExchange.STREAM_CODEC,
                 (payload, ctx) -> handle(
                         ctx, payload.type(), payload.containerId(), (player, menu) -> menu.exchange(player, payload.combine())));
+        io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.HirePayloads.register(registrar);
         registrar.playToClient(TradePayloads.Stock.TYPE, TradePayloads.Stock.STREAM_CODEC, (payload, ctx) -> {
             if (ctx.player().containerMenu instanceof NpcTradeMenu menu && menu.containerId == payload.containerId()) {
                 menu.applyStock(payload.buys(), payload.sells());
