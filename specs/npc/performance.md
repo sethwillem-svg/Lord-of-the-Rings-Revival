@@ -2,8 +2,8 @@
 
 - **Pod:** npc (with two small `pod:core` requests and one `pod:world` request)
 - **Lead:** Opus 3
-- **Status:** draft
-- **Depends on:** `specs/npc/npc-base.md` (goals, targeting, routine, spawning, despawn), `specs/npc/hiring-trading.md` (hired units, squadrons, follow, guard, teleport), `specs/core/core-apis.md` (registers, attachments, payload rules, `/lotr` root), `specs/world/waypoints-travel.md` (road network), draft `specs/npc/nemesis.md` (PR #182: world events, performance governor, chunk tickets, off-screen resolution), draft `specs/world/territory.md` (PR #183: territory updates, wild marches on the events governor), draft `specs/world/structures.md` (PR #184: garrison caps, structure index, `StructureVenues`).
+- **Status:** draft, revision 2 (maintainer's answers on PR #186: three discipline levels per faction replace per-faction formation picks; formation animation hooks; the content wave waits for the load test)
+- **Depends on:** `specs/npc/npc-base.md` (goals, targeting, routine, spawning, despawn), `specs/npc/hiring-trading.md` (hired units, squadrons, follow, guard, teleport), `specs/core/core-apis.md` (registers, attachments, payload rules, `/lotr` root), `specs/world/waypoints-travel.md` (road network), draft `specs/npc/nemesis.md` (PR #182: world events, performance governor, chunk tickets, off-screen resolution), draft `specs/world/territory.md` (PR #183: territory updates, wild marches on the events governor), draft `specs/world/structures.md` (PR #184: garrison caps, structure index, `StructureVenues`), draft `specs/core/rendering-animation.md` (PR #185: clip naming `animation.<rig>.<group>.<name>`, `ANIM_ACTION`/`ANIM_PULSE` bytes).
 - **Sources:** our own measurements and estimates of this repo's NPC code (section 0); public documentation of server-side techniques we reuse as ideas only (Sources, at the end). Nothing here comes from the original LOTR Mod.
 
 ## Summary
@@ -13,7 +13,7 @@ The maintainer wants Middle-earth busy: villages full of people, patrols on the 
 This spec is the budget and the framework that every later NPC system builds on:
 
 1. **AI level of detail.** NPCs think at full rate only near players. Farther out they think less often; with nobody near they nearly sleep; unloaded groups live on as data.
-2. **Squads.** One leader plans a path; the others hold a formation slot and only steer locally.
+2. **Squads with discipline.** One leader plans a path; the others hold a formation slot and only steer locally. Each faction fights RIGID (holds formation), ORGANIZED (forms up, charges, breaks) or LOOSE (swarms, collapses without its captain).
 3. **Paths off the server thread.** A fixed worker pool computes paths from immutable terrain snapshots; results are applied on the next tick.
 4. **One spatial index** per level, bucketed by faction, replaces per-NPC world scans for targets, threats and witnesses.
 5. **One worker executor** with a main-thread handoff for nemesis politics, off-screen battles, territory and event scheduling.
@@ -50,7 +50,7 @@ Not expensive (checked): the `getAttributeValue` override (a holder compare per 
 1. Near you (within 48 blocks) every NPC behaves exactly as it does today: looks at you, chats, strolls, fights, opens gates. Nothing is ever simplified within 48 blocks of a player.
 2. Farther out NPCs keep doing the same things, a little less smoothly: they decide a bit later, stroll less and never chat. You cannot tell from 50+ blocks.
 3. Beyond 128 blocks loaded NPCs stand still and wait. A fight that starts there wakes the fighters up.
-4. Squads move as squads: a patrol walks the road in a column, a warband spreads into a line or a wedge when it meets the enemy, Gondor and dwarf companies lock into a shield wall. Fighters break formation to fight, and regroup after.
+4. Squads move as squads, and each people fights its own way. Gondor locks shields with pikes over them, dwarves form an unbreakable phalanx, elves volley in ranks, Uruk-hai and Easterlings advance in drilled blocks: hard to beat head-on, slow to turn, so hit them in the flank. Rohan crashes in as a wedge, then fights loose; Rangers wait hidden and skirmish. Orcs, Dunlendings and ruffians come as a fast swarm that scatters when you kill their captain. Rigid blocks march in step, brace shields and lower pikes as you approach, and every routed army visibly flees.
 5. If the captain falls, the next in rank takes over; the squad does not mill about.
 6. Patrols and caravans that leave loaded chunks keep travelling along their road as data, and appear where they should be when you ride out to meet them. Battles between such groups that nobody sees are decided off-screen.
 7. Under heavy load the world gets quieter at the edges (fewer new wild NPCs, fewer events) before anything near a player is simplified.
@@ -71,7 +71,7 @@ Distance is to the nearest non-spectator player in the same level (horizontal an
 | **FULL** | a player within **48** blocks, checked **every tick** (see 1c) | no player within **56** blocks for **100 ticks** | Every goal at vanilla rates: goal selector every tick (running goals) / every 2 ticks (start checks), target scan every 20 ticks, idle look, chatter and speech, stroll at its normal interval, entity pushing every tick, priority P0/P1 paths. |
 | **REDUCED** | a player within **128** blocks (and not FULL) | no player within **144** blocks for **100 ticks** | Goal start checks every **4** ticks and running goals every **2** ticks; target scan every **40** ticks; no idle look-at-player, no speech or ambient lines; stroll interval x3; entity pushing every **4** ticks; squad followers steer only (no own paths unless stuck); P2 paths. |
 | **DORMANT** | loaded, no player within 144 | (n/a) | **Settled** NPCs skip whole entity ticks: one maintenance tick every **20** ticks (staggered). Not settled = ticks like REDUCED. Target scan every **100** ticks, enemy NPCs only. No strolling, no routine moves (a routine NPC away from home walks home at REDUCED rates, then settles). P3 paths only. |
-| **OFF-SCREEN** | squad members' chunks unloading (section 2g) | squad comes back within 128 of a player in a loaded, entity-ticking chunk | Nothing ticks. The squad is a record in SavedData moved along its route by the worker executor. Static NPCs (villagers, garrisons) are simply saved with their chunk as today. |
+| **OFF-SCREEN** | squad members' chunks unloading (section 2i) | squad comes back within 128 of a player in a loaded, entity-ticking chunk | Nothing ticks. The squad is a record in SavedData moved along its route by the worker executor. Static NPCs (villagers, garrisons) are simply saved with their chunk as today. |
 
 **Settled** (DORMANT): on the ground, not in a fluid, not on fire, not riding or ridden, no target, no retaliation or flee mark, navigation idle, not hurt in the last 100 ticks, not in a squad that is moving. A DORMANT NPC that stops being settled ticks every tick until it settles again.
 
@@ -129,20 +129,79 @@ A **squad** is 2 to **24** NPCs with one **leader**, a **formation**, a **route*
 
 #### 2b. Formations
 
-Spacing is between slot centres. "Front" is the leader's heading.
+Spacing is between slot centres. "Front" is the formation's heading. A **block** is one formation body of at most 16 slots; a bigger squad forms several blocks side by side or one behind the other.
 
-| Shape | Layout | Spacing | Use |
+| Shape | Layout | Spacing | Used by (through doctrine, 2c) |
 | --- | --- | --- | --- |
-| **Column** | 2 wide (3 if the squad has more than 12), rows behind the leader | 2.0 | Marching, roads (road half-width is 4, so a column fits) |
-| **Line** | one rank of up to 12 centred on the leader, a second rank 2.0 behind | 2.0 | Default contact formation |
-| **Wedge** | leader at the point; row k behind has k + 1 slots | 2.0 | Charges: cavalry, orc and uruk warbands, Rohan |
-| **Shield wall** | two ranks: shield-bearers front, spears and ranged behind; leader in the second rank centre | 1.2 | Defending: Gondor, Dwarves, Dale; needs at least 4 shield-bearers or falls back to line. Speed x 0.6; the front rank raises shields while an enemy is within 6 blocks |
+| **Column** | 2 wide (3 if more than 12), rows behind the leader | 2.0 | Everyone on the march and on roads (road half-width is 4, so a column fits) |
+| **Line** | one rank of up to 12 centred on the leader, a second rank 2.0 behind | 2.0 | Organized contact default |
+| **Wedge** | leader at the point; row k behind has k + 1 slots | 2.0 | Cavalry and charges (Rohan, Dol Amroth knights) |
+| **Shield wall** | two ranks: shield-bearers front, spears and ranged behind; leader in the second rank centre | 1.2 | Gondor defence; needs at least 4 shield-bearers, else line |
+| **Pike line** | front rank shields, second rank pikes or spears reaching past them, optional third rank of bows | 1.2 | Gondor attack and hold, Uruk-hai/Isengard drilled ranks |
+| **Phalanx** | 3 ranks deep, front rank shields, rear ranks spears, axes and mattocks; the tightest block | 1.0 | Dwarves (Durin's folk, Blue Mountains) |
+| **Archer ranks** | 1 rank of melee (blades, spears) in front, 2 ranks of archers behind that volley in turn (2e) | 1.5 | Elves (Lothlórien, High Elves, Wood Elves) |
+| **Battalion** | a square block 4 wide and up to 4 deep, spears front, blades inside | 1.5 | Easterlings (incl. Variags) |
+| **Beast front** | war-beasts in the front slots, a line of foot 6 blocks behind them | 2.0 behind the beasts | Harad |
+| **Open order** | members 4-6 blocks apart in a loose arc, no ranks; uses cover; may wait hidden (2e) | 4-6 | Rangers (skirmish and ambush) |
+| **Swarm** | no slots: members keep 3-10 blocks from the leader at a random bearing each, re-rolled every 200 ticks | - | Loose discipline |
 
-- Slot order: higher-ranked and tougher members nearer the front and centre; ranged members always in the rear rank.
-- Shape per faction and situation comes from npc data `squad_doctrine/<faction>.json` (march shape, contact shape, defend shape). Default: column / line / line.
-- Where the slot is not standable (wall, water, drop of more than 3), the follower uses the nearest standable spot within 3 blocks of it, else trails the leader's path (2c).
+- Slot order: higher-ranked and tougher members nearer the front and centre; shields front; pikes and spears second; ranged members always in the rear rank.
+- Members without the gear for their slot (a shield-wall slot without a shield) swap with one that has it; if the block lacks the gear, it falls back: shield wall and pike line to line, phalanx to line, archer ranks to line with archers behind, battalion to line, beast front to line.
+- **No formation at all:** trolls (any faction), Ents and huorns, wargs and other beasts that are not war-beasts. They join a squad for movement and targets only and never take a slot; they keep within 12 blocks of the leader.
+- Where the slot is not standable (wall, water, drop of more than 3), the follower uses the nearest standable spot within 3 blocks of it, else trails the leader's path (2d).
 
-#### 2c. Movement and re-pathing
+#### 2c. Discipline
+
+Every faction has a **discipline** level in its doctrine data (`squad_doctrine/<faction>.json`, Data and APIs), with optional overrides per unit group (for example Dol Amroth knights inside Gondor, Morgul and Black Númenórean units inside Mordor). Discipline decides how a squad fights, not just how it stands.
+
+| | **RIGID** | **ORGANIZED** | **LOOSE** |
+| --- | --- | --- | --- |
+| Gameplay intent | Very hard to beat head-on. Slow to turn, so **flanking pays**: hit it from the side or rear, or make it turn. | Forms up and hits hard on contact, then becomes a melee you can pick apart. Recovers if left alone. | Fast, numerous, scary in the open. **Brittle**: kill the captain and it collapses. |
+| March | Column, in step (marching animation, 2h) | Column | Swarm around the leader; moves at each member's own speed (no slowest-member limit) |
+| Contact | Doctrine's contact shape, held through the fight | Doctrine's contact shape, then charge | No shape: rush the nearest enemies |
+| In combat | **Holds formation.** Members keep their slots and only fight targets within reach of their slot (3 blocks; pikes and spears 4; ranged as 2e). Front rank braces shields and blocks frontal hits; rear ranks attack past it. | Charges when the enemy is within 8 blocks, then **breaks** into individual melee (today's design, 2e). | Individual melee from the start; members swarm the target the leader or nearest ally is fighting. |
+| Turning | **The block turns as a unit**, pivoting on its centre at its turn rate (default 45° per second, phalanx 30°, wedge charge 60°); slots are rotated, members never run around the block | Slots follow the leader instantly (members re-steer) | n/a |
+| Flanks | Shield brace and blocking work only against attackers within 60° of the block's heading. Hits on members from the flank or rear do full damage and count double for the break check | Normal | Normal |
+| Break | Breaks to ORGANIZED behaviour when it has lost **50%** of its starting members (config `rigid_break_losses`; Dwarves 65%: "hardest to break") or loses its leader **and** 30% | Breaks at contact by design; ROUT below 25% strength if the type can rout | **Leader death: morale collapse** (below) |
+| Regroup | Re-forms 60 ticks after the last enemy within 12 blocks dies, even mid-battle | 100 ticks without targets (2e) | Gathers around the leader, no slots |
+| Morale | Never routs while the formation holds | Routs below 25% | Collapses on captain death |
+
+**Loose morale collapse.** When a LOOSE squad's leader dies (or a nemesis captain leading it escapes or dies), each member rolls: 60% rout at once; the rest rout when the squad's losses reach 30%. If a new leader is chosen (2f) the survivors who did not rout follow it. Nemesis traits can change this (the nemesis spec decides; for example a captain whose death enrages instead of scatters): the squad fires a **leader-lost hook** (squad id, discipline, old leader, cause, and whether the leader was a nemesis) that other systems can cancel or replace before the morale roll.
+
+**Faction assignments (maintainer decision, data defaults):**
+
+| Discipline | Factions and units | Shapes (march / contact / defend) |
+| --- | --- | --- |
+| RIGID | `gondor` | column / pike line / shield wall |
+| RIGID | Dol Amroth knights (Gondor unit group) | column / wedge (held through the charge, then re-forms) / line |
+| RIGID | `durins_folk`, `blue_mountains` | column / phalanx / phalanx (break at 65%, turn 30°/s) |
+| RIGID | `lothlorien`, `high_elf`, `wood_elf` | column / archer ranks / archer ranks (volleys, 2e) |
+| RIGID | `isengard` (Uruk-hai) | column / pike line / pike line |
+| RIGID | `easterling` (incl. Variags) | column / battalion / battalion |
+| ORGANIZED | `rohan` | column / wedge (cavalry), then loose melee / line |
+| ORGANIZED | `dale` | column / line / shield wall |
+| ORGANIZED | `dunedain_north` (Rangers) | open order / open order (skirmish and ambush, no lines) / open order |
+| ORGANIZED | `near_harad`, `far_harad`, `harad_jungle` | column / beast front / line |
+| ORGANIZED | Morgul and Black Númenórean units (Mordor unit groups) | column / line / line |
+| LOOSE | `mordor`, `gundabad`, `angmar` (orcs and hill-men), `dol_guldur` (proposed, orcs) | swarm |
+| LOOSE | `dunland`, `half_troll`, `ruffians` | swarm |
+| LOOSE | `hobbit` (shirriffs and bounders) | swarm |
+| LOOSE (proposed, not in the maintainer's list) | `bree`, `dorwinion` | swarm |
+| none | trolls (any faction), Ents, beasts | no slots |
+
+Unlisted factions default to ORGANIZED with column / line / line. Unit groups are entity-type tags (`#lotrrevival:doctrine/<group>`), so new units join a group by tag.
+
+**AI cost per discipline** (main-thread, FULL tier, in combat; reference machine):
+
+| Discipline | Extra work | Budget per member |
+| --- | --- | --- |
+| RIGID | slot upkeep every tick through the fight, block rotation, brace and flank checks, reach-limited targeting, volley timing | 70 µs |
+| ORGANIZED | slots until the charge, then plain melee | 60 µs |
+| LOOSE | no slots; one bearing per member re-rolled every 200 ticks | 45 µs |
+
+RIGID is the most expensive, so it is capped: a block holds at most **16** members; a squad has at most 2 blocks; at most **12 RIGID blocks may hold formation in combat at once** server-wide (192 fighters, enough for two full armies). When a 13th block makes contact, it fights as ORGANIZED (forms up, charges, breaks) until a slot frees up; blocks nearest a player claim slots first. This is a fixed design rule, not a load reaction, so it applies near players too. Formation upkeep is cheaper in REDUCED (slot updates every 4 ticks) and blocks with no player within 144 hold formation without steering until a player comes close.
+
+#### 2d. Movement and re-pathing
 
 **Leader re-paths when:** the destination moves more than 4 blocks; the path's last 25% is reached and the route continues (the next segment is requested at 60% so there is no stop); no progress of 1 block in 60 ticks (stuck: also invalidates the snapshot cells around it, section 3e); the route changes (new order, new target squad).
 
@@ -152,29 +211,34 @@ Spacing is between slot centres. "Front" is the leader's heading.
 3. **Own path** (P1/P2 priority) when more than 24 blocks from the slot or stuck for 40 ticks.
 4. More than 64 blocks away for 200 ticks: the follower leaves the squad (becomes a loose NPC with the squad's home or route end as home). Hired units use their own teleport rule instead.
 
-#### 2d. Engagement
+#### 2e. Engagement
 
 | Event | Behavior |
 | --- | --- |
-| Follower acquires a target within 8 blocks of its slot, or is hit | breaks off and fights with its full combat AI; leash 24 blocks from the leader; beyond it, it drops the target unless it is its retaliation target |
-| Leader sees an enemy within 16 blocks (or any member reports one) | squad state COMBAT; the leader forms the contact shape facing the enemy, if there is time (enemy more than 12 blocks away), then: line and wedge charge and dissolve into individual fights; shield wall **holds**: members only engage targets within 3 blocks of their slot until the wall is broken (fewer than half its front rank alive) |
+| Leader sees an enemy within 16 blocks (or any member reports one) | squad state COMBAT; the leader forms the contact shape facing the enemy if there is time (enemy more than 12 blocks away); then it fights by discipline (2c) |
+| ORGANIZED follower acquires a target within 8 blocks of its slot, or is hit | breaks off and fights with its full combat AI; leash 24 blocks from the leader; beyond it, it drops the target unless it is its retaliation target |
+| RIGID member | keeps its slot; fights only targets in reach of its slot; front rank braces (2h) while an enemy is within 6 blocks in front; pikes and spears lowered in the second rank; the block turns toward the biggest threat at its turn rate |
+| RIGID archer ranks | the leader picks one target point (the nearest enemy group's centre); ranks **volley in turn**: rank A draws together, holds up to 20 ticks for the order, all release within 2 ticks; rank B draws while A nocks again; cadence about 40 ticks per rank. Each archer aims at its own target inside the group (no per-archer scan: the leader's target list is shared) |
+| ORGANIZED open order (Rangers) | ambush: members wait crouched and still (no strolling, no speech) at their spots until an enemy comes within 12 blocks or one of them is hit, then shoot and close; they never form lines; they withdraw 8-12 blocks from melee when their bows are loaded |
+| ORGANIZED beast front (Harad) | war-beasts charge first; the foot line follows 6 blocks behind and breaks into melee when the beasts reach the enemy |
+| LOOSE | everyone rushes; each member takes the nearest enemy the leader or a neighbour is fighting, else its own scan |
 | Shared knowledge | members share the squad's target list: a target spotted by one is a candidate for all (no extra scans) |
-| No target for any member for 100 ticks | REGROUP: members return to slots; the squad continues when 75% are within 6 blocks of their slots or after 200 ticks |
-| Below 25% of starting strength and the squad type can rout | ROUT: flee away from the nearest enemy squad toward the route start or home, and despawn when unseen (event and invasion NPCs only) |
+| No target for any member for 100 ticks (RIGID: 60 ticks with no enemy within 12) | REGROUP: members return to slots; the squad continues when 75% are within 6 blocks of their slots or after 200 ticks |
+| Below 25% of starting strength and the squad type can rout | ROUT: flee away from the nearest enemy squad toward the route start or home (rout animation, 2h), and despawn when unseen (event and invasion NPCs only) |
 
-#### 2e. Leader death and succession
+#### 2f. Leader death and succession
 
 - On leader death the new leader is chosen the same tick: highest class (captain > guard > civilian), then unit level (hired) or nemesis rank, then current health, then lowest slot index. Only members within 32 blocks of the old leader count.
-- The new leader keeps the route, the cached path and the formation; slots are recomputed (one shift forward).
+- The new leader keeps the route, the cached path and the formation; slots are recomputed (one shift forward). LOOSE squads roll morale collapse first (2c).
 - No member within 32 blocks: the squad splits; members within 16 blocks of each other form new squads (if 2 or more), the rest become loose NPCs.
 - Squad types flagged `routs_on_leader_death` (invasion waves led by a nemesis, PR #182) rout instead of succeeding.
-- Hired squads: the leader is always the owner (a player), never an NPC, so succession does not apply (2f).
+- Hired squads: the leader is always the owner (a player), never an NPC, so succession does not apply (2g).
 
-#### 2f. Mapping existing and planned groups to squads
+#### 2g. Mapping existing and planned groups to squads
 
 | Group | Squad mapping |
 | --- | --- |
-| **Hired units** | One squad per owner per squadron name (the existing free-text squadron field); unnamed units form the owner's default squad. More than 12 in one squadron splits into squads of 12. The **owner is the virtual leader** while units follow: units take column slots behind the owner on roads and line slots elsewhere. Guarding units have no formation (each holds its guard point). Halt, guard, teleport and owner-away rules from `hiring-trading.md` are unchanged. Horn commands address the squad. |
+| **Hired units** | One squad per owner per squadron name (the existing free-text squadron field); unnamed units form the owner's default squad. More than 12 in one squadron splits into squads of 12. The **owner is the virtual leader** while units follow: units take column slots behind the owner on roads and line slots elsewhere. In combat hired squads fight as ORGANIZED whatever their faction's discipline (a player is not a formation anchor in a fight); formation orders for hired units are left to a later hiring spec. Guarding units have no formation (each holds its guard point). Halt, guard, teleport and owner-away rules from `hiring-trading.md` are unchanged. Horn commands address the squad. |
 | **Garrisons** (PR #184 slots) | Loose while idle (routine and posts as today). On alert (any member gets a target), all members within the slot's count box join an ad-hoc COMBAT squad led by the highest rank; it dissolves 200 ticks after combat ends and everyone walks back to their post. |
 | **Village guards and residents** | Never squads; residents are always loose NPCs. Guards follow the garrison rule. |
 | **Wild warrior groups** (spawn tables) | A group spawn of 3+ fighters becomes a squad (column, wander route around its spawn point) for its lifetime. |
@@ -183,7 +247,23 @@ Spacing is between slot centres. "Front" is the leader's heading.
 | **Caravans** | Squad with traders and pack animals in the middle slots, guards in front and rear slots; column; speed of the slowest animal. |
 | **Off-screen battles** | Between squad records (section 5). |
 
-#### 2g. Off-screen squads (packing)
+#### 2h. Animation hooks for formations
+
+Formations need five visual states. They follow PR #185's rules (`specs/core/rendering-animation.md`): clip keys are `animation.<rig>.<group>.<name>[.<variant>]`, looping states go in the `ANIM_ACTION` byte, one-shots in `ANIM_PULSE`, and anything vanilla already syncs costs nothing. **Request to PR #185 / core:** append these values to the `AnimAction` and `AnimPulse` enums (append only, never reorder) and these clips and fallbacks to its tables.
+
+| Hook | Server sets | Clip (humanoid; orc rig the same names) | Fallback | When |
+| --- | --- | --- | --- | --- |
+| Shield brace | `ANIM_ACTION = BRACE` | `animation.humanoid.defend.brace.shield` | `defend.block.shield` | RIGID front rank with a shield while an enemy is within 6 blocks in front; cleared when none is |
+| Pike lower | `ANIM_ACTION = PIKE_LOWER` | `animation.humanoid.hold.pike.lowered` | `hold.pike`, then `hold.sword` | RIGID second rank with a pike, spear or polearm while the block is in COMBAT or advancing on an enemy within 16 |
+| Volley and draw in rank | `ANIM_ACTION = VOLLEY_READY` while waiting for the order; the draw and release themselves are vanilla's using-item state (no extra sync) | `animation.humanoid.ranged.bow.ready`, then the existing `ranged.bow.draw` / `ranged.bow.release` | `ranged.bow.draw` (first frame held) | archer ranks between volleys; the leader sends `ANIM_PULSE = ORDER` (`animation.humanoid.emote.order`, fallback `emote.point`) on each volley |
+| March in step | `ANIM_ACTION = MARCH` | `animation.humanoid.move.march` | `move.walk` | RIGID squads in MARCH state. The client plays the clip with its phase taken from the level's game time (not the entity's own walk distance), so every member of every marching block steps together with no extra sync |
+| Rout / flee | `ANIM_ACTION = ROUT` | `animation.humanoid.move.flee` | `move.run` | members in ROUT (any discipline) and LOOSE members collapsing after their captain dies |
+
+- Sync cost: action bytes change only on state changes (a few per member per minute; volleys about 2 per archer per 40 ticks). A 200-fighter battle stays within PR #185's estimate of about 4 KB/s per player.
+- Animations are cosmetic: brace and blocking rules are server-side (2c) and work with the vanilla biped too.
+- Animation LOD (PR #185) applies as usual; at the cheapest client tier these show as key poses.
+
+#### 2i. Off-screen squads (packing)
 
 - When a chunk holding a member of a **travelling** squad (patrol, caravan, warband, wild group on a route) unloads, the whole squad is **packed**: every member's full entity data is saved into the squad record, the entities are removed (not killed: no drops, no death events), and the record continues along its route at walking speed (about 3 blocks per second), advanced every 100 ticks on the worker executor.
 - When the record's position is in a loaded, entity-ticking chunk within 128 blocks of a player, it is **unpacked** on the main thread: members are recreated from their saved data at their formation slots around the record position (standable spots only; up to 2 squads unpacked per tick).
@@ -249,7 +329,7 @@ Waiting requests age up one level every 20 ticks. **One outstanding request per 
 
 #### 3f. Close-quarters steering (no path)
 
-For a melee chase, when the target is within **6** blocks, at most 1 block higher or 3 lower, and the straight line is walkable (as 2c), the NPC steers straight at it and requests nothing. This removes most battle paths (H2). Further out, or blocked, it requests a P0 path and keeps steering until the result arrives.
+For a melee chase, when the target is within **6** blocks, at most 1 block higher or 3 lower, and the straight line is walkable (as 2d), the NPC steers straight at it and requests nothing. This removes most battle paths (H2). Further out, or blocked, it requests a P0 path and keeps steering until the result arrives.
 
 #### 3g. Path reuse and roads
 
@@ -394,15 +474,15 @@ Built by a perf GameTest that runs only when the system property `lotrrevival.pe
 
 | Scenario | Contents | Players |
 | --- | --- | --- |
-| **S1 target battle** | 1 battle of 200 fighters (2 sides x 10 squads of 10, hostile factions) + 2 villages of 40 + 10 patrol squads of 8 on a 200-block loop road | one in the battle centre, one in village 1 |
-| **S2 worst case** (the CI gate) | 3 battles of 150 (2 sides x 75 in squads), 2 villages of 40 (civilians, guards, homes, routines), 10 patrolling squads of 8 | battle A centre (FULL), 100 blocks from battle B (REDUCED), village 1; battle C and village 2 have no player within 144 (DORMANT, with the unwatched-combat cap) |
+| **S1 target battle** | 1 battle of 200 fighters (2 sides x 10 squads of 10, hostile factions; one side RIGID, the other LOOSE) + 2 villages of 40 + 10 patrol squads of 8 on a 200-block loop road | one in the battle centre, one in village 1 |
+| **S2 worst case** (the CI gate) | 3 battles of 150 (2 sides x 75 in squads; battle A is RIGID (pike line and archer ranks) vs LOOSE, B is ORGANIZED vs LOOSE, C is RIGID vs RIGID so the rigid-block cap is hit), 2 villages of 40 (civilians, guards, homes, routines), 10 patrolling squads of 8 | battle A centre (FULL), 100 blocks from battle B (REDUCED), village 1; battle C and village 2 have no player within 144 (DORMANT, with the unwatched-combat cap) |
 
 Factions: whatever hostile NPC pairs exist when the test runs (today man guards vs a hostile test faction override); the test picks from data so new races are covered automatically.
 
 #### 8b. Run and measure
 
 1. Warm-up 400 ticks (JIT), excluded.
-2. Measure **1,200 ticks** (60 s): per-tick server tick time (our own timing in core), and our own counters: time in NPC AI per tier, path dispatch and apply, index updates and queries, sim apply, path queue depth and latency per priority, sync fallbacks, LOS checks per tick, tier counts, GC pauses (from the JVM's GC beans).
+2. Measure **1,200 ticks** (60 s): per-tick server tick time (our own timing in core), and our own counters: time in NPC AI per tier, path dispatch and apply, index updates and queries, sim apply, path queue depth and latency per priority, sync fallbacks, LOS checks per tick, tier counts, time per member by discipline, rigid blocks holding vs over the cap, GC pauses (from the JVM's GC beans).
 3. Write `build/reports/npc-perf/report.json` and `report.md` (mean, p50, p95, p99, max, per-phase breakdown, top counters); CI uploads them as an artifact and prints the markdown summary to the job log.
 4. Fail if a threshold is exceeded (8c), or if any battle did not resolve to at least 50% casualties on one side within the run (proves AI was actually fighting, not frozen).
 
@@ -423,7 +503,7 @@ Main-thread cost per NPC per tick, averaged over the run. The load test reports 
 
 | Tier | Budget |
 | --- | --- |
-| FULL, in combat | 60 µs |
+| FULL, in combat | 60 µs (by discipline: RIGID 70, ORGANIZED 60, LOOSE 45; section 2c) |
 | FULL, idle | 20 µs |
 | REDUCED, in combat | 25 µs |
 | REDUCED, idle | 8 µs |
@@ -468,7 +548,7 @@ Incremental; every step keeps behavior and tests green and is measured by the ha
 - **Server stop:** path pool and sim executor drain and cancel; packed squads are saved; apply steps of pending sim jobs are not run (their captures are discarded, records unchanged).
 - **Datapack reload:** hostility matrix and player hostility cache rebuilt; snapshot cache and segment cache cleared; epoch bumped.
 - **World events and chunk tickets:** event NPCs are at least REDUCED (1b); force-loaded chunks with no player keep them out of DORMANT so events play out. Red-state shedding (PR #182) resolves them off-screen.
-- **Chunk unloads mid-path:** the result is dropped (NPC unloaded); travelling squads pack (2g).
+- **Chunk unloads mid-path:** the result is dropped (NPC unloaded); travelling squads pack (2i).
 - **NPC on a boat or mount:** never settled; mounts of riders share the rider's tier; mount pathing uses the rider's request.
 - **Hired units of an offline owner:** owner-away rules; they are static, can go DORMANT, and are never packed.
 - **Interaction with other pods:** territory (PR #183) drift and housekeeping and the structure index (PR #184) may use the core executor; both must hand immutable views to the worker (**required note to PR #184:** the index exposes a read-only per-region view safe to read off-thread, or queries are captured on main and only the ranking runs off-thread).
@@ -486,7 +566,7 @@ Incremental; every step keeps behavior and tests green and is measured by the ha
 | `Phases` | the stagger helper (`due(entity, interval, gameTime)`) |
 | `NpcSpatialIndex` | per level grid, faction/player/monster buckets, per-cell counts, hostility matrix, player hostility cache; queries: `enemiesNear`, `alliesNear`, `playersNear`, `countIn(chunk)` |
 | `PathService` | requests, priorities, budgets, snapshot cache, segment cache, workers, results, fallback, inline mode |
-| `Squad`, `SquadManager`, `Formation`, `SquadDoctrine` | squads (section 2); attachment `lotrrevival:squad`; SavedData `lotrrevival_squads`; data `data/<ns>/lotrrevival/squad_doctrine/<faction>.json` (march, contact and defend shapes) |
+| `Squad`, `SquadManager`, `Formation`, `SquadDoctrine` | squads (section 2); attachment `lotrrevival:squad`; SavedData `lotrrevival_squads`; data `data/<ns>/lotrrevival/squad_doctrine/<faction>.json`: `discipline` (`rigid`, `organized`, `loose`), `march`, `contact` and `defend` shapes, optional `break_losses` (RIGID, default 0.5), `turn_rate` (degrees per second, default 45), `rout_on_leader_loss` chance (LOOSE, default 0.6) and `groups` (overrides per unit tag `#lotrrevival:doctrine/<group>`, same fields); datagen writes the defaults of section 2c. Leader-lost hook as a NeoForge event (`SquadLeaderLostEvent`, cancellable, carries whether the leader was a nemesis) |
 | `PerfCaps` | caps and degradation (section 6) |
 | `PerfStats` | counters and per-tier timing used by `/lotr perf` and the load test |
 | NpcEntity hooks (small, additive) | tier-gated `serverAiStep` rates and pushing; `EntityTickEvent.Pre` cancellation for settled DORMANT NPCs (NeoForge's pre-tick entity event is cancellable) |
@@ -507,7 +587,9 @@ Incremental; every step keeps behavior and tests green and is measured by the ha
 
 - Multithreaded entity ticking or tracking (Paper-fork style); we keep vanilla's single server thread for entity logic.
 - Client-side rendering performance (models, LOD meshes for large armies): a separate client spec if playtests need it.
-- Mounted combat and ranged combat AI themselves (their own specs); they must declare tiers and use the path service and index.
+- Mounted combat and ranged combat AI themselves (their own specs); they must declare tiers and use the path service and index. This spec only fixes how they sit in formations (wedge charges, volleys).
+- Formation orders for hired units (hired squads fight ORGANIZED for now).
+- The clips themselves: authored under PR #185's pipeline; this spec only names the hooks.
 - The distance-scaled tracker update mixin (separate, conditional ticket).
 - Invasion rules (invasion spec); this spec only gives them squads and budgets.
 
@@ -524,16 +606,26 @@ Incremental; every step keeps behavior and tests green and is measured by the ha
 - [ ] GameTest: snapshot invalidation: a wall placed across a cached path causes stuck detection, invalidation and a new path within 80 ticks.
 - [ ] GameTest: close-quarters steering: a guard chasing a target 4 blocks away on flat ground makes no path requests.
 - [ ] GameTest: squads: column slots on a straight road; followers direct-steer; leader death promotes the right member; split when no one is within 32; regroup after 100 ticks without targets; shield wall holds (members ignore targets beyond 3 blocks of their slot).
+- [ ] GameTest: doctrine data: every enabled faction resolves a discipline; unit-group overrides win (a Dol Amroth knight squad charges in a held wedge inside Gondor); unlisted factions default to ORGANIZED; trolls never take a slot.
+- [ ] GameTest: RIGID holds: a Gondor pike line attacked head-on keeps every member within 1.5 blocks of its slot until 50% losses, then breaks to ORGANIZED; a dwarf phalanx holds until 65%.
+- [ ] GameTest: RIGID turning: an enemy appearing 90° to the side makes the block rotate at no more than its turn rate (45°/s, phalanx 30°/s); members keep their relative slots while it turns.
+- [ ] GameTest: flanking: a braced front-rank shield-bearer blocks a frontal melee hit and takes full damage from the same hit from the side or rear; flank hits count double toward the break check.
+- [ ] GameTest: volleys: an elven archer block's rank A releases within 2 ticks of each other; ranks alternate; no archer runs its own target scan while the leader's list has targets.
+- [ ] GameTest: ORGANIZED: a Rohan squad forms a wedge, charges, breaks into individual melee within 8 blocks and regroups 100 ticks after the last enemy dies; Rangers wait still in open order until an enemy is within 12 blocks.
+- [ ] GameTest: LOOSE: no slots, members within 3-10 blocks of the leader; on captain death (fixed seed) about 60% rout at once and the rest rout at 30% losses; a cancelled leader-lost event stops the roll.
+- [ ] GameTest: rigid block cap: with 13 RIGID blocks in contact, exactly 12 hold formation (nearest a player first) and the 13th fights ORGANIZED until one frees up.
+- [ ] GameTest: animation hooks: BRACE is set on the front rank when an enemy enters 6 blocks in front and cleared when it leaves; PIKE_LOWER on the second rank in COMBAT; VOLLEY_READY between volleys with an ORDER pulse per volley; MARCH only while a RIGID squad marches; ROUT on routing members; each byte changes only on state changes (count of entity-data updates per member per minute stays under 6).
 - [ ] GameTest: hired squadrons form squads per owner per squadron name and keep all existing hiring tests green.
 - [ ] GameTest: packing and unpacking a patrol across an unload/load keeps member count, names, gear and health exactly; no duplicates after a simulated crash between saves.
 - [ ] GameTest: caps: per-chunk spawn refusal; REDUCED over cap demotes the farthest non-combat NPCs; loaded-total cap despawns only eligible wild NPCs; FULL NPCs are never demoted.
 - [ ] GameTest: `ServerLoad` states with injected tick times match PR #182's governor table (shared).
-- [ ] Load test S2 passes its scaled thresholds on CI; S1 reports mean <= 35 x k.
+- [ ] Load test S2 passes its scaled thresholds on CI; S1 reports mean <= 35 x k; per-discipline member costs are within 25% of 2c's budgets.
+- [ ] Playtest: attack a Gondor pike line head-on and lose; flank it and win. Kill an orc captain and watch the swarm scatter. Watch an elven block volley in turns and a Uruk column march in step.
 - [ ] Playtest: on the maintainer's server, a 150-200 fighter battle with the player in it holds 20 TPS; `/spark tickmonitor --threshold-tick 50` reports no recurring spikes; `/lotr perf` shows sensible tier counts; dusk in a busy town shows no spike.
 
 ## Tickets
 
-Proposed, not opened until this spec is approved. 1-2 day tickets, `pod:npc` unless marked. **Gate:** P1-P12 are the framework and should land **before the G3 NPC content wave** starts (they are the "pre-content" set); P13-P17 can follow during G3.5. Suggested agents follow the current npc rotation; Opus 3 adjusts when opening.
+Proposed, not opened until this spec is approved. 1-2 day tickets, `pod:npc` unless marked. **Gate (maintainer decision):** the G3 NPC content wave **waits until the perf load test passes** (P12 green on CI with S1 and S2 gating). P1-P12 with P11a-P11c are that pre-content set; P13-P17 can follow during G3.5. Suggested agents follow the current npc rotation; Opus 3 adjusts when opening.
 
 | # | Pod | Ticket | Days | Needs | Shared files |
 | --- | --- | --- | --- | --- | --- |
@@ -546,9 +638,12 @@ Proposed, not opened until this spec is approved. 1-2 day tickets, `pod:npc` unl
 | P7 | npc | Path service part 1: request API, priorities, generations, snapshot copies and cache with invalidation, worker pool, budgets, result apply, inline mode, equality GameTests | 2 | P1 | - |
 | P8 | npc | Path service part 2: navigation integration (`moveTo` through the service), sync fallback, close-quarters steering in melee chase, hired follow/guard and routine on the service, teleport reachability as P3 | 2 | P7, P6 | - |
 | P9 | npc | Caps and degradation (`PerfCaps`) on `ServerLoad`; spawners, anchors and unpacking honour per-chunk/structure/area/tier caps | 1.5 | P2, P6 | - |
-| P10 | npc | Squads part 1: model, attachment, manager, formations (column, line, wedge, shield wall), slot assignment, follower steering and breadcrumbs, doctrine data and datagen | 2 | P8 | - |
-| P11 | npc | Squads part 2: engagement, shared targets, regroup, rout, leader succession and split; hired squadrons, garrison alerts and wild groups mapped | 2 | P10 | - |
-| P12 | npc + core | Load test gating: thresholds with calibration scale, regression check vs main, S1 and S2 gates on; spark how-to in `docs/tooling.md` | 1 | P1, P6, P8, P11 | workflow (Opus 1) |
+| P10 | npc | Squads part 1: model, attachment, manager, base formations (column, line, wedge, swarm), blocks, slot assignment and gear swaps, follower steering and breadcrumbs, doctrine data format (discipline, shapes, groups) and datagen of 2c's defaults | 2 | P8 | - |
+| P11 | npc | Squads part 2: ORGANIZED engagement (charge and break), shared targets, regroup, rout, leader succession and split; hired squadrons (always ORGANIZED), garrison alerts and wild groups mapped | 2 | P10 | - |
+| P11a | npc | RIGID discipline: hold-through-combat, reach-limited targeting, block rotation at turn rate, frontal brace and flank rule, break at losses, re-form, rigid block cap; shapes shield wall, pike line, phalanx, battalion | 2 | P11 | - |
+| P11b | npc | Archer ranks and volleys; open order with ambush (Rangers); beast front (Harad); LOOSE swarm, morale collapse and `SquadLeaderLostEvent`; trolls and beasts with no slot | 2 | P11 | - |
+| P11c | npc + core | Formation animation hooks: append `BRACE`, `PIKE_LOWER`, `VOLLEY_READY`, `MARCH`, `ROUT` and pulse `ORDER` to PR #185's enums (core) and its clip and fallback tables; set them from squad states; game-time phase for `move.march` in the client wrapper | 1 | P11a, P11b, PR #185's anim API | core `AnimAction`/`AnimPulse` (append only), `client/core/anim` resolver (Opus 1) |
+| P12 | npc + core | Load test gating: thresholds with calibration scale, regression check vs main, S1 and S2 gates on (with the discipline mix); spark how-to in `docs/tooling.md` | 1 | P1, P6, P8, P11a, P11b | workflow (Opus 1) |
 | P13 | core | `core.api.RoadRoutes` holder | 0.5 | - | core |
 | P14 | world | `RoadRoutes` backend: road graph, routes, centreline samples (Opus 2 sizes) | 1 | P13 | world |
 | P15 | npc | Road routes for leaders and the segment cache | 1.5 | P10, P13 | - |
@@ -560,14 +655,15 @@ Cross-spec follow-ups (no new tickets): PR #182 ticket 13 (governor) is built on
 
 ## Open questions for the maintainer
 
-1. **Gate placement.** P1-P12 before the G3 content wave means about 18 agent-days ahead of new races. Put them in milestone G3 (to block the wave) or keep them in G3.5 and hold the content tickets until P12 is green?
-2. **Reference machine.** What CPU is your server (for `reference_calib_ms` and the per-tier budgets)? Our numbers assume a recent fast desktop core.
-3. **CI runner.** You said 2 CPU; GitHub's docs give 4 vCPU for public-repo Linux runners. Is the perf job meant to run somewhere else (self-hosted)? The test scales either way.
-4. **Radii.** FULL 48 and REDUCED 128 as you proposed. Do you want REDUCED tied to the server's view distance instead (for example, view distance x 16 minus 32)?
-5. **Unwatched battles.** Cap 160 fighters promoted with no player near, rest frozen until a player arrives or the event resolves them off-screen. OK, or resolve all unwatched loaded fights off-screen at once?
-6. **Packing travelling squads** removes their entities when their chunks unload and recreates them later from saved data. OK for patrols, caravans and warbands? (Static NPCs are never packed.)
-7. **Shield wall and doctrine.** Which factions get the shield wall, and which charge in a wedge? Proposed: shield wall Gondor, Dwarves, Dale; wedge Rohan, Uruk-hai, Gundabad.
-8. **Mixin** for distance-scaled tracking updates (P18): allowed if the numbers justify it?
+1. **Reference machine.** What CPU is your server (for `reference_calib_ms` and the per-tier budgets)? Our numbers assume a recent fast desktop core.
+2. **CI runner.** You said 2 CPU; GitHub's docs give 4 vCPU for public-repo Linux runners. Is the perf job meant to run somewhere else (self-hosted)? The test scales either way.
+3. **Radii.** FULL 48 and REDUCED 128 as you proposed. Do you want REDUCED tied to the server's view distance instead (for example, view distance x 16 minus 32)?
+4. **Unwatched battles.** Cap 160 fighters promoted with no player near, rest frozen until a player arrives or the event resolves them off-screen. OK, or resolve all unwatched loaded fights off-screen at once?
+5. **Packing travelling squads** removes their entities when their chunks unload and recreates them later from saved data. OK for patrols, caravans and warbands? (Static NPCs are never packed.)
+6. **Disciplines not in your list.** Proposed: Bree and Dorwinion LOOSE (militia), Dol Guldur LOOSE (orcs), Dale ORGANIZED with a shield wall when defending. OK?
+7. **Rigid numbers.** Break at 50% losses (dwarves 65%), turn 45°/s (phalanx 30°/s), and at most 12 rigid blocks of 16 holding formation in combat at once (extra blocks fight ORGANIZED). OK, or raise the cap if your server has room?
+8. **Hired units** fight ORGANIZED whatever their faction for now. Do you want formation orders for hired squads (a later hiring spec)?
+9. **Mixin** for distance-scaled tracking updates (P18): allowed if the numbers justify it?
 
 ## Sources
 
