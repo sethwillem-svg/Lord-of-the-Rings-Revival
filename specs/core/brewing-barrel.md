@@ -16,8 +16,8 @@ A wooden barrel that turns six ingredients and three buckets of water into sixte
 2. **Open** the screen by right-clicking any face other than the tap, or the tap with anything other than the tap actions in step 7. The screen has 6 ingredient slots (2 rows of 3), 3 water slots (third row), a display-only result slot, a **Brew** button, a progress bar, a fill gauge (servings out of 16) and a status line, above the player inventory. A barrel renamed in an anvil shows its name as the screen title.
 3. **Load** while the barrel is Empty: one or more items in each of the 6 ingredient slots and a Water Bucket in each water slot. Water slots accept only water buckets. Shift-click routes water buckets to the water slots and other items to the ingredient slots. When the slots match a recipe, the result slot previews the drink.
 4. **Brew.** Pressing Brew while Empty with a matching recipe removes one item from every ingredient slot (extras in a stack stay, so a player can preload several brews), turns each water bucket into an empty bucket in place, and starts brewing 16 servings at strength tier 0. Status: "Brewing <drink> (<tier>)".
-5. **Strength rises** one tier every 10 minutes (12,000 ticks). After 50 minutes (60,000 ticks) tier 4 is complete and the barrel becomes **Full** by itself.
-6. **Stop early.** Pressing Brew while Brewing, once at least tier 0 has completed (10 minutes in), ends brewing: the barrel becomes Full at the **last completed** tier and the partial tier is discarded. Before 10 minutes the button is disabled.
+5. **Strength rises** one tier every 5 minutes (6,000 ticks; half Legacy's pace, maintainer decision). After 25 minutes (30,000 ticks) tier 4 is complete and the barrel becomes **Full** by itself.
+6. **Stop early.** Pressing Brew while Brewing, once at least tier 0 has completed (5 minutes in), ends brewing: the barrel becomes Full at the **last completed** tier and the partial tier is discarded. Before 5 minutes the button is disabled.
 7. **Tap.** Right-click the tap face with an empty Wooden Mug while Full: one mug leaves the hand and a filled mug of the drink at the barrel's tier is given (into the hand if the stack was 1, else into the inventory, else dropped at the player); servings -1. Status while Full: "<drink> (<tier>), <n> left". When the last serving is drawn the barrel is Empty again.
 8. **Drink.** Hold use on a filled mug for 32 ticks (drink animation and sound). The player gains the drink's food and effects scaled by tier, may get Nausea if it is alcoholic, and gets an empty Wooden Mug back. All pilot drinks can be drunk on a full hunger bar.
 9. **Tooltip** on a filled mug: the tier name (colored), the alcohol percentage for alcoholic drinks (colored by band), then effect lines in vanilla potion-tooltip style with scaled durations.
@@ -46,12 +46,12 @@ A wooden barrel that turns six ingredients and three buckets of water into sixte
 | Water | 3 `minecraft:water_bucket`, one per water slot, all required | Each becomes `minecraft:bucket` on Brew. Other fluids and water bottles are out of scope. |
 | Start | Brew button | Sent with the vanilla menu button click (button id 0); no custom payload. Server validates state and match. |
 | Servings | 16 per brew, fixed | |
-| Tier length | 12,000 ticks | Tier in progress = floor(elapsed / 12,000). At elapsed = 60,000: Full, tier 4. |
+| Tier length | 6,000 ticks | Tier in progress = floor(elapsed / 6,000). At elapsed = 30,000: Full, tier 4. |
 | Stop early | allowed when tier in progress >= 1 | Becomes Full at tier in progress - 1; elapsed resets to 0. |
 | Progress | +1 per server tick while the chunk is loaded and ticking | No catch-up while unloaded (matches Legacy). |
-| Progress bar | Brewing: elapsed / 60,000; otherwise empty | |
+| Progress bar | Brewing: elapsed / 30,000; otherwise empty | |
 
-Barrel states: **Empty** -> (Brew, recipe matched) -> **Brewing** -> (60,000 ticks, or Brew pressed after tier 0) -> **Full** -> (last serving drawn) -> **Empty**.
+Barrel states: **Empty** -> (Brew, recipe matched) -> **Brewing** -> (30,000 ticks, or Brew pressed after tier 0) -> **Full** -> (last serving drawn) -> **Empty**.
 
 ### Strength tiers
 
@@ -129,7 +129,7 @@ All registered through `core.registry.ModRegistries`. The pilot adds these regis
     "result": "lotrrevival:ale"
   }
   ```
-  `ingredients` holds exactly 6 entries. Water, servings (16) and timing (12,000 ticks per tier) are fixed constants, not recipe fields. Codec and stream codec both required.
+  `ingredients` holds exactly 6 entries. Water, servings (16) and timing (6,000 ticks per tier) are fixed constants, not recipe fields. Codec and stream codec both required.
 - **Data components:**
   - `lotrrevival:drink_strength`: int 0-4, persistent and network-synced. Tier ids, names, colors and both multipliers in one shared enum in `core.brewing`.
   - `lotrrevival:barrel_brew`: record of state (brewing or full), drink item id, tier, servings, elapsed ticks; persistent and network-synced. Set on the barrel item by the loot table's copy-components function, together with vanilla `max_stack_size` 1. Tooltip: "<drink> (<tier>), <n> left" or "Brewing <drink> (<tier>)".
@@ -176,7 +176,7 @@ All GameTests live in one class, `core.test.BrewingBarrelTests`, and drive the b
 - [ ] GameTest `tap_draws_servings`: a Full Ale barrel at tier 3. A mock player holding 1 empty mug uses the tap face: holds `lotrrevival:ale` with `drink_strength` 3, servings 15. Using a side face with an empty mug draws nothing. Drawing 15 more leaves the barrel Empty.
 - [ ] GameTest `drink_scales_food_and_effects`: a mock player at 0 hunger finishes a Stout Miruvor: has Strength I and Speed I with duration 1,600 (+-1 tick), food level 10, holds an empty Wooden Mug, no Nausea.
 - [ ] GameTest `strong_alcohol_always_nauseates`: a mock player finishes a Mighty Mead: has Nausea with duration between 2,160 and 3,240 ticks inclusive.
-- [ ] GameTest `broken_barrel_keeps_brew`: a Full Ale barrel at tier 2 with 10 servings and 1 wheat left in slot 0. Destroy it with drops: exactly one barrel item with `barrel_brew` {full, ale, 2, 10, 0} and max stack size 1, plus 1 wheat. Place the item: the barrel is Full Ale, tier 2, 10 servings. Repeat with a Brewing barrel at elapsed 15,000: after placing it resumes at 15,000 and reaches Full at 60,000.
+- [ ] GameTest `broken_barrel_keeps_brew`: a Full Ale barrel at tier 2 with 10 servings and 1 wheat left in slot 0. Destroy it with drops: exactly one barrel item with `barrel_brew` {full, ale, 2, 10, 0} and max stack size 1, plus 1 wheat. Place the item: the barrel is Full Ale, tier 2, 10 servings. Repeat with a Brewing barrel at elapsed 15,000: after placing it resumes at 15,000 and reaches Full at 30,000.
 - [ ] Playtest (use `/tick sprint` for the waits): craft barrel and mugs, brew cider, watch progress, gauge and status; stop one brew early at Fair and let another reach Mighty; tap from the tap face and open the screen from a side with a mug in hand; drink both and check tooltips, food and nausea; rename a barrel in an anvil; break a Full barrel and a Brewing barrel, replace them and confirm the brew is kept; blow one up with TNT; reload the world mid-brew and confirm progress kept.
 
 ## Tickets
@@ -194,12 +194,11 @@ Follow-up tickets from **Later** are opened after ticket 2 merges; hopper suppor
 - Breaking keeps the brew in the item (shulker style), including explosions.
 - Drink model: plain alcohol gives food and a strength-scaled nausea chance; only special draughts give buffs.
 - Five tiers with Legacy's multipliers (x0.25 to x3 strength, x0.5 to x1.5 food), named Thin, Fair, Hearty, Stout, Mighty.
-- Timing, water and button: Legacy's 10 minutes per tier, three water buckets, Brew button with stop early. No catch-up while unloaded.
+- Timing, water and button: 5 minutes per tier (Legacy uses 10; sped up by maintainer decision), three water buckets, Brew button with stop early. No catch-up while unloaded.
 - Hoppers, tolerance and slurred chat, the full drink list and vessels are follow-up tickets.
 
 ## Open questions
 
-1. Mighty takes 50 minutes of loaded-chunk time. Keep Legacy's pace, or shorten tiers (for example 6,000 ticks) for our modpack?
 2. Drink stats are Java constants. Should drinks become a data-driven registry before the full drink list lands?
 3. Stand-in ingredients (honeycomb mead, iron-nugget Dwarven Tonic, golden-apple Miruvor): acceptable until World adds the real crops, or hold those two draughts until then?
 4. Barrel recipe uses a vanilla barrel (ours) instead of Legacy's planks-iron-bucket recipe. Keep?
