@@ -20,12 +20,64 @@
         "color": "#1F3A93"
       },
       {
+        "biome": "lotrrevival:shore",
+        "color": "#D8CB8E"
+      },
+      {
+        "biome": "lotrrevival:lake",
+        "color": "#2E64B5"
+      },
+      {
         "biome": "lotrrevival:shire",
         "color": "#78B048"
       },
       {
+        "biome": "lotrrevival:shire_woodlands",
+        "color": "#3E7A2C"
+      },
+      {
+        "biome": "lotrrevival:shire_marshes",
+        "color": "#5F8F6E"
+      },
+      {
+        "biome": "lotrrevival:shire_moors",
+        "color": "#9A9A62"
+      },
+      {
+        "biome": "lotrrevival:white_downs",
+        "color": "#C9D7A0"
+      },
+      {
         "biome": "lotrrevival:old_forest",
         "color": "#1F4A24"
+      },
+      {
+        "biome": "lotrrevival:barrow_downs",
+        "color": "#A3B56B"
+      },
+      {
+        "biome": "lotrrevival:bree_land",
+        "color": "#9CC25A"
+      },
+      {
+        "biome": "lotrrevival:chetwood",
+        "color": "#2F6B3A"
+      },
+      {
+        "biome": "lotrrevival:midgewater_marshes",
+        "color": "#4F7A63"
+      },
+      {
+        "biome": "lotrrevival:lone_lands",
+        "color": "#B8AE6E"
+      },
+      {
+        "biome": "lotrrevival:tower_hills",
+        "color": "#6E9A5A"
+      },
+      {
+        "biome": "lotrrevival:ered_luin_foothills",
+        "color": "#7A8270"
       }
     ],
     "map": "lotrrevival:middle_earth",

@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"name": "Bag End hill", "kind": "hill", "height": 9, "radius": 4}, "geometry": {"type": "Point", "coordinates": [1618, 1455]}},
+    {"type": "Feature", "properties": {"name": "Bree-hill", "kind": "hill", "height": 32, "radius": 8}, "geometry": {"type": "Point", "coordinates": [1820, 1462]}},
+    {"type": "Feature", "properties": {"name": "Green hill A", "kind": "hill", "height": 14, "radius": 9}, "geometry": {"type": "Point", "coordinates": [1580, 1418]}},
+    {"type": "Feature", "properties": {"name": "Green hill B", "kind": "hill", "height": 9, "radius": 6}, "geometry": {"type": "Point", "coordinates": [1596, 1430]}},
+    {"type": "Feature", "properties": {"name": "Woody End rise", "kind": "hill", "height": 8, "radius": 8}, "geometry": {"type": "Point", "coordinates": [1676, 1545]}},
+    {"type": "Feature", "properties": {"name": "Barrow 1", "kind": "hill", "height": 14, "radius": 5}, "geometry": {"type": "Point", "coordinates": [1788, 1522]}},
+    {"type": "Feature", "properties": {"name": "Barrow 2", "kind": "hill", "height": 16, "radius": 5}, "geometry": {"type": "Point", "coordinates": [1800, 1546]}},
+    {"type": "Feature", "properties": {"name": "Barrow 3", "kind": "hill", "height": 12, "radius": 5}, "geometry": {"type": "Point", "coordinates": [1792, 1572]}},
+    {"type": "Feature", "properties": {"name": "Barrow 4", "kind": "hill", "height": 10, "radius": 4}, "geometry": {"type": "Point", "coordinates": [1808, 1520]}},
+    {"type": "Feature", "properties": {"name": "Barrow 5", "kind": "hill", "height": 10, "radius": 4}, "geometry": {"type": "Point", "coordinates": [1782, 1548]}},
+    {"type": "Feature", "properties": {"name": "Old Forest rise", "kind": "hill", "height": 6, "radius": 8}, "geometry": {"type": "Point", "coordinates": [1745, 1500]}},
+    {"type": "Feature", "properties": {"name": "Chetwood hill", "kind": "hill", "height": 10, "radius": 8}, "geometry": {"type": "Point", "coordinates": [1870, 1405]}},
+    {"type": "Feature", "properties": {"name": "Lone hill A", "kind": "hill", "height": 12, "radius": 7}, "geometry": {"type": "Point", "coordinates": [1930, 1420]}},
+    {"type": "Feature", "properties": {"name": "Lone hill B", "kind": "hill", "height": 14, "radius": 8}, "geometry": {"type": "Point", "coordinates": [1955, 1520]}},
+    {"type": "Feature", "properties": {"name": "Weather foot", "kind": "hill", "height": 20, "radius": 9}, "geometry": {"type": "Point", "coordinates": [1960, 1450]}},
+    {"type": "Feature", "properties": {"name": "Tower hill 1", "kind": "hill", "height": 24, "radius": 7}, "geometry": {"type": "Point", "coordinates": [1395, 1462]}},
+    {"type": "Feature", "properties": {"name": "Tower hill 2", "kind": "hill", "height": 18, "radius": 7}, "geometry": {"type": "Point", "coordinates": [1385, 1510]}},
+    {"type": "Feature", "properties": {"name": "Tower hill 3", "kind": "hill", "height": 15, "radius": 6}, "geometry": {"type": "Point", "coordinates": [1410, 1420]}},
+    {"type": "Feature", "properties": {"name": "Ered Luin spine", "kind": "ridge", "heights": [95, 95, 80, 60], "width": 7}, "geometry": {"type": "LineString", "coordinates": [[1250, 1300], [1280, 1330], [1305, 1365], [1325, 1400]]}},
+    {"type": "Feature", "properties": {"name": "Ered Luin south", "kind": "ridge", "heights": [50, 55, 40], "width": 6}, "geometry": {"type": "LineString", "coordinates": [[1300, 1500], [1305, 1550], [1330, 1590]]}},
+    {"type": "Feature", "properties": {"name": "Far Downs", "kind": "ridge", "heights": [14, 16, 16, 12], "width": 5}, "geometry": {"type": "LineString", "coordinates": [[1472, 1392], [1480, 1440], [1490, 1485], [1486, 1530]]}},
+    {"type": "Feature", "properties": {"name": "North Downs", "kind": "ridge", "heights": [12, 12, 12, 10], "width": 6}, "geometry": {"type": "LineString", "coordinates": [[1520, 1332], [1600, 1340], [1680, 1330], [1740, 1325]]}},
+    {"type": "Feature", "properties": {"name": "East ridge", "kind": "ridge", "heights": [18, 20, 20, 16], "width": 6}, "geometry": {"type": "LineString", "coordinates": [[1950, 1380], [1962, 1430], [1966, 1490], [1956, 1550]]}}
+  ]
+}

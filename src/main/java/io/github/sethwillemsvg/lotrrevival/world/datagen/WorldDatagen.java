@@ -10,6 +10,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.tags.TagsProvider;
 import net.minecraft.data.worldgen.BootstrapContext;
@@ -76,23 +77,50 @@ public final class WorldDatagen {
         var placedFeatures = context.lookup(Registries.PLACED_FEATURE);
         var carvers = context.lookup(Registries.CONFIGURED_CARVER);
 
-        // Open sea (also the placeholder canvas). No spawns, no decoration yet.
-        context.register(
-                MiddleEarthBiomes.OCEAN,
-                biome(0.5f, 0.5f, 0x1F3A93, 0x050533, new MobSpawnSettings.Builder(), placedFeatures, carvers));
+        // Every biome gets its identity, climate and the passive animals only. Vegetation, decoration and the
+        // faction spawn lists arrive with the biome and NPC tickets.
+        for (ResourceKey<Biome> key : MiddleEarthBiomes.allKeys()) {
+            Climate climate = climate(key);
+            MobSpawnSettings.Builder spawns = new MobSpawnSettings.Builder();
+            if (climate.farmAnimals()) {
+                spawns.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.SHEEP, 12, 2, 4));
+                spawns.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.PIG, 10, 1, 3));
+                spawns.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.CHICKEN, 10, 2, 4));
+                spawns.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.COW, 8, 2, 4));
+            }
+            context.register(
+                    key,
+                    biome(
+                            climate.temperature(),
+                            climate.downfall(),
+                            WATER_COLOR,
+                            WATER_FOG_COLOR,
+                            spawns,
+                            placedFeatures,
+                            carvers));
+        }
+    }
 
-        // Shire: passive farm animals only. Vegetation and decoration arrive with the biome ticket.
-        MobSpawnSettings.Builder shire = new MobSpawnSettings.Builder();
-        shire.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.SHEEP, 12, 2, 4));
-        shire.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.PIG, 10, 1, 3));
-        shire.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.CHICKEN, 10, 2, 4));
-        shire.addSpawn(MobCategory.CREATURE, new MobSpawnSettings.SpawnerData(EntityType.COW, 8, 2, 4));
-        context.register(
-                MiddleEarthBiomes.SHIRE, biome(0.7f, 0.6f, 0x3F76E4, 0x050533, shire, placedFeatures, carvers));
+    /** Climate for one biome: temperature, downfall, and whether passive farm animals live there. */
+    private record Climate(float temperature, float downfall, boolean farmAnimals) {}
 
-        context.register(
-                MiddleEarthBiomes.OLD_FOREST,
-                biome(0.6f, 0.8f, 0x3F76E4, 0x050533, new MobSpawnSettings.Builder(), placedFeatures, carvers));
+    private static final int WATER_COLOR = 0x3F76E4;
+    private static final int WATER_FOG_COLOR = 0x050533;
+
+    private static Climate climate(ResourceKey<Biome> key) {
+        return switch (key.location().getPath()) {
+            case "ocean", "lake", "river" -> new Climate(0.5f, 0.5f, false);
+            case "shore" -> new Climate(0.7f, 0.5f, false);
+            case "shire", "bree_land" -> new Climate(0.8f, 0.8f, true);
+            case "shire_woodlands" -> new Climate(0.8f, 0.9f, true);
+            case "shire_marshes", "midgewater_marshes" -> new Climate(0.7f, 1.0f, false);
+            case "shire_moors", "white_downs", "lone_lands" -> new Climate(0.6f, 0.6f, true);
+            case "old_forest", "barrow_downs" -> new Climate(0.5f, 0.9f, false);
+            case "chetwood" -> new Climate(0.8f, 0.9f, true);
+            case "tower_hills" -> new Climate(0.7f, 0.8f, true);
+            case "ered_luin_foothills" -> new Climate(0.4f, 0.8f, false);
+            default -> throw new IllegalStateException("No climate for biome " + key.location());
+        };
     }
 
     private static Biome biome(
@@ -128,8 +156,8 @@ public final class WorldDatagen {
         @Override
         protected void addTags(HolderLookup.Provider provider) {
             TagAppender<Biome> tag = tag(ModTags.Biomes.IS_MIDDLE_EARTH);
-            for (MiddleEarthBiomes.Entry entry : MiddleEarthBiomes.TABLE) {
-                tag.add(entry.key());
+            for (ResourceKey<Biome> key : MiddleEarthBiomes.allKeys()) {
+                tag.add(key);
             }
         }
     }
