@@ -29,6 +29,9 @@ public final class WaypointCommands {
     private static final DynamicCommandExceptionType UNKNOWN_REGION = new DynamicCommandExceptionType(
             id -> Component.translatable("commands.lotrrevival.waypoint.region.unknown", id));
 
+    private static final DynamicCommandExceptionType BAD_REF = new DynamicCommandExceptionType(
+            text -> Component.translatable("commands.lotrrevival.waypoint.travel.bad_ref", text));
+
     private WaypointCommands() {}
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -46,7 +49,41 @@ public final class WaypointCommands {
                                 .then(Commands.argument("players", EntityArgument.players())
                                         .then(Commands.argument(
                                                         "ticks", IntegerArgumentType.integer(0, TravelData.MAX_CLOCK))
-                                                .executes(WaypointCommands::clock))))));
+                                                .executes(WaypointCommands::clock))))
+                        .then(Commands.literal("travel")
+                                .then(Commands.argument("ref", StringArgumentType.greedyString())
+                                        .suggests(WaypointCommands::suggestRefs)
+                                        .executes(WaypointCommands::travel)))));
+    }
+
+    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestRefs(
+            CommandContext<CommandSourceStack> ctx, com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+        List<String> refs = new ArrayList<>();
+        ctx.getSource()
+                .registryAccess()
+                .registryOrThrow(ModDataRegistries.<Waypoint>waypoint())
+                .keySet()
+                .forEach(id -> refs.add(new WaypointRef.Fixed(id).wire()));
+        if (ctx.getSource().getEntity() instanceof ServerPlayer player) {
+            TravelData.get(player).custom().forEach(custom -> refs.add(new WaypointRef.Custom(custom.id()).wire()));
+        }
+        return SharedSuggestionProvider.suggest(refs, builder);
+    }
+
+    /** {@code /lotr waypoint travel <ref>}: same rules as the map page request. A bare id means a mod waypoint. */
+    private static int travel(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        String text = StringArgumentType.getString(ctx, "ref").trim();
+        WaypointRef ref = WaypointRef.tryParse(text).orElse(null);
+        if (ref == null) {
+            ResourceLocation id = Waypoint.modId(text);
+            ref = id == null ? null : new WaypointRef.Fixed(id);
+        }
+        if (ref == null) {
+            throw BAD_REF.create(text);
+        }
+        // Refusals are shown to the player by the travel code; the command only reports whether a countdown began.
+        return io.github.sethwillemsvg.lotrrevival.world.travel.FastTravel.request(player, ref).started() ? 1 : 0;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> regionChange(String name, boolean unlock) {
