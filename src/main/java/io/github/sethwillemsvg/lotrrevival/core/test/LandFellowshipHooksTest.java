@@ -8,7 +8,9 @@ import io.github.sethwillemsvg.lotrrevival.core.api.FellowshipQuery;
 import io.github.sethwillemsvg.lotrrevival.core.api.LandProtection;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Factions;
-import io.github.sethwillemsvg.lotrrevival.core.metal.BannerMetals;
+import io.github.sethwillemsvg.lotrrevival.core.material.MaterialBlocks;
+import io.github.sethwillemsvg.lotrrevival.core.material.MaterialItems;
+import io.github.sethwillemsvg.lotrrevival.core.material.Metal;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -143,9 +145,15 @@ public final class LandFellowshipHooksTest {
 
     @GameTest(template = "empty")
     public static void bannerMetalsRegistered(GameTestHelper helper) {
-        helper.assertTrue(BannerMetals.BRONZE_BLOCK.get().asItem() == BannerMetals.BRONZE_BLOCK_ITEM.get(), "bronze");
-        helper.assertTrue(BannerMetals.SILVER_BLOCK.get().asItem() == BannerMetals.SILVER_BLOCK_ITEM.get(), "silver");
-        helper.assertTrue(BannerMetals.BRONZE_INGOT.get() != BannerMetals.SILVER_INGOT.get(), "ingots differ");
+        // Bronze and silver are owned by the metals system (core.material, #108).
+        helper.assertTrue(
+                MaterialBlocks.BLOCK.get(Metal.BRONZE).get().asItem() == MaterialBlocks.BLOCK_ITEM.get(Metal.BRONZE).get(),
+                "bronze");
+        helper.assertTrue(
+                MaterialBlocks.BLOCK.get(Metal.SILVER).get().asItem() == MaterialBlocks.BLOCK_ITEM.get(Metal.SILVER).get(),
+                "silver");
+        helper.assertTrue(
+                MaterialItems.INGOT.get(Metal.BRONZE).get() != MaterialItems.INGOT.get(Metal.SILVER).get(), "ingots differ");
         helper.succeed();
     }
 }

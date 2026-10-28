@@ -28,9 +28,6 @@ public final class CoreMod {
         io.github.sethwillemsvg.lotrrevival.core.material.MaterialItems.init(modBus);
         // End Core: metals and ores
         NeoForge.EVENT_BUS.addListener(LotrCommand::onRegisterCommands);
-        // Core #105: bronze and silver banner-base metals
-        io.github.sethwillemsvg.lotrrevival.core.metal.BannerMetals.init(modBus);
-        // End Core #105
         // Core: faction crafting tables
         io.github.sethwillemsvg.lotrrevival.core.table.FactionTables.init(modBus);
         // End Core: faction crafting tables

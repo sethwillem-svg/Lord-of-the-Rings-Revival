@@ -6,6 +6,8 @@ import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.brewing.BrewingBlocks;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Factions;
+import io.github.sethwillemsvg.lotrrevival.core.material.MaterialBlocks;
+import io.github.sethwillemsvg.lotrrevival.core.material.Metal;
 import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import io.github.sethwillemsvg.lotrrevival.datagen.ModLangProvider;
 import io.github.sethwillemsvg.lotrrevival.progression.banner.BannerBlocks;
@@ -146,10 +148,10 @@ public final class BannerDatagen {
 
         @Override
         protected void addTags(HolderLookup.Provider provider) {
-            // Bases: gold now; the bronze and silver storage blocks join when Core adds them (#105, hooked up in #133).
+            // Bases: vanilla gold plus Core's silver and bronze storage blocks (core.material, #108).
             tag(BannerTags.BASE_GOLD).add(Blocks.GOLD_BLOCK);
-            tag(BannerTags.BASE_SILVER);
-            tag(BannerTags.BASE_BRONZE);
+            tag(BannerTags.BASE_SILVER).add(MaterialBlocks.BLOCK.get(Metal.SILVER).get());
+            tag(BannerTags.BASE_BRONZE).add(MaterialBlocks.BLOCK.get(Metal.BRONZE).get());
 
             tag(BannerPermission.PERSONAL_CONTAINERS.tag()).add(Blocks.ENDER_CHEST);
             tag(BannerPermission.DOORS.tag())
