@@ -128,9 +128,9 @@ public enum WeaponClass {
         return this == SWORD;
     }
 
-    /** Whether the class is thrown (spear throws are added by the throwing ticket). */
+    /** Whether the class can be thrown: spears (charged) and throwing axes (instant). */
     public boolean thrown() {
-        return this == THROWING_AXE;
+        return this == SPEAR || this == THROWING_AXE;
     }
 
     /** English word for lang names, for example {@code Throwing Axe}. */

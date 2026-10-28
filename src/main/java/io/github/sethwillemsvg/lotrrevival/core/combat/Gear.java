@@ -47,6 +47,7 @@ public final class Gear {
                     case SWORD -> () -> new GearSword(material);
                     case BATTLEAXE -> () -> new GearBattleaxe(material);
                     case THROWING_AXE -> () -> new GearThrowingAxe(material);
+                    case SPEAR -> () -> new io.github.sethwillemsvg.lotrrevival.core.combat.item.GearSpear(material);
                     default -> () -> new GearWeapon(weaponClass, material);
                 };
         DeferredItem<Item> item = ModRegistries.ITEMS.<Item>register(id, factory);
