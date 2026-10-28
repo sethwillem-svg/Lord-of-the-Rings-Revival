@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.world.portal;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.ModDimensions;
+import io.github.sethwillemsvg.lotrrevival.world.WorldHeights;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthLanding;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,9 @@ import net.minecraft.world.phys.Vec3;
 public final class RingPortalTravel {
     /** Contact ticks a survival player needs (4 seconds). */
     public static final int PLAYER_CONTACT_TICKS = 80;
+
+    /** A stored twin this many blocks below the ground counts as buried and is rebuilt on the surface. */
+    static final int BURIED_MARGIN = 4;
 
     private static final ReentryGuard GUARD = new ReentryGuard(ReentryGuard.DEFAULT_TICKS);
 
@@ -106,7 +110,7 @@ public final class RingPortalTravel {
                     RingPortals.data(overworld).overworldPortal(), overworld.getSharedSpawnPos());
         }
         int y = arrival.resolveHeight()
-                ? target.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, arrival.x(), arrival.z())
+                ? WorldHeights.surface(target, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, arrival.x(), arrival.z())
                 : arrival.y();
         teleport(entity, target, new Vec3(arrival.x() + 0.5, y, arrival.z() + 0.5), server.getTickCount());
     }
@@ -132,7 +136,16 @@ public final class RingPortalTravel {
         Optional<BlockPos> stored = data.middleEarthPortal();
         BlockPos column = RingPortalPlan.twinColumn(stored, landing);
         // Loading the chunk (and finding its height) before looking for the entity.
-        int ground = middleEarth.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX(), column.getZ());
+        int ground = WorldHeights.surface(middleEarth, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX(), column.getZ());
+        if (stored.isPresent() && stored.get().getY() < ground - BURIED_MARGIN) {
+            // Built underground by the old unloaded-chunk height bug: remove it and build a new one on the surface.
+            AABB old = new AABB(stored.get()).inflate(4.0, 8.0, 4.0);
+            middleEarth.getEntitiesOfClass(RingPortalEntity.class, old).forEach(Entity::discard);
+            LOTRRevival.LOGGER.warn("Twin ring portal at {} was buried (ground {}); rebuilding it", stored.get(), ground);
+            data = data.withoutTwin();
+            RingPortals.setData(middleEarth, data);
+            stored = Optional.empty();
+        }
         double bottom = stored.isPresent()
                 ? stored.get().getY() - RingPortalEntity.BOTTOM_ABOVE_BASE
                 : ground - 1 + RingPortalEntity.BOTTOM_ABOVE_BASE;

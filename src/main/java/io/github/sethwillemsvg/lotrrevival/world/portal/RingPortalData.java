@@ -37,6 +37,11 @@ public record RingPortalData(
         return new RingPortalData(made, overworldPortal, Optional.of(centre), overworldEntity, Optional.of(entity));
     }
 
+    /** The Middle-earth twin forgotten, so it is built again on the next arrival. */
+    public RingPortalData withoutTwin() {
+        return new RingPortalData(made, overworldPortal, Optional.empty(), overworldEntity, Optional.empty());
+    }
+
     /** The once-per-world flag cleared; portal positions and entities are kept. */
     public RingPortalData reset() {
         return new RingPortalData(false, overworldPortal, middleEarthPortal, overworldEntity, middleEarthEntity);
