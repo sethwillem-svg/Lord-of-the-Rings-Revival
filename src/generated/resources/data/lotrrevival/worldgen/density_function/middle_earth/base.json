@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:add",
+  "argument1": 8,
+  "argument2": {
+    "type": "novoatlas:get_preliminary_height_from_map",
+    "lower_bound": -64,
+    "map_info": "lotrrevival:middle_earth",
+    "upper_bound": 320
+  }
+}

@@ -120,10 +120,14 @@ configurations {
 }
 
 dependencies {
-    // NovoAtlas 1.8.2+1.21.1 (NeoForge). Generates Middle-earth from painted heightmap + biome map images.
-    // localRuntime = present in dev runs, not forced on dependents. The World pod makes it a hard
-    // dependency (here and in neoforge.mods.toml) once the Middle-earth dimension datapack lands.
-    localRuntime "curse.maven:novoatlas-1297254:${novoatlas_file_id}"
+    // NovoAtlas 1.8.2+1.21.1 (NeoForge, LGPL-3.0). Generates Middle-earth terrain and biomes from painted
+    // images. Bundled in our jar via jar-in-jar (see NOTICE) and on the runtime classpath for dev runs.
+    // The "version" is the CurseForge file id (cursemaven has no version metadata), pinned exactly.
+    // Our code does not compile against NovoAtlas: it is wired purely through data packs.
+    runtimeOnly "curse.maven:novoatlas-1297254:${novoatlas_file_id}"
+    jarJar("curse.maven:novoatlas-1297254:${novoatlas_file_id}") {
+        version { strictly "${novoatlas_file_id}" }
+    }
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

@@ -94,10 +94,11 @@ Unofficial fan project. Not affiliated with the Tolkien Estate or Middle-earth E
 #openGLVersion="[3.2,)"
 
 # NovoAtlas: image-based world generation for the Middle-earth dimension.
-# Optional until the dimension datapack lands; the World pod switches this to "required".
+# Bundled in this jar (jar-in-jar, LGPL-3.0, see NOTICE).
 [[dependencies.${mod_id}]]
     modId="novoatlas"
-    type="optional"
+    type="required"
+    reason="Generates the Middle-earth dimension from painted images"
     versionRange="[1.8.2,)"
-    ordering="NONE"
+    ordering="AFTER"
     side="BOTH"

@@ -1,0 +1,5 @@
+{
+  "type": "minecraft:min",
+  "argument1": "lotrrevival:middle_earth/terrain",
+  "argument2": "novoatlas:no_cave_entrances"
+}
