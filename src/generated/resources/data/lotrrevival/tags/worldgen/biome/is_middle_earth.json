@@ -1,7 +1,21 @@
 {
   "values": [
     "lotrrevival:ocean",
+    "lotrrevival:shore",
+    "lotrrevival:lake",
     "lotrrevival:shire",
-    "lotrrevival:old_forest"
+    "lotrrevival:shire_woodlands",
+    "lotrrevival:shire_marshes",
+    "lotrrevival:shire_moors",
+    "lotrrevival:white_downs",
+    "lotrrevival:old_forest",
+    "lotrrevival:barrow_downs",
+    "lotrrevival:bree_land",
+    "lotrrevival:chetwood",
+    "lotrrevival:midgewater_marshes",
+    "lotrrevival:lone_lands",
+    "lotrrevival:tower_hills",
+    "lotrrevival:ered_luin_foothills",
+    "lotrrevival:river"
   ]
 }

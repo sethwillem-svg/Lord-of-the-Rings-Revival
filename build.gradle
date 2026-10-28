@@ -1,3 +1,6 @@
+import io.github.sethwillemsvg.lotrrevival.map.RasterizeMapTask
+import io.github.sethwillemsvg.lotrrevival.map.ValidateMapTask
+
 plugins {
     id 'java-library'
     id 'maven-publish'
@@ -175,6 +178,32 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
 sourceSets.main.resources.srcDir generateModMetadata
 // To avoid having to run "generateModMetadata" manually, make it run on every project reload
 neoForge.ideSyncTask generateModMetadata
+
+// Map-as-code pipeline (buildSrc, src/main/map/README.md). The vector map under src/main/map/ is rasterized into
+// the Middle-earth heightmap and biome map before processResources, so the generated PNGs ship in the jar and are
+// on the dev-run classpath. They live in build/generated and are never committed.
+def rasterizeMap = tasks.register('rasterizeMap', RasterizeMapTask) {
+    group = 'build'
+    description = 'Rasterizes src/main/map into the Middle-earth heightmap and biome map PNGs.'
+    sourceDir = layout.projectDirectory.dir('src/main/map')
+    regionsFile = layout.projectDirectory.file('src/main/resources/data/lotrrevival/lotrrevival/map_regions.json')
+    biomeTableSource = layout.projectDirectory.file('src/main/java/io/github/sethwillemsvg/lotrrevival/world/MiddleEarthBiomes.java')
+    outputDir = layout.buildDirectory.dir('generated/map/resources')
+}
+sourceSets.main.resources.srcDir rasterizeMap
+
+// The map validator (specs/world/dimension-and-mapgen.md) runs as part of check, so ./gradlew build fails on a bad map.
+def validateMap = tasks.register('validateMap', ValidateMapTask) {
+    group = 'verification'
+    description = 'Validates the map source and the rasterized heightmap and biome map.'
+    sourceDir = layout.projectDirectory.dir('src/main/map')
+    regionsFile = layout.projectDirectory.file('src/main/resources/data/lotrrevival/lotrrevival/map_regions.json')
+    landingFile = layout.projectDirectory.file('src/main/resources/data/lotrrevival/lotrrevival/middle_earth.json')
+    biomeTableSource = layout.projectDirectory.file('src/main/java/io/github/sethwillemsvg/lotrrevival/world/MiddleEarthBiomes.java')
+    imagesDir = rasterizeMap.flatMap { it.outputDir }
+    marker = layout.buildDirectory.file('validateMap/ok')
+}
+tasks.named('check') { dependsOn validateMap }
 
 // Example configuration to allow publishing using the maven-publish plugin
 publishing {

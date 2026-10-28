@@ -1,0 +1,19 @@
+// Map-as-code pipeline: rasterizes src/main/map/ into the heightmap and biome map, and validates them.
+// See src/main/map/README.md. Plain Java, no Minecraft dependency.
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}

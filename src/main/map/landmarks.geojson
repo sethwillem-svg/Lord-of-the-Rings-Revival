@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"name": "Hobbiton", "expect_biome": "shire"}, "geometry": {"type": "Point", "coordinates": [1620, 1460]}},
+    {"type": "Feature", "properties": {"name": "Bag End", "expect_biome": "shire"}, "geometry": {"type": "Point", "coordinates": [1618, 1455]}},
+    {"type": "Feature", "properties": {"name": "Brandywine Bridge", "expect_biome": "shire"}, "geometry": {"type": "Point", "coordinates": [1696.6, 1459.5]}},
+    {"type": "Feature", "properties": {"name": "Bree", "expect_biome": "bree_land"}, "geometry": {"type": "Point", "coordinates": [1819.5, 1466]}},
+    {"type": "Feature", "properties": {"name": "Archet", "expect_biome": "bree_land"}, "geometry": {"type": "Point", "coordinates": [1826, 1442]}},
+    {"type": "Feature", "properties": {"name": "Staddle", "expect_biome": "bree_land"}, "geometry": {"type": "Point", "coordinates": [1832, 1478]}},
+    {"type": "Feature", "properties": {"name": "Combe", "expect_biome": "bree_land"}, "geometry": {"type": "Point", "coordinates": [1842, 1490]}},
+    {"type": "Feature", "properties": {"name": "Old Forest heart", "expect_biome": "old_forest"}, "geometry": {"type": "Point", "coordinates": [1745, 1535]}},
+    {"type": "Feature", "properties": {"name": "Barrow-downs stones", "expect_biome": "barrow_downs"}, "geometry": {"type": "Point", "coordinates": [1795, 1550]}},
+    {"type": "Feature", "properties": {"name": "Midgewater", "expect_biome": "midgewater_marshes"}, "geometry": {"type": "Point", "coordinates": [1905, 1482]}},
+    {"type": "Feature", "properties": {"name": "Chetwood", "expect_biome": "chetwood"}, "geometry": {"type": "Point", "coordinates": [1868, 1416]}},
+    {"type": "Feature", "properties": {"name": "Lone-lands edge", "expect_biome": "lone_lands"}, "geometry": {"type": "Point", "coordinates": [1955, 1430]}},
+    {"type": "Feature", "properties": {"name": "White Downs", "expect_biome": "white_downs"}, "geometry": {"type": "Point", "coordinates": [1490, 1460]}},
+    {"type": "Feature", "properties": {"name": "Tower Hills", "expect_biome": "tower_hills"}, "geometry": {"type": "Point", "coordinates": [1400, 1480]}},
+    {"type": "Feature", "properties": {"name": "Ered Luin foothills", "expect_biome": "ered_luin_foothills"}, "geometry": {"type": "Point", "coordinates": [1300, 1360]}},
+    {"type": "Feature", "properties": {"name": "Woody End", "expect_biome": "shire_woodlands"}, "geometry": {"type": "Point", "coordinates": [1676, 1545]}},
+    {"type": "Feature", "properties": {"name": "Green Hill Country", "expect_biome": "shire_woodlands"}, "geometry": {"type": "Point", "coordinates": [1584, 1420]}},
+    {"type": "Feature", "properties": {"name": "The Marish", "expect_biome": "shire_marshes"}, "geometry": {"type": "Point", "coordinates": [1686, 1497]}},
+    {"type": "Feature", "properties": {"name": "North Moors", "expect_biome": "shire_moors"}, "geometry": {"type": "Point", "coordinates": [1500, 1320]}}
+  ]
+}

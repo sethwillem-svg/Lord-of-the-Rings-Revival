@@ -1,0 +1,10 @@
+{
+  "regions": [
+    {
+      "id": "shire_to_bree_pilot",
+      "min": [1236, 1268],
+      "max": [2004, 1652],
+      "released": false
+    }
+  ]
+}

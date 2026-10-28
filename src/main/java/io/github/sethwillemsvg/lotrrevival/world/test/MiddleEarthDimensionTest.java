@@ -99,6 +99,35 @@ public final class MiddleEarthDimensionTest {
         helper.succeed();
     }
 
+    /** Named pilot points from {@code src/main/map/landmarks.geojson}, in heightmap pixels. */
+    private record Named(String name, double u, double v, net.minecraft.resources.ResourceKey<Biome> biome) {
+        int x() {
+            return (int) Math.round(MiddleEarthMap.blockX(u));
+        }
+
+        int z() {
+            return (int) Math.round(MiddleEarthMap.blockZ(v));
+        }
+    }
+
+    private static final java.util.List<Named> PILOT_POINTS = java.util.List.of(
+            new Named("Hobbiton", 1620, 1460, MiddleEarthBiomes.SHIRE),
+            new Named("Brandywine Bridge", 1696.6, 1459.5, MiddleEarthBiomes.SHIRE),
+            new Named("Bree", 1819.5, 1466, MiddleEarthBiomes.BREE_LAND),
+            new Named("Old Forest heart", 1745, 1535, MiddleEarthBiomes.OLD_FOREST),
+            new Named("Barrow-downs stones", 1795, 1550, MiddleEarthBiomes.BARROW_DOWNS),
+            new Named("Midgewater", 1905, 1482, MiddleEarthBiomes.MIDGEWATER_MARSHES),
+            new Named("Chetwood", 1868, 1416, MiddleEarthBiomes.CHETWOOD),
+            new Named("Lone-lands edge", 1955, 1430, MiddleEarthBiomes.LONE_LANDS),
+            new Named("White Downs", 1490, 1460, MiddleEarthBiomes.WHITE_DOWNS),
+            new Named("Tower Hills", 1400, 1480, MiddleEarthBiomes.TOWER_HILLS),
+            new Named("Ered Luin foothills", 1300, 1360, MiddleEarthBiomes.ERED_LUIN_FOOTHILLS),
+            new Named("Woody End", 1676, 1545, MiddleEarthBiomes.SHIRE_WOODLANDS),
+            new Named("The Marish", 1686, 1497, MiddleEarthBiomes.SHIRE_MARSHES),
+            new Named("North Moors", 1500, 1320, MiddleEarthBiomes.SHIRE_MOORS),
+            new Named("Lake Evendim", 1575, 1331, MiddleEarthBiomes.LAKE),
+            new Named("Gulf of Lune", 1260, 1440, MiddleEarthBiomes.OCEAN));
+
     @GameTest(template = "empty")
     public static void biomesFollowThePaintedMap(GameTestHelper helper) {
         var generator = (NoiseBasedChunkGenerator) stem(helper).generator();
@@ -110,16 +139,57 @@ public final class MiddleEarthDimensionTest {
                 "landing point is not in the shire");
         helper.assertTrue(
                 biomeAt(generator, sampler, 0, 0) == MiddleEarthBiomes.SHIRE, "block (0,0) is not in the shire");
-        // Old Forest patch: centre at biome px (840, 730) = 30 px = 3840 blocks east of the origin.
-        helper.assertTrue(
-                biomeAt(generator, sampler, 3840, 0) == MiddleEarthBiomes.OLD_FOREST,
-                "3840 blocks east should be the old forest");
+        for (Named point : PILOT_POINTS) {
+            ResourceKey<Biome> actual = biomeAt(generator, sampler, point.x(), point.z());
+            helper.assertTrue(
+                    actual == point.biome(),
+                    point.name() + " at block (" + point.x() + ", " + point.z() + ") is " + actual.location()
+                            + ", expected " + point.biome().location());
+        }
+        // Unpainted canvas is ocean.
         helper.assertTrue(
                 biomeAt(generator, sampler, 60000, -60000) == MiddleEarthBiomes.OCEAN,
                 "unpainted canvas should be ocean");
-        // Biome pixel 38 px west of the origin (4864 blocks) is the last shire pixel edge; 6000 is ocean.
-        helper.assertTrue(
-                biomeAt(generator, sampler, -6000, 0) == MiddleEarthBiomes.OCEAN, "west coast should be ocean");
+        helper.succeed();
+    }
+
+    /** Hobbiton to Bree is about 12,800 blocks and Hobbiton to the Brandywine Bridge about 4,900. */
+    @GameTest(template = "empty")
+    public static void pilotDistancesMatchTheSpec(GameTestHelper helper) {
+        double bridge = Math.abs(MiddleEarthMap.blockX(1696.6));
+        double bree = Math.abs(MiddleEarthMap.blockX(1819.5));
+        helper.assertTrue(Math.abs(bridge - 4900) < 100, "Hobbiton to the bridge is " + bridge);
+        helper.assertTrue(Math.abs(bree - 12800) < 200, "Hobbiton to Bree is " + bree);
+        helper.succeed();
+    }
+
+    /** Every colour-table biome is a real registered biome in the data pack. */
+    @GameTest(template = "empty")
+    public static void colourTableBiomesAreRegistered(GameTestHelper helper) {
+        var biomes = helper.getLevel().getServer().registryAccess().lookupOrThrow(Registries.BIOME);
+        for (ResourceKey<Biome> key : MiddleEarthBiomes.allKeys()) {
+            helper.assertTrue(biomes.get(key).isPresent(), "biome " + key.location() + " is not registered");
+        }
+        helper.succeed();
+    }
+
+    /** Painted heights near Bree-hill: the hill is painted at about y 97 and the land around it near 65. */
+    @GameTest(template = "empty")
+    public static void breeHillRisesAboveBreeLand(GameTestHelper helper) {
+        var generator = (NoiseBasedChunkGenerator) stem(helper).generator();
+        var random = randomState(helper, generator);
+        int hillX = (int) Math.round(MiddleEarthMap.blockX(1820));
+        int hillZ = (int) Math.round(MiddleEarthMap.blockZ(1462));
+        int hill = generator.getBaseHeight(hillX, hillZ, Heightmap.Types.OCEAN_FLOOR_WG, HEIGHT, random) - 1;
+        helper.assertTrue(Math.abs(hill - 97) <= 5 + 2, "Bree-hill surface was " + hill + ", expected about 97");
+        int farmland = generator.getBaseHeight(
+                        (int) Math.round(MiddleEarthMap.blockX(1790)),
+                        (int) Math.round(MiddleEarthMap.blockZ(1420)),
+                        Heightmap.Types.OCEAN_FLOOR_WG,
+                        HEIGHT,
+                        random)
+                - 1;
+        helper.assertTrue(farmland < hill - 15, "farmland " + farmland + " should sit well below the hill " + hill);
         helper.succeed();
     }
 

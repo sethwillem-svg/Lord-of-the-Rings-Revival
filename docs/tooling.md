@@ -25,6 +25,8 @@ What speeds this project up, and how to set each piece up.
 
 The Middle-earth maps must be **our own drawings**. Don't trace Mevans' map or Tolkien's published maps.
 
+The maps are authored as vector source in `src/main/map/` (format in its `README.md`). A buildSrc task, `rasterizeMap`, turns it into the heightmap and biome map PNGs under `build/generated/` before `processResources` (about a second; nothing is committed), and `validateMap` checks them as part of `./gradlew build`. The Gradle heap is 2 GB for this.
+
 ## 4. Local Claude Code
 
 - Agent definitions are in `.claude/agents/`: `lead-core`, `lead-world`, `lead-npc`, `lead-progression` (Opus), `implementer` (Sonnet, runs in its own worktree) and `artist`.
