@@ -5,9 +5,11 @@ import io.github.sethwillemsvg.lotrrevival.core.faction.FactionMember;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.IdleGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.NpcGroundNavigation;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.SafetyGoals;
+import io.github.sethwillemsvg.lotrrevival.npc.data.NpcLoadoutData;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.race.NpcRace;
 import java.util.Optional;
+import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -226,20 +228,66 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
         SpawnGroupData data = super.finalizeSpawn(level, difficulty, spawnType, spawnGroupData);
         RandomSource random = level.getRandom();
         setGender(random.nextBoolean() ? NpcGender.MALE : NpcGender.FEMALE);
-        setRole(rollRole(random));
+        setRole(initialRole(random));
         setNameSeed(random.nextLong());
+        NpcLoadoutData.apply(this, random);
         return data;
+    }
+
+    /**
+     * Role given at spawn. Civilians roll among the roles their type allows; guards have no role (villager is only a
+     * placeholder key into their data files) and captains are unit traders.
+     */
+    protected NpcRole initialRole(RandomSource random) {
+        return switch (npcClass) {
+            case CIVILIAN -> rollRole(random, this::canRollRole);
+            case GUARD -> NpcRole.VILLAGER;
+            case CAPTAIN -> NpcRole.UNIT_TRADER;
+        };
+    }
+
+    /** Whether a civilian type may roll the role at spawn; types without a role (for example no traveller) say no. */
+    protected boolean canRollRole(NpcRole role) {
+        return true;
+    }
+
+    /** Lowest XP dropped when a player kills this NPC. Defaults to the race value. */
+    protected int xpMin() {
+        return race.xpMin();
+    }
+
+    /** Highest XP dropped when a player kills this NPC. Defaults to the race value. */
+    protected int xpMax() {
+        return race.xpMax();
+    }
+
+    /** Fixed XP roll, with no equipment bonus (vanilla only awards XP for a player kill). */
+    @Override
+    protected int getBaseExperienceReward() {
+        return xpMin() + random.nextInt(xpMax() - xpMin() + 1);
+    }
+
+    /** Lang key of the title shown after the name, if any: the role for civilians, the type for guards and captains. */
+    public Optional<String> titleKey() {
+        if (isCivilian()) {
+            return getRole().titleKey();
+        }
+        return Optional.of("npc.lotrrevival.title." + EntityType.getKey(getType()).getPath());
     }
 
     /** Weighted role roll: villager 60, farmer 30, traveller 10. Innkeeper and trader roles are never rolled. */
     public static NpcRole rollRole(RandomSource random) {
+        return rollRole(random, role -> true);
+    }
+
+    private static NpcRole rollRole(RandomSource random, Predicate<NpcRole> allowed) {
         int total = 0;
         for (NpcRole role : NpcRole.values()) {
-            total += role.spawnWeight();
+            total += allowed.test(role) ? role.spawnWeight() : 0;
         }
         int pick = random.nextInt(total);
         for (NpcRole role : NpcRole.values()) {
-            pick -= role.spawnWeight();
+            pick -= allowed.test(role) ? role.spawnWeight() : 0;
             if (pick < 0) {
                 return role;
             }

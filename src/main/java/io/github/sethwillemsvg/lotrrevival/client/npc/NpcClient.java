@@ -15,5 +15,15 @@ public final class NpcClient {
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(NpcEntityTypes.HOBBIT.get(), context -> new NpcHumanoidRenderer<>(context, "hobbit"));
+        event.registerEntityRenderer(
+                NpcEntityTypes.HOBBIT_BOUNDER.get(), context -> new NpcHumanoidRenderer<>(context, "hobbit_bounder"));
+        event.registerEntityRenderer(
+                NpcEntityTypes.HOBBIT_SHIRRIFF.get(), context -> new NpcHumanoidRenderer<>(context, "hobbit_shirriff"));
+        event.registerEntityRenderer(
+                NpcEntityTypes.BREE_HOBBIT.get(), context -> new NpcHumanoidRenderer<>(context, "bree_hobbit"));
+        event.registerEntityRenderer(
+                NpcEntityTypes.BREE_MAN.get(), context -> new NpcHumanoidRenderer<>(context, "bree_man"));
+        event.registerEntityRenderer(
+                NpcEntityTypes.BREE_GUARD.get(), context -> new NpcHumanoidRenderer<>(context, "bree_guard"));
     }
 }

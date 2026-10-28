@@ -1,0 +1,15 @@
+{
+  "farmer": {
+    "kill_value": 1.0
+  },
+  "innkeeper": {
+    "kill_value": 2.0,
+    "trade_min": 0.0
+  },
+  "traveller": {
+    "kill_value": 1.0
+  },
+  "villager": {
+    "kill_value": 1.0
+  }
+}
