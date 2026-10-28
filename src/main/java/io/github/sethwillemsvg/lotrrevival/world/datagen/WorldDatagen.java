@@ -4,6 +4,8 @@ import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.ModDimensions;
 import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthBiomes;
+import io.github.sethwillemsvg.lotrrevival.world.road.RoadMod;
+import java.util.List;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.HolderGetter;
@@ -22,6 +24,10 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeSpecialEffects;
 import net.minecraft.world.level.biome.MobSpawnSettings;
+import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+import net.minecraft.world.level.levelgen.placement.BiomeFilter;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
@@ -37,6 +43,8 @@ public final class WorldDatagen {
     public static void addRegistries(RegistrySetBuilder registries) {
         registries
                 .add(Registries.DIMENSION_TYPE, WorldDatagen::bootstrapDimensionTypes)
+                .add(Registries.CONFIGURED_FEATURE, WorldDatagen::bootstrapConfiguredFeatures)
+                .add(Registries.PLACED_FEATURE, WorldDatagen::bootstrapPlacedFeatures)
                 .add(Registries.BIOME, WorldDatagen::bootstrapBiomes);
     }
 
@@ -72,6 +80,19 @@ public final class WorldDatagen {
                         0.0f, // ambient_light
                         new DimensionType.MonsterSettings(
                                 false, true, UniformInt.of(0, 7), 0)));
+    }
+
+    private static void bootstrapConfiguredFeatures(BootstrapContext<ConfiguredFeature<?, ?>> context) {
+        context.register(
+                RoadMod.ROAD_CONFIGURED,
+                new ConfiguredFeature<>(RoadMod.ROAD_FEATURE.get(), NoneFeatureConfiguration.INSTANCE));
+    }
+
+    private static void bootstrapPlacedFeatures(BootstrapContext<PlacedFeature> context) {
+        var configured = context.lookup(Registries.CONFIGURED_FEATURE);
+        context.register(
+                RoadMod.ROAD_PLACED,
+                new PlacedFeature(configured.getOrThrow(RoadMod.ROAD_CONFIGURED), List.of(BiomeFilter.biome())));
     }
 
     private static void bootstrapBiomes(BootstrapContext<Biome> context) {
@@ -143,7 +164,10 @@ public final class WorldDatagen {
                         .skyColor(0x78A7FF)
                         .build())
                 .mobSpawnSettings(spawns.build())
-                .generationSettings(new BiomeGenerationSettings.Builder(placed, carvers).build())
+                .generationSettings(new BiomeGenerationSettings.Builder(placed, carvers)
+                        // Roads: after surface structures, before vegetation (specs/world/waypoints-travel.md).
+                        .addFeature(GenerationStep.Decoration.SURFACE_STRUCTURES, RoadMod.ROAD_PLACED)
+                        .build())
                 .build();
     }
 

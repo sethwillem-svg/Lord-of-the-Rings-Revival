@@ -1,0 +1,8 @@
+{
+  "feature": "lotrrevival:road",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}
