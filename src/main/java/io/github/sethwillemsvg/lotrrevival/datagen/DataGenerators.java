@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.datagen;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
+import io.github.sethwillemsvg.lotrrevival.progression.datagen.achievement.AchievementDatagen;
 import io.github.sethwillemsvg.lotrrevival.world.datagen.WorldDatagen;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistrySetBuilder;
@@ -28,6 +29,7 @@ public final class DataGenerators {
         RegistrySetBuilder registries = new RegistrySetBuilder();
         FactionProviders.addRegistries(registries);
         WorldDatagen.addRegistries(registries);
+        AchievementDatagen.addRegistries(registries);
         DatapackBuiltinEntriesProvider entries = generator.addProvider(
                 event.includeServer(),
                 new DatapackBuiltinEntriesProvider(output, lookup, registries, Set.of(LOTRRevival.MOD_ID)));
@@ -53,6 +55,9 @@ public final class DataGenerators {
 
         // World
         WorldDatagen.gather(event, registryLookup);
+
+        // Progression: achievement backing advancements and lang
+        AchievementDatagen.gather(event, registryLookup);
 
         // NPC
         io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcDataGen.gather(event);

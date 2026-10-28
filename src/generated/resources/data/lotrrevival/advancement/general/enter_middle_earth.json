@@ -1,0 +1,16 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "to": "lotrrevival:middle_earth"
+      },
+      "trigger": "minecraft:changed_dimension"
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

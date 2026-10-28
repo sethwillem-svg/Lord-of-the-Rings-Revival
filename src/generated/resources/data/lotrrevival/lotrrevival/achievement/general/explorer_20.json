@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.explorer_20.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:chainmail_boots"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.explorer_20.title"
+  }
+}
