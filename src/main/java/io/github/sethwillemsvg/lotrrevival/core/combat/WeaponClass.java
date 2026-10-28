@@ -21,7 +21,8 @@ import net.minecraft.world.item.component.ItemAttributeModifiers;
 public enum WeaponClass {
     SWORD("sword", 0.0, 1.0, 0.0, 0.0, ModTags.Items.WEAPONS_SWORDS, List.of("M", "M", "S")),
     DAGGER("dagger", -3.0, 1.5, -0.75, 0.0, ModTags.Items.WEAPONS_DAGGERS, List.of("M", "S")),
-    SPEAR("spear", -1.0, 5.0 / 6.0, 1.5, 0.0, ModTags.Items.WEAPONS_SPEARS, List.of("M", "S", "S")),
+    /** Offset shape so it never matches the vanilla shovel grid (M, S, S); issue #168. */
+    SPEAR("spear", -1.0, 5.0 / 6.0, 1.5, 0.0, ModTags.Items.WEAPONS_SPEARS, List.of(" M", " S", "S ")),
     /** Reserved for later sets (glaives, halberds). */
     POLEARM("polearm", 0.0, 2.0 / 3.0, 1.5, 0.0, ModTags.Items.WEAPONS_POLEARMS, List.of("  M", " S ", "S  ")),
     /** The long spear: item ids and tags say {@code pike}. */
