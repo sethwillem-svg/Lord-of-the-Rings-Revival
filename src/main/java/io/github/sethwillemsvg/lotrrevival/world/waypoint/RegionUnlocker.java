@@ -59,6 +59,7 @@ public final class RegionUnlocker {
             return newlyUnlocked;
         }
         TravelData.set(player, data);
+        io.github.sethwillemsvg.lotrrevival.world.network.TravelSync.send(player);
         for (ResourceLocation id : newlyUnlocked) {
             Component name = regions.get(id).name();
             player.sendSystemMessage(Component.translatable("message.lotrrevival.region_unlocked", name));

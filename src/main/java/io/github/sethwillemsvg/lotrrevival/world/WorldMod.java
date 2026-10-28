@@ -14,6 +14,7 @@ public final class WorldMod {
         io.github.sethwillemsvg.lotrrevival.world.road.RoadMod.init();
         io.github.sethwillemsvg.lotrrevival.world.portal.RingPortals.init();
         modBus.addListener(io.github.sethwillemsvg.lotrrevival.world.network.TravelPayloads::register);
+        io.github.sethwillemsvg.lotrrevival.world.network.WaypointPayloads.init(modBus);
         NeoForge.EVENT_BUS.addListener(
                 (RegisterCommandsEvent event) -> MiddleEarthCommand.register(event.getDispatcher()));
     }

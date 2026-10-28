@@ -50,6 +50,7 @@ public final class WaypointCommands {
                                         .then(Commands.argument(
                                                         "ticks", IntegerArgumentType.integer(0, TravelData.MAX_CLOCK))
                                                 .executes(WaypointCommands::clock))))
+                        .then(CustomWaypointCommands.node())
                         .then(Commands.literal("travel")
                                 .then(Commands.argument("ref", StringArgumentType.greedyString())
                                         .suggests(WaypointCommands::suggestRefs)
@@ -129,6 +130,7 @@ public final class WaypointCommands {
                 regions.removeAll(targets);
             }
             TravelData.set(player, data.withRegions(regions));
+            io.github.sethwillemsvg.lotrrevival.world.network.TravelSync.send(player);
         }
         String key = unlock ? "commands.lotrrevival.waypoint.unlock" : "commands.lotrrevival.waypoint.lock";
         source.sendSuccess(
@@ -141,6 +143,7 @@ public final class WaypointCommands {
         int ticks = IntegerArgumentType.getInteger(ctx, "ticks");
         for (ServerPlayer player : players) {
             TravelData.set(player, TravelData.get(player).withClock(ticks));
+            io.github.sethwillemsvg.lotrrevival.world.network.TravelSync.send(player);
         }
         ctx.getSource()
                 .sendSuccess(

@@ -20,6 +20,7 @@ public final class WaypointSystem {
     /** English strings for the waypoint system; called from datagen. */
     public static void contributeLang() {
         io.github.sethwillemsvg.lotrrevival.world.travel.TravelLang.contribute();
+        CustomWaypointCommands.contributeLang();
         ModLangProvider.contribute(lang -> {
             lang.add(
                     "message.lotrrevival.region_unlocked",
