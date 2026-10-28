@@ -8,6 +8,7 @@ import io.github.sethwillemsvg.lotrrevival.world.travel.FastTravel;
 import io.github.sethwillemsvg.lotrrevival.world.travel.TravelChecks;
 import io.github.sethwillemsvg.lotrrevival.world.travel.TravelTarget;
 import io.github.sethwillemsvg.lotrrevival.world.waypoint.TravelData;
+import io.github.sethwillemsvg.lotrrevival.world.waypoint.TravelRules;
 import io.github.sethwillemsvg.lotrrevival.world.waypoint.WaypointRef;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,6 +116,16 @@ public final class FastTravelTest {
 
     @GameTest(template = "empty")
     public static void clockBelowRequiredIsRefused(GameTestHelper helper) {
+        // Fast travel waits are off by default; this test checks the Legacy-style wait.
+        TravelRules.setCooldownOverride(true);
+        try {
+            clockBelowRequiredIsRefusedBody(helper);
+        } finally {
+            TravelRules.setCooldownOverride(null);
+        }
+    }
+
+    private static void clockBelowRequiredIsRefusedBody(GameTestHelper helper) {
         TestPlayer player = player(helper);
         withMiddleEarth(() -> {
             WaypointRef ref = customDestination(helper, player);

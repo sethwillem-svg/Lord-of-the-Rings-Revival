@@ -257,6 +257,16 @@ public final class CustomWaypointTest {
 
     @GameTest(template = "empty")
     public static void viewsListThePilotWaypointsWithTheRightStates(GameTestHelper helper) {
+        // Fast travel waits are off by default; this test checks the Legacy-style wait.
+        TravelRules.setCooldownOverride(true);
+        try {
+            viewsListThePilotWaypointsWithTheRightStatesBody(helper);
+        } finally {
+            TravelRules.setCooldownOverride(null);
+        }
+    }
+
+    private static void viewsListThePilotWaypointsWithTheRightStatesBody(GameTestHelper helper) {
         var access = helper.getLevel().registryAccess();
         TravelData data = TravelData.EMPTY
                 .withRegion(SHIRE)

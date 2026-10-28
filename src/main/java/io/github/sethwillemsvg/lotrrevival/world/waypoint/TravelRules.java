@@ -60,8 +60,24 @@ public final class TravelRules {
         return (int) Math.max(0, Math.min(Integer.MAX_VALUE, ticks));
     }
 
-    /** Required ticks with the configured numbers. */
+    /** Tests force the cooldown on; null means use the config. */
+    private static volatile Boolean cooldownOverride;
+
+    public static void setCooldownOverride(Boolean value) {
+        cooldownOverride = value;
+    }
+
+    /** Whether trips need waiting time at all ({@code travel.cooldown}, off by default). */
+    public static boolean cooldownEnabled() {
+        Boolean forced = cooldownOverride;
+        return forced != null ? forced : WorldConfig.get(WorldConfig.TRAVEL_COOLDOWN);
+    }
+
+    /** Required ticks with the configured numbers; 0 when the cooldown is off. */
     public static int requiredTicks(int uses, double distance) {
+        if (!cooldownEnabled()) {
+            return 0;
+        }
         return requiredTicks(
                 WorldConfig.get(WorldConfig.TRAVEL_MIN_SECONDS),
                 WorldConfig.get(WorldConfig.TRAVEL_MAX_SECONDS),
