@@ -48,6 +48,7 @@ public final class WorldDatagen {
 
         generator.addProvider(event.includeServer(), new MiddleEarthWorldgenProvider(output));
         generator.addProvider(event.includeServer(), new ReliefImageProvider(output));
+        io.github.sethwillemsvg.lotrrevival.world.waypoint.WaypointSystem.contributeLang();
         generator.addProvider(event.includeServer(), new MiddleEarthBiomeTags(output, registryLookup, existing));
     }
 
