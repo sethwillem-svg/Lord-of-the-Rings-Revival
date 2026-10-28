@@ -18,6 +18,12 @@ public final class BrewingComponents {
                     builder -> builder.persistent(Codec.intRange(DrinkTier.MIN_INDEX, DrinkTier.MAX_INDEX))
                             .networkSynchronized(ByteBufCodecs.VAR_INT));
 
+    /** The brew held by a barrel item: state, drink, tier, servings and elapsed ticks. */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<BarrelBrew>> BARREL_BREW =
+            ModRegistries.DATA_COMPONENTS.registerComponentType(
+                    "barrel_brew",
+                    builder -> builder.persistent(BarrelBrew.CODEC).networkSynchronized(BarrelBrew.STREAM_CODEC));
+
     /** Tier stored on a stack, or {@link DrinkTier#DEFAULT} when the stack has no component. */
     public static DrinkTier tierOf(ItemStack stack) {
         Integer index = stack.get(DRINK_STRENGTH.get());

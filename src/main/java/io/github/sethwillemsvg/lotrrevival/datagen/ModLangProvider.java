@@ -129,6 +129,14 @@ final class ModLangProvider extends LanguageProvider {
         add("drink_strength.lotrrevival.stout", "Stout");
         add("drink_strength.lotrrevival.mighty", "Mighty");
         add("tooltip.lotrrevival.alcohol", "Alcohol: %s%%");
+        add("block.lotrrevival.brewing_barrel", "Brewing Barrel");
+        add("container.lotrrevival.brewing_barrel", "Brewing Barrel");
+        add("gui.lotrrevival.brewing_barrel.brew", "Brew");
+        add("gui.lotrrevival.brewing_barrel.stop", "Stop");
+        add("brewing.lotrrevival.status.empty", "Empty");
+        add("brewing.lotrrevival.status.ready", "Ready to brew %s");
+        add("brewing.lotrrevival.status.brewing", "Brewing %s (%s)");
+        add("brewing.lotrrevival.status.full", "%s (%s), %s left");
     }
     // End Core: brewing
 

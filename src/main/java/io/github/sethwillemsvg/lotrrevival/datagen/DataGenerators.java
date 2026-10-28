@@ -42,6 +42,11 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeClient(), new BrewingProviders.ItemModels(output, event.getExistingFileHelper()));
         generator.addProvider(event.includeServer(), new BrewingProviders.Recipes(output, lookup));
+        generator.addProvider(
+                event.includeClient(), new BrewingProviders.BlockStates(output, event.getExistingFileHelper()));
+        generator.addProvider(event.includeServer(), new BrewingProviders.Loot(output, lookup));
+        generator.addProvider(
+                event.includeServer(), new BrewingProviders.BlockTags(output, lookup, event.getExistingFileHelper()));
         // End Core: brewing
 
         // World
