@@ -48,10 +48,15 @@ public final class BrewingItems {
 
     public static void init(IEventBus modBus) {
         BrewingComponents.init();
+        BrewingBlocks.init();
+        BrewingRecipes.init();
         modBus.addListener(BrewingItems::onBuildCreativeTabs);
     }
 
     private static void onBuildCreativeTabs(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+            event.accept(new ItemStack(BrewingBlocks.BARREL_ITEM.get()));
+        }
         if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {
             event.accept(new ItemStack(WOODEN_MUG.get()));
             for (DeferredItem<DrinkItem> drink : DRINKS) {

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "lotrrevival:block/brewing_barrel",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "lotrrevival:block/brewing_barrel"
+    },
+    "facing=south": {
+      "model": "lotrrevival:block/brewing_barrel",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "lotrrevival:block/brewing_barrel",
+      "y": 270
+    }
+  }
+}

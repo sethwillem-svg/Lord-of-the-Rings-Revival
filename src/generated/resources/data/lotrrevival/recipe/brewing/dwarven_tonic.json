@@ -1,0 +1,24 @@
+{
+  "type": "lotrrevival:brewing",
+  "ingredients": [
+    {
+      "item": "minecraft:wheat"
+    },
+    {
+      "item": "minecraft:wheat"
+    },
+    {
+      "item": "minecraft:wheat"
+    },
+    {
+      "item": "minecraft:glow_berries"
+    },
+    {
+      "item": "minecraft:glow_berries"
+    },
+    {
+      "item": "minecraft:iron_nugget"
+    }
+  ],
+  "result": "lotrrevival:dwarven_tonic"
+}

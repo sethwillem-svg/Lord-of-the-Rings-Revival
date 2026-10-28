@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "bottom": "lotrrevival:block/brewing_barrel_top",
+    "front": "lotrrevival:block/brewing_barrel_front",
+    "side": "lotrrevival:block/brewing_barrel_side",
+    "top": "lotrrevival:block/brewing_barrel_top"
+  }
+}

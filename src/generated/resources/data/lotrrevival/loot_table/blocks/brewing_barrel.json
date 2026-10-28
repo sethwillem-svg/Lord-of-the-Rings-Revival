@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:copy_components",
+              "include": [
+                "lotrrevival:barrel_brew",
+                "minecraft:custom_name",
+                "minecraft:max_stack_size"
+              ],
+              "source": "block_entity"
+            }
+          ],
+          "name": "lotrrevival:brewing_barrel"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "lotrrevival:blocks/brewing_barrel"
+}
