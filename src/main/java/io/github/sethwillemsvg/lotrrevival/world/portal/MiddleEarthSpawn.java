@@ -1,5 +1,6 @@
 package io.github.sethwillemsvg.lotrrevival.world.portal;
 
+import io.github.sethwillemsvg.lotrrevival.world.WorldHeights;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthLanding;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -24,7 +25,7 @@ public final class MiddleEarthSpawn {
                 RingPortalPlan.middleEarthArrival(RingPortals.data(level).middleEarthPortal(), landing);
         int x = arrival.x();
         int z = arrival.z();
-        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        int y = WorldHeights.surface(level, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         return new BlockPos(x, y, z);
     }
 }
