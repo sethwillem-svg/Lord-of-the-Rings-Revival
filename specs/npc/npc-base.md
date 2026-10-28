@@ -356,4 +356,15 @@ A hireable NPC exposes: hire requirement (`hire_min` alignment, coin cost), an o
 
 ## Tickets
 
-Filled in by the lead once the spec is approved.
+G2, in dependency order:
+
+1. #36 npc: NPC base entity, race framework and hobbit civilian with spawn egg (sonnet-6)
+2. #37 npc: Bounder, Shirriff and Bree types, man race, loadouts and death drops (sonnet-6; blocked by #36)
+3. #38 npc: name banks, nameplates, speech and interaction hooks (sonnet-7; blocked by #36)
+4. #39 npc: home points, day/night routine and spawn anchors (sonnet-8; blocked by #36)
+5. #40 npc: hostility targeting, faction warfare, flee, melee and healing (sonnet-6; blocked by #36, #37)
+6. #41 npc: wild NPC spawner, spawn tables and despawning (sonnet-8; blocked by #37)
+7. #42 npc: friendly fire, retaliation and kill witnesses (sonnet-7; blocked by #38, #40)
+8. #43 npc: G2 later items blocked on world, core and progression (sonnet-8; blocked by #41, #39, #35)
+
+Requested from core: #35 core: silver_coin item and lotrrevival:npcs entity tag key.
