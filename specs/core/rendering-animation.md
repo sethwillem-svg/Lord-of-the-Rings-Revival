@@ -2,8 +2,8 @@
 
 - **Pod:** core (the shared animation framework, dependency, benchmark and client config). Renderers per race stay in `client/npc/` (NPC pod).
 - **Lead:** Opus 1
-- **Status:** draft
-- **Depends on:** `specs/core/core-apis.md` (registers, shared constants, payload rules), `specs/core/combat-items.md` (weapon classes, `WeaponStats`), `specs/npc/npc-base.md` (races, roles, routines, nameplate rules, `client/npc/NpcHumanoidRenderer`). Feeds the NPC model content wave, villages, patrols, caravans and battles.
+- **Status:** draft, revision 2 (maintainer's decisions on PR #185, see "Maintainer decisions" at the end: AzureLib is chosen; every NPC of every faction is animated; formation clips added for the discipline levels of `specs/npc/performance.md`, PR #186; pilot #10 becomes the bench rig; bundling, shared rig, adaptive detail, bump policy and Epic Fight scope accepted as proposed)
+- **Depends on:** `specs/core/core-apis.md` (registers, shared constants, payload rules), draft `specs/npc/performance.md` (PR #186: squads, formations, discipline levels RIGID / ORGANIZED / LOOSE, formation animation hooks in its section 2h), `specs/core/combat-items.md` (weapon classes, `WeaponStats`), `specs/npc/npc-base.md` (races, roles, routines, nameplate rules, `client/npc/NpcHumanoidRenderer`). Feeds the NPC model content wave, villages, patrols, caravans and battles.
 - **Sources:** research on 2026-10-28, listed with links in section 13. No original LOTR Mod models, animations or code were used. The original mod rendered every NPC with a static biped model and no keyframe animation, so there is nothing of its to port here: this whole system is ours.
 
 ## Summary
@@ -12,7 +12,7 @@ Seth wants Middle-earth to feel inhabited: villages of 20 to 40 people going abo
 
 This spec picks the animation technology, defines **animation level of detail (LOD)** so cost falls with distance, sets **render budgets**, fixes the **authoring pipeline** (Blockbench, rigs, file layout, animation names), defines how **AI state drives animation** with almost no network cost, and plans an optional **Flywheel instanced crowd path** for later. It also adds **soft Epic Fight compatibility** (data files only, no dependency).
 
-**Recommendation:** AzureLib, pinned to an exact version and bundled jar-in-jar, for every animated NPC, wrapped in a thin layer of our own (`client/core/anim`) that owns the LOD tiers, budgets, state-to-clip mapping and fallbacks. Before any NPC model content is made, a **benchmark ticket** measures AzureLib against GeckoLib, vanilla keyframe animation and today's vanilla biped at 50, 100, 200 and 400 NPCs on Seth's PC. The benchmark result decides; section 2c gives the decision rule.
+**Decision (maintainer, PR #185):** **AzureLib**, pinned to an exact version and bundled jar-in-jar, for **every NPC of every faction and every discipline level**, wrapped in a thin layer of our own (`client/core/anim`) that owns the LOD tiers, budgets, state-to-clip mapping and fallbacks. Before any NPC model content is made, a **benchmark gate** confirms the LOD settings and catches problems by measuring AzureLib against GeckoLib, vanilla keyframe animation and today's vanilla biped at 50, 100, 200 and 400 NPCs on Seth's PC. GeckoLib or vanilla keyframes replace AzureLib only if the gate fails badly (section 2c).
 
 ## Player-facing behavior
 
@@ -43,11 +43,13 @@ All facts were checked on 2026-10-28 against Modrinth, GitHub and project docs (
 
 **Epic Fight** (GPL-3.0-or-later, NeoForge 1.21.1 build 21.17.3.1 from 2026-05-31) and **Entity Culling** (tr7zw Protective License, client-only, 1.11.3 on 2026-10-08) are compatibility targets, not options. See sections 9 and 10.
 
-## 2. Recommendation and benchmark gate
+## 2. Decision and benchmark gate
 
-### 2a. Recommendation
+### 2a. Decision
 
-1. **AzureLib for animated NPCs**, pinned to one exact version (3.2.2 today) and bundled jar-in-jar like NovoAtlas, with a version range in `neoforge.mods.toml` limited to that minor line (`[3.2.2,3.3)`). Reasons:
+AzureLib is the maintainer's decision. The reasons below are the ones that led to it.
+
+1. **AzureLib for every NPC**, pinned to one exact version (3.2.2 today) and bundled jar-in-jar like NovoAtlas, with a version range in `neoforge.mods.toml` limited to that minor line (`[3.2.2,3.3)`). Reasons:
    - It is the only option with built-in distance LOD (bone depth and update rate), which is most of what crowds need.
    - Since June 2026 most of its releases have been crowd-performance work: allocation-free sampling, Molang and bone poses, and skipping bones at rest.
    - It has armour-on-bone and item-on-bone layers, crossfades and layered controllers, and a Blockbench plugin. Animations are data (JSON), so artist agents can make them without writing Java.
@@ -55,17 +57,17 @@ All facts were checked on 2026-10-28 against Modrinth, GitHub and project docs (
 2. **Our own thin wrapper** (`client/core/anim`) between NPC renderers and AzureLib. It owns tier selection, budgets, the adaptive governor, the state-to-clip resolver and fallbacks, and calls AzureLib's LOD hooks. Pods never call AzureLib's LOD or controller APIs directly. If AzureLib breaks or stalls, only the wrapper and the renderer base class change.
 3. **Explicit configuration only.** We always pass our own LOD values (section 4) and never depend on AzureLib defaults, because its docs and changelog disagree about them.
 4. **Not used:** AzureLib bone hitboxes (`AzHitboxHolder`). They make clients report poses to the server (upstream traffic, and a client the server must trust), and combat uses vanilla boxes. `AzCommand` server dispatch is not used for routine animation either (section 6).
-5. **GeckoLib** is the fallback if AzureLib becomes unmaintained or unstable. Both read the same Bedrock geo format, so models move over with little work; animation files need checking for AzureLib-only loop modes.
-6. **Vanilla keyframe** is the fallback if both libraries fail the benchmark. We would keep our wrapper and LOD and give up crossfades, and the authoring output becomes generated Java.
+5. **GeckoLib** is a fallback only: if the gate fails badly, or AzureLib later becomes unmaintained or unstable. Both read the same Bedrock geo format, so models move over with little work; animation files need checking for AzureLib-only loop modes.
+6. **Vanilla keyframe** is the last fallback, only if both libraries fail the gate badly. We would keep our wrapper and LOD and give up crossfades, and the authoring output becomes generated Java.
 7. **Flywheel** is a later, optional phase (section 8), only if the benchmark shows the CPU cost of drawing far crowds is still the bottleneck after LOD.
 
-### 2b. Benchmark harness (ticket R0-1 to R0-4)
+### 2b. Benchmark harness (tickets R0-1 to R0-4)
 
 A dev-only client benchmark, built before any NPC model content, that renders N identical animated test NPCs with each technology and records frame data.
 
 **Packaging.** A separate Gradle source set `bench` with its own mod id `lotrrevival_bench`. It is never part of the release jar. GeckoLib and AzureLib are bench-only runtime dependencies here (until the decision). AzureLib uses its own packages, so both can be loaded at once. A run configuration `runBenchClient` starts it. A `benchJar` task builds `lotrrevival-bench-<version>.jar` so Seth can drop it into his normal launcher instance with Sodium and Iris.
 
-**Test rig.** One original humanoid model (about 18 bones, about 30 cubes, 64x64 texture; the bone names from section 5b). It has `idle`, `walk` and two `attack.sword` clips. It is authored once in Blockbench and exported twice: as Bedrock geo and animation JSON (AzureLib and GeckoLib), and as Mojang-mapped Java (vanilla keyframe). If Blockbench pilot #10 (hobbit) lands first and follows section 5, it can be the rig.
+**Test rig: the Blockbench pilot #10 hobbit** (maintainer decision). Pilot #10 is rescoped to the AzureLib format, the `humanoid` bones of section 5b and the clip names of section 5c. It delivers `move.idle`, `move.walk`, `attack.sword.1`, `attack.sword.2` and `move.march` (about 18 bones, about 30 cubes, 64x64 texture, all original). The same Blockbench project is also exported as Mojang-mapped Java keyframes for the `keyframe` contender; GeckoLib loads the same Bedrock JSON. The pilot's time and number of review rounds size the content wave.
 
 **Contenders** (one entity type each, same hitbox, texture and equipment):
 
@@ -106,15 +108,22 @@ A dev-only client benchmark, built before any NPC model content, that renders N 
 4. **Pass C, shaders:** pass B plus Iris with Complementary Reimagined (or Seth's usual pack) at default settings. Run `/lotrbench suite`.
 5. Attach the three CSVs and the hardware line to the ticket. An agent then commits them to `docs/perf/results/` with a short summary table.
 
-### 2c. Decision rule (gate G-R0, Seth decides on the results)
+### 2c. What the gate does (gate G-R0, Seth signs off on the results)
 
-AzureLib (`azure_lod`) is adopted if, in pass B on the reference PC:
+AzureLib is already chosen. The gate exists to **confirm the LOD settings** (tier distances, caps, update rates, bone depths, the governor budget) and to **catch problems** before content production.
 
-- `battle` with 200 NPCs meets the section 3 targets, and
-- its p95 frame time is no more than 15% above `keyframe` at 200 and 400 (`battle`), and
-- its render-thread allocation is under 2 KB per NPC per frame.
+**Pass:** in pass B on the reference PC, `azure_lod` meets the section 3 targets in `battle` with 200 NPCs. Opus 1 then tunes the section 4 numbers from the results and freezes them.
 
-If AzureLib fails only the allocation or 15% checks but meets the targets, adopt it anyway and file upstream issues. If it misses the targets but GeckoLib or `keyframe` meets them, adopt that one instead. If nothing meets the 200-NPC battle target, adopt the best one and pull the Flywheel phase (section 8) forward. In every case, record pass C numbers as the shader-user expectation.
+**Problems, but AzureLib stays:** if `azure_lod` misses the targets by less than 25%, or is more than 15% slower than `keyframe` at p95, or allocates over 2 KB per NPC per frame, keep AzureLib. Then tighten the tiers (shorter T0 and T1 distances, lower caps), file upstream issues with the bench data, and pull the Flywheel phase (section 8) forward if entity CPU is the bottleneck.
+
+**Fails badly (fallback):** switch to GeckoLib (or, failing that, vanilla keyframes) only if one of these happens:
+- `azure_lod` misses the 200-NPC `battle` target by 25% or more on average FPS while GeckoLib or `keyframe` meets it.
+- AzureLib crashes, leaks memory or corrupts poses in the bench.
+- AzureLib breaks on a dedicated server.
+
+That decision goes back to Seth with the data.
+
+In every case, record pass C numbers as the shader-user expectation.
 
 ## 3. Render budgets and targets
 
@@ -174,7 +183,7 @@ Rules for every tier:
 4. Review: the artist posts turntable and per-clip GIFs (Blockbench screenshot tools) in the ticket. The pod lead approves. Seth playtests in game.
 5. **Validator** (part of R1-1): at resource load the client checks every registered NPC renderer's geo for the required bones of its rig, and its animation file for every required clip (with fallbacks, section 5c). With `-Dlotrrevival.strictAssets=true` (dev runs and CI) a missing bone or clip, or a geo or animation file that does not load, is a hard error. In normal play it is logged once per file. This matters because AzureLib skips broken models with a log line instead of failing.
 
-Pilot #10 (hobbit, Blockbench MCP) should be rescoped to this pipeline: AzureLib format, the `humanoid` rig bone names, and `idle` plus `walk` with the names below. Its time and review-round numbers then size the content wave.
+Pilot #10 (hobbit, Blockbench MCP) is rescoped to this pipeline (maintainer decision): AzureLib format, the `humanoid` rig bone names, and the clips listed for the bench rig in section 2b with the names below. It is the benchmark rig, and its time and review-round numbers size the content wave.
 
 ### 5b. Rigs and bone names
 
@@ -184,9 +193,11 @@ A **rig** is a bone hierarchy that animations are written against. Races with th
 
 | Rig | Used by | Notes |
 | --- | --- | --- |
-| `humanoid` | men, elves, hobbits, dwarves, half-orcs | Proportion variants per race |
-| `orc` | orcs, uruks, goblins | Hunched; own clip set; same bone names, so weapon clips can be ported |
-| `troll`, `warg`, `horse`, `spider`, ... | later specs | Each gets its own table when its spec is written |
+| `humanoid` | men of every faction (Gondor, Rohan, Dale, Bree, Rangers, Harad, Easterlings, Dunlendings, hill-men, ruffians, Morgul and Black Númenórean units), elves, dwarves, hobbits (shirriffs, bounders) | One shared rig with proportion variants per race (maintainer decision: hobbits and dwarves included) |
+| `orc` | orcs, goblins, Uruk-hai, half-orcs, half-trolls | Hunched and heavier; own clip set; same bone names as `humanoid`, so weapon and formation clips can be ported. Half-trolls use it at a larger scale. |
+| `troll` | trolls of every kind | Own bones (no fingers, heavy club arm), own clip set (section 5c). Never takes a formation slot. |
+| `horse` | horses and war-horses ridden by cavalry | Clip set in section 5c; owned by the mounts spec |
+| `warg`, `spider`, ... | later specs | Each gets its own table when its spec is written |
 
 `humanoid` and `orc` bones (exact names, all lowercase):
 
@@ -226,18 +237,32 @@ Clip keys inside the animation file are `animation.<rig>.<group>.<name>[.<varian
 
 | Group | Clips (humanoid) | Loop | Controller |
 | --- | --- | --- | --- |
-| `move` | `idle`, `idle.<n>` (fidgets), `walk`, `run`, `sneak`, `swim`, `climb`, `fall`, `ride` | loop | base |
+| `move` | `idle`, `idle.<n>` (fidgets), `walk`, `run`, `sneak`, `swim`, `climb`, `fall`, `ride`, `march` (in step), `flee` (rout), `charge` (berserk run, weapon raised) | loop | base |
 | `pose` | `sit`, `sit_ground`, `sleep`, `guard` (standing at attention), `kneel` | loop | base |
 | `work` | `work.farm`, `work.smith`, `work.chop`, `work.mine`, `work.carry`, `work.sweep`, `work.cook`, `work.trade` | loop | base |
 | `social` | `talk`, `talk.<n>`, `listen` | loop | upper |
-| `emote` | `wave`, `cheer`, `bow`, `point`, `salute`, `taunt`, `laugh`, `cower` | once | action |
-| `hold` | `hold.<class>` (how the arms carry the weapon while moving), `hold.shield`, `hold.banner`, `hold.torch` | loop | upper |
+| `emote` | `wave`, `cheer`, `bow`, `point`, `salute`, `taunt`, `laugh`, `cower`, `order` (leader's volley or advance order), `war_cry` | once | action |
+| `hold` | `hold.<class>` (how the arms carry the weapon while moving), `hold.pike.lowered` (pike or spear levelled past the front rank), `hold.shield`, `hold.banner`, `hold.torch` | loop | upper |
 | `attack` | `attack.<class>.<n>` for class in `unarmed`, `dagger`, `sword`, `spear`, `polearm`, `pike`, `battleaxe`, `hammer`, `lance`, `throw` | once | action |
-| `ranged` | `ranged.bow.draw`, `ranged.bow.release`, `ranged.crossbow.aim`, `ranged.crossbow.reload`, `ranged.sling.whirl`, `ranged.sling.release` | draw and aim hold the last frame | upper and action |
-| `defend` | `block.shield`, `block.weapon`, `dodge` | hold and once | upper and action |
+| `ranged` | `ranged.bow.ready` (arrow nocked, waiting for the order), `ranged.bow.draw`, `ranged.bow.release`, `ranged.crossbow.aim`, `ranged.crossbow.reload`, `ranged.sling.whirl`, `ranged.sling.release` | draw and aim hold the last frame | upper and action |
+| `defend` | `block.shield`, `brace.shield` (front-rank shield braced, shoulder in, braced stance), `block.weapon`, `dodge` | hold and once | `brace.shield` base + upper; others upper and action |
+| `ride` | `ride.lance.couched` (lance lowered under the arm for the charge), `ride.idle`, `ride.<class>` attacks fall back to `attack.<class>` | loop | upper |
 | `react` | `hurt`, `hurt.<n>`, `stagger`, `knockdown`, `death`, `death.<n>` | once (death holds the last frame) | action |
 
-**Minimum set per humanoid race at G3.5:** `move.idle`, `move.walk`, `move.run`, `pose.sit`, `react.hurt`, `react.death`, `attack.unarmed.1`, `attack.sword.1`, `attack.sword.2`, `hold.sword`, `defend.block.shield`, `social.talk`, `emote.wave`, `work.farm`, `work.smith`. Everything else falls back.
+**Every NPC is animated** (maintainer decision): every faction, every role and every discipline level gets a model on one of the rigs above and at least the minimum set below. No NPC type ships on the old vanilla biped once its race's model lands.
+
+**Minimum sets.** These are written once per rig in `<rig>.animation.json` and shared by every race on that rig. Races add overrides only where they want personality.
+
+| Set | Clips | Rigs that need it |
+| --- | --- | --- |
+| **Base** | `move.idle`, `move.walk`, `move.run`, `pose.sit`, `react.hurt`, `react.death`, `attack.unarmed.1`, `attack.sword.1`, `attack.sword.2`, `hold.sword`, `defend.block.shield`, `social.talk`, `emote.wave`, `work.farm`, `work.smith` | `humanoid`, `orc` (orcs swap `emote.wave` for `emote.taunt` and `work.farm` for `work.mine`) |
+| **Formation, all disciplines** | `move.flee` (rout), `emote.order` | `humanoid`, `orc` |
+| **Formation, RIGID and ORGANIZED** | `defend.brace.shield`, `hold.pike.lowered`, `ranged.bow.ready` (with `ranged.bow.draw` and `ranged.bow.release` for volleys in rank), `move.march` | `humanoid`, `orc`. Needed for the RIGID factions Gondor, dwarves, elves, Uruk-hai and Easterlings, and the ORGANIZED factions Rohan, Dale, Rangers, Harad and Morgul. The rig carries them once for all. |
+| **Cavalry** | `ride.idle`, `ride.lance.couched` (couched-lance charge); the horse plays `move.gallop` and `move.charge` | `humanoid` riders (Rohan, Gondor knights, Dale, Harad, Easterlings) and `horse`. `orc` riders use the warg spec later. |
+| **LOOSE flavour** | `emote.war_cry`, `move.charge` (berserk charge), `emote.taunt` | `orc` (orcs, goblins, half-trolls) and `humanoid` (Dunlendings, hill-men, ruffians; shirriffs use `emote.war_cry` only, played as a shout) |
+| **Troll** | `move.idle`, `move.walk`, `move.run`, `move.charge`, `move.flee`, `react.hurt`, `react.death`, `attack.smash.1` (overhead two-handed smash), `attack.smash.2` (sweeping swat), `emote.war_cry` (roar) | `troll` only. No formation clips: trolls never take a slot (PR #186 section 2b). |
+
+Discipline mostly changes **which** of these clips the server asks for (section 6), not the clip set. RIGID blocks brace, lower pikes and march in step. ORGANIZED squads march, then charge and break into normal combat clips. LOOSE swarms war-cry, berserk-charge and flee when their captain dies. Everything not listed falls back.
 
 **Fallback table** (the resolver walks it until it finds a clip that exists):
 
@@ -251,6 +276,15 @@ Clip keys inside the animation file are `animation.<rig>.<group>.<name>[.<varian
 | any `attack.*` | `attack.unarmed.1` |
 | `hold.<class>` | `hold.sword`, then no upper-body overlay |
 | `move.run` | `move.walk` at 1.5x speed |
+| `move.march` | `move.walk` |
+| `move.flee`, `move.charge` | `move.run` |
+| `defend.brace.shield` | `defend.block.shield` |
+| `hold.pike.lowered` | `hold.pike`, then `hold.spear`, then `hold.sword` |
+| `ranged.bow.ready` | first frame of `ranged.bow.draw`, held |
+| `ride.lance.couched` | `hold.spear` |
+| `emote.order` | `emote.point` |
+| `emote.war_cry` | `emote.taunt`, then none |
+| `attack.smash.*` (troll) | `attack.unarmed.1` of the troll rig |
 | `work.*`, `pose.kneel` | `move.idle` |
 | `social.*`, `emote.*` | none (base continues) |
 | `react.death.*` | `react.death` |
@@ -296,7 +330,23 @@ The **server API** (core, `core.api.anim`):
 
 All of this is plain common code with no client imports. The client reads it through `client/core/anim/AnimStateReader`.
 
-**Sync cost.** A changed byte goes out in vanilla's set-entity-data packet. That is about 8 bytes of payload (packet id, entity id varint, index, serializer id, value, end marker) plus about 2 bytes of framing, so roughly 10 bytes per change per tracking player. It is batched with any other data changes for that entity in the same tick. A battle of 200 NPCs with 2 changes each per second costs about 4 KB/s (about 32 kbit/s) per player, which is small next to the movement packets those 200 NPCs already send. Rules for the NPC pod:
+**Formation and discipline values** (requested by PR #186 section 2h; appended to the enums in this order):
+
+| Value | Byte | Clip | Set by the squad AI (NPC pod) when |
+| --- | --- | --- | --- |
+| `BRACE` | `ANIM_ACTION` | `defend.brace.shield` | a RIGID front-rank member with a shield has an enemy within 6 blocks in front |
+| `PIKE_LOWER` | `ANIM_ACTION` | `hold.pike.lowered` | a RIGID second-rank member with a pike, spear or polearm is in COMBAT, or advancing on an enemy within 16 blocks |
+| `VOLLEY_READY` | `ANIM_ACTION` | `ranged.bow.ready` | an archer in rank waits between volleys. The draw and release are vanilla's using-item state (no extra sync). |
+| `MARCH` | `ANIM_ACTION` | `move.march` | a RIGID or ORGANIZED squad is in MARCH. The clip's phase comes from the level's game time, not the entity's walk distance, so a whole block steps together with no extra sync. |
+| `ROUT` | `ANIM_ACTION` | `move.flee` | the member is routing (any discipline), including LOOSE members after their captain dies |
+| `LANCE_COUCH` | `ANIM_ACTION` | `ride.lance.couched` | a mounted member with a lance or spear is in a charge (wedge charge or ORGANIZED charge) |
+| `BERSERK` | `ANIM_ACTION` | `move.charge` | a LOOSE member rushes its target (and trolls charging) |
+| `ORDER` | `ANIM_PULSE` | `emote.order` | the squad leader orders a volley or an advance |
+| `WAR_CRY` | `ANIM_PULSE` | `emote.war_cry` | a LOOSE squad engages, an ORGANIZED squad starts its charge, or a troll starts a charge (roar) |
+
+The troll smash is an ordinary attack (vanilla swing) resolved to `attack.smash.<n>` by the `troll` rig, so it needs no byte. With these values `ANIM_ACTION` uses 18 of its 32 action slots.
+
+**Sync cost.** A changed byte goes out in vanilla's set-entity-data packet. That is about 8 bytes of payload (packet id, entity id varint, index, serializer id, value, end marker) plus about 2 bytes of framing, so roughly 10 bytes per change per tracking player. It is batched with any other data changes for that entity in the same tick. A battle of 200 NPCs with 2 changes each per second (formation states included, since they change only on state transitions) costs about 4 KB/s (about 32 kbit/s) per player, which is small next to the movement packets those 200 NPCs already send. Rules for the NPC pod:
 
 - Never set animation data every tick.
 - Never use AzureLib's `AzCommand` server dispatch for routine states, because its packets name the controller and animation by string and cost several times more.
@@ -362,7 +412,7 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 | bows, crossbows | `epicfight:bow`, `epicfight:crossbow` | Sling: `epicfight:bow` or omitted (test) |
 | shields (when core adds them) | `epicfight:shield` | |
 
-- **Armour:** optional `capabilities/armors/` files (weight and stun armour) per material, in the same provider. Low priority.
+- **Scope (maintainer decision):** weapon type only. Files carry `type` and no `attributes`, so Epic Fight's defaults for that type apply. No armour files.
 - **NPCs:** **no Epic Fight mob patches** for our entities. A mob patch swaps the entity's model, armature and renderer for Epic Fight's and replaces its combat behaviour, which would bypass our renderer, LOD and AI. Epic Fight leaves unknown entities alone, so nothing needs disabling.
 - **Test:** a manual playtest with Epic Fight 21.17.x on NeoForge 1.21.1: each weapon class uses the expected move set; our NPCs still render with our renderer; no errors in the log. CI does not install Epic Fight.
 
@@ -473,7 +523,7 @@ Proposed; opened after this spec is approved. Days are agent days. All `pod:core
 | # | Ticket | Days | Agent | Blocked by | Shared files |
 | --- | --- | --- | --- | --- | --- |
 | R0-1 | Bench source set and mod `lotrrevival_bench`: `runBenchClient`, `benchJar`, bench world preset, scripted movers, `/lotrbench run, suite, layers`, metrics (stage timing, allocation, GC, MSPT, environment), JSON and CSV output, `docs/perf/animation-benchmark.md` with Seth's run steps | 2 | sonnet-1 | - | build.gradle, gradle.properties |
-| R0-2 | Bench test rig (art): original humanoid on the section 5b bones, 64x64 texture, `idle`, `walk`, `attack.sword.1`, `attack.sword.2`; exported as AzureLib and Bedrock JSON and as Mojang Java keyframes. Reuse pilot #10 if it follows section 5. | 1 | artist | - | - |
+| R0-2 | **Pilot #10 rescoped** (art, edit the existing issue rather than opening a new one): the hobbit in AzureLib format on the section 5b bones, 64x64 texture, `move.idle`, `move.walk`, `move.march`, `attack.sword.1`, `attack.sword.2`; also exported as Mojang Java keyframes for the `keyframe` contender; record time and review rounds | 1 | artist | - | - |
 | R0-3 | The five contender renderers and entity types in the bench mod (baseline, keyframe, gecko, azure, azure_lod with a minimal tier wrapper) | 2 | sonnet-2 | R0-1, R0-2 | - |
 | R0-4 | **Seth runs passes A, B and C**; an agent commits the results and a summary to `docs/perf/results/`. Opus 1 updates section 3 targets and records the decision in this spec (gate G-R0). | 0.5 + Seth | Seth, Opus 1 | R0-3 | - |
 
@@ -486,10 +536,20 @@ Proposed; opened after this spec is approved. Days are agent days. All `pod:core
 | R1-3 | `client/core/anim`: `AnimLod`, `CrowdGovernor` and F3 line, `ClipResolver` with the fallback table, `RigConfig` for `humanoid` and `orc`, `ClientAnimConfig`; GameTests for the pure parts | 2 | sonnet-1 | R1-1 | - |
 | R1-4 | `NpcAnimRenderer` base: tiers per section 4 (layers, shadow, name tag, once-per-frame pose, Iris adapter); `debug_tier_colors`; `docs/playtest/animation.md` | 2 | sonnet-2 | R1-2, R1-3 | - |
 | R1-5 (pod:npc, Opus 3) | Convert `NpcHumanoidRenderer` to `NpcAnimRenderer` with the humanoid rig; add `AnimSync` accessors to `NpcEntity` and set actions from routines (work, sit, talk) | 2 | NPC pod | R1-4 | NpcEntity |
+| R1-6 (pod:npc, Opus 3) | Squad AI sets the formation values (`BRACE`, `PIKE_LOWER`, `VOLLEY_READY`, `MARCH`, `ROUT`, `LANCE_COUCH`, `BERSERK`, `ORDER`, `WAR_CRY`) per PR #186 section 2h; game-time phase for `move.march` in the renderer | 1 | NPC pod | R1-5, PR #186 squads | - |
 
 ### NPC model content wave (NPC pod and artists; starts after R1-4)
 
-One ticket per race (model + skins + race overrides) and per clip pack (minimum set first, then the weapon-class attack packs, work, social and emote). Each art ticket links section 5 and must pass the validator in `strictAssets` mode. Sizing comes from pilot #10's numbers. Opus 3 opens these.
+Every NPC type of every faction gets a model; none stays on the vanilla biped. The work is split into one ticket per race (model, skins and race overrides) and one per rig clip pack. The packs go in this order, following the section 5c minimum sets:
+
+1. `humanoid` base, then `orc` base.
+2. Formation packs for both rigs (rout and order, then brace, pike lowered, bow ready and volley, march).
+3. Cavalry (`humanoid` rider and `horse`).
+4. LOOSE flavour (war-cry, berserk charge, taunt).
+5. The `troll` rig and its set.
+6. The weapon-class attack packs, work, social and emote.
+
+Each art ticket links section 5 and must pass the validator in `strictAssets` mode. Sizing comes from pilot #10's numbers. Opus 3 opens these, ordered so the factions in the first battle playtests (Gondor, Mordor orcs, Rohan, Uruk-hai) are complete first.
 
 ### Phase R2: Flywheel crowd spike (only if the section 8 gate opens)
 
@@ -502,7 +562,7 @@ One ticket per race (model + skins + race overrides) and per clip pack (minimum 
 
 | # | Ticket | Days | Agent | Blocked by | Shared files |
 | --- | --- | --- | --- | --- | --- |
-| R3-1 | Datagen `EpicFightCapabilities`: weapon (and armour) capability JSON for every weapon item from the class table; manual Epic Fight playtest notes | 1 | sonnet-2 | - (can run any time) | DataGenerators |
+| R3-1 | Datagen `EpicFightCapabilities`: weapon capability JSON (`type` only) for every weapon item from the class table; manual Epic Fight playtest notes | 1 | sonnet-2 | - (can run any time) | DataGenerators |
 | R3-2 | Shader and culling playtest pass (Iris PBR and non-PBR, Entity Culling) with fixes in the renderer base | 1 | sonnet-1 | R1-4 | - |
 
 **Order:** R0 (gate G-R0, Seth) → R1 → content wave, with R3-1 in parallel any time and R3-2 alongside the first race. R2 only if its gate opens.
@@ -510,10 +570,17 @@ One ticket per race (model + skins + race overrides) and per clip pack (minimum 
 ## Open questions for the maintainer
 
 1. **Reference PC:** what CPU, GPU and RAM does Seth play on? The section 3 targets assume a Ryzen 5 5600 or i5-12400 class CPU with an RTX 3060 or RX 6600 class GPU.
-2. **Bundle AzureLib jar-in-jar** (recommended, like NovoAtlas) **or make it a separate required download?** Bundling is simpler for players. Because AzureLib changes its network format between minor versions, a modpack with another AzureLib mod may force a version we did not test. The range `[3.2.2,3.3)` limits that.
-3. **Update policy for AzureLib:** at most one bump per milestone with a bench rerun (recommended), or follow upstream more closely for its performance work?
-4. **Shared humanoid rig for hobbits and dwarves** (rotation-only animations, recommended) or separate rigs with their own clips (more art, more personality)?
-5. **Adaptive crowd detail on by default?** Recommended yes.
-6. **Flywheel phase:** accept that shader users never get the instanced path, even if R2 succeeds?
-7. **Epic Fight:** type mapping only, or also tune `impact` and `armor_negation` per class (for example pikes with high armour negation)?
-8. **Pilot #10:** OK to rescope it to the AzureLib format and the section 5 bone and clip names, and reuse it as the bench rig?
+2. **Flywheel phase:** accept that shader users never get the instanced path, even if R2 succeeds?
+3. **Half-trolls on the `orc` rig** (scaled up) as proposed in section 5b, or a rig of their own?
+
+## Maintainer decisions (PR #185)
+
+1. **AzureLib is chosen.** The benchmark gate stays, to confirm the LOD settings and catch problems. GeckoLib and vanilla keyframes are fallbacks only if the gate fails badly (section 2c).
+2. **Every NPC is animated**: all factions and all discipline levels. Formation clips are in the minimum sets, with the rigs that need them (section 5c), and their sync values are in section 6. Discipline levels follow PR #186: RIGID (Gondor, dwarves, elves, Uruk-hai, Easterlings), ORGANIZED (Rohan, Dale, Rangers, Harad, Morgul), LOOSE (orcs, Dunlendings, hill-men, half-trolls, trolls, ruffians, shirriffs).
+3. **Pilot #10** is rescoped to the AzureLib format with our bone and clip names, and it is the benchmark rig (sections 2b and 5a, ticket R0-2).
+4. **Defaults accepted:**
+   - AzureLib is bundled in our jar.
+   - One shared `humanoid` rig covers hobbits and dwarves.
+   - Adaptive crowd detail is on by default.
+   - AzureLib is bumped at most once per milestone, each time with a benchmark rerun.
+   - Epic Fight compatibility is weapon-type data only: no `impact` or `armor_negation` tuning, and the optional armour files are dropped.
