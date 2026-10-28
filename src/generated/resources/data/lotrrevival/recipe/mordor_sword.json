@@ -1,0 +1,22 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "equipment",
+  "key": {
+    "M": {
+      "tag": "c:ingots/orc_steel"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "M",
+    "M",
+    "S"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:mordor_sword"
+  },
+  "table": "lotrrevival:mordor_crafting_table"
+}
