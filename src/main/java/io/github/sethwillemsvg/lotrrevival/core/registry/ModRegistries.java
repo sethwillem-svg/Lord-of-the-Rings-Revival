@@ -20,6 +20,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
@@ -89,6 +90,9 @@ public final class ModRegistries {
     public static final DeferredRegister<ArgumentTypeInfo<?, ?>> COMMAND_ARGUMENT_TYPES =
             DeferredRegister.create(Registries.COMMAND_ARGUMENT_TYPE, LOTRRevival.MOD_ID);
 
+    public static final DeferredRegister<MapCodec<? extends DensityFunction>> DENSITY_FUNCTION_TYPES =
+            DeferredRegister.create(Registries.DENSITY_FUNCTION_TYPE, LOTRRevival.MOD_ID);
+
     private ModRegistries() {}
 
     public static void register(IEventBus modEventBus) {
@@ -118,5 +122,6 @@ public final class ModRegistries {
         LOOT_CONDITION_TYPES.register(modEventBus);
         LOOT_FUNCTION_TYPES.register(modEventBus);
         COMMAND_ARGUMENT_TYPES.register(modEventBus);
+        DENSITY_FUNCTION_TYPES.register(modEventBus);
     }
 }
