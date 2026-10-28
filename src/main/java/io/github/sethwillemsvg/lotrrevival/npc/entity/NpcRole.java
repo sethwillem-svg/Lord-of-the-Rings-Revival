@@ -7,7 +7,7 @@ import net.minecraft.util.StringRepresentable;
 /** A job a civilian NPC does. Roles change equipment, title, speech and trading, never the AI class. */
 public enum NpcRole implements StringRepresentable {
     VILLAGER("villager", false, 60, false),
-    FARMER("farmer", true, 30, false),
+    FARMER("farmer", true, 30, true),
     INNKEEPER("innkeeper", true, 0, true),
     TRAVELLER("traveller", true, 10, false),
     UNIT_TRADER("unit_trader", false, 0, true);

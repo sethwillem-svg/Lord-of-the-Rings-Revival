@@ -20,6 +20,7 @@ public final class CoreMod {
         io.github.sethwillemsvg.lotrrevival.core.item.CoreItems.init(modBus);
         io.github.sethwillemsvg.lotrrevival.core.building.GoldRingItems.init(modBus);
         io.github.sethwillemsvg.lotrrevival.core.building.ArnorBlocks.init(modBus);
+        io.github.sethwillemsvg.lotrrevival.core.coin.CoinItems.init(modBus);
         NeoForge.EVENT_BUS.addListener(LotrCommand::onRegisterCommands);
     }
 }

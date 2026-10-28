@@ -3,7 +3,10 @@ package io.github.sethwillemsvg.lotrrevival.core.test;
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.CoreKeys;
 import io.github.sethwillemsvg.lotrrevival.core.api.AchievementCounters;
+import io.github.sethwillemsvg.lotrrevival.core.api.WaypointClient;
 import io.github.sethwillemsvg.lotrrevival.core.item.CoreItems;
+import io.github.sethwillemsvg.lotrrevival.core.registry.ModRegistries;
+import net.minecraft.core.registries.Registries;
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
 import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import com.mojang.serialization.Codec;
@@ -26,6 +29,11 @@ public final class CoreHooksTest {
                 ModDataRegistries.questGroup().location().equals(LOTRRevival.id("quest_group")), "quest_group key");
         helper.assertTrue(
                 ModDataRegistries.miniQuest().location().equals(LOTRRevival.id("mini_quest")), "mini_quest key");
+        helper.assertTrue(ModDataRegistries.waypoint().location().equals(LOTRRevival.id("waypoint")), "waypoint key");
+        helper.assertTrue(
+                ModDataRegistries.waypointRegion().location().equals(LOTRRevival.id("waypoint_region")),
+                "waypoint_region key");
+        helper.assertTrue(ModDataRegistries.road().location().equals(LOTRRevival.id("road")), "road key");
         // The registry event has already fired, so late registration must fail loudly.
         boolean threw = false;
         try {
@@ -49,6 +57,26 @@ public final class CoreHooksTest {
             threw = true;
         }
         helper.assertTrue(threw, "null counter rejected");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void waypointClientDefaultsAndDensityRegister(GameTestHelper helper) {
+        helper.assertTrue(WaypointClient.waypoints().isEmpty(), "default waypoints empty");
+        helper.assertTrue(WaypointClient.clockTicks() == 0, "default clock 0");
+        helper.assertTrue(WaypointClient.customLimit() == 0, "default limit 0");
+        helper.assertTrue(WaypointClient.status().isEmpty(), "default status empty");
+        WaypointClient.requestTravel("fixed:lotrrevival:bree");
+        boolean threw = false;
+        try {
+            WaypointClient.register(null);
+        } catch (NullPointerException expected) {
+            threw = true;
+        }
+        helper.assertTrue(threw, "null backend rejected");
+        helper.assertTrue(
+                ModRegistries.DENSITY_FUNCTION_TYPES.getRegistryKey().equals(Registries.DENSITY_FUNCTION_TYPE),
+                "density function register key");
         helper.succeed();
     }
 

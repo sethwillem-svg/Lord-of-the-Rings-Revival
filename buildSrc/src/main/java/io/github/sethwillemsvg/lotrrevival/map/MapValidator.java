@@ -122,20 +122,22 @@ final class MapValidator {
         return report;
     }
 
-    private static void checkPoint(Report report, List<Regions.Window> windows, String where, double u, double v) {
+    /** @return true when the point is on the canvas and inside a painted window (nothing was reported) */
+    static boolean checkPoint(MapValidator.Report report, List<Regions.Window> windows, String where, double u, double v) {
         if (u < Canvas.EDGE_MARGIN_PX
                 || v < Canvas.EDGE_MARGIN_PX
                 || u > Canvas.HEIGHT_WIDTH - Canvas.EDGE_MARGIN_PX
                 || v > Canvas.HEIGHT_HEIGHT - Canvas.EDGE_MARGIN_PX) {
             report.add("point near or outside the canvas edge", where + " at (" + u + ", " + v + ")");
-            return;
+            return false;
         }
         for (Regions.Window window : windows) {
             if (window.containsPoint(u, v)) {
-                return;
+                return true;
             }
         }
         report.add("point outside every painted window", where + " at (" + u + ", " + v + ")");
+        return false;
     }
 
     // ---- image checks ----

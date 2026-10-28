@@ -1,0 +1,11 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"id": "east_road", "name": "The East Road", "width": 4, "through": ["tower_hills", "michel_delving", "waymeet", "bywater", "frogmorton", "whitfurrows", "brandywine_bridge", "bree", "forsaken_inn"]}, "geometry": {"type": "LineString", "coordinates": [[1360, 1478], [1400, 1480], [1450, 1472], [1500, 1470], [1588, 1470], [1634, 1468], [1662, 1462], [1680, 1462], [1696.6, 1459.5], [1740, 1462], [1790, 1466], [1819.5, 1466], [1860, 1468], [1905, 1470], [1958, 1462], [1970, 1461]]}},
+    {"type": "Feature", "properties": {"id": "greenway", "name": "The Greenway", "width": 4, "through": ["bree"]}, "geometry": {"type": "LineString", "coordinates": [[1815, 1300], [1818, 1400], [1819.5, 1466], [1826, 1530], [1828, 1598]]}},
+    {"type": "Feature", "properties": {"id": "hobbiton_lane", "name": "Hobbiton Lane", "width": 3, "through": ["hobbiton", "bywater"]}, "geometry": {"type": "LineString", "coordinates": [[1620, 1460], [1627, 1466], [1634, 1468]]}},
+    {"type": "Feature", "properties": {"id": "buckland_road", "name": "Buckland Road", "width": 3, "through": ["bucklebury"]}, "geometry": {"type": "LineString", "coordinates": [[1694, 1462], [1695, 1480], [1696, 1497], [1698, 1512]]}},
+    {"type": "Feature", "properties": {"id": "marish_lane", "name": "Marish Lane", "width": 3, "through": ["woodhall", "stock", "bucklebury_ferry"]}, "geometry": {"type": "LineString", "coordinates": [[1660, 1525], [1676, 1505], [1690, 1488], [1699, 1497]]}},
+    {"type": "Feature", "properties": {"id": "southfarthing_road", "name": "Southfarthing Road", "width": 3, "through": ["michel_delving", "longbottom"]}, "geometry": {"type": "LineString", "coordinates": [[1500, 1470], [1560, 1530], [1590, 1585]]}}
+  ]
+}

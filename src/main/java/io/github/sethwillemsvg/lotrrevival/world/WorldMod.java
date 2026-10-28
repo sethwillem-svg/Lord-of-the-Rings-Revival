@@ -9,6 +9,7 @@ public final class WorldMod {
     private WorldMod() {}
 
     public static void init(IEventBus modBus) {
+        WorldConfig.register(net.neoforged.fml.ModLoadingContext.get().getActiveContainer());
         NeoForge.EVENT_BUS.addListener(
                 (RegisterCommandsEvent event) -> MiddleEarthCommand.register(event.getDispatcher()));
     }

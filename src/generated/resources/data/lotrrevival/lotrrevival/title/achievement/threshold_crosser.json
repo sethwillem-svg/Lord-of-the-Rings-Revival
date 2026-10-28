@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:general/enter_middle_earth"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.threshold_crosser"
+  }
+}
