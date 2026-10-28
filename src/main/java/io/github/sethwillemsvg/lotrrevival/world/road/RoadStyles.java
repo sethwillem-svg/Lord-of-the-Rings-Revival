@@ -46,6 +46,16 @@ public final class RoadStyles {
         return resolve().arnor;
     }
 
+    /** The bridge style of a biome: {@code stone_and_wood} for every pilot biome. */
+    public static BridgeStyle bridgeFor(@Nullable ResourceKey<Biome> biome) {
+        return resolve().bridge;
+    }
+
+    /** Whether the block is a deck, half-step or rail block of a bridge style. */
+    public static boolean isBridgeBlock(BlockState state) {
+        return resolve().bridgeBlocks.contains(state.getBlock());
+    }
+
     /** Whether the block is a slab that some road style puts on a half step. */
     public static boolean isRoadSlab(BlockState state) {
         return resolve().slabs.contains(state.getBlock());
@@ -91,7 +101,15 @@ public final class RoadStyles {
                 }
             }
         }
-        return new Resolved(path, arnor, slabs, surfaces);
+        BridgeStyle bridge = new BridgeStyle(
+                "stone_and_wood",
+                Blocks.OAK_PLANKS.defaultBlockState(),
+                Blocks.OAK_SLAB.defaultBlockState(),
+                Blocks.OAK_FENCE.defaultBlockState(),
+                Blocks.STONE_BRICKS.defaultBlockState());
+        Set<Block> bridgeBlocks =
+                Set.of(bridge.deck().getBlock(), bridge.deckSlab().getBlock(), bridge.rail().getBlock());
+        return new Resolved(path, arnor, slabs, surfaces, bridge, bridgeBlocks);
     }
 
     private static RoadStyle.Surface arnorSurface(String name, Block fallback, Block fallbackSlab, int weight) {
@@ -109,5 +127,11 @@ public final class RoadStyles {
         return new RoadStyle.Surface(block, slab, weight);
     }
 
-    private record Resolved(RoadStyle path, RoadStyle arnor, Set<Block> slabs, Set<Block> surfaces) {}
+    private record Resolved(
+            RoadStyle path,
+            RoadStyle arnor,
+            Set<Block> slabs,
+            Set<Block> surfaces,
+            BridgeStyle bridge,
+            Set<Block> bridgeBlocks) {}
 }
