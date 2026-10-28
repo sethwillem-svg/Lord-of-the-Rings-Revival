@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:combat/slay_elf"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.slay_elf"
+  }
+}

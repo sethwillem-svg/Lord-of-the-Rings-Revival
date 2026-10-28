@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:rhovanion/kill_dale"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_dale"
+  }
+}

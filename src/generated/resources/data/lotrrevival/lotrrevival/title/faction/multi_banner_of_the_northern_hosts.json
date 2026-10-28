@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:angmar",
+      "lotrrevival:gundabad"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_banner_of_the_northern_hosts"
+  }
+}

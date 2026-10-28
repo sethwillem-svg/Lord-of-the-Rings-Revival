@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:lothlorien",
+    "rank": "r4"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.lothlorien_r4"
+  }
+}

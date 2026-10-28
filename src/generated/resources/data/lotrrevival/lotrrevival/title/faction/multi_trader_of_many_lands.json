@@ -1,0 +1,16 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:bree",
+      "lotrrevival:dale",
+      "lotrrevival:dorwinion",
+      "lotrrevival:near_harad",
+      "lotrrevival:gondor"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_trader_of_many_lands"
+  }
+}

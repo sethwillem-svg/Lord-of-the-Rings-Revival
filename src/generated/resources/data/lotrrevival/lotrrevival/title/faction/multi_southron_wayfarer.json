@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:near_harad",
+      "lotrrevival:far_harad",
+      "lotrrevival:harad_jungle"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_southron_wayfarer"
+  }
+}

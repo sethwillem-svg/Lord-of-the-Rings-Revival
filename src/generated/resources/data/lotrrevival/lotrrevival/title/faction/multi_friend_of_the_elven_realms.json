@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:high_elf",
+      "lotrrevival:wood_elf",
+      "lotrrevival:lothlorien"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_friend_of_the_elven_realms"
+  }
+}

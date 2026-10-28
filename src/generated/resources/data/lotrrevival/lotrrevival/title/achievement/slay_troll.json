@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:combat/slay_troll"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.slay_troll"
+  }
+}

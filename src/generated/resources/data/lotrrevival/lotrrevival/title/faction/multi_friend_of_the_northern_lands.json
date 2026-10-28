@@ -1,0 +1,16 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:dale",
+      "lotrrevival:durins_folk",
+      "lotrrevival:wood_elf",
+      "lotrrevival:dunedain_north",
+      "lotrrevival:hobbit"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_friend_of_the_northern_lands"
+  }
+}

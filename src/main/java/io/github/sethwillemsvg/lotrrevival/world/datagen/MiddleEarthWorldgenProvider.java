@@ -320,7 +320,13 @@ public final class MiddleEarthWorldgenProvider implements DataProvider {
     private static JsonObject detail() {
         JsonObject large = mul(0.7, noiseDf(LOTRRevival.id("relief_large").toString(), 0.0));
         JsonObject small = mul(0.3, noiseDf(LOTRRevival.id("relief_small").toString(), 0.0));
-        return mul(DF_PREFIX + "amplitude", add(large, small));
+        JsonObject raw = mul(DF_PREFIX + "amplitude", add(large, small));
+        // Roads flatten the detail within their half-width and fade it back in over 32 blocks.
+        JsonObject corridors = obj();
+        corridors.addProperty("type", LOTRRevival.id("map_corridors").toString());
+        corridors.add("input", raw);
+        corridors.addProperty("falloff", 32);
+        return corridors;
     }
 
     private static JsonObject surfaceY() {

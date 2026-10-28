@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:dale",
+    "rank": "r7"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.dale_r7"
+  },
+  "text_feminine": {
+    "translate": "title.lotrrevival.rank.dale_r7.feminine"
+  }
+}

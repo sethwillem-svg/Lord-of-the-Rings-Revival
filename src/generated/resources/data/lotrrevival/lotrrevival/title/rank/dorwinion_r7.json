@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:dorwinion",
+    "rank": "r7"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.dorwinion_r7"
+  }
+}

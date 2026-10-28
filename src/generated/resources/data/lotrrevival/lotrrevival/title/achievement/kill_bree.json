@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:eriador/kill_bree"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_bree"
+  }
+}

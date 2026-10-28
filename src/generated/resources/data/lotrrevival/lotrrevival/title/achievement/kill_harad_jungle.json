@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:south_east/kill_harad_jungle"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_harad_jungle"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:mordor/kill_mordor"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_mordor"
+  }
+}

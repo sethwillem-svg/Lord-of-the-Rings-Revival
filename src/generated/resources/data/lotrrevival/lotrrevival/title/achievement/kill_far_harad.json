@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:south_east/kill_far_harad"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_far_harad"
+  }
+}

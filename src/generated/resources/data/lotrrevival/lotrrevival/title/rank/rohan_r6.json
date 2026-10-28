@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:rohan",
+    "rank": "r6"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.rohan_r6"
+  }
+}

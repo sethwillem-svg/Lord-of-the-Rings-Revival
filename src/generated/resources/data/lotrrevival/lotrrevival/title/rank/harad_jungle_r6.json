@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:harad_jungle",
+    "rank": "r6"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.harad_jungle_r6"
+  }
+}

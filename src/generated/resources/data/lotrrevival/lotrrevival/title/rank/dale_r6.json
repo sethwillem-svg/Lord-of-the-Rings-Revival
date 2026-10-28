@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:dale",
+    "rank": "r6"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.dale_r6"
+  }
+}
