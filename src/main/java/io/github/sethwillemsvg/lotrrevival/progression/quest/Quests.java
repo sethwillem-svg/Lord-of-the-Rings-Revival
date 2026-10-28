@@ -167,6 +167,37 @@ public final class Quests {
             Component giverName,
             ResourceLocation giverFaction,
             Optional<GlobalPos> giverPos) {
+        return start(player, templateId, count, giver, giverName, giverFaction, giverPos, ObjectiveData.EMPTY);
+    }
+
+    /** {@link #start} with objective data (the bounty target); the base values come from the template. */
+    public static Optional<QuestInstance> start(
+            ServerPlayer player,
+            ResourceLocation templateId,
+            int count,
+            UUID giver,
+            Component giverName,
+            ResourceLocation giverFaction,
+            Optional<GlobalPos> giverPos,
+            ObjectiveData objectiveData) {
+        return start(
+                player, templateId, count, giver, giverName, giverFaction, giverPos, objectiveData, Optional.empty());
+    }
+
+    /**
+     * {@link #start} with objective data and, optionally, base values fixed by the caller (bounties fix theirs when
+     * the offer appears). {@code fixedBases} holds {alignment base, coin base}.
+     */
+    public static Optional<QuestInstance> start(
+            ServerPlayer player,
+            ResourceLocation templateId,
+            int count,
+            UUID giver,
+            Component giverName,
+            ResourceLocation giverFaction,
+            Optional<GlobalPos> giverPos,
+            ObjectiveData objectiveData,
+            Optional<float[]> fixedBases) {
         RegistryAccess access = player.level().registryAccess();
         Optional<Holder.Reference<QuestTemplate>> holder = template(access, templateId);
         if (holder.isEmpty()) {
@@ -174,6 +205,8 @@ public final class Quests {
         }
         QuestTemplate template = holder.get().value();
         int n = Math.max(1, count);
+        float alignmentBase = fixedBases.map(b -> b[0]).orElseGet(() -> template.alignmentBase(n));
+        int coinBase = fixedBases.map(b -> Math.round(b[1])).orElseGet(() -> template.coinBase(n));
         Optional<ResourceLocation> biome =
                 player.level().getBiome(player.blockPosition()).unwrapKey().map(ResourceKey::location);
         QuestInstance instance = new QuestInstance(
@@ -187,12 +220,12 @@ public final class Quests {
                 player.level().getGameTime(),
                 biome,
                 n,
-                template.alignmentBase(n),
-                template.coinBase(n),
+                alignmentBase,
+                coinBase,
                 0,
                 QuestStatus.ACTIVE,
                 Optional.empty(),
-                ObjectiveData.EMPTY);
+                objectiveData);
         store(player, get(player).withAdded(instance).withTracked(Optional.of(instance.uuid())));
         updateHolder(player.getServer(), giver, player.getUUID(), true);
         NeoForge.EVENT_BUS.post(new QuestAcceptedEvent(player, instance));
