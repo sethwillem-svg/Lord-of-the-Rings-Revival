@@ -3,7 +3,7 @@
 - **Pod:** world
 - **Lead:** Opus 2
 - **Status:** draft, revision 3 (priority: the maintainer asked for this system to be prioritised). Revision 3: occupied villages also need >= 0 with the residents' own faction; wild marches may damage walls, journaled and restored; the Old Forest and the wights can be calmed; flip-speed numbers kept and marked for playtest tuning. Revision 2 applied the maintainer's answers on PR #183: provinces authored as GeoJSON polygons, villages change hands, wild owners that push back, heatmap on the map page and at a command table, an alignment gate for unpledged players, absent-defender slowdown on by default.
-- **Depends on:** `specs/world/dimension-and-mapgen.md` (canvas, biome map at 128 blocks/px, origin pixel (810, 730), projection), `specs/world/waypoints-travel.md` (waypoint regions, fixed waypoints, road polylines, map data pipeline), `specs/core/core-apis.md` (factions, relations, pledge, kill path and `FactionKillEvent`, `LandProtection`, payload and attachment rules, `/lotr` root), `specs/npc/npc-base.md` (spawn tables), `specs/npc/nemesis.md` (PR #182: world events and nemesis deaths emit control deltas through `core.api.TerritoryControl`), the progression map page. **Missing dependency:** a World structure spec (see Dependencies).
+- **Depends on:** `specs/world/dimension-and-mapgen.md` (canvas, biome map at 128 blocks/px, origin pixel (810, 730), projection), `specs/world/waypoints-travel.md` (waypoint regions, fixed waypoints, road polylines, map data pipeline), `specs/core/core-apis.md` (factions, relations, pledge, kill path and `FactionKillEvent`, `LandProtection`, payload and attachment rules, `/lotr` root), `specs/npc/npc-base.md` (spawn tables), `specs/npc/nemesis.md` (PR #182: world events and nemesis deaths emit control deltas through `core.api.TerritoryControl`), the progression map page. `specs/world/structures.md` (PR #184: venues, standards, garrison slots, guard posts, the structure index and `StructureVenues`).
 - **Sources:** behavior notes `docs/reference/legacy/territory.md` (conquest, in our own words), `factions-alignment.md` sections 6 and 8, `combat-trade.md` section 7, `biomes.md` "Spawning, conquest and invasions". Every name and line of text here is our own.
 - **Beyond parity:** Legacy had conquest (a per-faction number on a square grid that changes NPC spawns) but no ownership. Provinces, owners, flips, borders, structure capture, road danger and invasion scaling are our own design. Each rule below is marked **[Legacy]** or **[Ours]**.
 
@@ -259,7 +259,7 @@ Stage 4 marches are not stopped by calming once started; calming during a march 
 
 **NPC types this needs (NPC pod):** Ent and Huorn (`fangorn` faction; Huorn as a slow ambusher that looks like a tree until it moves), the Old Forest's Huorn-like hostile tree (`hostile_trees` pseudo-faction), the Barrow-wight and a Barrow-wight lord (`unaligned_hostile` pseudo-faction), plus the effects "rooted" and "barrow-fog". The pseudo-factions are already requested from core in the mapgen spec. Our own designs and art.
 
-**Other blocks and data this needs:** a root block and the `#lotrrevival:march_proof` tag (core), the barrow-treasure data component (core) and its loot-table function, barrow cairn stones and barrows with loot (structure spec), the Old Forest heart glade landmark (World, structure spec), and the journal service shared with war camps (NPC pod's world-events framework).
+**Other blocks and data this needs:** a root block and the `#lotrrevival:march_proof` tag (core), the barrow-treasure data component (core) and its loot-table function, barrow cairn stones and barrows with loot (structure spec, PR #184), the Old Forest heart glade landmark (World, structure spec, PR #184), and the journal service shared with war camps (NPC pod's world-events framework).
 
 ### 5. Effects of ownership [Ours unless marked]
 
@@ -397,7 +397,7 @@ Text is ours, in lang via World's lang provider.
 | Biome gain rates | biome tags `#lotrrevival:conquest_rate/slow|hard|firm` | World datagen |
 | Holdable kinds per faction | `data/lotrrevival/lotrrevival/territory_garrisons/<faction>.json` | Which venue kinds a faction can garrison (e.g. Hobbits: none; Mordor: outpost, camp, watchtower, tower, castle). Data for the structure spec |
 | Territory state | `SavedData` `lotrrevival_territory` on the Middle-earth level | Version, conquest rate, provinces (owner, C, pressures, last flip, buckets, holder epoch, faction loss log), non-empty squares (strengths, last change) |
-| Held structures | `SavedData` `lotrrevival_territory_holds` | Per holdable structure: id, bounds, centre, province, generation faction, standard positions, holder, epoch. Filled when the structure generates (structure spec) |
+| Held structures | `SavedData` `lotrrevival_territory_holds` | Per holdable structure: **structure id + holder + epoch** only. Bounds, centre, province lookup position, generation faction, standard spots and garrison slots come from the World structure index (`lotrrevival_structures`, PR #184 section 6). An entry is dropped when the index marks its record shadowed or removed |
 | Opt-out | player attachment `lotrrevival:conquest_kills` (boolean, default true, copied on death) | |
 
 ### Core holders (requested from core, `pod:core`)
@@ -469,7 +469,7 @@ Squares are 1,024 blocks; the conversion lives with core's map projection consta
 
 ## Dependencies
 
-1. **World structure spec (`specs/world/structures.md`), not written yet.** Needed for: the venue kinds (outposts, castles, camps, bridges, ruins, watchtowers, towers, hideouts, villages) with their tags `#lotrrevival:event_venues/<kind>`, faction structure sets per region, placed faction standards at recorded positions, garrison spawners (with the NPC pod), the held-structure index filled at generation, and the `core.api.StructureVenues` backend the nemesis spec also needs. **Proposal: World writes it next**, before any ticket in section "Structures" below starts.
+1. **World structure spec (`specs/world/structures.md`, PR #184).** Owns the venue kinds and tags, faction structure sets, standards (placement, break rule, `core.api.FactionStandards`), garrison slots and village guard posts, the structure index and the `core.api.StructureVenues` backend. Territory only keeps holder and epoch per index record; see PR #184 for every structure detail.
 2. **Invasion spec (NPC, S8), not written.** Needs the invasion outcome reports and must read the multipliers. Until then provinces move only from kills, events and nemesis deaths.
 3. **Nemesis spec (PR #182)**: `report` signature and sources must match; no other coupling.
 4. **Progression map page**: draws borders and heatmap from `TerritoryClient`.
@@ -500,7 +500,7 @@ The GameTest server has no Middle-earth level, so the territory service takes a 
 - [ ] GameTest: spawn queries: occupation floor 200, displaced factor 0.25, Legacy group weight formula and minimum-strength entries.
 - [ ] GameTest: road and invasion multipliers for each row; counter-invaders listed.
 - [ ] GameTest: SavedData round trip; unknown faction and unknown province dropped on load.
-- [ ] GameTest (after the structure spec): standard swap replaces only unchanged standards, skips protected structures, removes the old garrison but not hired or named NPCs; lazy swap on chunk load.
+- [ ] GameTest (after the structure spec, PR #184): standard swap replaces only unchanged standards, skips protected structures, removes the old garrison but not hired or named NPCs; lazy swap on chunk load.
 - [ ] Unit: layout and state payload round trip; layout hash stable.
 - [ ] GameTest: command table sends the open-map payload only in Middle-earth with territory enabled.
 - [ ] Playtest: pledge to the Hobbits, fight the orcs that `/lotr territory pressure` brought in, watch the Shire border hatch, flip a pilot province with `/lotr territory`, see the map, waypoint and spawn changes, wait for drift-back; check that a bannered build in the province is untouched; trade with a Bree trader under occupation; fell trees in the Old Forest until the trees hunt you, then calm them at the heart glade; trigger a march with `/lotr territory march` and check the walls come back exactly; open the conquest map from a command table.
@@ -521,20 +521,17 @@ Priority: **high** (maintainer request). Gate: foundation in **G3** next to the 
 | 6b | core | Command table block: model, art, recipe, use action sends the open-map payload (World provides the payload) | 0.5 | G3 | sonnet-1 | 5 |
 | 7 | npc | Conquest-aware spawn tables: faction groups with base weight and sensitivity, minimum-strength entries, conquest spawns ignore darkness and garrison block, occupation lists, displaced factor, road-danger multiplier; datagen for pilot biomes | 2 | G3 | sonnet-7 | 1 |
 | 8 | world | Waypoints: Legacy 500-strength unlock and occupied-province waypoint faction | 1 | G3 | sonnet-4 | 4 |
-| 9 | world | **Spec**: World structure spec (venues incl. village guard posts, standards, held-structure index, `StructureVenues` backend, command tables in captains' rooms) | (lead) | G3 | opus-2 | - |
+| 9 | world | **Spec**: World structure spec, written as PR #184 | (lead) | G3 | opus-2 | - |
 | 10 | world | Wild wrath: sources (kills, conquest, felling, fire, barrow blocks, night camping), decay, stages, `wildStage` / `wildHostileTo`, sapling calming, `/lotr territory wrath`, GameTests | 1.5 | G3 | sonnet-3 | 4 |
 | 11 | npc | Wild push-back: stage 1-3 behaviour (spawn multipliers, hostility flip for Ents and Huorns, rooted and barrow-fog effects, hunts) | 2 | G4 | sonnet-7 | 10, wild NPC types |
 | 12 | npc | Wild marches as a world-event type (target choice, host composition, resolution, control report) | 1.5 | G4 | sonnet-8 | 11, world-events framework |
 | 12b | npc | March damage: limits, per-block checks, journal-first changes, exact restore on end / stop / startup, item give-back, GameTests (reuses the war-camp journal) | 1.5 | G4 | sonnet-8 | 12 |
 | 12c | world | Calming the wild: sapling, quiet-forest day, heart-glade offering, barrow treasure return, cairn flowers; daily limits; heart-glade landmark placement | 1.5 | G4 | sonnet-3 | 10, structure spec (barrows, cairns, glade), core marker component |
-| 13 | world | Held structures and villages: index at generation, standard and guard-post swaps (loaded and lazy), protection and block checks, swap queue | 2 | G4 | sonnet-5 | 9, 4 |
+| 13 | world | Held structures and villages: holder/epoch entries keyed by structure-index id, standard and guard-post swaps through `FactionStandards` and the PR #184 garrison slots (loaded and lazy), protection and block checks, swap queue | 2 | G4 | sonnet-5 | 9, 4 |
 | 14 | npc | Garrison and village-guard swap (old guard removal, spawner faction); residents' trade, hire and mini-quest gating: occupier gate through `gatingFaction` plus >= 0 with the residents' own faction, with both refusal lines | 1.5 | G4 | sonnet-7 | 9, 13 |
 | 15 | npc | Invasions: territory multipliers, counter-invasions, outcome reports (inside the invasion spec's tickets) | 1 | G4 | sonnet-8 | invasion spec, 4 |
 | 16 | progression | Notifications UI (flip title, contested toast, wild warnings), conquest-kills toggle in the menu, territory achievements (incl. Legacy's view-your-conquest and march outcomes) and the conquest-earned stat | 1 | G4 | sonnet-9 | 4, 5 |
 
 ## Open questions for the maintainer
 
-Answered on PR #183. Revision 2: provinces as GeoJSON polygons; villages change hands; wild owners that push back; heatmap on the Map page and at a command table; unpledged players gated at +500; absent-defender slowdown on. Revision 3: occupied villages also need >= 0 with the residents' faction; marches may damage walls with exact restore; all three wild owners can be calmed; flip-speed defaults kept, tune in playtest. Still open:
-
-1. **Unpledged gate.** +500 at x0.5, one faction per kill (rationale in section 1). OK, or full share?
-2. **Fangorn and the `fangorn` faction.** Fangorn's land is wild (never conquered) while `fangorn` stays a pledgeable faction for alignment, hiring and the Ents' friendship. OK?
+None. All answered on PR #183: revision 2 (GeoJSON provinces, villages change hands, wild owners, heatmap on the Map page and at a command table, unpledged gate at +500, absent-defender slowdown on), revision 3 (villages also need >= 0 with the residents' faction, march damage with exact restore, calming all three wild owners, flip-speed defaults tuned in playtest), and the follow-up: unpledged players at +500 get the x0.5 share (confirmed), and Fangorn's land is wild while `fangorn` stays pledgeable (confirmed).
