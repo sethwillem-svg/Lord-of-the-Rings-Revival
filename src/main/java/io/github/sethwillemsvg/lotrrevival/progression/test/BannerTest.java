@@ -18,7 +18,6 @@ import io.github.sethwillemsvg.lotrrevival.progression.banner.BannerPlacement;
 import io.github.sethwillemsvg.lotrrevival.progression.banner.BannerProtection;
 import io.github.sethwillemsvg.lotrrevival.progression.banner.BannerSettings;
 import io.github.sethwillemsvg.lotrrevival.progression.banner.FactionBannerBlockEntity;
-import io.github.sethwillemsvg.lotrrevival.progression.banner.FellowshipMembership;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.List;
 import java.util.Optional;
@@ -298,7 +297,7 @@ public final class BannerTest {
             helper.assertFalse(breakCancelled(level, target, listed), "a listed player is admitted");
             helper.succeed();
         } finally {
-            BannerProtection.setFellowships(FellowshipMembership.NONE);
+            BannerProtection.setFellowships(io.github.sethwillemsvg.lotrrevival.progression.ProgressionCoreHooks.MEMBERSHIP);
             takeDown(helper, at);
             for (ServerPlayer player : List.of(owner, member, stranger, listed)) {
                 remove(helper, player);

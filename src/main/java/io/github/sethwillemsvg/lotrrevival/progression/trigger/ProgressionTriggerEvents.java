@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.progression.trigger;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.event.AlignmentEvent;
+import io.github.sethwillemsvg.lotrrevival.core.event.FactionTableCraftEvent;
 import io.github.sethwillemsvg.lotrrevival.core.event.FactionKillEvent;
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
 import io.github.sethwillemsvg.lotrrevival.progression.ProgressCounters;
@@ -18,6 +19,14 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 @EventBusSubscriber(modid = LOTRRevival.MOD_ID)
 public final class ProgressionTriggerEvents {
     private ProgressionTriggerEvents() {}
+
+    /** Core fires this when a player takes a result from a faction crafting table (#109). */
+    @SubscribeEvent
+    public static void onFactionTableCraft(FactionTableCraftEvent event) {
+        ProgressionTriggers.CRAFT_AT_TABLE
+                .get()
+                .trigger(event.getPlayer(), event.getTable(), event.getFaction(), event.getResult());
+    }
 
     @SubscribeEvent
     public static void onRankChanged(AlignmentEvent.RankChanged event) {
