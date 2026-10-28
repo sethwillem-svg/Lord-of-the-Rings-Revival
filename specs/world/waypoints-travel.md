@@ -48,7 +48,7 @@ Waypoints and roads are authored in the map source (`src/main/map/`) next to the
    - the player's mount: the player arrives in the saddle.
 
    Companions arrive around the player. Anything riding a companion stays on it.
-6. **Required time.** The clock must exceed `(min + (max - min) x 0.9^uses) x max(1, distance x 0.000012)` seconds, where `uses` is how often this player has arrived at this waypoint and `distance` is the horizontal distance from the player to the waypoint. With defaults min 3 min, max 30 min: a first trip needs 30:00; after 10 visits to the same waypoint about 12:25, after 30 about 4:09. Distance only adds time beyond about 83,333 blocks (Hobbiton to Minas Tirith: x 1.22).
+6. **Required time.** The clock must reach `(min + (max - min) x 0.9^uses) x max(1, distance x 0.000012)` seconds, where `uses` is how often this player has arrived at this waypoint and `distance` is the horizontal distance from the player to the waypoint. With defaults min 3 min, max 30 min: a first trip needs 30:00; after 10 visits to the same waypoint about 12:25, after 30 about 4:09. Distance only adds time beyond about 83,333 blocks (Hobbiton to Minas Tirith: x 1.22).
 7. **The clock** counts up every tick the player is online, in any dimension. On a multiplayer server (not single-player), logging back in adds 10% of the real time spent offline.
 
 ### The ring portal
