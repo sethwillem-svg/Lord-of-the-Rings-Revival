@@ -1,0 +1,12 @@
+{
+  "type": "lotrrevival:middle_earth",
+  "generator": {
+    "type": "minecraft:noise",
+    "biome_source": {
+      "type": "novoatlas:biome_cell_color_map",
+      "default_biome": "lotrrevival:ocean",
+      "map_info": "lotrrevival:middle_earth_biomes"
+    },
+    "settings": "lotrrevival:middle_earth"
+  }
+}

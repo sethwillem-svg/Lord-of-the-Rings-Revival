@@ -27,7 +27,8 @@ jobs:
       - name: Check generated resources are committed
         run: |
           git add -N src/generated
-          git diff --exit-code -- src/generated ':!**/.cache/**' || (echo "::error::Run ./gradlew runData and commit src/generated" && exit 1)
+          # Generated PNGs are excluded: PNG compression differs between JDK builds, so bytes aren't stable.
+          git diff --exit-code -- src/generated ':!**/.cache/**' ':!**/*.png' || (echo "::error::Run ./gradlew runData and commit src/generated" && exit 1)
 
       - uses: actions/upload-artifact@v4
         with:

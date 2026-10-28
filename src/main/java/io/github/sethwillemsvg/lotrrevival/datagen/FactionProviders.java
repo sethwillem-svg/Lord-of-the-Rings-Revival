@@ -18,15 +18,13 @@ import net.neoforged.neoforge.common.data.ExistingFileHelper;
 final class FactionProviders {
     private FactionProviders() {}
 
-    static final RegistrySetBuilder BUILDER = new RegistrySetBuilder().add(ModDataRegistries.FACTION, context -> {
-        for (FactionData.Def def : FactionData.DEFS) {
-            context.register(def.key(), FactionData.build(def));
-        }
-    });
-
-    static DatapackBuiltinEntriesProvider entries(
-            PackOutput output, CompletableFuture<HolderLookup.Provider> lookup) {
-        return new DatapackBuiltinEntriesProvider(output, lookup, BUILDER, Set.of(LOTRRevival.MOD_ID));
+    /** Adds the faction registry entries to the shared builder (one provider per mod). */
+    static void addRegistries(RegistrySetBuilder registries) {
+        registries.add(ModDataRegistries.FACTION, context -> {
+            for (FactionData.Def def : FactionData.DEFS) {
+                context.register(def.key(), FactionData.build(def));
+            }
+        });
     }
 
     /** kind/*, region/*, hidden and isolationist tags. */

@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:interpolated",
+  "argument": {
+    "type": "minecraft:clamp",
+    "input": {
+      "type": "minecraft:mul",
+      "argument1": 0.0078125,
+      "argument2": {
+        "type": "minecraft:add",
+        "argument1": "lotrrevival:middle_earth/surface_y",
+        "argument2": {
+          "type": "minecraft:y_clamped_gradient",
+          "from_value": 64,
+          "from_y": -64,
+          "to_value": -320,
+          "to_y": 320
+        }
+      }
+    },
+    "max": 1.0,
+    "min": -1.0
+  }
+}
