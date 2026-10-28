@@ -1,0 +1,9 @@
+{
+  "hidden_until_usable": true,
+  "source": {
+    "type": "special"
+  },
+  "text": {
+    "translate": "title.lotrrevival.special.playtester"
+  }
+}

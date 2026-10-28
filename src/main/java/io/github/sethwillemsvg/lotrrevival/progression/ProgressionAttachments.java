@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.progression;
 
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModRegistries;
+import io.github.sethwillemsvg.lotrrevival.progression.title.TitleData;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 
@@ -12,6 +13,15 @@ public final class ProgressionAttachments {
                     "progress_counters",
                     () -> AttachmentType.builder(() -> ProgressCounters.EMPTY)
                             .serialize(ProgressCounters.CODEC)
+                            .copyOnDeath()
+                            .build());
+
+    /** {@code lotrrevival:titles}: players only, saved, copied on death. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<TitleData>> TITLES =
+            ModRegistries.ATTACHMENT_TYPES.register(
+                    "titles",
+                    () -> AttachmentType.builder(() -> TitleData.EMPTY)
+                            .serialize(TitleData.CODEC)
                             .copyOnDeath()
                             .build());
 

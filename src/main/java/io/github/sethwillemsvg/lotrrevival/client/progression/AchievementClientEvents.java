@@ -14,5 +14,6 @@ public final class AchievementClientEvents {
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientAchievements.clear();
+        ClientTitles.clear();
     }
 }

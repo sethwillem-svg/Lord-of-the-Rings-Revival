@@ -4,6 +4,8 @@ import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
 import io.github.sethwillemsvg.lotrrevival.progression.achievement.AchievementEntry;
 import io.github.sethwillemsvg.lotrrevival.progression.achievement.AchievementService;
 import io.github.sethwillemsvg.lotrrevival.progression.network.ProgressionPayloads;
+import io.github.sethwillemsvg.lotrrevival.progression.title.TitleDefinition;
+import io.github.sethwillemsvg.lotrrevival.progression.title.TitleService;
 import io.github.sethwillemsvg.lotrrevival.progression.trigger.ProgressionTriggers;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModLoadingContext;
@@ -17,7 +19,9 @@ public final class ProgressionMod {
         ProgressionAttachments.init();
         ProgressionTriggers.init();
         AchievementService.init();
+        TitleService.init();
         ModDataRegistries.registerSynced(AchievementEntry.REGISTRY, AchievementEntry.CODEC);
+        ModDataRegistries.registerSynced(TitleDefinition.REGISTRY, TitleDefinition.CODEC);
         modBus.addListener(ProgressionPayloads::register);
     }
 }
