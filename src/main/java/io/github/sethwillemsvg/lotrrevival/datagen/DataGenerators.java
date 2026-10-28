@@ -77,6 +77,9 @@ public final class DataGenerators {
         // Core: combat foundation (#107), generic gear providers driven by GearCatalog
         io.github.sethwillemsvg.lotrrevival.datagen.combat.CombatDatagen.gather(event, lookup);
         // End Core: combat foundation
+        // Core: faction crafting tables
+        FactionTableProviders.gather(event);
+        // End Core: faction crafting tables
 
         // World
         WorldDatagen.gather(event, registryLookup);

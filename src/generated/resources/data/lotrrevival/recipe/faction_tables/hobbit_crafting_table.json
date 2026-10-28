@@ -1,0 +1,21 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "minecraft:wool"
+    },
+    "P": {
+      "tag": "minecraft:planks"
+    }
+  },
+  "pattern": [
+    "PP",
+    "CC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:hobbit_crafting_table"
+  },
+  "table": "lotrrevival:hobbit_crafting_table"
+}
