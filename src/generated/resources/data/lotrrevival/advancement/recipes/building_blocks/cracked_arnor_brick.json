@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_arnor_brick": {
+      "conditions": {
+        "items": [
+          {
+            "items": "lotrrevival:arnor_brick"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "lotrrevival:cracked_arnor_brick"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_arnor_brick"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "lotrrevival:cracked_arnor_brick"
+    ]
+  }
+}
