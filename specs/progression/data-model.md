@@ -394,4 +394,21 @@ Accept requires: alignment with the group's faction >= `min_alignment` and the f
 
 ## Tickets
 
-Filled in by the lead once the spec is approved.
+In dependency order. Milestone G2, phase 2.
+
+| # | Title | Agent | Blocked by |
+| --- | --- | --- | --- |
+| #29 | core: Progression datapack registries, lang hook and pod config convention | opus-1 (pod:core) | none |
+| #30 | progression: foundation (config, sync scheduler, progress_counters) and biome triggers | sonnet-9 | none |
+| #31 | progression: alignment, kill and armour triggers plus reserved trigger types | sonnet-9 | #30 |
+| #32 | progression: achievement registry, backing advancements and datagen framework | sonnet-10 | #29, #30 |
+| #33 | progression: achievement eligibility, achievementCount, award flow and sync | sonnet-9 | #31, #32 |
+| #34 | progression: mini-quest data model, quests attachment and quest logic (no offers yet) | sonnet-10 | #29, #30, #31, #32 |
+| #44 | progression: titles registry, attachment, selection, re-check and chat prefix | sonnet-9 | #29, #33 |
+| #46 | progression: achievement content wave 1 (rank, first-kill and general entries) | sonnet-10 | #31, #32, #33 |
+| #47 | progression: Middle-earth menu (L) with Achievements and Titles pages | sonnet-10 | #33, #44 |
+| #48 | progression: title content (starter, faction, rank and achievement titles) | sonnet-9 | #44, #46 |
+
+`DataGenerators` is touched by #32, #34 and #44, in that order.
+
+Later tickets, not yet opened: quest offers, givers and interaction (needs NPC givers, `specs/npc/npc-base.md`); quest book and HUD tracker screens; coin payout (Core coin API); biome, crafting-table, armour-set, quest-group, trade and hire achievement families (need World biome tags, Core items and tables, NPC traders and hiring).
