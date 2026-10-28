@@ -3,6 +3,7 @@ package io.github.sethwillemsvg.lotrrevival.npc.ai.combat;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionRelations;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntity;
 import io.github.sethwillemsvg.lotrrevival.npc.hire.ai.UnitTargeting;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.horn.SwordOrders;
 import java.util.EnumSet;
 import javax.annotation.Nullable;
 import net.minecraft.world.entity.LivingEntity;
@@ -35,6 +36,9 @@ final class NpcTargetGoal extends Goal {
 
     @Override
     public boolean canUse() {
+        if (SwordOrders.isActive(npc)) {
+            return false;
+        }
         long now = npc.level().getGameTime();
         if (now - lastCheck < NpcCombat.RECHECK_TICKS) {
             return false;
@@ -55,6 +59,9 @@ final class NpcTargetGoal extends Goal {
         LivingEntity current = npc.getTarget();
         if (current == null || !current.isAlive()) {
             return false;
+        }
+        if (SwordOrders.isActive(npc)) {
+            return true;
         }
         long now = npc.level().getGameTime();
         if (now - lastCheck < NpcCombat.RECHECK_TICKS) {
