@@ -3,6 +3,8 @@ package io.github.sethwillemsvg.lotrrevival.npc.entity;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionMember;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.IdleGoals;
+import io.github.sethwillemsvg.lotrrevival.npc.ai.combat.CombatGoals;
+import io.github.sethwillemsvg.lotrrevival.npc.ai.combat.NpcCombat;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.NpcGroundNavigation;
 import io.github.sethwillemsvg.lotrrevival.npc.ai.SafetyGoals;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcLoadoutData;
@@ -17,6 +19,9 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
@@ -378,6 +383,25 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember {
     protected void installGoals() {
         SafetyGoals.install(this, goalSelector);
         IdleGoals.install(this, goalSelector, race);
+        CombatGoals.install(this, goalSelector, targetSelector, race);
+    }
+
+    /**
+     * The attacker slot of target priority ("whoever attacked me"), or null. The retaliation ticket overrides this;
+     * the combat target goal takes it ahead of every other candidate.
+     */
+    @Nullable
+    public LivingEntity retaliationTarget() {
+        return null;
+    }
+
+    /** NPC melee deals 75% of the held weapon's attack damage (unarmed: the race value); see {@link NpcCombat}. */
+    @Override
+    public double getAttributeValue(Holder<Attribute> attribute) {
+        if (attribute.is(Attributes.ATTACK_DAMAGE)) {
+            return NpcCombat.meleeDamage(this);
+        }
+        return super.getAttributeValue(attribute);
     }
 
     /** NPCs never pick up items. */
