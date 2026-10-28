@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.explorer_10.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:leather_boots"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.explorer_10.title"
+  }
+}
