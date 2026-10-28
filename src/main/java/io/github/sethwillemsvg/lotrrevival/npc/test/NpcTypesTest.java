@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
@@ -29,6 +30,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SpawnEggItem;
@@ -166,24 +168,43 @@ public final class NpcTypesTest {
         helper.assertTrue(seen.get(0).getBaseValue() == expected, label + " base value " + seen.get(0).getBaseValue());
     }
 
+    private static Item bronzeDagger() { return item("bronze_dagger"); }
+    private static Item ironDagger() { return item("iron_dagger"); }
+    private static Item ironPike() { return item("iron_pike"); }
+    private static Item shireHelmet() { return item("shire_helmet"); }
+    private static Item breeHelmet() { return item("bree_helmet"); }
+    private static Item breeChest() { return item("bree_chestplate"); }
+
+    private static Item item(String path) {
+        return BuiltInRegistries.ITEM.get(LOTRRevival.id(path));
+    }
+
+    private static boolean isDagger(ItemStack stack) {
+        return stack.is(bronzeDagger())
+                || stack.is(ironDagger());
+    }
+
     @GameTest(template = "empty")
     @SuppressWarnings("removal")
     public static void breeGuardLoadoutAndNoEquipmentDrops(GameTestHelper helper) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         try {
-            for (int i = 0; i < 20; i++) {
+            boolean sawSword = false;
+            boolean sawPike = false;
+            for (int i = 0; i < 60; i++) {
                 StandardNpcEntity guard = helper.spawn(NpcEntityTypes.BREE_GUARD.get(), new BlockPos(2, 2, 2));
                 finalizeSpawn(helper, guard);
-                helper.assertTrue(guard.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.IRON_SWORD), "iron sword");
-                helper.assertTrue(guard.getItemBySlot(EquipmentSlot.CHEST).is(Items.LEATHER_CHESTPLATE), "leather chest");
-                helper.assertTrue(guard.getItemBySlot(EquipmentSlot.HEAD).is(Items.LEATHER_HELMET), "leather helmet");
-                helper.assertTrue(
-                        guard.getItemBySlot(EquipmentSlot.CHEST).has(net.minecraft.core.component.DataComponents.DYED_COLOR),
-                        "chest is dyed");
+                ItemStack weapon = guard.getItemBySlot(EquipmentSlot.MAINHAND);
+                helper.assertTrue(weapon.is(Items.IRON_SWORD) || weapon.is(ironPike()), "iron sword or iron pike");
+                sawSword |= weapon.is(Items.IRON_SWORD);
+                sawPike |= weapon.is(ironPike());
+                helper.assertTrue(guard.getItemBySlot(EquipmentSlot.CHEST).is(breeChest()), "bree chestplate");
+                helper.assertTrue(guard.getItemBySlot(EquipmentSlot.HEAD).is(breeHelmet()), "bree helmet");
                 guard.setLastHurtByPlayer(player);
                 guard.die(helper.getLevel().damageSources().playerAttack(player));
                 guard.discard();
             }
+            helper.assertTrue(sawSword && sawPike, "saw both sword and pike guards");
             // Only look right around the guards, and only assert that no equipment dropped: when the
             // tests run inside a real world (CI runtime-test), other tests' mobs drop items nearby too.
             List<ItemEntity> drops = helper.getLevel().getEntitiesOfClass(
@@ -191,7 +212,7 @@ public final class NpcTypesTest {
             for (ItemEntity drop : drops) {
                 ItemStack stack = drop.getItem();
                 helper.assertTrue(
-                        !stack.is(Items.IRON_SWORD) && !stack.is(Items.LEATHER_CHESTPLATE) && !stack.is(Items.LEATHER_HELMET),
+                        !stack.is(Items.IRON_SWORD) && !stack.is(ironPike()) && !stack.is(breeChest()) && !stack.is(breeHelmet()),
                         "guard equipment must never drop, got " + stack);
                 drop.discard();
             }
@@ -205,19 +226,16 @@ public final class NpcTypesTest {
     public static void otherLoadouts(GameTestHelper helper) {
         StandardNpcEntity bounder = helper.spawn(NpcEntityTypes.HOBBIT_BOUNDER.get(), new BlockPos(2, 2, 2));
         finalizeSpawn(helper, bounder);
-        helper.assertTrue(bounder.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.IRON_SWORD), "bounder sword");
-        helper.assertTrue(bounder.getItemBySlot(EquipmentSlot.HEAD).is(Items.LEATHER_HELMET), "bounder cap");
-        int bounderDye = bounder.getItemBySlot(EquipmentSlot.HEAD)
-                .get(net.minecraft.core.component.DataComponents.DYED_COLOR)
-                .rgb();
+        helper.assertTrue(isDagger(bounder.getItemBySlot(EquipmentSlot.MAINHAND)), "bounder dagger");
+        helper.assertTrue(bounder.getItemBySlot(EquipmentSlot.HEAD).is(shireHelmet()), "bounder shire hat");
         StandardNpcEntity shirriff = helper.spawn(NpcEntityTypes.HOBBIT_SHIRRIFF.get(), new BlockPos(3, 2, 2));
         finalizeSpawn(helper, shirriff);
         helper.assertTrue(shirriff.getRole() == NpcRole.UNIT_TRADER, "shirriff role");
-        helper.assertTrue(shirriff.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.IRON_SWORD), "shirriff sword");
-        int shirriffDye = shirriff.getItemBySlot(EquipmentSlot.HEAD)
-                .get(net.minecraft.core.component.DataComponents.DYED_COLOR)
-                .rgb();
-        helper.assertTrue(bounderDye != shirriffDye, "shirriff cap has a different dye");
+        helper.assertTrue(isDagger(shirriff.getItemBySlot(EquipmentSlot.MAINHAND)), "shirriff dagger");
+        helper.assertTrue(
+                !shirriff.getItemBySlot(EquipmentSlot.HEAD).isEmpty()
+                        && !shirriff.getItemBySlot(EquipmentSlot.HEAD).is(shireHelmet()),
+                "shirriff has a distinct hat");
         helper.succeed();
     }
 
@@ -260,7 +278,8 @@ public final class NpcTypesTest {
         }
         StandardNpcEntity restored = create(helper, NpcEntityTypes.BREE_GUARD.get());
         finalizeSpawn(helper, restored);
-        helper.assertTrue(restored.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.IRON_SWORD), "sword restored");
+        ItemStack restoredWeapon = restored.getItemBySlot(EquipmentSlot.MAINHAND);
+        helper.assertTrue(restoredWeapon.is(Items.IRON_SWORD) || restoredWeapon.is(ironPike()), "loadout restored");
         helper.succeed();
     }
 

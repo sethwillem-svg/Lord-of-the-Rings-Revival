@@ -2,14 +2,12 @@
   "default": {
     "chest": [
       {
-        "dye": 4086922,
-        "item": "minecraft:leather_chestplate"
+        "item": "lotrrevival:bree_chestplate"
       }
     ],
     "head": [
       {
-        "dye": 4086922,
-        "item": "minecraft:leather_helmet"
+        "item": "lotrrevival:bree_helmet"
       }
     ],
     "mainhand": [
@@ -18,8 +16,7 @@
         "weight": 2
       },
       {
-        "item": "minecraft:iron_sword",
-        "label": "pike placeholder"
+        "item": "lotrrevival:iron_pike"
       }
     ]
   }

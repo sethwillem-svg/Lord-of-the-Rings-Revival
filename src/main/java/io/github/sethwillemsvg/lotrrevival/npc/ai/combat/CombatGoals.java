@@ -7,7 +7,6 @@ import io.github.sethwillemsvg.lotrrevival.npc.race.NpcTemperament;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.AvoidEntityGoal;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.player.Player;
 
@@ -24,7 +23,7 @@ public final class CombatGoals {
 
         if (canFightBack) {
             targets.addGoal(1, new NpcTargetGoal(npc, fighter));
-            goals.addGoal(4, new MeleeAttackGoal(npc, NpcCombat.CHASE_SPEED, false));
+            goals.addGoal(4, new NpcMeleeAttackGoal(npc, NpcCombat.CHASE_SPEED, false));
         }
         if (fighter) {
             goals.addGoal(2, new AvoidEntityGoal<>(

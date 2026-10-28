@@ -202,11 +202,9 @@ public final class NpcDataGen {
         }
     }
 
-    /** {@code npc_loadouts/<type>.json}: weighted equipment per slot, per role. Placeholders until core items exist. */
+    /** {@code npc_loadouts/<type>.json}: weighted equipment per slot, per role. Core gear (daggers, pikes, Shire and Bree armour). */
     static final class LoadoutProvider implements DataProvider {
-        private static final int BOUNDER_CAP = 0x5B7F3A;
         private static final int SHIRRIFF_CAP = 0x8A2F2F;
-        private static final int BREE_GUARD_DYE = 0x3E5C8A;
 
         private final PackOutput.PathProvider paths;
 
@@ -220,8 +218,8 @@ public final class NpcDataGen {
                     LOTRRevival.id("hobbit"), civilian(),
                     LOTRRevival.id("bree_hobbit"), civilian(),
                     LOTRRevival.id("bree_man"), civilian(),
-                    LOTRRevival.id("hobbit_bounder"), dagger(BOUNDER_CAP),
-                    LOTRRevival.id("hobbit_shirriff"), dagger(SHIRRIFF_CAP),
+                    LOTRRevival.id("hobbit_bounder"), bounder(),
+                    LOTRRevival.id("hobbit_shirriff"), shirriff(),
                     LOTRRevival.id("bree_guard"), breeGuard());
             return CompletableFuture.allOf(tables.entrySet().stream()
                     .map(entry -> DataProvider.saveStable(
@@ -241,28 +239,45 @@ public final class NpcDataGen {
                     Map.of(EquipmentSlot.FEET, List.of(NpcLoadoutData.Choice.of(Items.LEATHER_BOOTS, 1))));
         }
 
-        /** Placeholder iron sword for the dagger, plus a dyed leather cap. */
-        private static Map<String, Map<EquipmentSlot, List<NpcLoadoutData.Choice>>> dagger(int capDye) {
+        private static NpcLoadoutData.Choice core(String path, int weight) {
+            return new NpcLoadoutData.Choice(
+                    LOTRRevival.id(path), weight, java.util.Optional.empty(), java.util.Optional.empty());
+        }
+
+        /**
+         * Bounder: a bronze or iron dagger and the Shire hat. TODO(ranged, #120/#124): add the sling once core
+         * registers it and the NPC ranged mode exists.
+         */
+        private static Map<String, Map<EquipmentSlot, List<NpcLoadoutData.Choice>>> bounder() {
             return Map.of(
                     NpcLoadoutData.DEFAULT_KEY,
                     Map.of(
-                            EquipmentSlot.MAINHAND, List.of(NpcLoadoutData.Choice.of(Items.IRON_SWORD, 1)),
-                            EquipmentSlot.HEAD, List.of(NpcLoadoutData.Choice.dyed(Items.LEATHER_HELMET, 1, capDye))));
+                            EquipmentSlot.MAINHAND, List.of(core("bronze_dagger", 1), core("iron_dagger", 1)),
+                            EquipmentSlot.HEAD, List.of(core("shire_helmet", 1))));
         }
 
-        /** 2 in 3 sword, 1 in 3 pike; the pike entry resolves to the sword until core registers pikes. */
+        /**
+         * Shirriff: an iron dagger and a dyed leather cap. The Shire set has a single hat design, so the distinct
+         * Shirriff hat stays a dyed leather cap until core adds one. TODO(ranged): sling.
+         */
+        private static Map<String, Map<EquipmentSlot, List<NpcLoadoutData.Choice>>> shirriff() {
+            return Map.of(
+                    NpcLoadoutData.DEFAULT_KEY,
+                    Map.of(
+                            EquipmentSlot.MAINHAND, List.of(core("iron_dagger", 1)),
+                            EquipmentSlot.HEAD,
+                            List.of(NpcLoadoutData.Choice.dyed(Items.LEATHER_HELMET, 1, SHIRRIFF_CAP))));
+        }
+
+        /** 2 in 3 vanilla iron sword, 1 in 3 iron pike; Bree helmet and chestplate. */
         private static Map<String, Map<EquipmentSlot, List<NpcLoadoutData.Choice>>> breeGuard() {
             return Map.of(
                     NpcLoadoutData.DEFAULT_KEY,
                     Map.of(
                             EquipmentSlot.MAINHAND,
-                            List.of(
-                                    NpcLoadoutData.Choice.of(Items.IRON_SWORD, 2),
-                                    NpcLoadoutData.Choice.of(Items.IRON_SWORD, 1).labelled("pike placeholder")),
-                            EquipmentSlot.CHEST,
-                            List.of(NpcLoadoutData.Choice.dyed(Items.LEATHER_CHESTPLATE, 1, BREE_GUARD_DYE)),
-                            EquipmentSlot.HEAD,
-                            List.of(NpcLoadoutData.Choice.dyed(Items.LEATHER_HELMET, 1, BREE_GUARD_DYE))));
+                            List.of(NpcLoadoutData.Choice.of(Items.IRON_SWORD, 2), core("iron_pike", 1)),
+                            EquipmentSlot.CHEST, List.of(core("bree_chestplate", 1)),
+                            EquipmentSlot.HEAD, List.of(core("bree_helmet", 1))));
         }
 
         @Override
