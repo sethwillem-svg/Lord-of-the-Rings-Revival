@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_dol_guldur.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:stone_sword"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:dol_guldur"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_dol_guldur.title"
+  }
+}

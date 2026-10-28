@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.rank_wood_elf_r6.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:oak_leaves"
+  },
+  "rank": {
+    "faction": "lotrrevival:wood_elf",
+    "rank": "r6"
+  },
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "fallback": "r6",
+    "translate": "faction.lotrrevival.wood_elf.rank.r6"
+  }
+}

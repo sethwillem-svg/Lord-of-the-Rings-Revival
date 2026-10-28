@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.misty_mountains.kill_gundabad.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:iron_axe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:gundabad"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "misty_mountains",
+  "title": {
+    "translate": "achievement.lotrrevival.misty_mountains.kill_gundabad.title"
+  }
+}

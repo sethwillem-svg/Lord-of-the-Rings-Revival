@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_dorwinion.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:crossbow"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:dorwinion"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_dorwinion.title"
+  }
+}

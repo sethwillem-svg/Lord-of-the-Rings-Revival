@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.kill_blue_mountains.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:diamond_axe"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:blue_mountains"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "translate": "achievement.lotrrevival.eriador.kill_blue_mountains.title"
+  }
+}

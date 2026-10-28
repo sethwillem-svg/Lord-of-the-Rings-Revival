@@ -1,0 +1,57 @@
+{
+  "criteria": {
+    "c": {
+      "conditions": {
+        "faction": "lotrrevival:hobbit",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c1": {
+      "conditions": {
+        "faction": "lotrrevival:high_elf",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c2": {
+      "conditions": {
+        "faction": "lotrrevival:durins_folk",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c3": {
+      "conditions": {
+        "faction": "lotrrevival:rohan",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    },
+    "c4": {
+      "conditions": {
+        "faction": "lotrrevival:gondor",
+        "rank": "r1"
+      },
+      "trigger": "lotrrevival:alignment_rank"
+    }
+  },
+  "requirements": [
+    [
+      "c"
+    ],
+    [
+      "c1"
+    ],
+    [
+      "c2"
+    ],
+    [
+      "c3"
+    ],
+    [
+      "c4"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

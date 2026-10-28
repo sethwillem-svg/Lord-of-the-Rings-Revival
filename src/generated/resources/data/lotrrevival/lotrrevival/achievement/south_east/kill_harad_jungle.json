@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.kill_harad_jungle.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:bow"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:harad_jungle"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "translate": "achievement.lotrrevival.south_east.kill_harad_jungle.title"
+  }
+}

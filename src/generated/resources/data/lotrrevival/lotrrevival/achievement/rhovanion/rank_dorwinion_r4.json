@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.rank_dorwinion_r4.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:glow_berries"
+  },
+  "rank": {
+    "faction": "lotrrevival:dorwinion",
+    "rank": "r4"
+  },
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "fallback": "r4",
+    "translate": "faction.lotrrevival.dorwinion.rank.r4"
+  }
+}

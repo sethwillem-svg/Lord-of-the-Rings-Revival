@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_wood_elf.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:crossbow"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:wood_elf"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "rhovanion",
+  "title": {
+    "translate": "achievement.lotrrevival.rhovanion.kill_wood_elf.title"
+  }
+}

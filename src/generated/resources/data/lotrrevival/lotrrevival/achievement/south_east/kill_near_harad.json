@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.south_east.kill_near_harad.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:golden_sword"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:near_harad"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "south_east",
+  "title": {
+    "translate": "achievement.lotrrevival.south_east.kill_near_harad.title"
+  }
+}

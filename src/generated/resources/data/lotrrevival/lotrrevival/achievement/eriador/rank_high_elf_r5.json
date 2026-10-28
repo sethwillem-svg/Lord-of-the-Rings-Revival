@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.rank_high_elf_r5.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:amethyst_shard"
+  },
+  "rank": {
+    "faction": "lotrrevival:high_elf",
+    "rank": "r5"
+  },
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "fallback": "r5",
+    "translate": "faction.lotrrevival.high_elf.rank.r5"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.rohan.rank_rohan_r4.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:saddle"
+  },
+  "rank": {
+    "faction": "lotrrevival:rohan",
+    "rank": "r4"
+  },
+  "sort_group": "special",
+  "tab": "rohan",
+  "title": {
+    "fallback": "r4",
+    "translate": "faction.lotrrevival.rohan.rank.r4"
+  }
+}

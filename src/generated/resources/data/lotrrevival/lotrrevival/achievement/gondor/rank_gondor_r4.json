@@ -1,0 +1,19 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.gondor.rank_gondor_r4.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:shield"
+  },
+  "rank": {
+    "faction": "lotrrevival:gondor",
+    "rank": "r4"
+  },
+  "sort_group": "special",
+  "tab": "gondor",
+  "title": {
+    "fallback": "r4",
+    "translate": "faction.lotrrevival.gondor.rank.r4"
+  }
+}

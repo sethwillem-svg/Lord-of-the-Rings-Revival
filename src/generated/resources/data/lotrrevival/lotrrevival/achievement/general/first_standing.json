@@ -1,0 +1,14 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.general.first_standing.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:writable_book"
+  },
+  "sort_group": "special",
+  "tab": "general",
+  "title": {
+    "translate": "achievement.lotrrevival.general.first_standing.title"
+  }
+}

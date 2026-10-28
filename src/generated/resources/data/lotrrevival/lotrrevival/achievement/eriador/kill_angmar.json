@@ -1,0 +1,22 @@
+{
+  "description": {
+    "translate": "achievement.lotrrevival.eriador.kill_angmar.description"
+  },
+  "icon": {
+    "count": 1,
+    "id": "minecraft:stone_sword"
+  },
+  "requires": [
+    {
+      "factions": [
+        "lotrrevival:angmar"
+      ],
+      "relation": "enemy"
+    }
+  ],
+  "sort_group": "special",
+  "tab": "eriador",
+  "title": {
+    "translate": "achievement.lotrrevival.eriador.kill_angmar.title"
+  }
+}
