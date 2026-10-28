@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:high_elf",
+    "rank": "r1"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.high_elf_r1"
+  }
+}

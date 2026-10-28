@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:near_harad",
+    "rank": "r6"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.near_harad_r6"
+  }
+}

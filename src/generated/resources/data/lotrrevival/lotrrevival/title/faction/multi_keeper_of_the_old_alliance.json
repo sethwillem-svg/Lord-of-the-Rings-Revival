@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:high_elf",
+      "lotrrevival:gondor",
+      "lotrrevival:dunedain_north"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_keeper_of_the_old_alliance"
+  }
+}

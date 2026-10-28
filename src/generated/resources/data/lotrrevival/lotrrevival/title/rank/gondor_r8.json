@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:gondor",
+    "rank": "r8"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.gondor_r8"
+  },
+  "text_feminine": {
+    "translate": "title.lotrrevival.rank.gondor_r8.feminine"
+  }
+}

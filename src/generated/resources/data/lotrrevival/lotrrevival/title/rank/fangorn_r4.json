@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:fangorn",
+    "rank": "r4"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.fangorn_r4"
+  }
+}

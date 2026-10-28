@@ -1,0 +1,15 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:dale",
+      "lotrrevival:wood_elf",
+      "lotrrevival:durins_folk",
+      "lotrrevival:dol_guldur"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_wanderer_of_wilderland"
+  }
+}

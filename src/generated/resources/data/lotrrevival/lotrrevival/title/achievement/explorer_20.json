@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:general/explorer_20"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.explorer_20"
+  }
+}

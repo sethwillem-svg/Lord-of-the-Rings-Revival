@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:shire/kill_hobbit"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_hobbit"
+  }
+}

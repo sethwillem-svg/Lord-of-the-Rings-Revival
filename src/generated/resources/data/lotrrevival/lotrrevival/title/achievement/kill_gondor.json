@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:gondor/kill_gondor"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_gondor"
+  }
+}

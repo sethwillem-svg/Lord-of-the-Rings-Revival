@@ -1,0 +1,16 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:mordor",
+      "lotrrevival:angmar",
+      "lotrrevival:isengard",
+      "lotrrevival:gundabad",
+      "lotrrevival:dol_guldur"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_servant_of_the_shadow"
+  }
+}

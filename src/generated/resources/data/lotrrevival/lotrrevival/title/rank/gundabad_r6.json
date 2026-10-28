@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:gundabad",
+    "rank": "r6"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.gundabad_r6"
+  }
+}

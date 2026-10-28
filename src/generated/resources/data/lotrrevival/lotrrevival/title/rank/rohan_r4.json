@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:rohan",
+    "rank": "r4"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.rohan_r4"
+  },
+  "text_feminine": {
+    "translate": "title.lotrrevival.rank.rohan_r4.feminine"
+  }
+}

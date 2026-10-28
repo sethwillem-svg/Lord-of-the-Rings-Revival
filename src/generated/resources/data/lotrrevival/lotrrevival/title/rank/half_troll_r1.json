@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:half_troll",
+    "rank": "r1"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.half_troll_r1"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:general/free_peoples_friend"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.free_peoples_friend"
+  }
+}

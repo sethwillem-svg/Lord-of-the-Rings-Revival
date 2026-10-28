@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:dol_guldur",
+    "rank": "r5"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.dol_guldur_r5"
+  }
+}

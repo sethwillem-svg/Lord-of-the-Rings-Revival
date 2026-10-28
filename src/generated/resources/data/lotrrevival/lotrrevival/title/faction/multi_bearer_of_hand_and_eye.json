@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:mordor",
+      "lotrrevival:isengard"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_bearer_of_hand_and_eye"
+  }
+}

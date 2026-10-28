@@ -1,0 +1,14 @@
+{
+  "source": {
+    "type": "alignment",
+    "factions": [
+      "lotrrevival:far_harad",
+      "lotrrevival:harad_jungle",
+      "lotrrevival:half_troll"
+    ],
+    "min": 100.0
+  },
+  "text": {
+    "translate": "title.lotrrevival.faction.multi_tamer_of_great_beasts"
+  }
+}

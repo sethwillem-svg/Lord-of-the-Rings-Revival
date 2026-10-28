@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:combat/slay_tree"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.slay_tree"
+  }
+}

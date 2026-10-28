@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:rhovanion/kill_dol_guldur"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.kill_dol_guldur"
+  }
+}

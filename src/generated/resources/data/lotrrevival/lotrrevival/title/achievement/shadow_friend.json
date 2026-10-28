@@ -1,0 +1,9 @@
+{
+  "source": {
+    "type": "achievement",
+    "achievement": "lotrrevival:general/shadow_friend"
+  },
+  "text": {
+    "translate": "title.lotrrevival.achievement.shadow_friend"
+  }
+}

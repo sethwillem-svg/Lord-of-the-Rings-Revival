@@ -1,0 +1,10 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:gondor",
+    "rank": "r6"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.gondor_r6"
+  }
+}

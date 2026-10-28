@@ -1,0 +1,13 @@
+{
+  "source": {
+    "type": "alignment_rank",
+    "faction": "lotrrevival:blue_mountains",
+    "rank": "r7"
+  },
+  "text": {
+    "translate": "title.lotrrevival.rank.blue_mountains_r7"
+  },
+  "text_feminine": {
+    "translate": "title.lotrrevival.rank.blue_mountains_r7.feminine"
+  }
+}
