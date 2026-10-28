@@ -26,7 +26,7 @@ public final class MenuHubScreen extends MenuScreen {
         entries.add(new Entry("quests", null, io.github.sethwillemsvg.lotrrevival.client.progression.quest.log.QuestLogScreen::openFromMenu));
         entries.add(new Entry("map", null));
         entries.add(new Entry("factions", null));
-        entries.add(new Entry("fellowships", null));
+        entries.add(new Entry("fellowships", MenuPage.FELLOWSHIPS));
         if (ClientTitles.enabled()) {
             entries.add(new Entry("titles", MenuPage.TITLES));
         }

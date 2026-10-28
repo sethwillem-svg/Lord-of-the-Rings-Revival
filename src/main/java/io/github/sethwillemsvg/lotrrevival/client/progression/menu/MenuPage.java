@@ -8,7 +8,8 @@ public enum MenuPage {
     HUB,
     ACHIEVEMENTS,
     TITLES,
-    SHIELDS;
+    SHIELDS,
+    FELLOWSHIPS;
 
     private static MenuPage last = HUB;
 
@@ -35,6 +36,7 @@ public enum MenuPage {
                     ? new TitlesScreen()
                     : new MenuHubScreen();
             case SHIELDS -> new ShieldsScreen();
+            case FELLOWSHIPS -> new FellowshipsScreen();
         };
     }
 }
