@@ -16,7 +16,7 @@ Captains remember you. A captain of a faction you are at war with that kills you
 
 1. **Rise.** A captain or soldier of a faction you are an enemy of kills you or one of your hired units. A red chat line: "*Gashnak Skull-Splitter* of Mordor has risen to **Marked**." For an evil player: "*Hirgon the Unbending* of Gondor has sworn to hunt you." It retreats (vanishes).
 2. **Hierarchy.** The Middle-earth menu (L) gains a **Nemeses** page: each enabled faction's war-host as a pyramid (Overlord on top), each card with name, title, rank, scars, known strengths and weakness, grudges, rivals and allies. Your grudges are highlighted; hosts of your own side are shown greyed.
-3. **World events.** Every 8-15 minutes or so something starts 64-256 blocks from you, often at an outpost, castle, camp or bridge: a chat hint ("Steel rings out to the north-east") and a marker on the map. Other players' events nearby show on your map too. Ride there and join in, or ignore it and hear how it ended.
+3. **World events.** Every 8-15 minutes or so something starts 64-256 blocks from you, often at an outpost, castle, camp, bridge, ruin, watchtower, tower or hideout: a chat hint ("Steel rings out to the north-east") and a marker on the map. Other players' events nearby show on your map too. Ride there and join in, or ignore it and hear how it ended.
 4. **Ambush** is the rare event aimed at you (roughly once per one and a half hours of travel): a nemesis that holds a grudge finds you, speaks a taunt naming you, and attacks with its bodyguards, a rank-coloured boss bar and, at high ranks, a mount.
 5. **The fight.** Nemeses hit harder and have more health by rank and carry traits. Badly hurt, one may flee; killed, it may cheat death and return scarred. Exploit its weakness, or kill it after it has cheated death twice, and it dies for good.
 6. **Rewards.** Killing a nemesis pays (or costs) alignment scaled by rank, counts for achievements and titles, and completes hunt quests that enemy factions post on it.
@@ -40,9 +40,9 @@ Captains remember you. A captain of a faction you are at war with that kills you
 | Thing | Value | Notes |
 | --- | --- | --- |
 | Faction tag | `#lotrrevival:nemesis_factions` (npc pod writes it) lists every faction that *can* have nemeses | |
-| Default on, evil | `mordor`, `isengard`, `angmar`, `dol_guldur`, `gundabad` | The five orc-led hosts. |
+| Default on, evil | `mordor`, `isengard`, `angmar`, `dol_guldur`, `gundabad`, `dunland`, `near_harad`, `far_harad`, `easterling`, `half_troll` | The five orc-led hosts plus the Men and half-troll hosts of the Shadow (maintainer decision). |
 | Default on, good | `gondor`, `rohan`, `dunedain_north` (Rangers), `high_elf`, `wood_elf`, `lothlorien`, `durins_folk`, `blue_mountains`, `dale` | Factions with soldiers and captains. |
-| In the tag, default off | `dunland`, `near_harad`, `far_harad`, `easterling`, `half_troll` | Config list `disabled_factions` holds these by default. Open question. |
+| Turning factions off | config list `disabled_factions`, empty by default | Any faction in the tag can be disabled per server. |
 | Not in the tag | `hobbit`, `bree`, `dorwinion`, `fangorn`, `harad_jungle` | No war-host to speak of. |
 | Type opt-out | entity type tag `#lotrrevival:never_nemesis` | Trolls, ents, unique NPCs. |
 | Classes | GUARD and CAPTAIN | Civilians never. |
@@ -160,24 +160,24 @@ A world event is a short, bounded scene staged near a player. It runs on force-l
 
 Events prefer to happen **in** the world's structures, so the land feels lived in.
 
-- **Lookup:** the World pod tags structures by venue kind with structure tags `#lotrrevival:event_venues/<kind>`, four kinds: `outpost` (a faction's fortified post), `castle` (a faction's keep or fortress), `camp` (a **permanent** worldgen camp, not the temporary war camp below) and `bridge` (road and river bridges). `village` is a fifth tag used **only** by village raids, because settlements exist anyway; no other type uses it. npc asks a structure-locator API (core holder `core.api.StructureVenues`, backend registered by World) for venues of a kind within the distance band: each answer has structure id, bounds, centre, owning faction (or none), whether it has resident NPCs, and whether banner protection covers it.
+- **Lookup:** the World pod tags structures by venue kind with structure tags `#lotrrevival:event_venues/<kind>`, eight kinds: `outpost` (a faction's fortified post), `castle` (a faction's keep or fortress), `camp` (a **permanent** worldgen camp, not the temporary war camp below), `bridge` (road and river bridges), `ruin` (abandoned ruins), `watchtower` (a small lookout), `tower` (a larger standing tower) and `hideout` (bandit or outlaw lairs, caves). `village` is a ninth tag used **only** by village raids, because settlements exist anyway; no other type uses it. npc asks a structure-locator API (core holder `core.api.StructureVenues`, backend registered by World) for venues of a kind within the distance band: each answer has structure id, bounds, centre, owning faction (or none), whether it has resident NPCs, and whether banner protection covers it.
 - **Only already-generated chunks** are searched (structure references stored in existing chunks or a World-side index); the lookup never generates terrain. Budget: one lookup per roll, max 64 chunk reference checks, results cached per 512-block region for 5 min.
 - **Preference per type** (first kind found in the band wins; ties: nearest to the band's middle, 160 blocks):
 
 | Type | Preferred venues | Fallback |
 | --- | --- | --- |
 | Ambush | none (happens where the player is) | n/a |
-| Beast hunt | `camp`, `bridge` | open terrain |
-| Warband clash | `bridge`, `outpost` of either faction, `camp` | open terrain on a faction border |
-| Feud duel | `castle`, `camp`, `outpost` of the duellists' faction | open terrain |
+| Beast hunt | `ruin`, `camp`, `bridge` | open terrain |
+| Warband clash | `bridge`, `outpost` or `watchtower` of either faction, `ruin`, `camp` | open terrain on a faction border |
+| Feud duel | `castle`, `tower`, `camp` or `outpost` of the duellists' faction, `ruin` | open terrain |
 | War camp | never a structure (builds its own) | open terrain only |
 | Village raid | `village` of an enemy faction (required) | none: the type is dropped |
-| Captain hunting | starts in open terrain; the quarry runs to an `outpost` or `castle` of its faction within 128 blocks | if none, it runs straight away from the hunters |
-| Rescue | `camp`, `outpost`, `castle` held by the captors' faction | open terrain |
+| Captain hunting | starts in open terrain; the quarry runs to an `outpost`, `watchtower`, `tower` or `castle` of its faction within 128 blocks | if none, it runs straight away from the hunters |
+| Rescue | `hideout`, `ruin`, `tower`, or a `camp`/`outpost`/`castle` held by the captors' faction | open terrain |
 
 - **Using a venue:** the event centre is the structure's centre; participants spawn on open floor inside the bounds (two air blocks over a solid block, not in water). Chunk tickets cover the structure, centre-out, within the per-event chunk limit. Resident NPCs of a venue's faction join on their faction's side (a Gondor outpost's guards fight the raiders). A venue whose banner protection keeps out a participating faction is never chosen.
 - **Venue cooldown:** one event per venue per 30 min; at most one active event per venue.
-- **Density target** (World pod): in wild land of every region, on average >= 2 venues within 256 blocks of any point, with at least one outpost and one camp per faction region, castles at faction strongholds, and bridges on roads and rivers. Until the World structure set exists, events use the open-terrain fallbacks and village raids only happen where settlements exist.
+- **Density target** (World pod): in wild land of every region, on average >= 2 venues within 256 blocks of any point, with at least one outpost and one camp per faction region, castles at faction strongholds, watchtowers and towers along borders, ruins and hideouts in wild and contested land, and bridges on roads and rivers. Until the World structure set exists, events use the open-terrain fallbacks and village raids only happen where settlements exist.
 - This depends on the **World pod's structure spec, which does not exist yet**; see the World tickets below.
 
 #### War camp blocks
@@ -333,14 +333,14 @@ New `NpcSpeech` categories per side/race: `nemesis_rise`, `nemesis_ambush`, `nem
 
 ### Config (`lotrrevival-npc-server.toml`)
 
-`[nemesis]`: `enabled`, `disabled_factions` (dunland, near_harad, far_harad, easterling, half_troll), promotion chances, renown values, rank thresholds and seats, `max_manifest` (8), ambush check period (30 s), chance (1%), cooldown (75 / 60 min), safe radius (128), politics period and weights, cheat-death chances, rank alignment multipliers, fade days, `allowed_dimensions` (middle_earth), side threshold (100), dormant grudge decay.
+`[nemesis]`: `enabled`, `disabled_factions` (empty), promotion chances, renown values, rank thresholds and seats, `max_manifest` (8), ambush check period (30 s), chance (1%), cooldown (75 / 60 min), safe radius (128), politics period and weights, cheat-death chances, rank alignment multipliers, fade days, `allowed_dimensions` (middle_earth), side threshold (100), dormant grudge decay.
 `[world_events]`: `enabled`, roll period (30 s), chance (6%), cooldown (5 min), distance band (64, 256), type weights, `max_events_base` (3), `players_per_extra_event` (3), `max_events` (12), `max_chunks_per_event` (9), `chunk_budget` (72), `max_entities` (16 / 160), `max_duration` per type, release distance (384), spawn/respawn exclusion radius (128), venue cooldown (30 min), venue search radius and budget, war camps enabled (true), alignment bonuses.
 `[world_events.governor]`: `yellow_mspt` (30), `red_mspt` (40), `hysteresis_mspt` (5), `min_state_seconds` (10), `yellow_chunk_fraction` (0.75), `red_shed_after_seconds` (30).
 Lists built with `Arrays.asList`.
 
 ### Performance limits
 
-- Records: seats cap each faction at 29; 14 enabled factions ~400 records; one SavedData written only when dirty.
+- Records: seats cap each faction at 29; 19 enabled factions ~550 records; one SavedData written only when dirty.
 - No per-tick scans: event and ambush rolls every 30 s per player (staggered), politics every 30 min, body checks every 2 s only on existing bodies (<= `max_manifest`), governor reads the server's tick-time average once per second.
 - Hard caps: 12 events, 72 forced chunks, 16 entities per event and 160 total; the governor lowers these under load.
 - Venue lookups: one per roll at most, 64 chunk checks, cached 5 min per region; never generates chunks.
@@ -449,8 +449,8 @@ Proposed 1-2 day tickets (not opened until this spec is approved; `pod:npc` unle
 **Dependencies in other pods**
 22. **`pod:core`:** `core.api.MapMarkerClient` holder. (0.5 d)
 23. **`pod:core`:** `core.api.StructureVenues` holder (venue record: id, bounds, centre, kind, faction, residents, protected). (0.5 d)
-24. **`pod:world` (needs the World structure spec first):** venue structure set per faction: outposts, castles and permanent camps (distinct from the npc pod's temporary war camps), plus road and river bridges (can build on the road-bridge work in #87); original NBT, density target >= 2 venues per 256 blocks of wild land. Likely several tickets, one per region or faction group, sized by Opus 2.
-25. **`pod:world`:** venue tags `#lotrrevival:event_venues/{outpost,castle,camp,bridge}` on venue structures and `#lotrrevival:event_venues/village` on settlements, with owning faction metadata. (1 d)
+24. **`pod:world` (needs the World structure spec first):** venue structure set: per faction, outposts, castles, permanent camps (distinct from the npc pod's temporary war camps), watchtowers and towers; across regions, ruins and bandit hideouts; plus road and river bridges (can build on the road-bridge work in #87); original NBT, density target >= 2 venues per 256 blocks of wild land. Likely several tickets, one per region or faction group, sized by Opus 2.
+25. **`pod:world`:** venue tags `#lotrrevival:event_venues/{outpost,castle,camp,bridge,ruin,watchtower,tower,hideout}` on venue structures and `#lotrrevival:event_venues/village` on settlements, with owning faction metadata. (1 d)
 26. **`pod:world`:** `StructureVenues` backend: locator over already-generated chunks / a World-side structure index, budgeted and cached. (1.5 d)
 27. **`pod:progression`:** draw world-event markers on the map page (after #88 and the map GUI). (1 d)
 28. **`pod:progression`:** `nemesis_hunt` quest kind. (2 d)
@@ -462,5 +462,4 @@ Proposed 1-2 day tickets (not opened until this spec is approved; `pod:npc` unle
 
 ## Open questions for the maintainer
 
-1. Should Dunland, Near and Far Harad, Easterlings and half-trolls be on by default? (Default kept: off.)
-2. Governor thresholds: 30 ms (back off) and 40 ms (stop) of average tick time. Fine for your server, or tune per host?
+1. Governor thresholds: 30 ms (back off) and 40 ms (stop) of average tick time. Fine for your server, or tune per host?
