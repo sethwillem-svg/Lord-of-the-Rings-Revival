@@ -319,6 +319,23 @@ public final class Quests {
         return TurnIn.NOTHING;
     }
 
+    /** Marks a live, active quest's objective done (bounty: the target was killed); it is then ready to turn in. */
+    public static boolean markObjectiveDone(ServerPlayer player, UUID questId) {
+        Optional<QuestInstance> found = get(player).find(questId);
+        if (found.isEmpty() || found.get().state() != QuestStatus.ACTIVE) {
+            return false;
+        }
+        QuestInstance instance = found.get();
+        return advance(player, instance, Math.max(1, instance.count() - instance.progress())) != instance;
+    }
+
+    /** Counts one completed bounty and returns the new tally. */
+    public static int incrementBountiesCompleted(ServerPlayer player) {
+        int next = get(player).bountiesCompleted() + 1;
+        store(player, get(player).withBountiesCompleted(next));
+        return next;
+    }
+
     // ------------------------------------------------------------------ completion
 
     public static Optional<QuestRecord> complete(ServerPlayer player, UUID questId, boolean force) {
@@ -352,9 +369,12 @@ public final class Quests {
             return Optional.empty();
         }
 
-        RewardBuilder rewards = new RewardBuilder(
-                QuestRewards.rollAlignment(instance.alignmentBase(), random),
-                QuestRewards.rollCoins(instance.coinBase(), random).coins());
+        // Bounty quests (they name a target) pay exactly the values fixed at offer time, without variance.
+        RewardBuilder rewards = instance.objectiveData().bountyTarget().isPresent()
+                ? new RewardBuilder(instance.alignmentBase(), instance.coinBase())
+                : new RewardBuilder(
+                        QuestRewards.rollAlignment(instance.alignmentBase(), random),
+                        QuestRewards.rollCoins(instance.coinBase(), random).coins());
         for (QuestReward extra : template.get().value().extraRewards()) {
             extra.grant(rewards);
         }

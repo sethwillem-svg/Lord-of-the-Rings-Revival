@@ -53,11 +53,13 @@ public final class QuestDatagen {
                                     Optional.of(Factions.MORDOR), Optional.empty(), new CountRange(5, 10)),
                             1.0f,
                             List.of()));
+            BountyDatagen.registerTemplates(context);
         });
     }
 
     /** Adds the lang contribution. */
     public static void gather() {
+        BountyDatagen.gather();
         ModLangProvider.contribute(lang -> {
             lang.add("item.lotrrevival.quest_book", "Quest Book");
 

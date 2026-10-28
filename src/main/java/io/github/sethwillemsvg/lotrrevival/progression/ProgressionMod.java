@@ -3,6 +3,7 @@ package io.github.sethwillemsvg.lotrrevival.progression;
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
 import io.github.sethwillemsvg.lotrrevival.progression.achievement.AchievementEntry;
 import io.github.sethwillemsvg.lotrrevival.progression.achievement.AchievementService;
+import io.github.sethwillemsvg.lotrrevival.progression.bounty.BountySystem;
 import io.github.sethwillemsvg.lotrrevival.progression.network.ProgressionPayloads;
 import io.github.sethwillemsvg.lotrrevival.progression.title.TitleDefinition;
 import io.github.sethwillemsvg.lotrrevival.progression.title.TitleService;
@@ -24,6 +25,7 @@ public final class ProgressionMod {
         ModDataRegistries.registerSynced(AchievementEntry.REGISTRY, AchievementEntry.CODEC);
         ModDataRegistries.registerSynced(TitleDefinition.REGISTRY, TitleDefinition.CODEC);
         QuestSystem.init(modBus);
+        BountySystem.init(modBus);
         modBus.addListener(ProgressionPayloads::register);
     }
 }
