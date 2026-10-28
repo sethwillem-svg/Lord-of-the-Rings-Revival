@@ -6,6 +6,7 @@ import io.github.sethwillemsvg.lotrrevival.core.faction.FactionKind;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionRegion;
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
@@ -60,6 +61,11 @@ public final class ModTags {
         public static final TagKey<EntityType<?>> MOUNTS = tag("mounts");
 
         private EntityTypes() {}
+
+        /** {@code lotrrevival:faction/<id>}: entity types (vanilla, other mods) that belong to a faction. */
+        public static TagKey<EntityType<?>> faction(ResourceKey<Faction> faction) {
+            return tag("faction/" + faction.location().getPath());
+        }
 
         private static TagKey<EntityType<?>> tag(String path) {
             return TagKey.create(Registries.ENTITY_TYPE, LOTRRevival.id(path));
