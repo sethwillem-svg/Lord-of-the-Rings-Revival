@@ -122,6 +122,14 @@ public final class Alignment {
         syncAll(player);
     }
 
+    /**
+     * The area-of-influence multiplier (0 to 1) for this player and faction, from the registered
+     * {@link InfluenceProvider}; 1.0 until the areas-of-influence system registers one.
+     */
+    public static float influence(ServerPlayer player, ResourceKey<Faction> faction) {
+        return influence.multiplier(player, faction);
+    }
+
     public static void setInfluenceProvider(InfluenceProvider provider) {
         influence = provider == null ? InfluenceProvider.DEFAULT : provider;
     }

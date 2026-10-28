@@ -71,6 +71,9 @@ public final class DataGenerators {
         // Core: metals and ores (#108)
         MaterialProviders.gather(event);
         // End Core: metals and ores
+        // Core #105: bronze and silver banner-base metals
+        BannerMetalProviders.gather(event);
+        // End Core #105
 
         // World
         WorldDatagen.gather(event, registryLookup);
