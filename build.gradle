@@ -120,7 +120,7 @@ configurations {
 }
 
 dependencies {
-    // NovoAtlas 1.8.0+1.21.1 (NeoForge). Generates Middle-earth from painted heightmap + biome map images.
+    // NovoAtlas 1.8.2+1.21.1 (NeoForge). Generates Middle-earth from painted heightmap + biome map images.
     // localRuntime = present in dev runs, not forced on dependents. The World pod makes it a hard
     // dependency (here and in neoforge.mods.toml) once the Middle-earth dimension datapack lands.
     localRuntime "curse.maven:novoatlas-1297254:${novoatlas_file_id}"
