@@ -24,6 +24,7 @@ public final class QuestTrackerHud {
     public static final int WIDTH = 140;
     public static final int HEIGHT = 32;
     private static final int MARGIN = 4;
+    private static final int TOP = 30;
     private static final ResourceLocation LAYER = LOTRRevival.id("quest_tracker");
 
     private QuestTrackerHud() {}
@@ -70,8 +71,7 @@ public final class QuestTrackerHud {
                 io.github.sethwillemsvg.lotrrevival.client.progression.ClientQuests.tracked().ifPresent(quest -> {
                     boolean right = "right".equals(ProgressionConfig.get(ProgressionConfig.QUEST_TRACKER_SIDE));
                     int x = right ? graphics.guiWidth() - MARGIN - WIDTH : MARGIN;
-                    // The right side shares the corner with potion effect icons, so sit a little lower.
-                    int y = right ? MARGIN + 28 : MARGIN;
+                    int y = TOP;
                     draw(graphics, mc, quest, x, y);
                 });
             });
