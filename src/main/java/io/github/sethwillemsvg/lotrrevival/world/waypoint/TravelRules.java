@@ -5,6 +5,8 @@ import io.github.sethwillemsvg.lotrrevival.core.api.AchievementCounters;
 import io.github.sethwillemsvg.lotrrevival.core.api.WaypointView;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
 import io.github.sethwillemsvg.lotrrevival.world.WorldConfig;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScale;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScales;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
@@ -73,8 +75,17 @@ public final class TravelRules {
         return forced != null ? forced : WorldConfig.get(WorldConfig.TRAVEL_COOLDOWN);
     }
 
-    /** Required ticks with the configured numbers; 0 when the cooldown is off. */
+    /**
+     * Required ticks with the configured numbers; 0 when the cooldown is off. {@code distance} is in blocks at the
+     * running world's scale. {@code travel.distance_factor} is per Legacy block, so the distance is converted back
+     * first: a trip between the same two places needs the same wait at every world scale.
+     */
     public static int requiredTicks(int uses, double distance) {
+        return requiredTicks(uses, distance, WorldScales.current());
+    }
+
+    /** {@link #requiredTicks(int, double)} for a world at {@code scale}. */
+    public static int requiredTicks(int uses, double distance, WorldScale scale) {
         if (!cooldownEnabled()) {
             return 0;
         }
@@ -84,7 +95,7 @@ public final class TravelRules {
                 WorldConfig.get(WorldConfig.TRAVEL_USE_DECAY),
                 WorldConfig.get(WorldConfig.TRAVEL_DISTANCE_FACTOR),
                 uses,
-                distance);
+                scale.legacyBlocks(distance));
     }
 
     /** Custom waypoint limit: {@code base + floor(achievements / perAchievements)}. */

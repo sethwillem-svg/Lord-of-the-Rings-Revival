@@ -1,14 +1,14 @@
 {
   "center_offset": [
-    15.805,
-    20.324
+    7.9025,
+    10.162
   ],
   "height_map": "lotrrevival:middle_earth",
   "image_wrapping": "clamp_to_edge",
   "scaling": {
     "horizontal_scale": {
       "interpolation": "novoatlas:bicubic",
-      "value": 64.0
+      "value": 32.0
     },
     "vertical_scale": 0.005
   },

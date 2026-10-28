@@ -1,6 +1,8 @@
 package io.github.sethwillemsvg.lotrrevival.world.road;
 
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthMap;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScale;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScales;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import java.util.ArrayList;
@@ -78,8 +80,16 @@ public final class RoadNetwork {
         return roads.isEmpty() ? EMPTY : new RoadNetwork(roads);
     }
 
-    /** Builds the index from registry roads: control points are heightmap pixels, converted to blocks here. */
+    /** Builds the index at the running world's scale. */
     public static RoadNetwork fromRoads(Map<ResourceLocation, Road> roads) {
+        return fromRoads(roads, WorldScales.current());
+    }
+
+    /**
+     * Builds the index from registry roads: control points are heightmap pixels, converted to blocks at
+     * {@code scale} here. Widths stay in blocks, so roads are equally wide at every scale.
+     */
+    public static RoadNetwork fromRoads(Map<ResourceLocation, Road> roads, WorldScale scale) {
         List<Entry> entries = new ArrayList<>();
         roads.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
             List<Road.Point> points = e.getValue().points();
@@ -89,8 +99,8 @@ public final class RoadNetwork {
             double[] xs = new double[points.size()];
             double[] zs = new double[points.size()];
             for (int i = 0; i < xs.length; i++) {
-                xs[i] = MiddleEarthMap.blockX(points.get(i).u());
-                zs[i] = MiddleEarthMap.blockZ(points.get(i).v());
+                xs[i] = MiddleEarthMap.blockX(points.get(i).u(), scale);
+                zs[i] = MiddleEarthMap.blockZ(points.get(i).v(), scale);
             }
             try {
                 entries.add(new Entry(

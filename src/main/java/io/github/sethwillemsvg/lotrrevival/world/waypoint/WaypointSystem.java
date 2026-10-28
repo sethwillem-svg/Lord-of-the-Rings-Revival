@@ -32,7 +32,9 @@ public final class WaypointSystem {
             lang.add(
                     "commands.lotrrevival.waypoint.list.header",
                     "%1$s: travel clock %2$s, %3$s regions unlocked");
-            lang.add("commands.lotrrevival.waypoint.list.entry", "  %1$s (%2$s): %3$s, needs %4$s");
+            lang.add(
+                    "commands.lotrrevival.waypoint.list.entry",
+                    "  %1$s (%2$s) at x %5$s, z %6$s, %7$s blocks away: %3$s, needs %4$s");
             lang.add("commands.lotrrevival.waypoint.list.custom", "  Custom %1$s, %2$s at %3$s, used %4$s times");
             lang.add("commands.lotrrevival.waypoint.region.unknown", "Unknown waypoint region: %s");
             lang.add("commands.lotrrevival.waypoint.unlock", "Unlocked %1$s regions for %2$s players");

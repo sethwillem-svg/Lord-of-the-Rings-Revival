@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.world.road;
 
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScales;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.core.RegistryAccess;
@@ -28,13 +29,16 @@ public final class RoadNetworks {
         current = network;
     }
 
-    /** Builds a network from the {@code lotrrevival:road} registry; empty if the registry has no entries. */
+    /**
+     * Builds a network from the {@code lotrrevival:road} registry at the world scale named by the same registry
+     * access; empty if the registry has no entries.
+     */
     public static RoadNetwork fromRegistry(RegistryAccess access) {
         Map<ResourceLocation, Road> roads = new HashMap<>();
         access.registry(ModDataRegistries.<Road>road())
                 .ifPresent(registry -> registry.entrySet()
                         .forEach(e -> roads.put(e.getKey().location(), e.getValue())));
-        return RoadNetwork.fromRoads(roads);
+        return RoadNetwork.fromRoads(roads, WorldScales.fromRegistry(access));
     }
 
     static void register() {

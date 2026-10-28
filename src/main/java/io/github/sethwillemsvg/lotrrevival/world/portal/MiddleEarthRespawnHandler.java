@@ -5,6 +5,8 @@ import io.github.sethwillemsvg.lotrrevival.core.ModDimensions;
 import io.github.sethwillemsvg.lotrrevival.world.WorldHeights;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthBiomes;
 import io.github.sethwillemsvg.lotrrevival.world.WorldConfig;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScale;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScales;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -42,12 +44,15 @@ public final class MiddleEarthRespawnHandler {
                 : Optional.empty();
 
         BlockPos spawn = MiddleEarthSpawn.arrivalPoint(level);
+        // The distances are configured in Legacy blocks; shrink them with the map so a far death lands as far
+        // away, in map terms, at every world scale.
+        WorldScale scale = WorldScales.current();
         var settings = new MiddleEarthRespawn.Settings(
                 WorldConfig.get(WorldConfig.RESPAWN_ENABLED),
-                WorldConfig.get(WorldConfig.RESPAWN_BED_DISTANCE),
-                WorldConfig.get(WorldConfig.RESPAWN_SPAWN_DISTANCE),
-                WorldConfig.get(WorldConfig.RESPAWN_MIN_OFFSET),
-                WorldConfig.get(WorldConfig.RESPAWN_MAX_OFFSET));
+                scale.blocks(WorldConfig.get(WorldConfig.RESPAWN_BED_DISTANCE)),
+                scale.blocks(WorldConfig.get(WorldConfig.RESPAWN_SPAWN_DISTANCE)),
+                scale.blocks(WorldConfig.get(WorldConfig.RESPAWN_MIN_OFFSET)),
+                scale.blocks(WorldConfig.get(WorldConfig.RESPAWN_MAX_OFFSET)));
         var choice = MiddleEarthRespawn.choose(
                 settings,
                 new MiddleEarthRespawn.Spot(player.getX(), player.getZ()),

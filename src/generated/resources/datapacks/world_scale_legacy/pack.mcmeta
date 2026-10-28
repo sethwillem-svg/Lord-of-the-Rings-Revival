@@ -1,0 +1,6 @@
+{
+  "pack": {
+    "description": "Middle-earth at legacy scale: one map pixel is 64 blocks. Choose when creating a world; never change it afterwards.",
+    "pack_format": 48
+  }
+}

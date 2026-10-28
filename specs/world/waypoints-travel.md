@@ -9,7 +9,7 @@
 
 ## Summary
 
-At Legacy scale (Hobbiton to Bree is about 12,800 blocks), walking is for the road you are on and fast travel is how you cross regions. This spec covers the travel loop:
+At Legacy scale (Hobbiton to Bree is about 12,800 blocks), walking is for the road you are on and fast travel is how you cross regions. Worlds default to half scale (about 6,400 blocks) and may pick Legacy or quarter scale at creation (`specs/world/dimension-and-mapgen.md`, "World scale"). Block distances in this spec are Legacy scale unless they are local ranges (mob checks, companions, road widths, arrival searches), which never scale. This spec covers the travel loop:
 
 - **Waypoints.** Named places (towns, bridges, fords, ruins) are fixed on the map. Entering any biome of a region reveals all of that region's waypoints. Town waypoints belong to a faction and need alignment of 0 or more with it. Players also mark their own custom waypoints; how many depends on their achievement count.
 - **Fast travel.** Pick a known waypoint, stand still for 10 seconds, and you, your mount, your following units, your pets and your leashed animals arrive there. The cost is time: one clock per player that must have run longer than the trip's required time, which falls the more often you visit that waypoint.
@@ -97,7 +97,7 @@ Waypoints and roads are authored in the map source (`src/main/map/`) next to the
 | Min time | 180 s | `travel.min_seconds` |
 | Max time | 1,800 s | `travel.max_seconds` |
 | Use decay | 0.9 per use | `travel.use_decay` |
-| Distance factor | 0.000012 per block | `travel.distance_factor` |
+| Distance factor | 0.000012 per Legacy block | `travel.distance_factor`. The horizontal distance is divided by the world scale first, so the same trip needs the same wait at every scale |
 | Countdown | 200 ticks | `travel.countdown_ticks` |
 | Hostile check range | 16 blocks | `travel.hostile_range` |
 | Companion range | 256 blocks (3D distance) | `travel.companion_range` |
@@ -145,7 +145,7 @@ Waypoints and roads are authored in the map source (`src/main/map/`) next to the
 | Thing | Default | Config key |
 | --- | --- | --- |
 | Enabled | true | `respawn.enabled` |
-| Far from bed | 5,000 blocks | `respawn.bed_distance` |
+| Far from bed | 5,000 Legacy blocks (2,500 at half, 1,250 at quarter) | `respawn.bed_distance`. All four respawn distances are multiplied by the world scale |
 | Far from spawn (no bed) | 2,000 blocks | `respawn.spawn_distance` |
 | Offset from death point | 500-1,500 blocks, uniform, random direction | `respawn.min_offset`, `respawn.max_offset` |
 
@@ -204,7 +204,7 @@ Later regions add styles from the Legacy table in the reference notes (Arnor in 
 | `tower_hills` | The Tower Hills | `tower_hills` |
 | `ered_luin` | Ered Luin | `ered_luin_foothills` |
 
-**Waypoints.** Coordinates are heightmap pixels `[u, v]` (64 blocks per px, Hobbiton = `[1620, 1460]`). Positions marked ~ are first guesses: the implementer moves each to the nearest sensible spot inside its region on the pilot map, and the validator is the judge.
+**Waypoints.** Coordinates are heightmap pixels `[u, v]` (64 blocks per px at Legacy scale, 32 at half, 16 at quarter; Hobbiton = `[1620, 1460]` is block (0, 0) at every scale). Positions marked ~ are first guesses: the implementer moves each to the nearest sensible spot inside its region on the pilot map, and the validator is the judge.
 
 | Id | Name | Region | Faction | Position | Description (our own) |
 | --- | --- | --- | --- | --- | --- |

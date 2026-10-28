@@ -51,7 +51,7 @@ public final class WorldConfig {
                 .defineInRange("max_seconds", 1800, 0, 1_000_000);
         TRAVEL_USE_DECAY = b.comment("Factor applied to the variable part of the required time per previous use.")
                 .defineInRange("use_decay", 0.9, 0.0, 1.0);
-        TRAVEL_DISTANCE_FACTOR = b.comment("Extra required-time multiplier per block of horizontal distance.")
+        TRAVEL_DISTANCE_FACTOR = b.comment("Extra required-time multiplier per Legacy-scale block of horizontal distance (scaled with the world).")
                 .defineInRange("distance_factor", 0.000012, 0.0, 1.0);
         TRAVEL_COUNTDOWN_TICKS = b.comment("Ticks the player must stand still before travelling.")
                 .defineInRange("countdown_ticks", 200, 1, 100_000);
@@ -80,13 +80,13 @@ public final class WorldConfig {
         b.comment("Respawning in Middle-earth.").push("respawn");
         RESPAWN_ENABLED = b.comment("Enable the far-death rule (deaths in Middle-earth always respawn there).")
                 .define("enabled", true);
-        RESPAWN_BED_DISTANCE = b.comment("Respawn near the death point when it is farther than this (blocks) from the bed.")
+        RESPAWN_BED_DISTANCE = b.comment("Respawn near the death point when it is farther than this from the bed. Legacy-scale blocks: multiplied by the world scale (half: x0.5).")
                 .defineInRange("bed_distance", 5000, 0, 10_000_000);
-        RESPAWN_SPAWN_DISTANCE = b.comment("Same, measured from Middle-earth's spawn when the player has no bed there.")
+        RESPAWN_SPAWN_DISTANCE = b.comment("Same, measured from Middle-earth's spawn when the player has no bed there. Legacy-scale blocks.")
                 .defineInRange("spawn_distance", 2000, 0, 10_000_000);
-        RESPAWN_MIN_OFFSET = b.comment("Minimum distance (blocks) of the far-death respawn from the death point.")
+        RESPAWN_MIN_OFFSET = b.comment("Minimum distance of the far-death respawn from the death point. Legacy-scale blocks.")
                 .defineInRange("min_offset", 500, 0, 10_000_000);
-        RESPAWN_MAX_OFFSET = b.comment("Maximum distance (blocks) of the far-death respawn from the death point.")
+        RESPAWN_MAX_OFFSET = b.comment("Maximum distance of the far-death respawn from the death point. Legacy-scale blocks.")
                 .defineInRange("max_offset", 1500, 0, 10_000_000);
         b.pop();
 

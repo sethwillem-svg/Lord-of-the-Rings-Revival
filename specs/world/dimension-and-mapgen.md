@@ -8,7 +8,7 @@
 
 ## Summary
 
-Middle-earth is its own dimension, `lotrrevival:middle_earth`, at the original mod's (Legacy's) scale: one biome-map pixel is 128 x 128 blocks, the canvas is 409,600 x 512,000 blocks, and Hobbiton to Bree is about 12,800 blocks. Block (0, 0) sits next to the Hobbiton landing point.
+Middle-earth is its own dimension, `lotrrevival:middle_earth`. The painted map is drawn at the original mod's (Legacy's) scale: one biome-map pixel is 128 x 128 blocks, the canvas is 409,600 x 512,000 blocks, and Hobbiton to Bree is about 12,800 blocks. Each world picks a **world scale** when it is created (Legacy, half or quarter; half is the default, see "World scale" below), which divides every horizontal distance. Unless a number says otherwise, block numbers in this spec are Legacy scale. Block (0, 0) sits next to the Hobbiton landing point at every scale.
 
 The terrain has two layers, as in Legacy:
 
@@ -47,8 +47,27 @@ The canvas is fixed from day one, so coordinates never change. G2 paints only th
 | Canvas in blocks | 409,600 x 512,000 | x from -103,680 to +305,920, z from -93,440 to +418,560 |
 | Origin | Block (0, 0) is image coordinate (1,620, 1,460) on the heightmap, which is (810, 730) on the biome map | Image coordinates are measured from the image's top-left corner, and pixel k spans [k, k+1). The artist paints Hobbiton at this point. Up in the image is north (-z) |
 | Projection (canonical) | block x = 64 x (u - 1,620), block z = 64 x (v - 1,460), where (u, v) are continuous heightmap image coordinates | Biome-map coordinate = heightmap coordinate / 2. Relief coordinate = heightmap coordinate / 4. Core owns the helper (requested below) |
-| Image wrapping | `clamp_to_edge` | The canvas border is ocean at least 16 heightmap px (1,024 blocks) wide |
+| Image wrapping | `clamp_to_edge` | The canvas border is ocean at least 16 heightmap px (1,024 Legacy blocks) wide |
 | Distance targets for the artist (straight line, from Legacy) | Hobbiton to Brandywine Bridge 4,900; Hobbiton to Bree 12,800; Bree to Weathertop 10,700; Mithlond to Bree 30,200; Hobbiton to Rivendell 45,800 | Later regions: Edoras to Minas Tirith 31,900, Hobbiton to Minas Tirith 102,000, Hobbiton to Umbar 133,300 |
+
+### World scale
+
+The painted images never change between scales. A world's scale only sets how many blocks one map pixel covers.
+
+| Scale | Factor | Heightmap / biome / relief blocks per px | Vertical factor k | Hobbiton to Brandywine Bridge / Bree / Michel Delving | Hobbiton to Bree, sprinting |
+| --- | --- | --- | --- | --- | --- |
+| Legacy | 1 | 64 / 128 / 256 | 1.0 | 4,902 / 12,774 / 7,707 | about 38 min |
+| **Half (default)** | 0.5 | 32 / 64 / 128 | 0.7 | 2,451 / 6,387 / 3,853 | about 19 min |
+| Quarter | 0.25 | 16 / 32 / 64 | 0.5 | 1,226 / 3,193 / 1,927 | about 9.5 min |
+
+- **Projection at scale s:** block x = 64s x (u - 1,620), block z = 64s x (v - 1,460). The origin pixel is block (0, 0) at every scale. `center_offset` and `horizontal_scale` of all three map_infos scale with s (the formula above still applies with the scaled blocks per sample).
+- **Heights:** painted height at scale s = 63 + k x (painted - 63), with k about the square root of s, rounded. Shrinking only horizontally would make painted slopes 2x (half) or 4x (quarter) as steep; shrinking heights by s too would flatten mountains. With k, painted slopes grow 1.4x (half) or 2x (quarter), and mountains keep 70% or 50% of their height above the sea (Bree-hill: y 97 Legacy, about 87 half, 80 quarter). Sea level, the ocean placeholder and river cuts near sea level barely move. The procedural detail noise and the per-biome detail amplitude are block-scale and are **not** scaled: small hills feel the same at every scale.
+- **What stays in blocks (not scaled):** road half-width (4), the 32-block road corridor, bridge rules, the 48-block biome jitter, beach rules, detail noise, ore heights and vein sizes (vertical), dimension height, travel hostile and companion ranges, arrival searches, portal geometry.
+- **What scales with the map:** every pixel-to-block conversion (waypoints, landing point, roads and their bridges, `map_corridors` road positions, biome borders), Legacy-scale config distances (far-death respawn: bed 5,000, spawn 2,000, offset 500-1,500 are multiplied by s) and the fast-travel distance factor (applied per Legacy block, so a trip between two places needs the same wait at every scale). Per-chunk ore attempts stay the same, so ore per block area is unchanged; a region simply has fewer chunks.
+- **Choosing it:** the mod's data is the half scale. Two optional built-in data packs, `mod/lotrrevival:datapacks/world_scale_legacy` and `mod/lotrrevival:datapacks/world_scale_quarter` (source "Feature", never enabled automatically), override the three map_infos, `middle_earth/base` and the `lotrrevival:world_scale` registry entry. A player enables one on the Create World screen (More, Data Packs); a dedicated server lists it in `initial-enabled-packs` before the world is first created. Vanilla stores the pack list in the world, so the scale stays fixed. Datapack registries load only with the world, so terrain and code always agree, even after `/reload`.
+- **Lock:** the first start records the scale in the overworld attachment `lotrrevival:world_scale`. A world that already has saved Middle-earth chunks but no record is recorded as Legacy (everything before world scales was Legacy). If the active scale ever differs from the record, the server logs an error and tells operators on login and in `/lotr worldscale` which pack to enable. It never changes terrain by itself.
+- **Existing worlds:** worlds made before world scales were Legacy. After updating they load at the half default unless the Legacy pack is enabled, so their new chunks would not line up. Enable the Legacy pack (`/datapack enable "mod/lotrrevival:datapacks/world_scale_legacy"`, then reopen the world) or start a new world. The Legacy pack reproduces the old generation exactly.
+- **Later specs:** structure spacing, landmark radii, territory squares and invasion ranges written in Legacy blocks must say whether they scale. Distances between places (spacing, conquest squares) scale with s; sizes of things (a village, a tower) do not.
 
 **NovoAtlas `center_offset`.** The 1.8.2 source shifts the map by `center_offset x image width (or height) in pixels` **blocks** (quarts for the biome map), before dividing by `horizontal_scale`. The wiki says the units are image widths, which is only true at scale 1. Our projection test locks in the source behavior. To put block 0 at image index P, use `offset = (W/2 - P) x scale / W`. The bicubic and bilinear samplers treat pixel k's value as sitting at index k, so a heightmap pixel centre is at index u - 0.5. Datagen computes the offsets from the origin constants:
 

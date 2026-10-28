@@ -4,6 +4,7 @@ import io.github.sethwillemsvg.lotrrevival.core.api.WaypointView;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
 import io.github.sethwillemsvg.lotrrevival.core.registry.ModDataRegistries;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthMap;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScales;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -84,13 +85,13 @@ public final class WaypointViews {
         return views;
     }
 
-    /** Heightmap pixel x (rounded) of a world block x. Inverse of {@link MiddleEarthMap#blockX}. */
+    /** Heightmap pixel x (rounded) of a world block x at the running world's scale. */
     public static int pixelU(double blockX) {
-        return (int) Math.round(MiddleEarthMap.ORIGIN_U + blockX / MiddleEarthMap.HEIGHT_BLOCKS_PER_PIXEL);
+        return (int) Math.round(MiddleEarthMap.pixelU(blockX, WorldScales.current()));
     }
 
-    /** Heightmap pixel y (rounded) of a world block z. Inverse of {@link MiddleEarthMap#blockZ}. */
+    /** Heightmap pixel y (rounded) of a world block z at the running world's scale. */
     public static int pixelV(double blockZ) {
-        return (int) Math.round(MiddleEarthMap.ORIGIN_V + blockZ / MiddleEarthMap.HEIGHT_BLOCKS_PER_PIXEL);
+        return (int) Math.round(MiddleEarthMap.pixelV(blockZ, WorldScales.current()));
     }
 }

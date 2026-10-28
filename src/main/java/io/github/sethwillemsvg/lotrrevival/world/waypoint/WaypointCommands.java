@@ -182,7 +182,14 @@ public final class WaypointCommands {
                         "message.lotrrevival.waypoint_barred", Factions.displayName(status.barredBy().get()));
             }
             Component line = Component.translatable(
-                    "commands.lotrrevival.waypoint.list.entry", waypoint.name(), id.getPath(), state, format(required));
+                    "commands.lotrrevival.waypoint.list.entry",
+                    waypoint.name(),
+                    id.getPath(),
+                    state,
+                    format(required),
+                    String.valueOf(Math.round(waypoint.blockX())),
+                    String.valueOf(Math.round(waypoint.blockZ())),
+                    String.valueOf(Math.round(distance)));
             source.sendSuccess(() -> line, false);
             shown++;
         }
