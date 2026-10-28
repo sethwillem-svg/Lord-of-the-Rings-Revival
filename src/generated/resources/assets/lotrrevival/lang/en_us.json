@@ -668,6 +668,7 @@
   "item.lotrrevival.arnor_helmet": "Arnorian Helmet",
   "item.lotrrevival.arnor_leggings": "Arnorian Leggings",
   "item.lotrrevival.bolt": "Bolt",
+  "item.lotrrevival.bottle_of_poison": "Bottle of Poison",
   "item.lotrrevival.bounty_trophy": "Bounty Trophy",
   "item.lotrrevival.bree_boots": "Bree Boots",
   "item.lotrrevival.bree_chestplate": "Bree Chestplate",
@@ -1551,6 +1552,7 @@
   "toast.lotrrevival.achievement": "Achievement Earned",
   "tooltip.lotrrevival.alcohol": "Alcohol: %s%%",
   "tooltip.lotrrevival.coin_value": "Value: %s",
+  "tooltip.lotrrevival.poisoned": "Poisoned",
   "waypoint.state.lotrrevival.barred": "barred",
   "waypoint.state.lotrrevival.locked": "locked",
   "waypoint.state.lotrrevival.usable": "usable"

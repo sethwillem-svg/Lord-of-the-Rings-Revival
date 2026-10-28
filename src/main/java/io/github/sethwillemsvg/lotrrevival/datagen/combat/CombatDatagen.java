@@ -39,6 +39,8 @@ public final class CombatDatagen {
         });
         generator.addProvider(event.includeServer(), new NamedProvider("Combat recipes", new CombatRecipes(output, lookup)));
 
+        PoisonDatagen.gather(event, lookup);
+
         ModLangProvider.contribute(lang -> {
             lang.add("itemGroup.lotrrevival." + CombatItems.COMBAT_TAB_ID, "Combat");
             lang.add("itemGroup.lotrrevival." + CombatItems.MATERIALS_TAB_ID, "Materials");
