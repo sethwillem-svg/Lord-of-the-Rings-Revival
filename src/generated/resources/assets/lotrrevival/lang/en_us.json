@@ -366,6 +366,8 @@
   "item.lotrrevival.miruvor": "Miruvor",
   "item.lotrrevival.quest_book": "Quest Book",
   "item.lotrrevival.silver_coin": "Silver Coin",
+  "item.lotrrevival.silver_coin_10": "Silver Coin (10)",
+  "item.lotrrevival.silver_coin_100": "Silver Coin (100)",
   "item.lotrrevival.wooden_mug": "Wooden Mug",
   "itemGroup.lotrrevival": "The Lord of the Rings: Revival",
   "key.categories.lotrrevival": "The Lord of the Rings: Revival",
@@ -496,5 +498,6 @@
   "relation.lotrrevival.mortal_enemy": "Mortal enemy",
   "relation.lotrrevival.neutral": "Neutral",
   "toast.lotrrevival.achievement": "Achievement Earned",
-  "tooltip.lotrrevival.alcohol": "Alcohol: %s%%"
+  "tooltip.lotrrevival.alcohol": "Alcohol: %s%%",
+  "tooltip.lotrrevival.coin_value": "Value: %s"
 }

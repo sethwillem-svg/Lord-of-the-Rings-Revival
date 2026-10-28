@@ -66,6 +66,9 @@ public final class ModLangProvider extends LanguageProvider {
         add("itemGroup.lotrrevival", "The Lord of the Rings: Revival");
         add("key.categories.lotrrevival", "The Lord of the Rings: Revival");
         add("item.lotrrevival.silver_coin", "Silver Coin");
+        add("item.lotrrevival.silver_coin_10", "Silver Coin (10)");
+        add("item.lotrrevival.silver_coin_100", "Silver Coin (100)");
+        add("tooltip.lotrrevival.coin_value", "Value: %s");
 
         for (var key : Factions.REAL) {
             check(key.location().getPath());
