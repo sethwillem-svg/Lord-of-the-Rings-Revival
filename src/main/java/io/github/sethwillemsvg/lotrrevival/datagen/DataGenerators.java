@@ -48,6 +48,8 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.BlockTags(output, lookup, event.getExistingFileHelper()));
         // End Core: brewing
+        generator.addProvider(
+                event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
 
         // World
         WorldDatagen.gather(event, registryLookup);
