@@ -51,7 +51,7 @@ Client-only code goes in `client/<pod>/`. Base package: `io.github.sethwillemsvg
 - **Item data** uses data components, not NBT.
 - **Networking** uses `CustomPacketPayload` registered in core.
 - No mixins without lead approval. Prefer NeoForge events.
-- Logic gets a GameTest where practical (`src/main/java/.../<pod>/test/`).
+- Logic gets a GameTest where practical (`src/main/java/.../<pod>/test/`). Use `@GameTest(template = "empty")`. Mock players from `makeMockServerPlayerInLevel` share one name and stay in the player list: always remove them in a `finally`.
 - Java 21. 4-space indent. No wildcard imports.
 
 ## 5. Shared-file locks
