@@ -112,6 +112,7 @@ final class ModLangProvider extends LanguageProvider {
         add("pledge.lotrrevival.cooldown_ended", "You may pledge yourself to a faction again.");
 
         addBrewing();
+        io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcLang.addTo(this);
     }
 
     // Core: brewing

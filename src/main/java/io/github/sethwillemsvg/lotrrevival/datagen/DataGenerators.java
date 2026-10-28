@@ -31,6 +31,7 @@ public final class DataGenerators {
                 event.includeClient(), new BrewingProviders.ItemModels(output, event.getExistingFileHelper()));
         generator.addProvider(event.includeServer(), new BrewingProviders.Recipes(output, lookup));
         // End Core: brewing
+        io.github.sethwillemsvg.lotrrevival.npc.datagen.NpcDataGen.gather(event);
         // Pods add providers here, for example:
         // generator.addProvider(event.includeServer(), new ModRecipeProvider(generator.getPackOutput(), event.getLookupProvider()));
     }
