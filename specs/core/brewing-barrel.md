@@ -172,7 +172,7 @@ All GameTests live in one class, `core.test.BrewingBarrelTests`, and drive the b
 - [ ] GameTest `ale_starts_on_brew`: ingredient slots hold 2 wheat in slot 0 and 1 wheat in slots 1-5, water slots hold 3 water buckets. Result slot previews Ale. Press Brew: state Brewing, tier 0, servings 16, slot 0 holds 1 wheat, slots 1-5 are empty, water slots hold empty buckets.
 - [ ] GameTest `incomplete_or_wrong_load_does_not_brew`: (a) 6 wheat and 2 water buckets; (b) 5 wheat, 1 dirt and 3 water buckets; (c) 5 wheat in 5 slots, one slot empty, and 3 water buckets. In each case pressing Brew leaves the barrel Empty and consumes nothing.
 - [ ] GameTest `brew_runs_to_mighty`: start Ale, tick 59,999: Brewing, tier 4. Tick once more: Full, tier 4, servings 16.
-- [ ] GameTest `stop_early_locks_last_completed_tier`: start Ale, tick 11,999, press Brew: still Brewing. Tick to 30,000 (tier in progress 2), press Brew: Full, tier 1, servings 16.
+- [ ] GameTest `stop_early_locks_last_completed_tier`: start Ale, tick 5,999, press Brew: still Brewing. Tick to 15,000 (tier in progress 2), press Brew: Full, tier 1, servings 16.
 - [ ] GameTest `tap_draws_servings`: a Full Ale barrel at tier 3. A mock player holding 1 empty mug uses the tap face: holds `lotrrevival:ale` with `drink_strength` 3, servings 15. Using a side face with an empty mug draws nothing. Drawing 15 more leaves the barrel Empty.
 - [ ] GameTest `drink_scales_food_and_effects`: a mock player at 0 hunger finishes a Stout Miruvor: has Strength I and Speed I with duration 1,600 (+-1 tick), food level 10, holds an empty Wooden Mug, no Nausea.
 - [ ] GameTest `strong_alcohol_always_nauseates`: a mock player finishes a Mighty Mead: has Nausea with duration between 2,160 and 3,240 ticks inclusive.
