@@ -21,6 +21,9 @@ public final class ProgressionConfig {
     public static final ModConfigSpec.BooleanValue STRICT_FACTION_TITLES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ACHIEVEMENT_BROADCAST_DENYLIST;
 
+    public static final ModConfigSpec.IntValue FELLOWSHIP_MAX_SIZE;
+    public static final ModConfigSpec.BooleanValue FELLOWSHIP_CREATION_ENABLED;
+
     public static final ModConfigSpec.ConfigValue<String> QUEST_TRACKER_SIDE;
 
     static {
@@ -42,6 +45,10 @@ public final class ProgressionConfig {
                         List.of("lotrrevival:shire/kill_hobbit"),
                         () -> "lotrrevival:shire/kill_hobbit",
                         o -> o instanceof String);
+        FELLOWSHIP_MAX_SIZE = server.comment("Maximum members per fellowship (owner included); -1 for no limit.")
+                .defineInRange("fellowshipMaxSize", -1, -1, 1000);
+        FELLOWSHIP_CREATION_ENABLED = server.comment("Let players create fellowships (ops can always use the command).")
+                .define("fellowshipCreationEnabled", true);
         server.pop();
         SERVER_SPEC = server.build();
 
