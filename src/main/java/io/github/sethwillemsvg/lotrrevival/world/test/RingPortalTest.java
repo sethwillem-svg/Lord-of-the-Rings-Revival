@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.world.test;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.building.GoldRingItems;
+import io.github.sethwillemsvg.lotrrevival.core.test.TestArea;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthLanding;
 import io.github.sethwillemsvg.lotrrevival.world.portal.ContactTracker;
 import io.github.sethwillemsvg.lotrrevival.world.portal.ReentryGuard;
@@ -45,7 +46,14 @@ public final class RingPortalTest {
     private RingPortalTest() {}
 
     private static List<RingPortalEntity> portalsNear(ServerLevel level, Vec3 centre) {
-        return level.getEntitiesOfClass(RingPortalEntity.class, new AABB(centre, centre).inflate(8.0));
+        return level.getEntitiesOfClass(RingPortalEntity.class, new AABB(centre, centre).inflate(3.0));
+    }
+
+    private static List<ItemEntity> rings(ServerLevel level, Vec3 centre) {
+        return level.getEntitiesOfClass(
+                ItemEntity.class,
+                new AABB(centre, centre).inflate(2.0),
+                item -> item.getItem().is(GoldRingItems.GOLD_RING.get()));
     }
 
     private static ItemEntity throwRing(ServerLevel level, Vec3 at) {
@@ -57,6 +65,11 @@ public final class RingPortalTest {
 
     @GameTest(template = "empty", timeoutTicks = 100)
     public static void ringInFireOpensOnePortalOnceUntilReset(GameTestHelper helper) {
+        // Entities sit outside the 1x1 template's chunk; wait until that space ticks.
+        TestArea.whenTicking(helper, 8, () -> ringInFireOpensOnePortalOnceUntilResetBody(helper));
+    }
+
+    private static void ringInFireOpensOnePortalOnceUntilResetBody(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         RingPortalData previous = RingPortals.data(level);
         RingPortals.setData(level, RingPortalData.EMPTY);
@@ -68,7 +81,7 @@ public final class RingPortalTest {
         player.setPos(fire.x + 2.0, fire.y, fire.z);
         Runnable cleanUp = () -> {
             portalsNear(level, fire).forEach(Entity::discard);
-            level.getEntitiesOfClass(ItemEntity.class, new AABB(fire, fire).inflate(8.0)).forEach(Entity::discard);
+            rings(level, fire).forEach(Entity::discard);
             RingPortals.setData(level, previous);
             level.getServer().getPlayerList().remove(player);
         };
@@ -88,7 +101,7 @@ public final class RingPortalTest {
                                     && RingPortals.data(level).overworldEntity().equals(Optional.of(portal.getUUID())),
                             "The portal must be stored");
                     helper.assertTrue(
-                            level.getEntitiesOfClass(ItemEntity.class, new AABB(fire, fire).inflate(4.0)).isEmpty(),
+                            rings(level, fire).isEmpty(),
                             "The ring must be consumed");
 
                     // A second ring does nothing and stays.
@@ -97,9 +110,7 @@ public final class RingPortalTest {
                         try {
                             helper.assertTrue(portalsNear(level, fire).size() == 1, "A second ring made a portal");
                             helper.assertTrue(
-                                    level.getEntitiesOfClass(ItemEntity.class, new AABB(fire, fire).inflate(4.0))
-                                                    .size()
-                                            == 1,
+                                    rings(level, fire).size() == 1,
                                     "The second ring must stay");
 
                             // Reset allows another.
@@ -230,6 +241,11 @@ public final class RingPortalTest {
 
     @GameTest(template = "empty", timeoutTicks = 100)
     public static void growingPortalWaitsFullPortalSendsAtOnce(GameTestHelper helper) {
+        // Entities sit outside the 1x1 template's chunk; wait until that space ticks.
+        TestArea.whenTicking(helper, 8, () -> growingPortalWaitsFullPortalSendsAtOnceBody(helper));
+    }
+
+    private static void growingPortalWaitsFullPortalSendsAtOnceBody(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Vec3 centre = helper.absoluteVec(new Vec3(3.5, 2.0, 3.5));
         RingPortalEntity portal = RingPortalTypes.RING_PORTAL.get().create(level);

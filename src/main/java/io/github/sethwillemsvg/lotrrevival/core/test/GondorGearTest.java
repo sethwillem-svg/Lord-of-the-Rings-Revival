@@ -140,6 +140,11 @@ public final class GondorGearTest {
     /** The real lance, through the real equipment-change and mount events (no direct refresh calls). */
     @GameTest(template = "empty")
     public static void realLanceSlowsOnFootAndClearsOnMountOrSwitch(GameTestHelper helper) {
+        // Entities sit outside the 1x1 template's chunk; wait until that space ticks.
+        TestArea.whenTicking(helper, 8, () -> realLanceSlowsOnFootAndClearsOnMountOrSwitchBody(helper));
+    }
+
+    private static void realLanceSlowsOnFootAndClearsOnMountOrSwitchBody(GameTestHelper helper) {
         Zombie zombie = helper.spawn(EntityType.ZOMBIE, 2, 2, 2);
         Boat boat = helper.spawn(EntityType.BOAT, 4, 2, 4);
         zombie.setNoAi(true);

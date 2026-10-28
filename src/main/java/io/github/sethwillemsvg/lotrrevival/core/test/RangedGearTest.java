@@ -135,6 +135,11 @@ public final class RangedGearTest {
 
     @GameTest(template = "empty")
     public static void fullWindUpPebbleDealsTwoAndBreaksOnImpact(GameTestHelper helper) {
+        // Entities sit outside the 1x1 template's chunk; wait until that space ticks.
+        TestArea.whenTicking(helper, 8, () -> fullWindUpPebbleDealsTwoAndBreaksOnImpactBody(helper));
+    }
+
+    private static void fullWindUpPebbleDealsTwoAndBreaksOnImpactBody(GameTestHelper helper) {
         Pig shooter = helper.spawn(EntityType.PIG, 2, 2, 2);
         shooter.setNoAi(true);
         Pig target = helper.spawn(EntityType.PIG, 2, 2, 5);

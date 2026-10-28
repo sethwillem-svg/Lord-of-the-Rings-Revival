@@ -103,7 +103,9 @@ public final class BountyOffers {
         if (online != null) {
             return Optional.of(online.getGameProfile().getName());
         }
-        return server.getProfileCache().get(player).map(GameProfile::getName);
+        // The GameTest server runs without a profile cache.
+        var cache = server.getProfileCache();
+        return cache == null ? Optional.empty() : cache.get(player).map(GameProfile::getName);
     }
 
     // ------------------------------------------------------------------ accept rules
