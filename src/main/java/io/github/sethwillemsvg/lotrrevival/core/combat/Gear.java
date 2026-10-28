@@ -68,6 +68,9 @@ public final class Gear {
                 tags.add(ItemTags.DURABILITY_ENCHANTABLE);
             }
         }
+        if (weaponClass == WeaponClass.DAGGER) {
+            tags.add(ModTags.Items.POISONABLE);
+        }
         return enter(
                 id, item, GearKind.WEAPON, modelFor(weaponClass), set.adjective() + " " + weaponClass.displayName(), tags, recipe);
     }

@@ -23,6 +23,7 @@ public final class HireDataGen {
         ModLangProvider.contribute(lang -> {
             lang.add("npc.lotrrevival.unit.deserted", "%s has deserted you.");
             lang.add("npc.lotrrevival.unit.dismissed", "%s has left your service.");
+            io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.HirePurchaseLang.addTo(lang);
         });
     }
 

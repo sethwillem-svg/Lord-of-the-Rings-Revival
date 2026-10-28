@@ -55,6 +55,7 @@ public final class NpcItems {
 
     public static void init(IEventBus modBus) {
         modBus.addListener(NpcItems::onBuildCreativeTabs);
+        io.github.sethwillemsvg.lotrrevival.npc.hire.horn.HornItems.init(modBus);
     }
 
     private static void onBuildCreativeTabs(BuildCreativeModeTabContentsEvent event) {

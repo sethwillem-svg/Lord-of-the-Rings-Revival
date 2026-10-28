@@ -6,8 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
- * Middle-earth's spawn arrival point. Respawning and the ring portal both call this so they agree. Until the
- * portal ticket lands it is the landing point; that ticket makes it prefer the twin portal.
+ * Middle-earth's spawn arrival point. Respawning and the ring portal both use the same rule so they agree.
  */
 public final class MiddleEarthSpawn {
     /** Blocks south (+z) of the landing point where arrivals stand. */
@@ -15,11 +14,16 @@ public final class MiddleEarthSpawn {
 
     private MiddleEarthSpawn() {}
 
-    /** The arrival point in {@code level} (Middle-earth), standing on the top solid block. */
+    /**
+     * The arrival point in {@code level} (Middle-earth), standing on the top solid block: 4 south of the twin
+     * portal once it exists, before that 4 south of the landing point.
+     */
     public static BlockPos arrivalPoint(ServerLevel level) {
         MiddleEarthLanding.Point landing = MiddleEarthLanding.load(level.getServer().getResourceManager());
-        int x = landing.x();
-        int z = landing.z() + SOUTH_OFFSET;
+        RingPortalPlan.Arrival arrival =
+                RingPortalPlan.middleEarthArrival(RingPortals.data(level).middleEarthPortal(), landing);
+        int x = arrival.x();
+        int z = arrival.z();
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         return new BlockPos(x, y, z);
     }

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "M": {
+      "tag": "c:ingots/iron"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    " M",
+    "SM"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:iron_throwing_axe"
+  }
+}

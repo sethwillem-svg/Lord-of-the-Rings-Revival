@@ -27,6 +27,7 @@ public final class NpcTrade {
         NeoForge.EVENT_BUS.addListener(NpcTrade::onJoin);
         NeoForge.EVENT_BUS.addListener(NpcTrade::onTick);
         NpcTradeMenus.init();
+        io.github.sethwillemsvg.lotrrevival.npc.hire.purchase.HirePurchase.init();
     }
 
     /** Traders roll their stock when they enter the world after spawning (loaded traders already have it). */

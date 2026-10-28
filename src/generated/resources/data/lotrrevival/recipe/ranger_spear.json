@@ -1,0 +1,22 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "equipment",
+  "key": {
+    "M": {
+      "tag": "c:ingots/iron"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "M",
+    "S",
+    "S"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:ranger_spear"
+  },
+  "table": "lotrrevival:ranger_crafting_table"
+}

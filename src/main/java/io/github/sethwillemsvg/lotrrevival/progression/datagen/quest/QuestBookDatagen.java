@@ -30,6 +30,7 @@ public final class QuestBookDatagen {
         event.getGenerator()
                 .addProvider(event.includeClient(), new ItemModels(output, event.getExistingFileHelper()));
         ModLangProvider.contribute(QuestBookDatagen::lang);
+        OfferScreenLang.register();
     }
 
     private static void lang(net.neoforged.neoforge.common.data.LanguageProvider lang) {
