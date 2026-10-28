@@ -62,7 +62,7 @@ import net.minecraft.world.level.pathfinder.PathType;
  *
  * <p>Kill alignment is applied by core from {@link FactionMember}; npc code never calls it.
  */
-public abstract class NpcEntity extends PathfinderMob implements FactionMember, Hireable, AlignmentCreditor {
+public abstract class NpcEntity extends PathfinderMob implements FactionMember, Hireable, AlignmentCreditor, io.github.sethwillemsvg.lotrrevival.core.api.TravelCompanion {
     private static final EntityDataAccessor<Integer> DATA_ROLE =
             SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_GENDER =
@@ -427,6 +427,7 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember, 
         IdleGoals.install(this, goalSelector, race);
         RoutineGoals.install(this, goalSelector, race);
         CombatGoals.install(this, goalSelector, targetSelector, race);
+        io.github.sethwillemsvg.lotrrevival.npc.hire.ai.UnitGoals.install(this, goalSelector);
     }
 
     /** Retaliation state (hit and kill reactions); see {@link Retaliation}. */
@@ -467,6 +468,12 @@ public abstract class NpcEntity extends PathfinderMob implements FactionMember, 
     public CommandState commandState() {
         HiredUnit state = HiredUnits.get(this);
         return state.isHired() ? state.command().state() : CommandState.NONE;
+    }
+
+    /** Fast travel takes along this unit when it is the player's and currently following. */
+    @Override
+    public boolean travelsWith(ServerPlayer player) {
+        return io.github.sethwillemsvg.lotrrevival.npc.hire.ai.UnitAi.travelsWith(this, player);
     }
 
     @Override

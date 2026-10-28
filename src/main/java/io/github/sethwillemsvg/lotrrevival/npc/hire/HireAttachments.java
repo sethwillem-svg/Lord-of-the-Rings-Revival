@@ -14,6 +14,13 @@ public final class HireAttachments {
                             .serialize(HiredUnit.CODEC)
                             .build());
 
+    /** {@code lotrrevival:unit_runtime}: transient AI memory of a hired unit (never saved, never synced). */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<io.github.sethwillemsvg.lotrrevival.npc.hire.ai.UnitRuntime>>
+            UNIT_RUNTIME = ModRegistries.ATTACHMENT_TYPES.register(
+                    "unit_runtime",
+                    () -> AttachmentType.builder(io.github.sethwillemsvg.lotrrevival.npc.hire.ai.UnitRuntime::new)
+                            .build());
+
     private HireAttachments() {}
 
     /** Touch from {@code NpcMod.init} so the class loads before registration. */
