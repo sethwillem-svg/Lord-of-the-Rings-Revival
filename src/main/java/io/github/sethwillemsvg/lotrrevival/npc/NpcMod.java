@@ -17,11 +17,14 @@ public final class NpcMod {
         NpcEntityTypes.init(modBus);
         NpcItems.init(modBus);
         NeoForge.EVENT_BUS.addListener(NpcMod::onAddReloadListeners);
+        NpcConfig.register(net.neoforged.fml.ModLoadingContext.get().getActiveContainer());
+        NeoForge.EVENT_BUS.addListener(io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcSpawner::onLevelTick);
     }
 
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new NpcRoleData());
         event.addListener(new NpcNames());
         event.addListener(new NpcLoadoutData());
+        event.addListener(new io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcSpawnData());
     }
 }

@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "type": "lotrrevival:hobbit",
+      "group_max": 4,
+      "group_min": 1,
+      "weight": 40
+    },
+    {
+      "type": "lotrrevival:hobbit_bounder",
+      "group_max": 3,
+      "group_min": 1,
+      "weight": 1
+    }
+  ]
+}

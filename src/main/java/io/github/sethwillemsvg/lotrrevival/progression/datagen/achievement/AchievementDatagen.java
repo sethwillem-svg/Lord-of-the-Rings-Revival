@@ -43,6 +43,8 @@ public final class AchievementDatagen {
         event.getGenerator()
                 .addProvider(event.includeServer(), new Advancements(output, registryLookup));
         ModLangProvider.contribute(lang -> {
+            lang.add("chat.lotrrevival.achievement.earned", "%1$s has earned the achievement %2$s");
+            lang.add("toast.lotrrevival.achievement", "Achievement Earned");
             for (AchievementTab tab : AchievementTab.values()) {
                 lang.add(tab.langKey(), tabName(tab));
             }
