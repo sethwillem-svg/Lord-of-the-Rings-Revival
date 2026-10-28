@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.datagen;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
+import io.github.sethwillemsvg.lotrrevival.core.building.ArnorBlocks;
 import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.HolderLookup;
@@ -28,6 +29,10 @@ final class RoadSurfaceTags extends BlockTagsProvider {
     @Override
     protected void addTags(HolderLookup.Provider provider) {
         tag(ModTags.Blocks.ROAD_SURFACES).add(Blocks.DIRT_PATH, Blocks.COARSE_DIRT);
+        // Arnor brick full blocks and slabs (#96) pave the Arnor road style.
+        for (ArnorBlocks.Variant v : ArnorBlocks.VARIANTS) {
+            tag(ModTags.Blocks.ROAD_SURFACES).add(v.block().get(), v.slab().get());
+        }
     }
 
     @Override

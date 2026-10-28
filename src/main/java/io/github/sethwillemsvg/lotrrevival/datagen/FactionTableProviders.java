@@ -60,6 +60,8 @@ final class FactionTableProviders {
                 List.of(new LootTableProvider.SubProviderEntry(TableLoot::new, LootContextParamSets.BLOCK)),
                 lookup), "Faction table loot tables"));
         generator.addProvider(event.includeServer(), new Tags(output, lookup, event.getExistingFileHelper()));
+        VanillaTagProviders.contributeBlocks(tag -> FactionTables.ALL.forEach(
+                entry -> tag.apply(net.minecraft.tags.BlockTags.MINEABLE_WITH_AXE).add(entry.block().get())));
         generator.addProvider(event.includeServer(), new Named(new Recipes(output, lookup), "Faction table recipes"));
     }
 
@@ -149,7 +151,7 @@ final class FactionTableProviders {
 
         @Override
         protected void addTags(HolderLookup.Provider provider) {
-            // mineable/axe is written by BrewingProviders.BlockTags (one provider per tag file).
+            // mineable/axe is written by VanillaTagProviders (contributed in gather).
             var crafting = tag(ModTags.Blocks.CRAFTING_TABLES);
             FactionTables.ALL.forEach(entry -> crafting.add(entry.block().get()));
         }
@@ -171,8 +173,7 @@ final class FactionTableProviders {
             // by whoever finds or buys it; later tables chain from this recipe).
             table(out, FactionTables.HOBBIT, ItemTags.WOOL);
             table(out, FactionTables.BREE, Items.BRICKS);
-            // TODO: switch to arnor_brick once the Arnor stone brick set (PR #96) is merged.
-            table(out, FactionTables.RANGER, Items.STONE_BRICKS);
+            table(out, FactionTables.RANGER, io.github.sethwillemsvg.lotrrevival.core.building.ArnorBlocks.ARNOR_BRICK.block().get());
             table(out, FactionTables.GONDOR, Items.CHISELED_STONE_BRICKS);
             table(out, FactionTables.MORDOR, Items.POLISHED_BLACKSTONE_BRICKS);
         }

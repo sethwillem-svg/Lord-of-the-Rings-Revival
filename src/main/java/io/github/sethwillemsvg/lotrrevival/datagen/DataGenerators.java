@@ -52,8 +52,7 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeClient(), new BrewingProviders.BlockStates(output, event.getExistingFileHelper()));
         generator.addProvider(event.includeServer(), new BrewingProviders.Loot(output, lookup));
-        generator.addProvider(
-                event.includeServer(), new BrewingProviders.BlockTags(output, lookup, event.getExistingFileHelper()));
+        BrewingProviders.contributeVanillaTags();
         // End Core: brewing
         // Core: gold ring and Arnor bricks
         ArnorProviders.contributeLang();
@@ -61,8 +60,7 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeClient(), new ArnorProviders.BlockStates(output, event.getExistingFileHelper()));
         generator.addProvider(event.includeServer(), new ArnorProviders.Loot(output, lookup));
-        generator.addProvider(
-                event.includeServer(), new ArnorProviders.Tags(output, lookup, event.getExistingFileHelper()));
+        ArnorProviders.contributeVanillaTags();
         // End Core: gold ring and Arnor bricks
         generator.addProvider(
                 event.includeServer(), new RoadSurfaceTags(output, lookup, event.getExistingFileHelper()));
@@ -72,15 +70,15 @@ public final class DataGenerators {
         // Core: metals and ores (#108)
         MaterialProviders.gather(event);
         // End Core: metals and ores
-        // Core #105: bronze and silver banner-base metals
-        BannerMetalProviders.gather(event);
-        // End Core #105
         // Core: combat foundation (#107), generic gear providers driven by GearCatalog
         io.github.sethwillemsvg.lotrrevival.datagen.combat.CombatDatagen.gather(event, lookup);
         // End Core: combat foundation
         // Core: faction crafting tables
         FactionTableProviders.gather(event);
         // End Core: faction crafting tables
+
+        // Core: the only writers of minecraft: block and item tags; systems contribute entries above.
+        VanillaTagProviders.gather(event);
 
         // World
         WorldDatagen.gather(event, registryLookup);

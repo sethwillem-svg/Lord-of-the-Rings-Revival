@@ -6,6 +6,7 @@ import io.github.sethwillemsvg.lotrrevival.core.combat.GearEntry;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
+import io.github.sethwillemsvg.lotrrevival.datagen.VanillaTagProviders;
 import net.minecraft.data.tags.ItemTagsProvider;
 import net.minecraft.data.tags.TagsProvider;
 import net.minecraft.tags.TagKey;
@@ -25,7 +26,9 @@ final class CombatItemTags extends ItemTagsProvider {
     protected void addTags(HolderLookup.Provider provider) {
         for (GearEntry entry : GearCatalog.entries()) {
             for (TagKey<Item> tag : entry.tags()) {
-                tag(tag).add(entry.item().get());
+                if (!VanillaTagProviders.isVanilla(tag)) {
+                    tag(tag).add(entry.item().get());
+                }
             }
         }
     }

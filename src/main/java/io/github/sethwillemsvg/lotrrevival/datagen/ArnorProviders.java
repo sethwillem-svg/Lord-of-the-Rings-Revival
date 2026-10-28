@@ -3,7 +3,6 @@ package io.github.sethwillemsvg.lotrrevival.datagen;
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.building.ArnorBlocks;
 import io.github.sethwillemsvg.lotrrevival.core.building.GoldRingItems;
-import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -28,7 +27,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider;
-import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import net.neoforged.neoforge.common.data.ExistingFileHelper;
 
 /** Core: gold ring and Arnor brick set datagen (models, states, loot, tags, recipes, lang). */
@@ -86,26 +84,19 @@ final class ArnorProviders {
         }
     }
 
-    static final class Tags extends BlockTagsProvider {
-        Tags(PackOutput output, CompletableFuture<HolderLookup.Provider> lookup, ExistingFileHelper helper) {
-            super(output, lookup, LOTRRevival.MOD_ID, helper);
-        }
-
-        @Override
-        protected void addTags(HolderLookup.Provider provider) {
+    /**
+     * Arnor's vanilla block tags, written by {@link VanillaTagProviders}. Its {@code #lotrrevival:road_surfaces}
+     * entries live in {@link RoadSurfaceTags}, the single writer of that tag.
+     */
+    static void contributeVanillaTags() {
+        VanillaTagProviders.contributeBlocks(tag -> {
             for (ArnorBlocks.Variant v : ArnorBlocks.VARIANTS) {
-                tag(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE)
+                tag.apply(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE)
                         .add(v.block().get(), v.slab().get(), v.stairs().get());
-                tag(net.minecraft.tags.BlockTags.SLABS).add(v.slab().get());
-                tag(net.minecraft.tags.BlockTags.STAIRS).add(v.stairs().get());
-                tag(ModTags.Blocks.ROAD_SURFACES).add(v.block().get(), v.slab().get());
+                tag.apply(net.minecraft.tags.BlockTags.SLABS).add(v.slab().get());
+                tag.apply(net.minecraft.tags.BlockTags.STAIRS).add(v.stairs().get());
             }
-        }
-
-        @Override
-        public String getName() {
-            return "Arnor block tags";
-        }
+        });
     }
 
     /** Block loot as a custom provider: vanilla's loot table provider has a fixed name already used by Core brewing. */

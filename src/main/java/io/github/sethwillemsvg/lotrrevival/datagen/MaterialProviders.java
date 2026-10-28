@@ -57,6 +57,35 @@ final class MaterialProviders {
         generator.addProvider(event.includeServer(), new Loot(output, lookup));
         generator.addProvider(event.includeServer(), new BlockTagProvider(output, lookup, files));
         generator.addProvider(event.includeServer(), new ItemTagProvider(output, lookup, files));
+        contributeVanillaTags();
+    }
+
+    /** mineable/pickaxe, needs_*_tool, beacon_base_blocks and beacon_payment_items go through VanillaTagProviders. */
+    private static void contributeVanillaTags() {
+        VanillaTagProviders.contributeBlocks(tag -> {
+            for (Metal metal : Metal.values()) {
+                if (metal.hasOre()) {
+                    Block ore = MaterialBlocks.ORE.get(metal).get();
+                    Block deepslate = MaterialBlocks.DEEPSLATE_ORE.get(metal).get();
+                    Block raw = MaterialBlocks.RAW_BLOCK.get(metal).get();
+                    tag.apply(BlockTags.MINEABLE_WITH_PICKAXE).add(ore, deepslate, raw);
+                    tag.apply(metal.tier().tag).add(ore, deepslate, raw);
+                }
+                if (metal.hasIngot()) {
+                    Block block = MaterialBlocks.BLOCK.get(metal).get();
+                    tag.apply(BlockTags.MINEABLE_WITH_PICKAXE).add(block);
+                    tag.apply(metal.tier().tag).add(block);
+                    tag.apply(BlockTags.BEACON_BASE_BLOCKS).add(block);
+                }
+            }
+        });
+        VanillaTagProviders.contributeItems(tag -> {
+            for (Metal metal : Metal.values()) {
+                if (metal.hasIngot()) {
+                    tag.apply(ItemTags.BEACON_PAYMENT_ITEMS).add(MaterialItems.INGOT.get(metal).get());
+                }
+            }
+        });
     }
 
     private static void lang(LanguageProvider lang) {
@@ -178,15 +207,10 @@ final class MaterialProviders {
                     tag(MaterialTags.commonOreBlocks(metal)).add(ore, deepslate);
                     tag(MaterialTags.modOreBlocks(metal)).add(ore, deepslate);
                     tag(MaterialTags.rawStorageBlocksBlock(metal)).add(raw);
-                    tag(BlockTags.MINEABLE_WITH_PICKAXE).add(ore, deepslate, raw);
-                    tag(metal.tier().tag).add(ore, deepslate, raw);
                 }
                 if (metal.hasIngot()) {
                     Block block = MaterialBlocks.BLOCK.get(metal).get();
                     tag(MaterialTags.storageBlocksBlock(metal)).add(block);
-                    tag(BlockTags.MINEABLE_WITH_PICKAXE).add(block);
-                    tag(metal.tier().tag).add(block);
-                    tag(BlockTags.BEACON_BASE_BLOCKS).add(block);
                 }
             }
         }
@@ -223,7 +247,6 @@ final class MaterialProviders {
                     tag(MaterialTags.ingots(metal)).add(ingot);
                     tag(MaterialTags.nuggets(metal)).add(MaterialItems.NUGGET.get(metal).get());
                     tag(MaterialTags.storageBlocks(metal)).add(MaterialBlocks.BLOCK_ITEM.get(metal).get());
-                    tag(ItemTags.BEACON_PAYMENT_ITEMS).add(ingot);
                 }
             }
         }
