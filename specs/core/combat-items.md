@@ -118,13 +118,21 @@ Item ids are `<set>_<class>` (`gondor_pike`, `mordor_dagger`, `iron_throwing_axe
 | --- | --- |
 | Dagger | `M`, `S` |
 | Sword | `M`, `M`, `S` |
-| Spear | `M`, `S`, `S` |
+| Spear | ` M`, ` S`, `S ` (every set; see note) |
 | Pike | `  M`, ` S `, `S  ` |
 | Lance | `  M`, ` M `, `S  ` |
 | Battleaxe | `MMM`, `MSM`, ` S ` |
 | Hammer | `MSM`, `MSM`, ` S ` |
 | Throwing axe | ` M`, `SM` |
 | Bronze tools | vanilla tool shapes |
+
+Spear note (#168): a straight `M`, `S`, `S` column is the vanilla shovel grid, so on the vanilla table
+the bronze and iron spears would collide with the bronze and vanilla iron shovels. Legacy angles its
+spear recipe (head at the top, shaft slanting down); our behaviour notes do not record the exact
+grid, and the full 3x3 diagonal is already the pike. The spear therefore uses the 2-wide slant
+` M`, ` S`, `S ` on every table, faction tables included, so one class keeps one shape. Shaped
+recipes also match mirrored, so `M `, `S `, ` S` gives the spear too. Vanilla shovel grids are
+unchanged and still give shovels.
 
 Ranger and Gondor gear use iron ingots, as most Legacy faction gear does (L).
 
@@ -269,6 +277,8 @@ later `orc` group shared by Mordor, Angmar and Dol Guldur tables).
   logs one warning.
 - **Faction recipe vs vanilla recipe with the same grid:** the faction recipe wins on a faction
   table; on a vanilla table only vanilla recipes exist.
+- **Our vanilla-table recipe vs a vanilla recipe:** never share a grid. A clash makes the result
+  depend on recipe load order (the reason the spear is a slant, not a shovel column; #168).
 - **Shift-click crafting** on a faction table crafts as many as the inputs allow, re-checking
   alignment once per click.
 - **Poisoning an already poisoned dagger:** no recipe match. Poisoned daggers stack only with
@@ -388,6 +398,9 @@ later `orc` group shared by Mordor, Angmar and Dol Guldur tables).
 - [ ] GameTest: Gondor bow arrow damage = vanilla arrow damage x1.125 at full draw; iron crossbow
       bolt base damage 4.0.
 - [ ] GameTest: lance in main hand on foot applies -20% speed; removed when mounted or switched.
+- [ ] GameTest (#168): on the vanilla table, `M`, `S`, `S` with an iron ingot gives the vanilla iron
+      shovel and with a bronze ingot the bronze shovel; the spear slant (and its mirror) gives the
+      iron or bronze spear.
 - [ ] Playtest: craft and use each class; reach and speed differences are noticeable; tables refuse
       with smoke at 0 alignment; forges run 4 lanes on one fuel; textures read as their culture.
 

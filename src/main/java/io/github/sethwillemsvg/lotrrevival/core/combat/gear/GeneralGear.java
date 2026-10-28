@@ -5,14 +5,10 @@ import io.github.sethwillemsvg.lotrrevival.core.combat.ArmorSet;
 import io.github.sethwillemsvg.lotrrevival.core.combat.CombatMaterial;
 import io.github.sethwillemsvg.lotrrevival.core.combat.CraftTable;
 import io.github.sethwillemsvg.lotrrevival.core.combat.Gear;
-import io.github.sethwillemsvg.lotrrevival.core.combat.GearRecipe;
 import io.github.sethwillemsvg.lotrrevival.core.combat.GearSet;
 import io.github.sethwillemsvg.lotrrevival.core.combat.RecipeKey;
 import io.github.sethwillemsvg.lotrrevival.core.combat.ToolKind;
 import io.github.sethwillemsvg.lotrrevival.core.combat.WeaponClass;
-import java.util.List;
-import java.util.Map;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 
 /**
@@ -36,15 +32,7 @@ public final class GeneralGear {
                 WeaponClass.SWORD,
                 WeaponClass.BATTLEAXE,
                 WeaponClass.THROWING_AXE);
-        // The spec's spear shape (M, S, S) is identical to the vanilla shovel shape, which the bronze set
-        // also crafts on the vanilla table. The bronze spear takes an offset shape instead.
-        Gear.weapon(
-                BRONZE,
-                WeaponClass.SPEAR,
-                GearRecipe.shaped(
-                        CraftTable.VANILLA,
-                        List.of(" M", " S", "S "),
-                        Map.of('M', BRONZE.metal(), 'S', RecipeKey.of(Items.STICK))));
+        Gear.weapon(BRONZE, WeaponClass.SPEAR);
         Gear.tool(BRONZE, ToolKind.PICKAXE);
         Gear.tool(BRONZE, ToolKind.AXE);
         Gear.tool(BRONZE, ToolKind.SHOVEL);
