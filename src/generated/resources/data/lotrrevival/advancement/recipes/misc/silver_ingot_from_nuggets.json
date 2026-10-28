@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_silver_ingot_from_nuggets": {
+      "conditions": {
+        "items": [
+          {
+            "items": "lotrrevival:silver_nugget"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "lotrrevival:silver_ingot_from_nuggets"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_silver_ingot_from_nuggets"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "lotrrevival:silver_ingot_from_nuggets"
+    ]
+  }
+}

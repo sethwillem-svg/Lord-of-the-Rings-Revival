@@ -68,6 +68,10 @@ public final class DataGenerators {
         generator.addProvider(
                 event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
 
+        // Core: metals and ores (#108)
+        MaterialProviders.gather(event);
+        // End Core: metals and ores
+
         // World
         WorldDatagen.gather(event, registryLookup);
 
