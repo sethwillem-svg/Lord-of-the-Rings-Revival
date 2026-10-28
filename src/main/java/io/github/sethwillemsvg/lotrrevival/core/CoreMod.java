@@ -31,5 +31,8 @@ public final class CoreMod {
         // Core: faction crafting tables
         io.github.sethwillemsvg.lotrrevival.core.table.FactionTables.init(modBus);
         // End Core: faction crafting tables
+        // Core: alloy forge and orc forge (#123)
+        io.github.sethwillemsvg.lotrrevival.core.forge.ForgeBlocks.init(modBus);
+        // End Core: alloy forge and orc forge
     }
 }

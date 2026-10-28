@@ -1,0 +1,240 @@
+package io.github.sethwillemsvg.lotrrevival.datagen;
+
+import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
+import io.github.sethwillemsvg.lotrrevival.core.forge.ForgeBlock;
+import io.github.sethwillemsvg.lotrrevival.core.forge.ForgeBlocks;
+import io.github.sethwillemsvg.lotrrevival.core.forge.ForgeVariant;
+import io.github.sethwillemsvg.lotrrevival.core.forge.ForgingRecipe;
+import io.github.sethwillemsvg.lotrrevival.core.material.MaterialItems;
+import io.github.sethwillemsvg.lotrrevival.core.material.Metal;
+import io.github.sethwillemsvg.lotrrevival.core.table.FactionTables;
+import io.github.sethwillemsvg.lotrrevival.core.table.TableRef;
+import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.data.CachedOutput;
+import net.minecraft.data.DataProvider;
+import net.minecraft.data.PackOutput;
+import net.minecraft.data.loot.BlockLootSubProvider;
+import net.minecraft.data.loot.LootTableProvider;
+import net.minecraft.data.recipes.RecipeCategory;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.data.recipes.RecipeProvider;
+import net.minecraft.data.recipes.ShapedRecipeBuilder;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.neoforged.neoforge.client.model.generators.BlockStateProvider;
+import net.neoforged.neoforge.client.model.generators.ItemModelProvider;
+import net.neoforged.neoforge.client.model.generators.ModelFile;
+import net.neoforged.neoforge.common.data.BlockTagsProvider;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
+import net.neoforged.neoforge.data.event.GatherDataEvent;
+
+/** Core: datagen for the alloy forge and orc forge (block states, models, loot, tags, recipes and lang). */
+final class ForgeProviders {
+    private ForgeProviders() {}
+
+    static void gather(GatherDataEvent event) {
+        var generator = event.getGenerator();
+        PackOutput output = generator.getPackOutput();
+        var lookup = event.getLookupProvider();
+        ExistingFileHelper files = event.getExistingFileHelper();
+
+        ModLangProvider.contribute(lang -> {
+            lang.addBlock(ForgeBlocks.ALLOY_FORGE, "Alloy Forge");
+            lang.addBlock(ForgeBlocks.ORC_FORGE, "Orc Forge");
+        });
+        generator.addProvider(event.includeClient(), new BlockStates(output, files));
+        generator.addProvider(event.includeClient(), new ItemModels(output, files));
+        generator.addProvider(event.includeServer(), new Named(new ForgeLoot(output, lookup), "Forge loot tables"));
+        generator.addProvider(event.includeServer(), new ForgeTags(output, lookup, files));
+        VanillaTagProviders.contributeBlocks(
+                tag -> ForgeBlocks.ALL.forEach(forge -> tag.apply(BlockTags.MINEABLE_WITH_PICKAXE).add(forge.get())));
+        generator.addProvider(event.includeServer(), new Named(new Recipes(output, lookup), "Forge recipes"));
+    }
+
+    static final class BlockStates extends BlockStateProvider {
+        BlockStates(PackOutput output, ExistingFileHelper files) {
+            super(output, LOTRRevival.MOD_ID, files);
+        }
+
+        @Override
+        protected void registerStatesAndModels() {
+            for (ForgeVariant variant : ForgeVariant.values()) {
+                String name = variant.id();
+                ModelFile off = model(name, name + "_front");
+                ModelFile on = model(name + "_on", name + "_front_on");
+                Block block = block(variant);
+                horizontalBlock(block, state -> state.getValue(ForgeBlock.LIT) ? on : off);
+            }
+        }
+
+        private ModelFile model(String modelName, String front) {
+            String variant = modelName.endsWith("_on") ? modelName.substring(0, modelName.length() - 3) : modelName;
+            return models().orientableWithBottom(
+                    modelName,
+                    modLoc("block/" + variant + "_side"),
+                    modLoc("block/" + front),
+                    modLoc("block/" + variant + "_top"),
+                    modLoc("block/" + variant + "_top"));
+        }
+
+        @Override
+        public String getName() {
+            return "Forge block states";
+        }
+    }
+
+    static final class ItemModels extends ItemModelProvider {
+        ItemModels(PackOutput output, ExistingFileHelper files) {
+            super(output, LOTRRevival.MOD_ID, files);
+        }
+
+        @Override
+        protected void registerModels() {
+            // The block models are generated by BlockStates in the same run, so they are not "existing" yet.
+            for (ForgeVariant variant : ForgeVariant.values()) {
+                getBuilder(variant.id())
+                        .parent(new ModelFile.UncheckedModelFile(LOTRRevival.id("block/" + variant.id())));
+            }
+        }
+
+        @Override
+        public String getName() {
+            return "Forge item models";
+        }
+    }
+
+    private static final class ForgeLoot extends LootTableProvider {
+        ForgeLoot(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
+            super(
+                    output,
+                    Set.of(),
+                    List.of(new SubProviderEntry(BlockLoot::new, LootContextParamSets.BLOCK)),
+                    registries);
+        }
+    }
+
+    private static final class BlockLoot extends BlockLootSubProvider {
+        BlockLoot(HolderLookup.Provider registries) {
+            super(Set.of(), FeatureFlags.REGISTRY.allFlags(), registries);
+        }
+
+        @Override
+        protected void generate() {
+            ForgeBlocks.blocks().forEach(this::dropSelf);
+        }
+
+        @Override
+        protected Iterable<Block> getKnownBlocks() {
+            return ForgeBlocks.blocks();
+        }
+    }
+
+    /** The only writer of {@code lotrrevival:forges/any}. mineable/pickaxe goes through VanillaTagProviders. */
+    static final class ForgeTags extends BlockTagsProvider {
+        ForgeTags(PackOutput output, CompletableFuture<HolderLookup.Provider> lookup, ExistingFileHelper files) {
+            super(output, lookup, LOTRRevival.MOD_ID, files);
+        }
+
+        @Override
+        protected void addTags(HolderLookup.Provider provider) {
+            var any = tag(ModTags.Blocks.FORGES_ANY);
+            ForgeBlocks.ALL.forEach(forge -> any.add(forge.get()));
+        }
+
+        @Override
+        public String getName() {
+            return "Forge block tags";
+        }
+    }
+
+    static final class Recipes extends RecipeProvider {
+        Recipes(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
+            super(output, registries);
+        }
+
+        @Override
+        protected void buildRecipes(RecipeOutput out) {
+            // The forges themselves: a ring of 8 bricks.
+            ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ForgeBlocks.ALLOY_FORGE_ITEM.get())
+                    .pattern("SSS")
+                    .pattern("S S")
+                    .pattern("SSS")
+                    .define('S', Items.STONE_BRICKS)
+                    .unlockedBy("has_stone_bricks", has(Items.STONE_BRICKS))
+                    .save(out, LOTRRevival.id("forges/alloy_forge"));
+            FactionShapedRecipeBuilder.shaped(
+                            TableRef.block(FactionTables.MORDOR.block().get()), ForgeBlocks.ORC_FORGE_ITEM.get(), 1)
+                    .category(RecipeCategory.DECORATIONS)
+                    .define('B', Items.POLISHED_BLACKSTONE_BRICKS)
+                    .pattern("BBB")
+                    .pattern("B B")
+                    .pattern("BBB")
+                    .save(out, LOTRRevival.id("forges/orc_forge"));
+
+            // Bronze: copper plus tin, raw or ingot, either slot, in any forge: 2 bronze.
+            forging(
+                    out,
+                    "bronze_from_copper_and_tin",
+                    new ForgingRecipe(
+                            TableRef.tag(ModTags.Blocks.FORGES_ANY.location()),
+                            Ingredient.of(Items.COPPER_INGOT, Items.RAW_COPPER),
+                            Optional.of(Ingredient.of(
+                                    MaterialItems.INGOT.get(Metal.TIN).get(), MaterialItems.RAW.get(Metal.TIN).get())),
+                            new ItemStack(MaterialItems.INGOT.get(Metal.BRONZE).get(), 2),
+                            0.7F,
+                            ForgingRecipe.DEFAULT_COOKING_TIME));
+            // Orc steel: raw Morgul iron in the orc forge only.
+            forging(
+                    out,
+                    "orc_steel_from_raw_morgul_iron",
+                    new ForgingRecipe(
+                            TableRef.block(ForgeBlocks.ORC_FORGE.get()),
+                            Ingredient.of(MaterialItems.RAW.get(Metal.MORGUL_IRON).get()),
+                            Optional.empty(),
+                            new ItemStack(MaterialItems.INGOT.get(Metal.ORC_STEEL).get()),
+                            0.7F,
+                            ForgingRecipe.DEFAULT_COOKING_TIME));
+        }
+
+        private static void forging(RecipeOutput out, String name, ForgingRecipe recipe) {
+            ResourceLocation id = LOTRRevival.id("forging/" + name);
+            out.accept(id, recipe, null);
+        }
+    }
+
+    private static Block block(ForgeVariant variant) {
+        return (variant == ForgeVariant.ALLOY ? ForgeBlocks.ALLOY_FORGE : ForgeBlocks.ORC_FORGE).get();
+    }
+
+    /** RecipeProvider and LootTableProvider have a final getName(); wrap them to get a unique provider name. */
+    static final class Named implements DataProvider {
+        private final DataProvider delegate;
+        private final String name;
+
+        Named(DataProvider delegate, String name) {
+            this.delegate = delegate;
+            this.name = name;
+        }
+
+        @Override
+        public CompletableFuture<?> run(CachedOutput output) {
+            return delegate.run(output);
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+    }
+}

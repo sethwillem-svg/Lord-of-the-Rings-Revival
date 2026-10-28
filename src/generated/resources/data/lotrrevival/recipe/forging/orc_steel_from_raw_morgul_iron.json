@@ -1,0 +1,12 @@
+{
+  "type": "lotrrevival:forging",
+  "experience": 0.7,
+  "forges": "lotrrevival:orc_forge",
+  "input": {
+    "item": "lotrrevival:raw_morgul_iron"
+  },
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:orc_steel_ingot"
+  }
+}
