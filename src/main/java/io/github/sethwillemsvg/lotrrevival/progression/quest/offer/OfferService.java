@@ -1,10 +1,12 @@
 package io.github.sethwillemsvg.lotrrevival.progression.quest.offer;
 
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntity;
+import io.github.sethwillemsvg.lotrrevival.progression.bounty.Bounties;
 import io.github.sethwillemsvg.lotrrevival.progression.ProgressionAttachments;
 import io.github.sethwillemsvg.lotrrevival.progression.network.OpenQuestOfferPayload;
 import io.github.sethwillemsvg.lotrrevival.progression.network.ProgressionSync;
 import io.github.sethwillemsvg.lotrrevival.progression.network.QuestOfferClosedPayload;
+import io.github.sethwillemsvg.lotrrevival.progression.quest.ObjectiveData;
 import io.github.sethwillemsvg.lotrrevival.progression.quest.QuestGiverData;
 import io.github.sethwillemsvg.lotrrevival.progression.quest.Quests;
 import io.github.sethwillemsvg.lotrrevival.progression.quest.event.QuestOfferEvent;
@@ -241,14 +243,37 @@ public final class OfferService {
             OfferViewers.remove(npc.getUUID(), player.getUUID());
             return AcceptOutcome.REFUSED;
         }
-        Quests.AcceptResult started = Quests.accept(
-                player,
-                template,
-                offer.count(),
-                npc.getUUID(),
-                npc.speakerName(),
-                npc.faction().location(),
-                Optional.of(GlobalPos.of(npc.level().dimension(), npc.blockPosition())));
+        Optional<GlobalPos> giverPos = Optional.of(GlobalPos.of(npc.level().dimension(), npc.blockPosition()));
+        Quests.AcceptResult started;
+        if (offer.bountyTarget().isPresent()) {
+            // Bounties hunt one player (count 1) and keep the values fixed when the offer appeared.
+            started = Quests.start(
+                                    player,
+                                    template,
+                                    1,
+                                    npc.getUUID(),
+                                    npc.speakerName(),
+                                    npc.faction().location(),
+                                    giverPos,
+                                    new ObjectiveData(
+                                            List.of(), offer.bountyTarget(), offer.bountyTargetName()),
+                                    Optional.of(new float[] {offer.alignmentBase(), offer.coinBase()}))
+                            .isPresent()
+                    ? Quests.AcceptResult.OK
+                    : Quests.AcceptResult.UNKNOWN_TEMPLATE;
+            if (started == Quests.AcceptResult.OK && npc.getServer() != null) {
+                Bounties.queueNotice(npc.getServer(), offer.bountyTarget().get(), npc.faction());
+            }
+        } else {
+            started = Quests.accept(
+                    player,
+                    template,
+                    offer.count(),
+                    npc.getUUID(),
+                    npc.speakerName(),
+                    npc.faction().location(),
+                    giverPos);
+        }
         if (started != Quests.AcceptResult.OK) {
             OfferViewers.remove(npc.getUUID(), player.getUUID());
             return AcceptOutcome.REFUSED;

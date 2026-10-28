@@ -31,6 +31,8 @@ public final class BountyDatagen {
             lang.add("bounty.lotrrevival.notice", "The %s have put a price on your head.");
             lang.add("bounty.lotrrevival.slain", "%s hunted you down and claimed the price on your head.");
             lang.add("bounty.lotrrevival.immune", "The %s will not seek your head again for a time.");
+            lang.add("bounty.lotrrevival.hint", "I heard %s was last seen in the %s.");
+            lang.add("bounty.lotrrevival.hint.unknown", "I have no word of where %s has gone.");
             lang.add("bounty.lotrrevival.announce.claimed", "%s has claimed the bounty on %s set by the %s.");
             lang.add("bounty.lotrrevival.announce.turned", "%s turned the hunt and slew the bounty hunter %s.");
 
