@@ -1,0 +1,19 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "equipment",
+  "key": {
+    "X": {
+      "tag": "c:ingots/iron"
+    }
+  },
+  "pattern": [
+    "X X",
+    "XXX",
+    "XXX"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:gondor_chestplate"
+  },
+  "table": "lotrrevival:gondor_crafting_table"
+}

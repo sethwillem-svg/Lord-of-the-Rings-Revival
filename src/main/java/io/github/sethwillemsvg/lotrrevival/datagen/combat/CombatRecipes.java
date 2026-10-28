@@ -6,6 +6,8 @@ import io.github.sethwillemsvg.lotrrevival.core.combat.GearEntry;
 import io.github.sethwillemsvg.lotrrevival.core.combat.GearKind;
 import io.github.sethwillemsvg.lotrrevival.core.combat.GearRecipe;
 import io.github.sethwillemsvg.lotrrevival.core.combat.RecipeKey;
+import io.github.sethwillemsvg.lotrrevival.core.table.TableRef;
+import io.github.sethwillemsvg.lotrrevival.datagen.FactionShapedRecipeBuilder;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -25,9 +27,8 @@ import net.minecraft.world.item.Item;
  * Crafting recipes for every {@link GearEntry}. Vanilla-table recipes become vanilla
  * {@code crafting_shaped}/{@code crafting_shapeless}.
  *
- * <p>TODO(#109): recipes whose table is a faction table or a table group need the
- * {@code lotrrevival:faction_shaped}/{@code faction_shapeless} serializers from the crafting-tables
- * ticket; until then they are skipped here (the data stays in the catalog).
+ * <p>Shaped recipes on a faction table or table group become {@code lotrrevival:faction_shaped}; shapeless
+ * ones on such tables are skipped until a faction gear recipe needs them.
  */
 final class CombatRecipes extends RecipeProvider {
     CombatRecipes(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
@@ -40,13 +41,28 @@ final class CombatRecipes extends RecipeProvider {
             List<GearRecipe> recipes = entry.recipes();
             for (int i = 0; i < recipes.size(); i++) {
                 GearRecipe recipe = recipes.get(i);
+                String path = i == 0 ? entry.id() : entry.id() + "_" + (i + 1);
                 if (!recipe.table().isVanilla()) {
+                    if (recipe.isShaped()) {
+                        saveFaction(out, entry, recipe, LOTRRevival.id(path));
+                    }
                     continue;
                 }
-                String path = i == 0 ? entry.id() : entry.id() + "_" + (i + 1);
                 save(out, entry, recipe, LOTRRevival.id(path));
             }
         }
+    }
+
+    /** Shaped recipe on a faction table or table group: {@code lotrrevival:faction_shaped}. */
+    private static void saveFaction(RecipeOutput out, GearEntry entry, GearRecipe recipe, ResourceLocation id) {
+        RecipeCategory category = entry.kind() == GearKind.TOOL ? RecipeCategory.TOOLS : RecipeCategory.COMBAT;
+        FactionShapedRecipeBuilder builder = FactionShapedRecipeBuilder.shaped(
+                new TableRef(recipe.table().id(), recipe.table().tag()), entry.item().get(), recipe.count());
+        recipe.pattern().forEach(builder::pattern);
+        for (Map.Entry<Character, RecipeKey> key : recipe.keys().entrySet()) {
+            builder.define(key.getKey(), key.getValue().toIngredient());
+        }
+        builder.category(category).save(out, id);
     }
 
     private static void save(RecipeOutput out, GearEntry entry, GearRecipe recipe, ResourceLocation id) {

@@ -1,0 +1,21 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "equipment",
+  "key": {
+    "M": {
+      "tag": "c:ingots/iron"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "M",
+    "S"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:gondor_dagger"
+  },
+  "table": "lotrrevival:gondor_crafting_table"
+}
