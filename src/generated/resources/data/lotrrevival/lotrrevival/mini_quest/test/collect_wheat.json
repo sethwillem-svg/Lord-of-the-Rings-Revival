@@ -1,0 +1,14 @@
+{
+  "group": "lotrrevival:test",
+  "objective": {
+    "type": "lotrrevival:collect",
+    "count": {
+      "max": 40,
+      "min": 10
+    },
+    "item": {
+      "items": "minecraft:wheat"
+    }
+  },
+  "reward_factor": 0.25
+}

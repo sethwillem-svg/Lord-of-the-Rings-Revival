@@ -1,0 +1,12 @@
+{
+  "group": "lotrrevival:test",
+  "objective": {
+    "type": "lotrrevival:kill_faction",
+    "count": {
+      "max": 10,
+      "min": 5
+    },
+    "faction": "lotrrevival:mordor"
+  },
+  "reward_factor": 1.0
+}
