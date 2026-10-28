@@ -55,6 +55,8 @@ public final class DataGenerators {
                 event.includeServer(), new BrewingProviders.BlockTags(output, lookup, event.getExistingFileHelper()));
         // End Core: brewing
         generator.addProvider(
+                event.includeServer(), new RoadSurfaceTags(output, lookup, event.getExistingFileHelper()));
+        generator.addProvider(
                 event.includeServer(), new BrewingProviders.CoreItemTags(output, lookup, event.getExistingFileHelper()));
 
         // World
