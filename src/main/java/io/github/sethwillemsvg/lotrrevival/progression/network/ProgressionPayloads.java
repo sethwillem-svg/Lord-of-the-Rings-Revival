@@ -139,6 +139,16 @@ public final class ProgressionPayloads {
                         player, payload.entityId());
             }
         });
+        registrar.playToClient(
+                OpenBannerEditorPayload.TYPE,
+                OpenBannerEditorPayload.STREAM_CODEC,
+                (payload, ctx) -> io.github.sethwillemsvg.lotrrevival.client.progression.banner.BannerEditorClient
+                        .open(payload));
+        registrar.playToServer(UpdateBannerPayload.TYPE, UpdateBannerPayload.STREAM_CODEC, (payload, ctx) -> {
+            if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer player) {
+                io.github.sethwillemsvg.lotrrevival.progression.banner.BannerEditService.update(player, payload);
+            }
+        });
         // Later tickets: registrar.playToClient(...), registrar.playToServer(...)
     }
 }
