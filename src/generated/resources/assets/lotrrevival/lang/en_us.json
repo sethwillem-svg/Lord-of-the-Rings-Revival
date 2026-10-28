@@ -321,6 +321,13 @@
   "commands.lotrrevival.title.revoke.missing": "%s has not been granted the title %s.",
   "commands.lotrrevival.title.revoke.success": "Revoked the title %2$s from %1$s.",
   "commands.lotrrevival.title.unknown": "Unknown title: %s",
+  "commands.lotrrevival.waypoint.clock": "Set the travel clock of %1$s players to %2$s",
+  "commands.lotrrevival.waypoint.list.custom": "  Custom %1$s, %2$s at %3$s, used %4$s times",
+  "commands.lotrrevival.waypoint.list.entry": "  %1$s (%2$s): %3$s, needs %4$s",
+  "commands.lotrrevival.waypoint.list.header": "%1$s: travel clock %2$s, %3$s regions unlocked",
+  "commands.lotrrevival.waypoint.lock": "Locked %1$s regions for %2$s players",
+  "commands.lotrrevival.waypoint.region.unknown": "Unknown waypoint region: %s",
+  "commands.lotrrevival.waypoint.unlock": "Unlocked %1$s regions for %2$s players",
   "container.lotrrevival.brewing_barrel": "Brewing Barrel",
   "drink_strength.lotrrevival.fair": "Fair",
   "drink_strength.lotrrevival.hearty": "Hearty",
@@ -382,6 +389,8 @@
   "item.lotrrevival.wooden_mug": "Wooden Mug",
   "itemGroup.lotrrevival": "The Lord of the Rings: Revival",
   "key.categories.lotrrevival": "The Lord of the Rings: Revival",
+  "message.lotrrevival.region_unlocked": "New lands discovered: %s. Its waypoints are now on your map.",
+  "message.lotrrevival.waypoint_barred": "%s will not receive you",
   "npc.lotrrevival.friendlyfire.hint": "Your blow did nothing: the folk of this faction are your friends. To hit friendly NPCs on purpose, use /lotr npc friendlyfire on. This hint is shown only once.",
   "npc.lotrrevival.hobbit.farmer_friendly.1": "The barley is coming on beautifully this year. A friend like you deserves a bit of luck.",
   "npc.lotrrevival.hobbit.farmer_friendly.2": "Rain on Monday, sun by Wednesday. That is how a good crop likes it.",
@@ -520,5 +529,8 @@
   "title.lotrrevival.starter.wanderer": "Wanderer",
   "toast.lotrrevival.achievement": "Achievement Earned",
   "tooltip.lotrrevival.alcohol": "Alcohol: %s%%",
-  "tooltip.lotrrevival.coin_value": "Value: %s"
+  "tooltip.lotrrevival.coin_value": "Value: %s",
+  "waypoint.state.lotrrevival.barred": "barred",
+  "waypoint.state.lotrrevival.locked": "locked",
+  "waypoint.state.lotrrevival.usable": "usable"
 }

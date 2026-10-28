@@ -237,7 +237,7 @@ Later regions add styles from the Legacy table in the reference notes (Arnor in 
 | `forsaken_inn` | Forsaken Inn | lone_lands | none | ~`[1958, 1462]` | The last inn on the East Road, a day's ride beyond Bree. |
 | `tower_hills` | Tower Hills | tower_hills | none | `[1400, 1480]` | Green hills crowned by old white towers that look towards the sea. |
 
-27 waypoints: 20 faction (16 `hobbit`, 4 `bree`), 7 unaligned. `ered_luin` has none in the pilot.
+28 waypoints: 20 faction (16 `hobbit`, 4 `bree`), 8 unaligned. `ered_luin` has none in the pilot.
 
 **Roads.** Control points are first guesses for #79 to refine on the pilot map; `through` lists waypoints the curve must pass within its width + 16 blocks of.
 
@@ -407,7 +407,7 @@ Client-to-server handlers follow Core's rules: sender alive, rate limit 20 per s
 
 - [ ] Unit (build): the validator passes on the pilot data, and fails on fixtures with an unknown region, a waypoint in the wrong region's biome, a duplicate id, a land biome in no region, a road point in the sea and a `through` waypoint 200 blocks off the road.
 - [ ] Unit (build): the generated JSON for one waypoint, one region and one road matches a checked-in expected file byte for byte.
-- [ ] GameTest: the registries hold the 7 pilot regions, 27 waypoints and 6 roads; every waypoint's region exists.
+- [ ] GameTest: the registries hold the 7 pilot regions, 28 waypoints and 6 roads; every waypoint's region exists.
 - [ ] GameTest: required ticks for uses 0, 1, 10 and 30 at short distance are 36,000, 32,760, 14,898 and 4,974; at 102,000 blocks with uses 0 it is 44,064.
 - [ ] GameTest: a mock player standing in `shire_woodlands` unlocks `shire` within 20 ticks; standing in `river` unlocks nothing.
 - [ ] GameTest: a faction waypoint is barred at `hobbit` -1 and usable at 0.
