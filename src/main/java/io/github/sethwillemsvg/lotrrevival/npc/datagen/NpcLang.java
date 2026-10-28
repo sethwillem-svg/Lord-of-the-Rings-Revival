@@ -36,5 +36,11 @@ public final class NpcLang {
         lang.add("npc.lotrrevival.role.farmer", "Farmer");
         lang.add("npc.lotrrevival.role.innkeeper", "Innkeeper");
         lang.add("npc.lotrrevival.role.traveller", "Traveller");
+        // Friendly fire.
+        lang.add(
+                "npc.lotrrevival.friendlyfire.hint",
+                "Your blow did nothing: the folk of this faction are your friends. To hit friendly NPCs on purpose, use /lotr npc friendlyfire on. This hint is shown only once.");
+        lang.add("commands.lotrrevival.npc.friendlyfire.on", "Friendly fire is on: your hits now land on friendly NPCs.");
+        lang.add("commands.lotrrevival.npc.friendlyfire.off", "Friendly fire is off: friendly NPCs are protected from your hits.");
     }
 }

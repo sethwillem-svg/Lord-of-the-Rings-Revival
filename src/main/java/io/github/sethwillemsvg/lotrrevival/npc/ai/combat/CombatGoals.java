@@ -53,6 +53,9 @@ public final class CombatGoals {
         if (other == npc) {
             return false;
         }
+        if (npc.retaliation().isFleeingFrom(other)) {
+            return true;
+        }
         if (other instanceof Player player) {
             return NpcCombat.isHostilePlayer(npc, player);
         }
