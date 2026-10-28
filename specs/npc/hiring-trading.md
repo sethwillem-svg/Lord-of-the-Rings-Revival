@@ -304,8 +304,8 @@ Thresholds: L2 3, L3 6, L4 10, L5 15, L6 20, L8 33, L10 49, L15 114, L20 227, L2
 
 - Mounted unit entries and unit mounts (Shire pony and later beasts), shared rider/mount XP, mount armor rolls: the mount spec.
 - Farmhands and the Farmer task, farmer and slaver unit lists: later ticket after a farming AI spec.
-- Mercenaries (self-hiring NPCs), conquest horns and invasions (invasion spec), banner bearers and their buffs (combat spec), ranged and bomb gear slots (combat spec).
-- Fast travel with units (needs World waypoints), fellowship protection for units (Progression), unit health bars over heads (client option later).
+- Mercenaries (self-hiring NPCs), conquest horns and invasions (invasion spec; invasions must consult `core.api.LandProtection.blocksInvasion`, and NPC block-breaking `blocksNpcGriefing`), banner bearers and their buffs (combat spec), ranged and bomb gear slots (combat spec).
+- Fast travel with units (needs World waypoints), fellowship protection for units (done in target selection via `core.api.FellowshipQuery`: a unit never picks a player or unit its owner is protected from), unit health bars over heads (client option later).
 - Travelling traders, smiths, market traders and their pools; trader adverts; drink strength, vessels and gear modifiers in prices; the 1-in-10,000 joke trader.
 - Pickpocketing and stolen-item flags (reserved only).
 - Keeping a respawned trader's stock and name (anchor change later).

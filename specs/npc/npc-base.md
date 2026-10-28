@@ -144,6 +144,7 @@ Other trader levels (elf travelling traders +75, dwarf miners and smiths, elf sm
 - **Retaliation:** an NPC that takes damage from a player or mob targets the attacker (home range ignored for this). Guards, captains and man civilians fight; hobbit civilians flee for 200 ticks. **A plain hit angers only the NPC that was hit**; it does not call allies.
 - **Retaliation ends** when the attacker dies, logs out, changes dimension, switches to creative/spectator, or stays beyond sense range for 200 ticks.
 - A player never damages their own hired units (later).
+- Hits cancelled by another system (for example fellowship PvP prevention) never provoke retaliation; the reaction runs only on damage that was actually applied.
 - Accidental NPC-on-NPC hits between same or allied factions (sweeps, misplaced swings) do not cause retaliation.
 
 ### Kills
@@ -211,6 +212,7 @@ A civilian with a trader role (innkeeper) counts as a trader (2). Killing an NPC
 | Time | civilians and travellers: day only (0-11999). Guards: any time |
 | Distance | >= 24 blocks from every player and from world spawn (L) |
 | Inside structures | wild spawner skips columns inside a structure bounding box |
+| Banner protection | skips a spot where `core.api.LandProtection.blocksFactionSpawn(level, pos, npcFaction)` is true (an enemy-faction banner covers it) |
 
 Spawn tables are npc pod datapack JSON keyed by biome id: `data/lotrrevival/lotrrevival/npc_spawns/<biome>.json`, each entry `{type, weight, group_min, group_max, roles?, chance?}`. `chance` N (default 1) is an extra 1-in-N roll after the entry is picked (L). G2 tables:
 
@@ -314,7 +316,7 @@ A hireable NPC exposes: hire requirement (`hire_min` alignment, coin cost), an o
 - Trade screen, prices, stock, currency exchange (progression trader spec).
 - Hiring screens, unit lists and costs, commands, desertion, unit leveling, warhorns (npc hiring spec).
 - Mounts (Shire ponies), ranged combat (slings), weapon stat tables, banner bearers (npc combat spec).
-- Invasions, mini-quests, Red Book (later specs).
+- Invasions, mini-quests, Red Book (later specs). Future invasion and NPC block-breaking systems must consult `core.api.LandProtection.blocksInvasion` and `blocksNpcGriefing` before acting on a position.
 - Hobbit children, marriage, NPC farming or crop harvesting, NPC sleeping in beds.
 - Races other than hobbits and men; Bree captain, smiths and market traders; ruffians, Rangers of the North and bandits.
 - Speech bubbles above heads and voiced audio; target-acquire lines and trader adverts.

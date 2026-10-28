@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.npc.hire.ai;
 
 import io.github.sethwillemsvg.lotrrevival.core.alignment.Alignment;
+import io.github.sethwillemsvg.lotrrevival.core.api.FellowshipQuery;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Faction;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionRelation;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionRelations;
@@ -48,6 +49,9 @@ public final class UnitTargeting {
         if (state.command().halted() || isOwnerSide(npc, state, candidate)) {
             return Verdict.REJECT;
         }
+        if (fellowshipProtects(state, candidate)) {
+            return Verdict.REJECT;
+        }
         UnitAi.Area area = UnitAi.guardArea(npc);
         if (area != null && !area.contains(candidate)) {
             return Verdict.REJECT;
@@ -63,6 +67,27 @@ public final class UnitTargeting {
             return Verdict.NEUTRAL_ENEMY;
         }
         return Verdict.NORMAL;
+    }
+
+    /**
+     * True if the unit's owner is fellowship-protected from the candidate: another player the owner may not fight
+     * ({@link FellowshipQuery#preventsPvp} or {@link FellowshipQuery#protectsUnits}), or a unit of such a player.
+     */
+    static boolean fellowshipProtects(HiredUnit state, LivingEntity candidate) {
+        UUID ownerId = state.owner().orElse(null);
+        if (ownerId == null) {
+            return false;
+        }
+        UUID otherOwner = null;
+        if (candidate instanceof Player player) {
+            otherOwner = player.getUUID();
+            if (FellowshipQuery.preventsPvp(ownerId, otherOwner)) {
+                return true;
+            }
+        } else if (candidate instanceof NpcEntity other) {
+            otherOwner = HiredUnits.get(other).owner().orElse(null);
+        }
+        return otherOwner != null && !otherOwner.equals(ownerId) && FellowshipQuery.protectsUnits(ownerId, otherOwner);
     }
 
     /** The owner, the owner's mount, or another unit of the same owner whose faction is not an enemy of ours. */
