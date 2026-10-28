@@ -45,6 +45,7 @@ public final class AchievementDatagen {
         ModLangProvider.contribute(lang -> {
             lang.add("chat.lotrrevival.achievement.earned", "%1$s has earned the achievement %2$s");
             lang.add("toast.lotrrevival.achievement", "Achievement Earned");
+            io.github.sethwillemsvg.lotrrevival.progression.datagen.MenuLang.add(lang);
             for (AchievementTab tab : AchievementTab.values()) {
                 lang.add(tab.langKey(), tabName(tab));
             }
