@@ -166,6 +166,7 @@ final class TravelValidator {
                     report.add("road passes through an unknown waypoint", road.id() + " names '" + id + "'");
                     continue;
                 }
+                // Legacy blocks: the strictest scale, since road widths stay in blocks while distances shrink.
                 double blocks = line.distance(waypoint.u(), waypoint.v(), null) * Canvas.HEIGHT_BLOCKS_PER_PIXEL;
                 if (blocks > road.width() + THROUGH_SLACK_BLOCKS) {
                     report.add(

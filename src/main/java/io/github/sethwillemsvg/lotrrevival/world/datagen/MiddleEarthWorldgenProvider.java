@@ -6,7 +6,8 @@ import com.google.gson.JsonObject;
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthBiomes;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthMap;
-import java.nio.file.Path;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScale;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScales;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +18,9 @@ import net.minecraft.data.PackOutput;
 /**
  * Writes the Middle-earth worldgen JSON that refers to NovoAtlas types: the three map_infos, the level stem,
  * noise settings, detail noises and density functions.
+ *
+ * <p>The mod's data uses {@link WorldScale#DEFAULT}. For every other scale it also writes a small built-in data
+ * pack under {@code datapacks/world_scale_<id>/} with the files that depend on the scale (see {@code WorldScales}).
  *
  * <p>Raw JSON on purpose: NovoAtlas types are only referenced by id, so no NovoAtlas class is needed at
  * compile time or datagen time. The shapes follow the NovoAtlas 1.8.2 wiki and
@@ -34,25 +38,58 @@ public final class MiddleEarthWorldgenProvider implements DataProvider {
     @Override
     public CompletableFuture<?> run(CachedOutput cache) {
         List<CompletableFuture<?>> writes = new ArrayList<>();
-        // map_infos
-        write(cache, writes, "novoatlas/map_info/middle_earth", terrainInfo());
-        write(cache, writes, "novoatlas/map_info/middle_earth_biomes", biomesInfo());
-        write(cache, writes, "novoatlas/map_info/middle_earth_relief", reliefInfo());
+        // The mod's own data is the default scale.
+        String data = "data/" + LOTRRevival.MOD_ID + "/";
+        writeScaled(cache, writes, data, WorldScale.DEFAULT);
         // dimension
-        write(cache, writes, "dimension/middle_earth", levelStem());
-        write(cache, writes, "worldgen/noise_settings/middle_earth", noiseSettings());
+        write(cache, writes, data + "dimension/middle_earth", levelStem());
+        write(cache, writes, data + "worldgen/noise_settings/middle_earth", noiseSettings());
         // detail noises
-        write(cache, writes, "worldgen/noise/relief_large", noise(-7, 1.0, 1.0, 0.5));
-        write(cache, writes, "worldgen/noise/relief_small", noise(-5, 1.0, 1.0, 0.5));
+        write(cache, writes, data + "worldgen/noise/relief_large", noise(-7, 1.0, 1.0, 0.5));
+        write(cache, writes, data + "worldgen/noise/relief_small", noise(-5, 1.0, 1.0, 0.5));
         // density functions
-        write(cache, writes, "worldgen/density_function/middle_earth/base", base());
-        write(cache, writes, "worldgen/density_function/middle_earth/amplitude", amplitude());
-        write(cache, writes, "worldgen/density_function/middle_earth/detail", detail());
-        write(cache, writes, "worldgen/density_function/middle_earth/surface_y", surfaceY());
-        write(cache, writes, "worldgen/density_function/middle_earth/terrain", terrain());
-        write(cache, writes, "worldgen/density_function/middle_earth/initial", initial());
-        write(cache, writes, "worldgen/density_function/middle_earth/final", finalDensity());
+        write(cache, writes, data + "worldgen/density_function/middle_earth/amplitude", amplitude());
+        write(cache, writes, data + "worldgen/density_function/middle_earth/detail", detail());
+        write(cache, writes, data + "worldgen/density_function/middle_earth/surface_y", surfaceY());
+        write(cache, writes, data + "worldgen/density_function/middle_earth/terrain", terrain());
+        write(cache, writes, data + "worldgen/density_function/middle_earth/initial", initial());
+        write(cache, writes, data + "worldgen/density_function/middle_earth/final", finalDensity());
+        // The other scales: optional built-in data packs that override only the scale-dependent files.
+        for (WorldScale scale : WorldScales.PACK_SCALES) {
+            String root = packRoot(scale);
+            write(cache, writes, root + "pack", packMeta(scale));
+            writeScaled(cache, writes, root + "data/" + LOTRRevival.MOD_ID + "/", scale);
+        }
         return CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new));
+    }
+
+    /** Folder of a scale's data pack inside the mod jar (see {@code WorldScales}). */
+    public static String packRoot(WorldScale scale) {
+        return "datapacks/" + scale.packName() + "/";
+    }
+
+    /** The files that differ between scales: the three map_infos, the painted height and the scale entry. */
+    private void writeScaled(CachedOutput cache, List<CompletableFuture<?>> writes, String data, WorldScale scale) {
+        write(cache, writes, data + "novoatlas/map_info/middle_earth", terrainInfo(scale));
+        write(cache, writes, data + "novoatlas/map_info/middle_earth_biomes", biomesInfo(scale));
+        write(cache, writes, data + "novoatlas/map_info/middle_earth_relief", reliefInfo(scale));
+        write(cache, writes, data + "worldgen/density_function/middle_earth/base", base(scale));
+        JsonObject setting = obj();
+        setting.addProperty("scale", scale.id());
+        write(cache, writes, data + LOTRRevival.MOD_ID + "/world_scale/middle_earth", setting);
+    }
+
+    /** {@code pack.mcmeta}: data pack format 48 is Minecraft 1.21.1. */
+    private static JsonObject packMeta(WorldScale scale) {
+        JsonObject pack = obj();
+        pack.addProperty(
+                "description",
+                "Middle-earth at " + scale.id() + " scale: one map pixel is " + (int) scale.heightBlocksPerPixel()
+                        + " blocks. Choose when creating a world; never change it afterwards.");
+        pack.addProperty("pack_format", 48);
+        JsonObject meta = obj();
+        meta.add("pack", pack);
+        return meta;
     }
 
     @Override
@@ -60,9 +97,10 @@ public final class MiddleEarthWorldgenProvider implements DataProvider {
         return "Middle-earth worldgen";
     }
 
+    /** {@code path} is relative to the output root and has no extension; {@code pack} becomes pack.mcmeta. */
     private void write(CachedOutput cache, List<CompletableFuture<?>> writes, String path, JsonElement json) {
-        Path file = output.getOutputFolder().resolve("data/" + LOTRRevival.MOD_ID + "/" + path + ".json");
-        writes.add(DataProvider.saveStable(cache, json, file));
+        String file = path.endsWith("/pack") ? path + ".mcmeta" : path + ".json";
+        writes.add(DataProvider.saveStable(cache, json, output.getOutputFolder().resolve(file)));
     }
 
     // ---- map_infos ----
@@ -107,35 +145,35 @@ public final class MiddleEarthWorldgenProvider implements DataProvider {
         return info;
     }
 
-    private static JsonObject terrainInfo() {
+    private static JsonObject terrainInfo(WorldScale scale) {
         return mapInfo(
                 MiddleEarthMap.HEIGHTMAP_IMAGE.toString(),
                 MiddleEarthMap.HEIGHT_VERTICAL_SCALE,
                 "novoatlas:bicubic",
-                MiddleEarthMap.HEIGHT_BLOCKS_PER_PIXEL,
-                MiddleEarthMap.terrainOffsetX(),
-                MiddleEarthMap.terrainOffsetZ());
+                scale.heightBlocksPerPixel(),
+                MiddleEarthMap.terrainOffsetX(scale),
+                MiddleEarthMap.terrainOffsetZ(scale));
     }
 
-    /** The biome source reads its map at 1/4 of the scale, in quarts: 32 quarts per px is 128 blocks. */
-    private static JsonObject biomesInfo() {
+    /** The biome source reads its map at 1/4 of the scale, in quarts: at Legacy 32 quarts per px is 128 blocks. */
+    private static JsonObject biomesInfo(WorldScale scale) {
         return mapInfo(
                 MiddleEarthMap.HEIGHTMAP_IMAGE.toString(),
                 MiddleEarthMap.HEIGHT_VERTICAL_SCALE,
                 "novoatlas:nearest_neighbor",
-                MiddleEarthMap.BIOME_BLOCKS_PER_PIXEL / 4.0,
-                MiddleEarthMap.biomesOffsetX(),
-                MiddleEarthMap.biomesOffsetZ());
+                MiddleEarthMap.biomeQuartsPerPixel(scale),
+                MiddleEarthMap.biomesOffsetX(scale),
+                MiddleEarthMap.biomesOffsetZ(scale));
     }
 
-    private static JsonObject reliefInfo() {
+    private static JsonObject reliefInfo(WorldScale scale) {
         return mapInfo(
                 MiddleEarthMap.RELIEF_IMAGE.toString(),
                 MiddleEarthMap.RELIEF_VERTICAL_SCALE,
                 "novoatlas:bilinear",
-                MiddleEarthMap.RELIEF_BLOCKS_PER_PIXEL,
-                MiddleEarthMap.reliefOffsetX(),
-                MiddleEarthMap.reliefOffsetZ());
+                scale.reliefBlocksPerPixel(),
+                MiddleEarthMap.reliefOffsetX(scale),
+                MiddleEarthMap.reliefOffsetZ(scale));
     }
 
     // ---- dimension ----
@@ -309,8 +347,20 @@ public final class MiddleEarthWorldgenProvider implements DataProvider {
         return df;
     }
 
-    private static JsonObject base() {
-        return add(8, mapHeight(MiddleEarthMap.TERRAIN_INFO.toString(), -64, 320));
+    /**
+     * Painted height at {@code scale}: {@code sea + k x (painted - sea)} with {@code k} the scale's vertical factor
+     * (see {@link WorldScale}). At Legacy ({@code k} = 1) this is exactly {@code painted}, so Legacy worlds made
+     * before world scales existed keep generating the same terrain.
+     */
+    private static JsonObject base(WorldScale scale) {
+        JsonObject painted = mapHeight(MiddleEarthMap.TERRAIN_INFO.toString(), -64, 320);
+        double k = scale.verticalFactor();
+        if (k == 1.0) {
+            return add(8, painted);
+        }
+        // k x (raw + 8) + sea x (1 - k) = (8k + sea x (1 - k)) + k x raw
+        double constant = 8 * k + MiddleEarthMap.SEA_LEVEL * (1 - k);
+        return add(constant, mul(k, painted));
     }
 
     private static JsonObject amplitude() {

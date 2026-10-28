@@ -4,6 +4,11 @@ package io.github.sethwillemsvg.lotrrevival.map;
  * The fixed Middle-earth canvas (see specs/world/dimension-and-mapgen.md). Mirrors
  * {@code world.MiddleEarthMap}; buildSrc cannot depend on the mod sources, so the validator also checks the
  * committed map_regions.json against these.
+ *
+ * <p>Block numbers here are Legacy scale. The rasterized images and the travel JSON are in pixels and are the same
+ * for every world scale; only the map_infos (datagen) change how many blocks a pixel covers (see
+ * {@code world.WorldScale}). Block-based checks run at Legacy, the largest scale, so they also hold at half and
+ * quarter scale, where the same pixel distances are fewer blocks.
  */
 final class Canvas {
     /** Heightmap size in pixels (16-bit grayscale), 64 blocks per pixel. */

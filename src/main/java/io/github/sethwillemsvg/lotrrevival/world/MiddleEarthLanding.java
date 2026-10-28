@@ -9,7 +9,7 @@ import java.util.Optional;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 
-/** Reads the landing point from {@code data/lotrrevival/lotrrevival/middle_earth.json}. */
+/** Reads the landing point (heightmap pixels) from {@code data/lotrrevival/lotrrevival/middle_earth.json}. */
 public final class MiddleEarthLanding {
     /** Block x/z of the landing point. */
     public record Point(int x, int z) {}
@@ -18,8 +18,13 @@ public final class MiddleEarthLanding {
 
     private MiddleEarthLanding() {}
 
-    /** The landing point, or block (0, 0) when the file is missing or malformed. */
+    /** The landing point at the running world's scale, or block (0, 0) when the file is missing or malformed. */
     public static Point load(ResourceManager resources) {
+        return load(resources, WorldScales.current());
+    }
+
+    /** The landing point at {@code scale}, or block (0, 0) when the file is missing or malformed. */
+    public static Point load(ResourceManager resources, WorldScale scale) {
         Optional<Point> point = Optional.empty();
         try {
             var resource = resources.getResource(FILE);
@@ -28,8 +33,8 @@ public final class MiddleEarthLanding {
                     JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
                     var pixel = json.getAsJsonArray("landing_point");
                     point = Optional.of(new Point(
-                            (int) Math.round(MiddleEarthMap.blockX(pixel.get(0).getAsDouble())),
-                            (int) Math.round(MiddleEarthMap.blockZ(pixel.get(1).getAsDouble()))));
+                            (int) Math.round(MiddleEarthMap.blockX(pixel.get(0).getAsDouble(), scale)),
+                            (int) Math.round(MiddleEarthMap.blockZ(pixel.get(1).getAsDouble(), scale))));
                 }
             }
         } catch (IOException | RuntimeException e) {

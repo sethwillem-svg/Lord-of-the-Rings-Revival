@@ -10,6 +10,7 @@ public final class WorldMod {
 
     public static void init(IEventBus modBus) {
         WorldConfig.register(net.neoforged.fml.ModLoadingContext.get().getActiveContainer());
+        WorldScales.init(modBus);
         io.github.sethwillemsvg.lotrrevival.world.waypoint.WaypointSystem.init();
         io.github.sethwillemsvg.lotrrevival.world.road.RoadMod.init();
         io.github.sethwillemsvg.lotrrevival.world.portal.RingPortals.init();

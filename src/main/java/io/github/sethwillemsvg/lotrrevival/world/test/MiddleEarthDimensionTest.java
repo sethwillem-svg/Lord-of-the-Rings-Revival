@@ -8,6 +8,8 @@ import io.github.sethwillemsvg.lotrrevival.core.ModDimensions;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthBiomes;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthLanding;
 import io.github.sethwillemsvg.lotrrevival.world.MiddleEarthMap;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScale;
+import io.github.sethwillemsvg.lotrrevival.world.WorldScales;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import net.minecraft.core.QuartPos;
@@ -79,23 +81,33 @@ public final class MiddleEarthDimensionTest {
         helper.succeed();
     }
 
-    /** The painted height at the origin is 68; at an unpainted column it is the y 40 ocean floor. */
+    /**
+     * The painted height at the origin is 68; at an unpainted column it is the y 40 ocean floor. Both are close
+     * enough to sea level that the default scale's height compression stays inside the tolerance.
+     */
     @GameTest(template = "empty")
     public static void noiseSettingsReadPaintedHeights(GameTestHelper helper) {
         var generator = (NoiseBasedChunkGenerator) stem(helper).generator();
         var random = randomState(helper, generator);
 
         // First free block above the floor, so surface y = result - 1. Origin is Shire: painted 68, amplitude 7.
+        WorldScale scale = WorldScales.current();
+        double shire = scale.surfaceY(68);
         int origin = generator.getBaseHeight(0, 0, Heightmap.Types.OCEAN_FLOOR_WG, HEIGHT, random) - 1;
-        helper.assertTrue(Math.abs(origin - 68) <= 7 + 2, "surface at origin was " + origin + ", expected 68 +- 9");
+        helper.assertTrue(
+                Math.abs(origin - shire) <= 7 + 2, "surface at origin was " + origin + ", expected " + shire + " +- 9");
 
-        // 60,000 blocks away: placeholder ocean, floor 40, amplitude 2.
+        // 60,000 blocks away: placeholder ocean, floor 40 (pulled toward sea level by the scale), amplitude 2.
+        double floor = scale.surfaceY(40);
         int ocean = generator.getBaseHeight(60000, 60000, Heightmap.Types.OCEAN_FLOOR_WG, HEIGHT, random) - 1;
-        helper.assertTrue(Math.abs(ocean - 40) <= 2 + 2, "ocean floor was " + ocean + ", expected 40 +- 4");
+        helper.assertTrue(
+                Math.abs(ocean - floor) <= 2 + 2, "ocean floor was " + ocean + ", expected " + floor + " +- 4");
 
-        // Three blocks of the projection: the pixel centres of the heightmap line up with blocks.
-        int east = generator.getBaseHeight(3000, 0, Heightmap.Types.OCEAN_FLOOR_WG, HEIGHT, random) - 1;
-        helper.assertTrue(Math.abs(east - 68) <= 7 + 2, "surface at x=3000 was " + east + ", expected 68 +- 9");
+        // The projection: Legacy block x 3,000 (heightmap pixel 1,666.875) is Shire farmland at every scale.
+        int eastX = (int) Math.round(MiddleEarthMap.blockX(1666.875, scale));
+        int east = generator.getBaseHeight(eastX, 0, Heightmap.Types.OCEAN_FLOOR_WG, HEIGHT, random) - 1;
+        helper.assertTrue(
+                Math.abs(east - shire) <= 7 + 2, "surface at x=" + eastX + " was " + east + ", expected " + shire);
         helper.succeed();
     }
 
@@ -153,11 +165,14 @@ public final class MiddleEarthDimensionTest {
         helper.succeed();
     }
 
-    /** Hobbiton to Bree is about 12,800 blocks and Hobbiton to the Brandywine Bridge about 4,900. */
+    /**
+     * At Legacy scale Hobbiton to Bree is about 12,800 blocks and Hobbiton to the Brandywine Bridge about 4,900
+     * (the other scales are in {@code WorldScaleTest}).
+     */
     @GameTest(template = "empty")
     public static void pilotDistancesMatchTheSpec(GameTestHelper helper) {
-        double bridge = Math.abs(MiddleEarthMap.blockX(1696.6));
-        double bree = Math.abs(MiddleEarthMap.blockX(1819.5));
+        double bridge = Math.abs(MiddleEarthMap.blockX(1696.6, WorldScale.LEGACY));
+        double bree = Math.abs(MiddleEarthMap.blockX(1819.5, WorldScale.LEGACY));
         helper.assertTrue(Math.abs(bridge - 4900) < 100, "Hobbiton to the bridge is " + bridge);
         helper.assertTrue(Math.abs(bree - 12800) < 200, "Hobbiton to Bree is " + bree);
         helper.succeed();
@@ -173,7 +188,10 @@ public final class MiddleEarthDimensionTest {
         helper.succeed();
     }
 
-    /** Painted heights near Bree-hill: the hill is painted at about y 97 and the land around it near 65. */
+    /**
+     * Painted heights near Bree-hill: the hill is painted at about y 97 and the land around it near 65 (Legacy);
+     * this world runs at the default scale, which pulls both toward sea level.
+     */
     @GameTest(template = "empty")
     public static void breeHillRisesAboveBreeLand(GameTestHelper helper) {
         var generator = (NoiseBasedChunkGenerator) stem(helper).generator();
@@ -181,7 +199,9 @@ public final class MiddleEarthDimensionTest {
         int hillX = (int) Math.round(MiddleEarthMap.blockX(1820));
         int hillZ = (int) Math.round(MiddleEarthMap.blockZ(1462));
         int hill = generator.getBaseHeight(hillX, hillZ, Heightmap.Types.OCEAN_FLOOR_WG, HEIGHT, random) - 1;
-        helper.assertTrue(Math.abs(hill - 97) <= 5 + 2, "Bree-hill surface was " + hill + ", expected about 97");
+        double expected = WorldScales.current().surfaceY(97);
+        helper.assertTrue(
+                Math.abs(hill - expected) <= 5 + 2, "Bree-hill surface was " + hill + ", expected about " + expected);
         int farmland = generator.getBaseHeight(
                         (int) Math.round(MiddleEarthMap.blockX(1790)),
                         (int) Math.round(MiddleEarthMap.blockZ(1420)),
@@ -189,28 +209,30 @@ public final class MiddleEarthDimensionTest {
                         HEIGHT,
                         random)
                 - 1;
-        helper.assertTrue(farmland < hill - 15, "farmland " + farmland + " should sit well below the hill " + hill);
+        double drop = 15 * WorldScales.current().verticalFactor();
+        helper.assertTrue(farmland < hill - drop, "farmland " + farmland + " should sit well below the hill " + hill);
         helper.succeed();
     }
 
     @GameTest(template = "empty")
     public static void centerOffsetsReproduceTheProjection(GameTestHelper helper) {
-        // Reproduce NovoAtlas's index formula: index = (block - offset * size) / scale + size / 2.
-        double terrainX = (0 - MiddleEarthMap.terrainOffsetX() * MiddleEarthMap.HEIGHT_WIDTH)
+        // Reproduce NovoAtlas's index formula: index = (block - offset * size) / scale + size / 2 (Legacy scale).
+        WorldScale legacy = WorldScale.LEGACY;
+        double terrainX = (0 - MiddleEarthMap.terrainOffsetX(legacy) * MiddleEarthMap.HEIGHT_WIDTH)
                         / MiddleEarthMap.HEIGHT_BLOCKS_PER_PIXEL
                 + MiddleEarthMap.HEIGHT_WIDTH / 2.0;
-        double terrainZ = (0 - MiddleEarthMap.terrainOffsetZ() * MiddleEarthMap.HEIGHT_HEIGHT)
+        double terrainZ = (0 - MiddleEarthMap.terrainOffsetZ(legacy) * MiddleEarthMap.HEIGHT_HEIGHT)
                         / MiddleEarthMap.HEIGHT_BLOCKS_PER_PIXEL
                 + MiddleEarthMap.HEIGHT_HEIGHT / 2.0;
         helper.assertTrue(
                 Math.abs(terrainX - 1619.5) * 64 < 0.05 && Math.abs(terrainZ - 1459.5) * 64 < 0.05,
                 "terrain offset index " + terrainX + "," + terrainZ);
-        helper.assertTrue(Math.abs(MiddleEarthMap.terrainOffsetX() - 15.805f) < 1e-4, "terrain offset x");
-        helper.assertTrue(Math.abs(MiddleEarthMap.terrainOffsetZ() - 20.324f) < 1e-4, "terrain offset z");
-        helper.assertTrue(Math.abs(MiddleEarthMap.biomesOffsetX() - 7.9f) < 1e-4, "biomes offset x");
-        helper.assertTrue(Math.abs(MiddleEarthMap.biomesOffsetZ() - 10.16f) < 1e-4, "biomes offset z");
-        helper.assertTrue(Math.abs(MiddleEarthMap.reliefOffsetX() - 63.28f) < 1e-3, "relief offset x");
-        helper.assertTrue(Math.abs(MiddleEarthMap.reliefOffsetZ() - 81.344f) < 1e-3, "relief offset z");
+        helper.assertTrue(Math.abs(MiddleEarthMap.terrainOffsetX(legacy) - 15.805f) < 1e-4, "terrain offset x");
+        helper.assertTrue(Math.abs(MiddleEarthMap.terrainOffsetZ(legacy) - 20.324f) < 1e-4, "terrain offset z");
+        helper.assertTrue(Math.abs(MiddleEarthMap.biomesOffsetX(legacy) - 7.9f) < 1e-4, "biomes offset x");
+        helper.assertTrue(Math.abs(MiddleEarthMap.biomesOffsetZ(legacy) - 10.16f) < 1e-4, "biomes offset z");
+        helper.assertTrue(Math.abs(MiddleEarthMap.reliefOffsetX(legacy) - 63.28f) < 1e-3, "relief offset x");
+        helper.assertTrue(Math.abs(MiddleEarthMap.reliefOffsetZ(legacy) - 81.344f) < 1e-3, "relief offset z");
         helper.succeed();
     }
 
