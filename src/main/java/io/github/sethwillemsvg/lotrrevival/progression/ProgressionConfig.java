@@ -48,7 +48,9 @@ public final class ProgressionConfig {
         ModConfigSpec.Builder client = new ModConfigSpec.Builder();
         client.push("progression");
         QUEST_TRACKER_SIDE = client.comment("Screen side of the quest tracker HUD.")
-                .defineInList("questTrackerSide", "left", List.of("left", "right"));
+                // Arrays.asList, not List.of: NeoForge calls contains(null) while correcting a fresh config,
+                // and immutable List.of throws on null.
+                .defineInList("questTrackerSide", "left", java.util.Arrays.asList("left", "right"));
         client.pop();
         CLIENT_SPEC = client.build();
     }
