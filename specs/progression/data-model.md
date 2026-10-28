@@ -377,13 +377,16 @@ Accept requires: alignment with the group's faction >= `min_alignment` and the f
 - [ ] Playtest: `L` opens the menu; two players on a dedicated server see each other's title and colour in chat and in the fellowship list, not on nameplates; it survives relog and restart.
 - [ ] Playtest: quest book and HUD tracker show the right quest right after login and after a dimension change.
 
+## Resolved by the maintainer
+
+- Achievements follow Legacy: backing advancements without display, our own `lotrrevival:achievement` registry, and our own page in the Middle-earth menu (approved 2026-10-27).
+
 ## Open questions
 
 1. **Vanilla `minecraft:location` vs our `enter_biome`:** vanilla can match biomes every second; ours fires once per change, matches tags cleanly and feeds the visited-biome set. Leaning ours.
 2. **Counters as vanilla custom stats** or our `progress_counters` attachment? Stats need a register entry per datapack faction. Leaning attachment.
 3. **Chat prefix vs other chat mods:** decorate the chat message server-side (proposed) or use the player display name, which would also leak into nameplates?
 4. **Home of `achievementCount`:** a Progression `api` subpackage other pods call, or a Core-owned interface Progression implements so World and NPC never depend on our package? Opus 1 to decide.
-5. **Advancements without display:** confirm with Opus 1 that backing advancements plus our own registry and page is acceptable (it is the only way to hide and re-show earned entries live).
 6. **Alignment sync ordering:** does Core expose a "player synced" event, or do we send after a one-tick delay?
 7. **Menu key `L` clashes with vanilla Advancements (also `L`).** Our achievements no longer need the vanilla screen. Ship with the clash shown in Controls, or have Core move vanilla's default once on first launch?
 8. **Coins and crafting tables:** does Core own coins and faction crafting tables, or does Progression (traders) own coins? Affects Core items 11-12.
