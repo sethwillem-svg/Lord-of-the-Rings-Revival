@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "H": {
+      "item": "minecraft:tripwire_hook"
+    },
+    "M": {
+      "tag": "c:ingots/bronze"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    },
+    "T": {
+      "item": "minecraft:string"
+    }
+  },
+  "pattern": [
+    "MSM",
+    "THT",
+    " S "
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:bronze_crossbow"
+  }
+}

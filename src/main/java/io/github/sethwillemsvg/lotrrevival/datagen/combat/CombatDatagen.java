@@ -3,6 +3,7 @@ package io.github.sethwillemsvg.lotrrevival.datagen.combat;
 import io.github.sethwillemsvg.lotrrevival.core.combat.CombatItems;
 import io.github.sethwillemsvg.lotrrevival.core.combat.GearCatalog;
 import io.github.sethwillemsvg.lotrrevival.core.combat.GearEntry;
+import io.github.sethwillemsvg.lotrrevival.core.combat.ranged.BoltEntities;
 import io.github.sethwillemsvg.lotrrevival.datagen.ModLangProvider;
 import io.github.sethwillemsvg.lotrrevival.datagen.VanillaTagProviders;
 import java.util.concurrent.CompletableFuture;
@@ -44,6 +45,7 @@ public final class CombatDatagen {
             for (GearEntry entry : GearCatalog.entries()) {
                 lang.addItem(entry.item(), entry.name());
             }
+            lang.addEntityType(BoltEntities.BOLT, "Bolt");
         });
     }
 }
