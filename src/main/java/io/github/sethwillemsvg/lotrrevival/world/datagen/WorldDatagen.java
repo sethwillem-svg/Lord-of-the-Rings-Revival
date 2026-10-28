@@ -86,6 +86,7 @@ public final class WorldDatagen {
         context.register(
                 RoadMod.ROAD_CONFIGURED,
                 new ConfiguredFeature<>(RoadMod.ROAD_FEATURE.get(), NoneFeatureConfiguration.INSTANCE));
+        OreFeatures.bootstrapConfigured(context);
     }
 
     private static void bootstrapPlacedFeatures(BootstrapContext<PlacedFeature> context) {
@@ -93,6 +94,7 @@ public final class WorldDatagen {
         context.register(
                 RoadMod.ROAD_PLACED,
                 new PlacedFeature(configured.getOrThrow(RoadMod.ROAD_CONFIGURED), List.of(BiomeFilter.biome())));
+        OreFeatures.bootstrapPlaced(context);
     }
 
     private static void bootstrapBiomes(BootstrapContext<Biome> context) {
@@ -118,6 +120,7 @@ public final class WorldDatagen {
                             WATER_COLOR,
                             WATER_FOG_COLOR,
                             spawns,
+                            key,
                             placedFeatures,
                             carvers));
         }
@@ -151,8 +154,14 @@ public final class WorldDatagen {
             int waterColor,
             int waterFogColor,
             MobSpawnSettings.Builder spawns,
+            ResourceKey<Biome> biomeKey,
             HolderGetter<PlacedFeature> placed,
             HolderGetter<ConfiguredWorldCarver<?>> carvers) {
+        BiomeGenerationSettings.Builder generation = new BiomeGenerationSettings.Builder(placed, carvers);
+        for (io.github.sethwillemsvg.lotrrevival.world.MiddleEarthOres.Spec ore :
+                io.github.sethwillemsvg.lotrrevival.world.MiddleEarthOres.oresFor(biomeKey)) {
+            generation.addFeature(GenerationStep.Decoration.UNDERGROUND_ORES, ore.placed());
+        }
         return new Biome.BiomeBuilder()
                 .hasPrecipitation(true)
                 .temperature(temperature)
@@ -164,7 +173,7 @@ public final class WorldDatagen {
                         .skyColor(0x78A7FF)
                         .build())
                 .mobSpawnSettings(spawns.build())
-                .generationSettings(new BiomeGenerationSettings.Builder(placed, carvers)
+                .generationSettings(generation
                         // Roads: after surface structures, before vegetation (specs/world/waypoints-travel.md).
                         .addFeature(GenerationStep.Decoration.SURFACE_STRUCTURES, RoadMod.ROAD_PLACED)
                         .build())

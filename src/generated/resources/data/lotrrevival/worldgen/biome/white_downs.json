@@ -14,6 +14,12 @@
     [],
     [
       "lotrrevival:road"
+    ],
+    [],
+    [
+      "lotrrevival:ore_copper",
+      "lotrrevival:ore_tin",
+      "lotrrevival:ore_silver"
     ]
   ],
   "has_precipitation": true,
