@@ -5,6 +5,7 @@ import io.github.sethwillemsvg.lotrrevival.core.faction.AlignmentCreditor;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionRelation;
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionRelations;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntity;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.ai.UnitWitnesses;
 import io.github.sethwillemsvg.lotrrevival.npc.speech.NpcSpeech;
 import java.util.Comparator;
 import java.util.List;
@@ -55,6 +56,7 @@ public final class RetaliationEvents {
                 .filter(other -> other != victim
                         && other.isAlive()
                         && other.getTarget() == null
+                        && !UnitWitnesses.excluded(other, player)
                         && other.distanceToSqr(victim) <= WITNESS_RANGE * WITNESS_RANGE
                         && sameSide(victim, other)
                         && other.retaliation().wouldReactTo(player))

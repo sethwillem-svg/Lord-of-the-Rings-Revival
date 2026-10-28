@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.npc.ai.combat;
 
 import io.github.sethwillemsvg.lotrrevival.core.faction.FactionRelations;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntity;
+import io.github.sethwillemsvg.lotrrevival.npc.hire.ai.UnitTargeting;
 import java.util.EnumSet;
 import javax.annotation.Nullable;
 import net.minecraft.world.entity.LivingEntity;
@@ -15,9 +16,10 @@ import net.minecraft.world.phys.AABB;
  */
 final class NpcTargetGoal extends Goal {
     private static final int RANK_ATTACKER = 0;
-    private static final int RANK_PLAYER = 1;
-    private static final int RANK_NPC = 2;
-    private static final int RANK_MONSTER = 3;
+    private static final int RANK_OWNER_TARGET = 1;
+    private static final int RANK_PLAYER = 2;
+    private static final int RANK_NPC = 3;
+    private static final int RANK_MONSTER = 4;
 
     private final NpcEntity npc;
     private final boolean seeksTargets;
@@ -115,6 +117,13 @@ final class NpcTargetGoal extends Goal {
         if (!seeksTargets || !NpcCombat.inSenseRange(npc, candidate)) {
             return -1;
         }
+        UnitTargeting.Verdict unit = UnitTargeting.judge(npc, candidate);
+        if (unit == UnitTargeting.Verdict.REJECT) {
+            return -1;
+        }
+        if (unit == UnitTargeting.Verdict.OWNER_TARGET) {
+            return RANK_OWNER_TARGET;
+        }
         if (candidate instanceof Player player) {
             if (NpcCombat.ignoresPlayers(npc) || NpcCombat.isOwner(npc, player)) {
                 return -1;
@@ -125,7 +134,7 @@ final class NpcTargetGoal extends Goal {
             }
             return RANK_PLAYER;
         }
-        if (FactionRelations.isHostile(npc, candidate)) {
+        if (unit == UnitTargeting.Verdict.NEUTRAL_ENEMY || FactionRelations.isHostile(npc, candidate)) {
             return RANK_NPC;
         }
         if (NpcCombat.isMonster(candidate) && !NpcCombat.isCreeper(candidate)) {
