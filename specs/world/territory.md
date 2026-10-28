@@ -2,7 +2,7 @@
 
 - **Pod:** world
 - **Lead:** Opus 2
-- **Status:** draft, revision 2 (priority: the maintainer asked for this system to be prioritised). Revision 2 applies the maintainer's answers on PR #183: provinces authored as GeoJSON polygons, villages change hands, wild owners that push back, heatmap on the map page and at a command table, an alignment gate for unpledged players, absent-defender slowdown on by default.
+- **Status:** draft, revision 3 (priority: the maintainer asked for this system to be prioritised). Revision 3: occupied villages also need >= 0 with the residents' own faction; wild marches may damage walls, journaled and restored; the Old Forest and the wights can be calmed; flip-speed numbers kept and marked for playtest tuning. Revision 2 applied the maintainer's answers on PR #183: provinces authored as GeoJSON polygons, villages change hands, wild owners that push back, heatmap on the map page and at a command table, an alignment gate for unpledged players, absent-defender slowdown on by default.
 - **Depends on:** `specs/world/dimension-and-mapgen.md` (canvas, biome map at 128 blocks/px, origin pixel (810, 730), projection), `specs/world/waypoints-travel.md` (waypoint regions, fixed waypoints, road polylines, map data pipeline), `specs/core/core-apis.md` (factions, relations, pledge, kill path and `FactionKillEvent`, `LandProtection`, payload and attachment rules, `/lotr` root), `specs/npc/npc-base.md` (spawn tables), `specs/npc/nemesis.md` (PR #182: world events and nemesis deaths emit control deltas through `core.api.TerritoryControl`), the progression map page. **Missing dependency:** a World structure spec (see Dependencies).
 - **Sources:** behavior notes `docs/reference/legacy/territory.md` (conquest, in our own words), `factions-alignment.md` sections 6 and 8, `combat-trade.md` section 7, `biomes.md` "Spawning, conquest and invasions". Every name and line of text here is our own.
 - **Beyond parity:** Legacy had conquest (a per-faction number on a square grid that changes NPC spawns) but no ownership. Provinces, owners, flips, borders, structure capture, road danger and invasion scaling are our own design. Each rule below is marked **[Legacy]** or **[Ours]**.
@@ -26,7 +26,7 @@ Players care because their fighting changes the map they look at, and because th
 6. **Villages live under occupation.** When Bree-land falls, Bree's guards are replaced by the occupier's soldiers. The Bree folk and their traders stay, but now deal only with those the occupier tolerates.
 7. **The wild fights back.** Felling trees, burning, or fighting for conquest in Fangorn or the Old Forest, or disturbing the Barrow-downs, makes the land angry: first warnings, then hunting Huorns, Ents or wights, and at worst a march out of the wild against the offenders' nearest fort.
 8. **Legacy conquest map.** A player can switch the Map page to a conquest heatmap for one faction at a time, with Legacy's colouring and view rules, or use a command table block, which opens the map straight in that mode as in Legacy.
-9. **Player land is safe.** Banner-protected land and anything a player built is never changed by a flip or by the wild.
+9. **Player land is safe.** Banner-protected land is never changed by a flip or by the wild. A wild march may batter walls around its target, but every block it breaks comes back exactly when the march ends.
 
 ## Rules and numbers
 
@@ -126,7 +126,7 @@ After that, people edit the GeoJSON by hand (QGIS or a text editor) and commit i
 
 | Thing | Value | Notes |
 | --- | --- | --- |
-| Default control C0 | stronghold 1,000 (locked), heartland 750, borderland 400 | Config. Wild provinces: section 4b |
+| Default control C0 | stronghold 1,000 (locked), heartland 750, borderland 400 | Config, **tune in playtest**. Wild provinces: section 4b |
 | Adjacency | provinces whose biome pixels touch (4-neighbour), plus across water up to 16 biome px (2 squares) | Used by invasions and the UI |
 | Province of a position | the index pixel under it | Positions outside every window or in sea: none |
 | Province and Legacy squares | independent: a square can span two provinces; grid strength is read per square, province state per province | |
@@ -158,11 +158,13 @@ A delta is (faction F, amount a, source, optional player). Applied in this order
 
 **Pressure fades** when the owner holds: see Drift.
 
-**Flip.** After a delta, if C = 0 the province checks its challengers. A challenger's score is its own P plus one third of the P of each of its allies that is also an enemy of the owner. The top score flips the province when it is at least **250** (`flip_pressure`). Then: owner := that challenger, C := **250** (`flip_start_control`), all pressures reset to 0, last-flip time is now. If C is 0 but nobody reaches 250, the province stays at 0 and is "breaking". Wild provinces never flip.
+**Flip.** After a delta, if C = 0 the province checks its challengers. A challenger's score is its own P plus one third of the P of each of its allies that is also an enemy of the owner. The top score flips the province when it is at least **250** (`flip_pressure`, tune in playtest). Then: owner := that challenger, C := **250** (`flip_start_control`, tune in playtest), all pressures reset to 0, last-flip time is now. If C is 0 but nobody reaches 250, the province stays at 0 and is "breaking". Wild provinces never flip.
 
 **Contested** = C < 200, or the top challenger's score >= C / 2. Shown on the map; spawns and danger rules use it.
 
 ### 4. Safeguards [Ours]
+
+Flip-speed numbers in this section and in sections 2-3 (C0 per tier, flip pressure and start control, cooldown, province and player caps, loss cap, drift amounts) are the maintainer-approved **defaults, to tune in playtest**. All are config.
 
 | Safeguard | Value | Notes |
 | --- | --- | --- |
@@ -173,10 +175,10 @@ A delta is (faction F, amount a, source, optional player). Applied in this order
 | Faction loss cap | a faction loses at most 2 provinces per 24 h of server time; beyond that its C floor is 1 | Protects factions with no active players on big servers |
 | Absent-defender slowdown | **on by default**: `absent_defender_factor` 0.5 | Player-attributed enemy deltas to a province are x0.5 while its owner side has **defenders** but none is online. Defenders = players pledged to the owner or its allies/friends who logged in within the last 14 days (`defender_window_days`). A side with no defenders at all (always the case in single player) is not protected, so the rule only matters where real people hold that side. Set the factor to 1.0 to turn it off |
 | Drift home | see Drift | Land returns to its rightful owner when left alone |
-| Land and builds | territory never places, breaks or replaces blocks except the structure standards in section 5, and never inside banner-protected land | |
+| Land and builds | territory never places, breaks or replaces blocks except the structure standards in section 5 and the temporary, journaled march damage in section 4b; never inside banner-protected land. March damage is always restored exactly, and a player block is never permanently lost | |
 | Classic world type, conquest disabled | no grid and no provinces; holders answer defaults | Config `territory.enabled` |
 
-**Drift**, every 24,000 ticks (one in-game day, 20 min):
+**Drift**, every 24,000 ticks (one in-game day, 20 min); amounts tune in playtest:
 
 | State | Change per drift step |
 | --- | --- |
@@ -224,13 +226,40 @@ Wrath decays by **50 per drift step** (20 min) and by 200 at once when its holde
 
 Rules for every stage:
 
-- **No blocks change.** Ents and Huorns do not break walls; marches fight, they do not raze. Banner-protected land keeps the host out (`LandProtection.blocksInvasion` with the wild owner's group) and protected structures are never targets. Player builds are never targets.
+- **Only marches change blocks**, and only temporarily (below). Stages 1-3 never touch blocks. Banner-protected land keeps every host out (`LandProtection.blocksInvasion` with the wild owner's group) and protected structures are never targets.
 - The march is a world event to the NPC pod: it runs on the world-events framework's chunk tickets and budgets, shows on the map, and reports its control deltas through `TerritoryControl.report` with source `lotrrevival:wild_march/<owner>`.
 - Peaceful: wrath is still tracked but no stage above 1 happens.
 - Wild-owner creatures killed in a march do not raise wrath further for that march.
-- A player can calm the wild: Ents' wrath toward a player drops by 100 per sapling the player plants in Fangorn (max 300 per in-game day). The Old Forest and the wights cannot be calmed.
+
+**March damage (maintainer decision: marches may damage walls; everything is restored).** Uses the same journal rules as the nemesis spec's war camps.
+
+| Limit | Value |
+| --- | --- |
+| Where | only inside the target structure's bounds expanded by 8 blocks, only in chunks under the march's event tickets; never in a stronghold province; never at a position where `LandProtection.protectedAt` is true (checked per block) |
+| What the host does | Ents and Huorns break wall, door, gate, fence and roof blocks to reach the garrison. Old Forest: roots burst up, replacing ground and floor blocks with a root block (our own block, no drops). Wights: doors and gates rime over and shatter (broken), and torches and lanterns go out (replaced by air) |
+| Never touched | blocks with a block entity (chests, banners, signs, spawners, beds...), fluids, blocks tagged `#lotrrevival:march_proof` (bedrock, obsidian, reinforced and our faction standards), blocks harder than 50, unbreakable blocks, and anything below y 5 |
+| How much | at most 64 changed positions per march for Ents, 48 for the Old Forest, 16 for wights (config); at most 1 change per 2 s per host member |
+| Journal first | each original block state is written to the journal (SavedData, saved before the change) before the change happens |
+| No loot, no fire | a broken position drops nothing and gives no XP; no fire and no explosions; pistons cannot move journaled root blocks; a journaled root block broken by anyone drops nothing |
+| Restore | exactly, on march end (after the host has left or despawned), on server stop (before tickets are released) and on startup recovery (leftover journals: force-load, restore, release, delete). A position is restored if it holds air or our replacement block. If a player has since put something else there, that player's block stays and the original block is given back as an item at the spot (so no player-placed block is ever permanently lost) |
+| Players inside | a restore never places a block inside a player or an entity's bounding box; it waits up to 30 s, then pushes the entity up out of the block |
+| Off-screen | a march resolved off-screen changes no blocks |
+
+**Calming the wild (maintainer decision: all three can be calmed).** Calming lowers the player's own wrath; faction wrath falls by a quarter of what its members calm.
+
+| Wild owner | How to calm | Amount | Limit |
+| --- | --- | --- | --- |
+| `ents` | plant saplings in Fangorn (the sapling must still be there 5 min later) | -100 per sapling | 300 per in-game day |
+| `old_forest` | **leave the trees alone**: a full in-game day spent mostly inside the forest (at least 10 min of it) without felling, burning or striking any tree | -100 per such day | once per in-game day |
+| `old_forest` | **offer at its heart**: at the forest's heart glade (a World landmark: a ring of ancient trees around a mossy stone) place an offering on the stone: a sapling, bone meal, or a full water bottle poured out; the offering is taken (consumed) | -50 per offering | 200 per in-game day; nothing while the player holds an axe or a lit torch in either hand |
+| `barrow_wights` | **return what was taken**: items looted from barrows carry a mark (a data component set by the barrow loot tables). Using a marked item on a barrow's cairn stone gives it back (consumed) | -20 per item | 300 per in-game day |
+| `barrow_wights` | **lay the dead to rest**: by daylight, place a small flower on a cairn stone of a barrow | -75 per cairn | each cairn once per 3 in-game days |
+
+Stage 4 marches are not stopped by calming once started; calming during a march only counts after it ends.
 
 **NPC types this needs (NPC pod):** Ent and Huorn (`fangorn` faction; Huorn as a slow ambusher that looks like a tree until it moves), the Old Forest's Huorn-like hostile tree (`hostile_trees` pseudo-faction), the Barrow-wight and a Barrow-wight lord (`unaligned_hostile` pseudo-faction), plus the effects "rooted" and "barrow-fog". The pseudo-factions are already requested from core in the mapgen spec. Our own designs and art.
+
+**Other blocks and data this needs:** a root block and the `#lotrrevival:march_proof` tag (core), the barrow-treasure data component (core) and its loot-table function, barrow cairn stones and barrows with loot (structure spec), the Old Forest heart glade landmark (World, structure spec), and the journal service shared with war camps (NPC pod's world-events framework).
 
 ### 5. Effects of ownership [Ours unless marked]
 
@@ -265,7 +294,7 @@ Rules for every stage:
 | --- | --- |
 | What swaps | the village's **guards** only: its guard posts' standards and the guard spawner's faction (guards, watchmen, militia, bounders; the NPC pod marks these roles). The occupier's guards replace them by the same swap rules as forts (old guards removed when the swap runs, new ones from the spawner) |
 | What stays | residents, farmers, traders, smiths, innkeepers and hire captains keep their own faction, home, names and inventories. Killing one still counts against their own faction |
-| Trade and hire under occupation | every trade, hire and mini-quest check of a resident uses the **occupier** as the gating faction, with the resident's normal thresholds. A player needs the same alignment with the occupier that they would normally need with the residents (e.g. a Bree trader needing +0 now needs +0 with Mordor). Players hostile to the occupier are refused with an occupation line; players the occupier tolerates can deal, even if the residents' own faction dislikes them |
+| Trade, hire and quests under occupation (two gates) | a resident deals with a player only if **both** hold: (1) **occupier gate**: the player has the resident's normal threshold with the **occupier** (e.g. a Bree trader needing +0 now needs +0 with Mordor); (2) **residents' gate**: the player has alignment **>= 0 with the residents' own faction** (maintainer decision), even where the resident's normal threshold is lower. Failing (1) gives an occupation refusal line, failing (2) the residents' usual refusal. So Bree folk under Mordor serve only players Mordor tolerates and Bree does not hate |
 | Who residents fight | nobody new: they are civilians and do not rise against the occupier. Occupier guards defend the village and attack players hostile to the occupier |
 | Prices | unchanged |
 | Hired units from an occupied village | units hired before the flip stay with their owners. New hires come from the residents' faction's roster, gated as above |
@@ -387,7 +416,7 @@ Text is ours, in lang via World's lang provider.
 | `roadDanger(level, pos, player)` | 1.0 | Section 5 |
 | `invasionMultiplier(level, pos, faction)` | 1.0 | Section 5 |
 | `counterInvaders(level, pos)` | empty | Factions to add at uncommon tier |
-| `gatingFaction(level, pos, residentFaction)` | the resident's faction | The occupier while the village's province is occupied (section 5) |
+| `gatingFaction(level, pos, residentFaction)` | the resident's faction | The occupier while the village's province is occupied (section 5). The NPC pod applies it as the occupier gate and keeps the residents' >= 0 gate itself |
 | `wildStage(level, pos, player)` | 0 | Wild wrath stage 0-4 for spawn and AI decisions (section 4b) |
 | `wildHostileTo(level, pos, player)` | false | True from stage 2: the wild owner's creatures treat the player as an enemy |
 
@@ -458,7 +487,10 @@ The GameTest server has no Middle-earth level, so the territory service takes a 
 - [ ] GameTest: decay: nothing for the first 72,000 ticks, then -1 per 72,000 for every faction; a change restarts the clock.
 - [ ] GameTest: invasion-defeated award of 50 split between pledged contributors.
 - [ ] GameTest: delta table: owner side raises C, enemies lower C and build P, neutral ignored; wild provinces never change owner or control.
-- [ ] GameTest: wild wrath: sources add the listed amounts (Fangorn-friendly players x0.25, orc kills in Fangorn add nothing), decay per drift step, stages at 100/300/600/900, `wildHostileTo` from stage 2, march cooldown, march win applies the control loss and clears grid strength; no block changes.
+- [ ] GameTest: wild wrath: sources add the listed amounts (Fangorn-friendly players x0.25, orc kills in Fangorn add nothing), decay per drift step, stages at 100/300/600/900, `wildHostileTo` from stage 2, march cooldown, march win applies the control loss and clears grid strength; stages 1-3 change no blocks.
+- [ ] GameTest: march damage: respects the per-march limit, skips block entities, `march_proof`, protected positions and stronghold provinces; journals before each change; restores exactly on end and after a simulated restart from the saved journal; a player block placed on a broken spot stays and the original drops as an item; nothing drops when broken.
+- [ ] GameTest: calming: sapling (kept 5 min), quiet forest day, heart-glade offering (refused with an axe or lit torch in hand), returning marked barrow items, flowers on a cairn by day; daily limits; faction wrath falls by a quarter.
+- [ ] GameTest: occupied village gating needs both the occupier threshold and >= 0 with the residents' faction.
 - [ ] GameTest: absent-defender: x0.5 only when the owner side has a defender seen within 14 days and none online; no defenders at all = no slowdown.
 - [ ] GameTest: village gating: `gatingFaction` returns the occupier while occupied and the residents' faction after flip-back.
 - [ ] GameTest: flip at C = 0 with score >= 250 (allies count one third), C becomes 250, pressures reset, `TerritoryFlipEvent` fires; no flip below 250.
@@ -471,7 +503,7 @@ The GameTest server has no Middle-earth level, so the territory service takes a 
 - [ ] GameTest (after the structure spec): standard swap replaces only unchanged standards, skips protected structures, removes the old garrison but not hired or named NPCs; lazy swap on chunk load.
 - [ ] Unit: layout and state payload round trip; layout hash stable.
 - [ ] GameTest: command table sends the open-map payload only in Middle-earth with territory enabled.
-- [ ] Playtest: pledge to the Hobbits, fight the orcs that `/lotr territory pressure` brought in, watch the Shire border hatch, flip a pilot province with `/lotr territory`, see the map, waypoint and spawn changes, wait for drift-back; check that a bannered build in the province is untouched; trade with a Bree trader under occupation; fell trees in the Old Forest until the trees hunt you; open the conquest map from a command table.
+- [ ] Playtest: pledge to the Hobbits, fight the orcs that `/lotr territory pressure` brought in, watch the Shire border hatch, flip a pilot province with `/lotr territory`, see the map, waypoint and spawn changes, wait for drift-back; check that a bannered build in the province is untouched; trade with a Bree trader under occupation; fell trees in the Old Forest until the trees hunt you, then calm them at the heart glade; trigger a march with `/lotr territory march` and check the walls come back exactly; open the conquest map from a command table.
 
 ## Proposed tickets (not opened)
 
@@ -479,7 +511,7 @@ Priority: **high** (maintainer request). Gate: foundation in **G3** next to the 
 
 | # | Pod | Ticket | Days | Gate | Suggested agent | Needs |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | core | `core.api.TerritoryControl` (incl. `gatingFaction`, `wildStage`, `wildHostileTo`), `core.api.TerritoryClient`, `TerritoryFlipEvent`, `WildMarchEvent`, `LandProtection.protectedAt`, square size constant. Holders with neutral defaults and `swapForTesting` | 1 | G3 | sonnet-1 | - |
+| 1 | core | `core.api.TerritoryControl` (incl. `gatingFaction`, `wildStage`, `wildHostileTo`), `core.api.TerritoryClient`, `TerritoryFlipEvent`, `WildMarchEvent`, `LandProtection.protectedAt`, square size constant, root block, `#lotrrevival:march_proof` tag, barrow-treasure data component and loot function. Holders with neutral defaults and `swapForTesting` | 1.5 | G3 | sonnet-1 | - |
 | 2 | world | **Provinces in the map pipeline**: `provinces.geojson` format and reader in `buildSrc`; the `seedProvinces` task (cost-weighted Voronoi from the region's waypoints, river and ridge costs, biome-edge clip, small-province merge, shared-edge vectorizing); run it on the pilot and **commit the draft**; rasterize to `territory/<id>.json`, `territory_index.png/.json`; validator (gaps, overlaps, waypoints in exactly one province of their region, region drift, stable ids, `retired_ids`, `provinces.lock`) with broken fixtures; map README section; conquest-rate biome tags | 2 | G3 | sonnet-4 | waypoints data |
 | 2b | world | Hand-tune the pilot `provinces.geojson` (borders on the Brandywine, Bree-hill, the Old Forest edge, the Barrow-downs), set strongholds and wild owners; screenshot overlay for review | 0.5 | G3 | sonnet-4 (then the maintainer) | 2 |
 | 3 | world | Conquest grid [Legacy]: squares, kill listener with the pledge-or-+500 gate, radial spread, cleansing, decay, rate, opt-out attachment, 50-point notices, stats counter, `/lotr conquest`, SavedData, GameTests | 2 | G3 | sonnet-3 | 1 |
@@ -493,18 +525,16 @@ Priority: **high** (maintainer request). Gate: foundation in **G3** next to the 
 | 10 | world | Wild wrath: sources (kills, conquest, felling, fire, barrow blocks, night camping), decay, stages, `wildStage` / `wildHostileTo`, sapling calming, `/lotr territory wrath`, GameTests | 1.5 | G3 | sonnet-3 | 4 |
 | 11 | npc | Wild push-back: stage 1-3 behaviour (spawn multipliers, hostility flip for Ents and Huorns, rooted and barrow-fog effects, hunts) | 2 | G4 | sonnet-7 | 10, wild NPC types |
 | 12 | npc | Wild marches as a world-event type (target choice, host composition, resolution, control report) | 1.5 | G4 | sonnet-8 | 11, world-events framework |
+| 12b | npc | March damage: limits, per-block checks, journal-first changes, exact restore on end / stop / startup, item give-back, GameTests (reuses the war-camp journal) | 1.5 | G4 | sonnet-8 | 12 |
+| 12c | world | Calming the wild: sapling, quiet-forest day, heart-glade offering, barrow treasure return, cairn flowers; daily limits; heart-glade landmark placement | 1.5 | G4 | sonnet-3 | 10, structure spec (barrows, cairns, glade), core marker component |
 | 13 | world | Held structures and villages: index at generation, standard and guard-post swaps (loaded and lazy), protection and block checks, swap queue | 2 | G4 | sonnet-5 | 9, 4 |
-| 14 | npc | Garrison and village-guard swap (old guard removal, spawner faction); residents' trade, hire and mini-quest gating through `gatingFaction` with an occupation refusal line | 1.5 | G4 | sonnet-7 | 9, 13 |
+| 14 | npc | Garrison and village-guard swap (old guard removal, spawner faction); residents' trade, hire and mini-quest gating: occupier gate through `gatingFaction` plus >= 0 with the residents' own faction, with both refusal lines | 1.5 | G4 | sonnet-7 | 9, 13 |
 | 15 | npc | Invasions: territory multipliers, counter-invasions, outcome reports (inside the invasion spec's tickets) | 1 | G4 | sonnet-8 | invasion spec, 4 |
 | 16 | progression | Notifications UI (flip title, contested toast, wild warnings), conquest-kills toggle in the menu, territory achievements (incl. Legacy's view-your-conquest and march outcomes) and the conquest-earned stat | 1 | G4 | sonnet-9 | 4, 5 |
 
 ## Open questions for the maintainer
 
-Answered on PR #183 (revision 2): provinces as GeoJSON polygons; villages change hands; wild owners that push back; heatmap on the Map page and at a command table; unpledged players gated at +500; absent-defender slowdown on. Still open:
+Answered on PR #183. Revision 2: provinces as GeoJSON polygons; villages change hands; wild owners that push back; heatmap on the Map page and at a command table; unpledged players gated at +500; absent-defender slowdown on. Revision 3: occupied villages also need >= 0 with the residents' faction; marches may damage walls with exact restore; all three wild owners can be calmed; flip-speed defaults kept, tune in playtest. Still open:
 
-1. **Numbers.** Borderland 400, heartland 750, flip at 0 with 250 pressure, 250 per province per hour, 100 per player per hour, drift-back in about 8 h of play: right feel?
-2. **Unpledged gate.** +500 at x0.5, one faction per kill (rationale in section 1). OK, or full share?
-3. **Occupied villages.** Residents serve whoever the occupier tolerates, at their normal thresholds against the occupier. Should players still need at least neutral (0) with the residents' own faction too, so Bree folk never serve a player they hate?
-4. **Wild marches.** Marches fight garrisons but never break blocks. Should a march at stage 4 also be able to damage the target's walls (journaled and restored like war camps), closer to Isengard's flooding?
-5. **Fangorn and the `fangorn` faction.** Fangorn's land is wild (never conquered) while `fangorn` stays a pledgeable faction for alignment, hiring and the Ents' friendship. OK?
-6. **Calming the wild.** Planting saplings calms the Ents only. Any way to calm the Old Forest or the wights, or keep them implacable?
+1. **Unpledged gate.** +500 at x0.5, one faction per kill (rationale in section 1). OK, or full share?
+2. **Fangorn and the `fangorn` faction.** Fangorn's land is wild (never conquered) while `fangorn` stays a pledgeable faction for alignment, hiring and the Ents' friendship. OK?
