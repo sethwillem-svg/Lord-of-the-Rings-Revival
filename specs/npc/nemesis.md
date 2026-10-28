@@ -2,9 +2,9 @@
 
 - **Pod:** npc
 - **Lead:** Opus 3
-- **Status:** draft (maintainer answers of 2026-10-28 applied)
+- **Status:** draft (maintainer answers of 2026-10-28 applied, two rounds)
 - **Schedule:** after G3 (needs every faction's NPC types, mounts, faction captain loadouts and the map GUI). Invasion leaders, hunt quests and settlement raids land with or after G4.
-- **Depends on:** `specs/npc/npc-base.md` (`NpcEntity`, classes, names, speech, kills, despawn, loadouts), `specs/npc/hiring-trading.md` (hired units, unit levels), `specs/core/core-apis.md` (alignment, pledge, kill path, `FactionRelations`, faction kinds, `LandProtection`, `FellowshipQuery`, influence), `specs/progression/quests-fellowships-banners.md` (kill quests, banners, achievements, titles, menu hub), progression map page (#88) and map GUI, `specs/world/*` (settlement locations, for raids). Invasion spec (S8, not written yet).
+- **Depends on:** `specs/npc/npc-base.md` (`NpcEntity`, classes, names, speech, kills, despawn, loadouts), `specs/npc/hiring-trading.md` (hired units, unit levels), `specs/core/core-apis.md` (alignment, pledge, kill path, `FactionRelations`, faction kinds, `LandProtection`, `FellowshipQuery`, influence), `specs/progression/quests-fellowships-banners.md` (kill quests, banners, achievements, titles, menu hub), progression map page (#88) and map GUI, World structure spec (not written yet: venue structures, venue tags, structure locator). Invasion spec (S8, not written yet).
 - **Beyond parity:** Legacy LOTR had no nemesis system and no world events of this kind. Nothing here comes from it; this is our own design. All numbers are ours and tunable through config.
 - **Why not the Nemesis System (PAL) mod:** we read it (MIT) as a feature checklist only; it cannot promote our NPCs, has no API and needs Architectury and owo-lib, so a native system fits our factions better.
 
@@ -16,8 +16,8 @@ Captains remember you. A captain of a faction you are at war with that kills you
 
 1. **Rise.** A captain or soldier of a faction you are an enemy of kills you or one of your hired units. A red chat line: "*Gashnak Skull-Splitter* of Mordor has risen to **Marked**." For an evil player: "*Hirgon the Unbending* of Gondor has sworn to hunt you." It retreats (vanishes).
 2. **Hierarchy.** The Middle-earth menu (L) gains a **Nemeses** page: each enabled faction's war-host as a pyramid (Overlord on top), each card with name, title, rank, scars, known strengths and weakness, grudges, rivals and allies. Your grudges are highlighted; hosts of your own side are shown greyed.
-3. **World events.** Now and then something starts 64-256 blocks from you: smoke and a chat hint ("Steel rings out to the north-east"), and a marker on the map. You can ride there and join in, or ignore it and hear how it ended.
-4. **Ambush** is one kind of event, aimed at you: a nemesis that holds a grudge finds you, speaks a taunt naming you, and attacks with its bodyguards, a rank-coloured boss bar and, at high ranks, a mount.
+3. **World events.** Every 8-15 minutes or so something starts 64-256 blocks from you, often at a ruin, watchtower, hideout or village: a chat hint ("Steel rings out to the north-east") and a marker on the map. Other players' events nearby show on your map too. Ride there and join in, or ignore it and hear how it ended.
+4. **Ambush** is the rare event aimed at you (roughly once per one and a half hours of travel): a nemesis that holds a grudge finds you, speaks a taunt naming you, and attacks with its bodyguards, a rank-coloured boss bar and, at high ranks, a mount.
 5. **The fight.** Nemeses hit harder and have more health by rank and carry traits. Badly hurt, one may flee; killed, it may cheat death and return scarred. Exploit its weakness, or kill it after it has cheated death twice, and it dies for good.
 6. **Rewards.** Killing a nemesis pays (or costs) alignment scaled by rank, counts for achievements and titles, and completes hunt quests that enemy factions post on it.
 7. **Politics.** Rumours: a Captain challenged a Warlord and took his place; two Commanders swore alliance; a Mordor Warlord slew an Isengard rival.
@@ -137,81 +137,140 @@ Scars come from cheat-death: -50% damage of the type that "killed" it, plus a sc
 
 ### World events
 
-A world event is a short, bounded scene staged near a player, run on force-loaded chunks so it plays out whether or not the player watches it closely, shown on the map, and resolved into nemesis records and alignment.
+A world event is a short, bounded scene staged near a player. It runs on force-loaded chunks so it plays out whether or not anyone watches closely, uses a world structure as its stage when one is near, shows on every nearby player's map, and resolves into nemesis records and alignment. Events are frequent; ambushes (the event aimed at you) are rare.
 
 #### Event types
 
 | Type | What happens | Needs | Win / lose for the nemesis side |
 | --- | --- | --- | --- |
 | **Ambush** | A grudge-holding nemesis and bodyguards attack the player (rules below). | grudge >= 2 | Kills or drives off the player / dies or flees |
-| **Beast hunt** | A nemesis and 2-3 followers fight wild beasts (wolves, bears, spiders, wargs for good captains) spawned for the event. | biome with suitable beasts | Kills the beasts / dies |
-| **Warband clash** | A nemesis warband fights an enemy faction's warband: another nemesis (relation `ENEMY`/`MORTAL_ENEMY`) or an ordinary captain with 4-6 soldiers. | border land: both factions have influence > 0 nearby, or either does and the other is a mortal enemy | Last side standing |
-| **Feud duel** | Two nemeses settle a politics challenge in person, ringed by their bodyguards, who do not interfere. | a pending challenge between `AT_LARGE` nemeses of one faction | Duel winner takes the rank; loser `DEAD` (or cheats death) |
-| **War camp** | A nemesis musters 4-8 soldiers around a campfire; nobody attacks unless provoked. | wild land in its faction's territory, flat 7x7 | Undisturbed for the event duration: renown +3, next appearance with +2 bodyguards / camp broken: nemesis flees or fights |
-| **Village raid** | A nemesis warband attacks a world-generated settlement of an enemy faction; the settlement's guards defend. Raiders never break or place blocks. | settlement within the band (world pod lookup), not protected by a banner that keeps the raider faction out | Kills half the defenders or survives 5 min / dies or flees |
-| **Captain hunting** | A nemesis and 2 trackers chase a lone enemy-faction NPC (a Ranger, a scout, an orc runner) across the area. | open land | Catches and kills the quarry / quarry escapes the area or nemesis dies |
-| **Rescue** | A nemesis's warband holds a captive NPC of the player's side (bound, cannot fight). | the captive's faction is the player's side or a faction they have > 0 with | Captive is executed at the timer end / player kills the guards and right-clicks the captive |
+| **Beast hunt** | A nemesis and 2-3 followers fight wild beasts (wolves, bears, spiders; wargs for good captains) spawned for the event. | biome with suitable beasts | Kills the beasts / dies |
+| **Warband clash** | A nemesis warband fights an enemy faction's warband: another nemesis (relation `ENEMY`/`MORTAL_ENEMY`) or an ordinary captain with 4-6 soldiers. | border land: both factions have influence > 0 nearby, or one does and the other is a mortal enemy | Last side standing |
+| **Feud duel** | Two nemeses settle a politics challenge in person, ringed by bodyguards who do not interfere. | a pending challenge between `AT_LARGE` nemeses of one faction | Winner takes the rank; loser `DEAD` (or cheats death) |
+| **War camp** | A nemesis musters 4-8 soldiers in a temporary camp of tents and a war standard (see War camp blocks); nobody attacks unless provoked. | open land in its faction's territory (never a structure) | Undisturbed for the duration: renown +3 and +2 bodyguards on its next appearance / camp broken: nemesis flees or fights |
+| **Village raid** | A nemesis warband attacks a settlement of an enemy faction; its guards defend. Raiders never break or place blocks. | a `village` venue in the band, not protected against the raiders' faction | Kills half the defenders or survives 5 min / dies or flees |
+| **Captain hunting** | A nemesis and 2 trackers chase a lone enemy-faction NPC (a Ranger, a scout, an orc runner), who runs for the nearest friendly outpost or watchtower. | open land | Catches and kills the quarry / quarry reaches safety or nemesis dies |
+| **Rescue** | A nemesis's warband holds a captive NPC (bound, cannot fight) of the player's side. | captive's faction is the player's side or one they have > 0 with | Captive executed at the timer end / players kill the guards and right-click the captive; the freer (and their fellowship within 32 blocks) learn the nemesis's weakness |
 
-- Every type except ambush and rescue can involve nemeses of the player's own side; events are about the war, not only about the player.
-- Event participants carry attachment `lotrrevival:world_event` (event id, role). Participants that are not nemeses are ordinary NPCs and despawn with the event.
-- Spawned beasts and soldiers count for normal alignment rules when the player kills them.
+- Every type except ambush and rescue may involve nemeses of the player's own side; events are about the war, not only about the player.
+- Participants carry attachment `lotrrevival:world_event` (event id, side, role). Non-nemesis participants are ordinary NPCs and leave with the event.
+- Spawned beasts and soldiers count for normal alignment when killed.
+
+#### Venues (world structures)
+
+Events prefer to happen **in** the world's structures, so the land feels lived in.
+
+- **Lookup:** the World pod tags structures by venue kind with structure tags `#lotrrevival:event_venues/<kind>`, kinds: `camp`, `ruin`, `outpost`, `watchtower`, `tower`, `village`, `hideout`, `bridge`. npc asks a structure-locator API (core holder `core.api.StructureVenues`, backend registered by World) for venues of a kind within the distance band: each answer has structure id, bounds, centre, owning faction (or none), whether it has resident NPCs, and whether banner protection covers it.
+- **Only already-generated chunks** are searched (structure references stored in existing chunks or a World-side index); the lookup never generates terrain. Budget: one lookup per roll, max 64 chunk reference checks, results cached per 512-block region for 5 min.
+- **Preference per type** (first kind found in the band wins; ties: nearest to the band's middle, 160 blocks):
+
+| Type | Preferred venues | Fallback |
+| --- | --- | --- |
+| Ambush | none (happens where the player is) | n/a |
+| Beast hunt | `ruin`, `camp` | open terrain |
+| Warband clash | `ruin`, `bridge`, `watchtower`, `outpost` of either faction | open terrain on a faction border |
+| Feud duel | `ruin`, `tower`, `camp` of the duellists' faction | open terrain |
+| War camp | never a structure (builds its own) | open terrain only |
+| Village raid | `village` of an enemy faction (required) | none: the type is dropped |
+| Captain hunting | starts in open terrain; the quarry runs to an `outpost`/`watchtower`/`village` of its faction within 128 blocks | if none, it runs straight away from the hunters |
+| Rescue | `hideout`, `ruin`, `tower`, `camp` | open terrain |
+
+- **Using a venue:** the event centre is the structure's centre; participants spawn on open floor inside the bounds (two air blocks over a solid block, not in water). Chunk tickets cover the structure, centre-out, within the per-event chunk limit. Resident NPCs of a venue's faction join on their faction's side (a Gondor watchtower's guards fight the raiders). A venue whose banner protection keeps out a participating faction is never chosen.
+- **Venue cooldown:** one event per venue per 30 min; at most one active event per venue.
+- **Density target** (World pod): in wild land of every region, on average >= 2 venues within 256 blocks of any point, with at least ruins and one faction outpost/watchtower kind per region. Until the World structure set exists, events use the open-terrain fallbacks and village raids only happen where settlements exist.
+- This depends on the **World pod's structure spec, which does not exist yet**; see the World tickets below.
+
+#### War camp blocks
+
+The only event that places blocks.
+
+- **Templates:** structure NBT `data/lotrrevival/structure/event/war_camp/<group>_<n>.nbt`, groups `orc`, `men`, `elf`, `dwarf`, 2+ variants each, footprint <= 11 x 11, height <= 6. **Original art built for this repo.** Contents: tents (decorative blocks), a campfire, and a faction **war standard** (a decorative banner block; it never grants land protection). No containers, no block entities with inventories, no fire blocks, no redstone.
+- **Site rules:** open terrain only; not inside or within 16 blocks of any structure's bounds; not in protected land; not within 128 blocks of spawn or respawn points; ground height varies <= 2 over the footprint; no terrain levelling.
+- **Replace rule:** a template block is placed only where the current block is air or a replaceable plant (`#minecraft:replaceable_by_trees` / short grass, flowers, ferns, snow layer, dead bush). Other positions are skipped; if more than 5% of template blocks would be skipped, the site is rejected.
+- **Journal:** before placing, every changed position and its previous block state is written to the event's restore journal in `SavedData` `lotrrevival_world_events` and saved. Placement and restore happen only in chunks the event holds tickets for.
+- **Restore exactly:** on event end (after the participants leave), on server stop (before tickets are released), and on startup recovery (leftover journals: force-load their chunks with our controller, restore, release, delete the journal). A position is restored only if it still holds the block we placed or air; anything a player put there is left alone.
+- **No drops:** journaled positions drop nothing when broken (by hand, explosion, fire, or a mob) and give no XP; pistons cannot move them; they cannot be picked with silk touch. Breaking one still counts as "camp broken" for the event.
 
 #### Scheduling
 
 | Thing | Value | Notes |
 | --- | --- | --- |
-| Roll | every 60 s per online player, staggered | Ambush keeps its own schedule (below). |
-| Eligible player | survival/adventure, not Peaceful, in Middle-earth, online >= 5 min this session, not in an active event, not within 64 blocks of an active invasion | |
-| Chance per roll | 3% | ~1 event per 30 min of eligible play |
-| Per-player cooldown | 12 min after the last event *staged for* that player ended | |
-| Distance band | 64-256 blocks from the player, horizontal | Visible or reachable, not on top of them. |
-| Site checks | Middle-earth; loaded or loadable surface; not water; > 128 blocks from world spawn, from the Middle-earth arrival point and from any player's respawn point; not in protected land (`LandProtection.blocksFactionSpawn` for any participating faction); not within 96 blocks of another event | |
-| Type choice | weights: beast hunt 3, warband clash 3, war camp 2, captain hunting 2, village raid 2, rescue 1, feud duel 2 (only if a challenge is pending); then filtered by site needs and territory; a type with no valid site is dropped and another drawn (max 4 tries) | |
-| Territory | each participating faction must have influence > 0 at the site (core influence; always true until areas of influence land), or the biome is tagged for that faction | |
-| Nemesis choice | prefer `AT_LARGE` records with a grudge on the player, then records of factions near the site, highest renown first; if none fit, the event uses an ordinary captain (who never becomes a nemesis from the event alone) | |
-| Hint | on start: a chat line with direction and rough distance, and the map marker | |
+| Roll | every 30 s per online player, staggered | Ambush has its own schedule (below). |
+| Eligible player | survival/adventure, not Peaceful, in Middle-earth, online >= 3 min this session, no event currently staged for them, not within 64 blocks of an active invasion | |
+| Chance per roll | 6% | With the cooldown: about one event every 8-15 min per player |
+| Per-player cooldown | 5 min after the last event staged for that player ended | |
+| Distance band | 64-256 blocks from the player | Visible or reachable, not on top of them. |
+| Site checks | Middle-earth; surface, not water; > 128 blocks from world spawn, the Middle-earth arrival point and any player's respawn point; not in protected land for any participating faction (except a venue's own faction on its own side); not within 96 blocks of another active event | |
+| Type weights | beast hunt 3, warband clash 3, war camp 2, captain hunting 2, village raid 2, rescue 1, feud duel 2 (only if a challenge is pending); filtered by venue/site needs and territory; up to 4 redraws | |
+| Territory | each participating faction has influence > 0 at the site (core influence), or the biome is tagged for it | |
+| Nemesis choice | `AT_LARGE` records with a grudge on the player first, then records of factions near the site, highest renown first; otherwise an ordinary captain (who never becomes a nemesis from an event alone) | |
+| Hint | chat line with direction and rough distance to the player it was staged for; map marker for everyone in range | |
+
+#### Performance governor
+
+The scheduler watches server load and backs off.
+
+| State | Enter when | Effect |
+| --- | --- | --- |
+| Green | average tick time over the last 100 ticks < 30 ms and chunk budget < 75% used | normal |
+| Yellow | 30-40 ms, or chunk budget >= 75% | event chance halved; concurrency cap halved (round down, min 1); new events limited to 4 chunks; no war camps or village raids |
+| Red | > 40 ms, or chunk budget full | no new events and no ambushes (skipped rolls do not start cooldowns); after 30 s in Red, active events with no player within 64 blocks resolve off-screen and release their chunks, oldest first, until the state drops or none are left |
+
+- Hysteresis: a state is held at least 10 s; going down a level needs the average to be 5 ms below that level's entry threshold.
+- Average tick time is the server's own rolling tick-time average (overall, not per dimension). Thresholds and budgets are config.
+- The governor state is shown in `/lotr worldevent list` and logged once per state change at INFO.
 
 #### Chunk loading
 
-Our own NeoForge `TicketController` `lotrrevival:world_events` (registered in `RegisterTicketControllersEvent`), forced tickets owned by the event id.
+Our own NeoForge `TicketController` `lotrrevival:world_events` (registered in `RegisterTicketControllersEvent`), forced ticking tickets owned by the event id.
 
 | Limit | Value |
 | --- | --- |
-| Max concurrent events, server | 6 (config) |
-| Max events staged for one player | 1 at a time (plus their ambush) |
-| Max forced chunks per event | 9 (3x3 around the site), ticking |
-| Max forced chunks total | 54 |
-| Max duration | 10 min (ambush 5, war camp 8, rescue 6); then it resolves |
-| Auto-release | on end; when the player it was staged for logs out, leaves Middle-earth, or is > 384 blocks away for 60 s (event resolves off-screen first); on server stop |
-| Load validation | on server start the controller's validation callback drops every leftover ticket of ours; events are never resumed |
-| Never | near spawn/respawn points (128 blocks) or inside protected land; no event type in this spec targets protected land. A future siege type would be the only exception and needs its own spec. |
+| Max concurrent events, server | 3 + 1 per 3 eligible online players, hard max 12 (config) |
+| Max events staged for one player | 1 at a time (plus at most one ambush) |
+| Max forced chunks per event | 9 (3x3), 4 in Yellow |
+| Chunk budget, total | 72 (config) |
+| Max entities per event | 16; total across events 160 |
+| Max duration | 8 min (ambush 5, war camp 8, rescue 6, feud duel 4) |
+| Auto-release | on end; when the staged-for player logs out, leaves Middle-earth or is > 384 blocks away for 60 s (handover first, else off-screen resolution); Red-state shedding; server stop (after war-camp restore) |
+| Load validation | on server start the controller's validation callback drops all our leftover tickets; events never resume (war-camp journals are restored as above) |
+| Never | within 128 blocks of spawn/respawn points or in protected land; no event in this spec targets protected land (a future siege type would need its own spec) |
 
-Ambushes happen 16-28 blocks from the player, so they use no forced chunks.
+Sizing check: at ~12 min between events and ~6 min average duration, about one player in three has an event running; 20 players gives ~7 events, within the cap of 9 for 20 players, and ~60 chunks worst case, within the budget of 72. Ambushes use no forced chunks (they happen 16-28 blocks from the player).
+
+#### Participation, credit and grudges
+
+- **Owner:** the player the event was staged for. Owner-only parts: the chat hint, release/handover rules, the per-player cooldown, and ambush targeting.
+- **Participants:** any player who, within the event radius + 32 blocks while it is active, damages an event NPC or is damaged by one. Each participant is recorded with the side they helped: the side whose enemies they damaged most. Anyone may join any event shown on their map.
+- **Kills:** normal kill path for whoever lands the kill (alignment, hired-unit rules, nemesis rank multiplier). Nemesis effects also apply to interferers: a nemesis gains grudge +1 on any player who damages it, and renown/grudge +3 for killing one (only if that player is its enemy).
+- **Win bonus:** +5 alignment with each faction of the winning side (+10 with the captive's faction for a rescue) to every participant who helped the winning side and dealt >= 20% of the player damage to the losing side (or freed the captive). Once per player per event.
+- **NPC targeting:** event NPCs use their normal targeting: they attack players who are hostile to them and those who attack them; a player on their side who stays out of it is ignored.
+- **Owner and interferer:** fellowship members are always allies of each other (fellowship friendly-fire rules apply) and share the rescue reveal. Players on opposite sides may fight each other only under the server's PvP setting and fellowship rules; events never turn players into each other's targets and never grant renown or grudges for player-vs-player kills. An interferer helping the other side does not take over the event; if the owner leaves, handover goes to a participant within 128 blocks (fellowship members first).
+- **Achievements:** "turn the tide" counts for every participant on the winning side.
 
 #### Outcomes
 
-- **On-screen:** the event ends when a side wins, the timer runs out, or every participant on one side is dead or fled. Survivors walk away and are removed 30 s later (or immediately if unloaded).
-- **Off-screen** (released early): power roll per side = sum of participant ranks (ordinary soldier 1, captain 2, nemesis 3 + rank index) + 1d10; higher wins, losers' nemeses are killed with normal cheat-death rules.
-- **Into the records:** win +3 renown (+1 per enemy NPC killed, max +5); death by normal rules; feud duel decides the challenge; war camp bonus bodyguards on next appearance; renown from killing beasts is capped at the win bonus.
-- **Alignment:** player kills follow the normal kill path (and the nemesis rank multiplier). Bonus on a player-decided win: +5 with each faction on the side the player helped (+10 for rescue, with the captive's faction), applied once per event.
-- **Rumour:** one grey chat line to players within 384 blocks and to grudge holders of any nemesis involved ("The Warg-riders of Gashnak were scattered near the Dead Marshes").
-- **Events:** `WorldEventStartedEvent` (cancellable), `WorldEventEndedEvent` (type, outcome, participants, helping players).
+- **On-screen:** ends when a side wins, the timer runs out, or one side is all dead or fled. Survivors walk away and are removed 30 s later (immediately if unloaded).
+- **Off-screen** (released early): power roll per side = sum of participant ranks (soldier 1, captain 2, nemesis 3 + rank index) + 1d10; losers' nemeses are killed with normal cheat-death rules.
+- **Into the records:** win +3 renown (+1 per enemy NPC killed, max +5); deaths by normal rules; feud duels decide challenges; war camp bonus; renown from beasts capped at the win bonus.
+- **Rumour:** one grey chat line to players within 384 blocks and to grudge holders of any nemesis involved.
+- **Events:** `WorldEventStartedEvent` (cancellable), `WorldEventEndedEvent` (type, outcome, venue, participants with sides).
 
 #### Map markers and sync
 
-- Server keeps the active events and the last 20 ended ones (for one in-game day) in memory, with the ended list saved in `SavedData` `lotrrevival_world_events`.
-- S2C `WorldEventsPayload`: the full list of events within 1024 blocks of the player in their dimension plus any event involving a nemesis with a grudge on them, max 16. Sent on login, dimension change, and when an event in that set starts, changes state or ends. Each entry: event id, type id, centre x/z, radius (blocks), state (`active`, `ended`), outcome (when ended), title as lang key + args (nemesis names, faction names), faction colour(s), start and end game time.
-- Client: npc fills a new core client holder `core.api.MapMarkerClient` (same pattern as `WaypointClient`: backend registered by npc, read by progression; needs a `pod:core` ticket). **Progression's map page draws the markers** (icon per type, faction colour, tooltip with title and time left; ended events fade).
+- Active events plus the last 20 ended ones (kept one in-game day) are held in memory; the ended list and war-camp journals are saved in `SavedData` `lotrrevival_world_events`.
+- S2C `WorldEventsPayload`: every event within 1024 blocks of the player in their dimension (staged for anyone) plus any event involving a nemesis with a grudge on them, max 16, nearest first. Sent on login, dimension change, and when an event in that set starts, changes state or ends. Entry: event id, type id, centre x/z, radius, venue kind (or none), state (`active`, `ended`), outcome, title as lang key + args (nemesis and faction names), faction colours, start/end game time, whether it is staged for this player.
+- Client: npc registers a backend for a new core client holder `core.api.MapMarkerClient` (same pattern as `WaypointClient`). **Progression's map page draws the markers** (icon per type, faction colour, tooltip with title and time left; own events highlighted; ended events fade).
 
-### Ambush rules (an event type with its own schedule)
+### Ambush rules (rare; own schedule)
 
 | Thing | Value |
 | --- | --- |
-| Check | every 20 s per online player, staggered |
-| Eligible player | as for events, plus > 128 blocks from their respawn point and not in protected land for the nemesis's faction |
-| Candidates | `AT_LARGE` records holding a non-dormant grudge >= 2 against the player, whose faction the player is currently an enemy of. Hunt-quest targets count as grudge 2 for the holder. |
-| Chance | 1.5% x (1 + 0.25 x highest grudge, max 3) x 2 if inside the nemesis faction's region |
-| Cooldown | 25 min of online time after an ambush against them (20 min if they won) |
+| Check | every 30 s per online player, staggered |
+| Eligible player | as for events, plus online >= 15 min this session, > 128 blocks from their respawn point, not in protected land for the nemesis's faction, governor not Red |
+| Candidates | `AT_LARGE` records with a non-dormant grudge >= 2 on the player whose faction the player is an enemy of; hunt-quest targets count as grudge 2 for the holder |
+| Cooldown | 75 min of online time after an ambush against them (60 min if they won) |
+| Chance after cooldown | 1% x (1 + 0.25 x highest grudge, max 3) per check, x2 inside the nemesis faction's region: expected wait after the cooldown ~8-35 min, so roughly one ambush per 85-110 min of eligible play |
 | Server cap | at most `max_manifest` nemesis bodies (default 8, events included) |
 | Spawn spot | surface 16-28 blocks away, out of line of sight if possible, not water or protected land; skip if none in 16 tries |
 | Allies | an allied `AT_LARGE` nemesis with a grudge on the same player joins at 40% |
@@ -274,24 +333,31 @@ New `NpcSpeech` categories per side/race: `nemesis_rise`, `nemesis_ambush`, `nem
 
 ### Config (`lotrrevival-npc-server.toml`)
 
-`[nemesis]`: `enabled`, `disabled_factions` (dunland, near_harad, far_harad, easterling, half_troll), promotion chances, renown values, rank thresholds and seats, `max_manifest` (8), ambush period/chance/cooldown/safe radius, politics period and weights, cheat-death chances, rank alignment multipliers, fade days, `allowed_dimensions` (middle_earth), side threshold (100), dormant grudge decay.
-`[world_events]`: `enabled`, roll period (60 s), chance (3%), cooldown (12 min), distance band (64, 256), type weights, `max_events` (6), `max_chunks_per_event` (9), `max_duration` per type, release distance (384), spawn/respawn exclusion radius (128), alignment bonuses.
+`[nemesis]`: `enabled`, `disabled_factions` (dunland, near_harad, far_harad, easterling, half_troll), promotion chances, renown values, rank thresholds and seats, `max_manifest` (8), ambush check period (30 s), chance (1%), cooldown (75 / 60 min), safe radius (128), politics period and weights, cheat-death chances, rank alignment multipliers, fade days, `allowed_dimensions` (middle_earth), side threshold (100), dormant grudge decay.
+`[world_events]`: `enabled`, roll period (30 s), chance (6%), cooldown (5 min), distance band (64, 256), type weights, `max_events_base` (3), `players_per_extra_event` (3), `max_events` (12), `max_chunks_per_event` (9), `chunk_budget` (72), `max_entities` (16 / 160), `max_duration` per type, release distance (384), spawn/respawn exclusion radius (128), venue cooldown (30 min), venue search radius and budget, war camps enabled (true), alignment bonuses.
+`[world_events.governor]`: `yellow_mspt` (30), `red_mspt` (40), `hysteresis_mspt` (5), `min_state_seconds` (10), `yellow_chunk_fraction` (0.75), `red_shed_after_seconds` (30).
 Lists built with `Arrays.asList`.
 
 ### Performance limits
 
 - Records: seats cap each faction at 29; 14 enabled factions ~400 records; one SavedData written only when dirty.
-- No per-tick scans: event rolls every 60 s and ambush checks every 20 s per player, politics every 30 min, body checks every 2 s only on existing bodies (<= `max_manifest`).
-- Forced chunks hard-capped at 54; events and their participants hard-capped (max 16 entities per event).
-- Sync: hierarchy page requests a snapshot on open (C2S `NemesisRosterRequest`, 1 per 2 s per player), S2C `NemesisRosterPayload` with at most 60 cards; world events payload max 16 entries, sent on change only.
+- No per-tick scans: event and ambush rolls every 30 s per player (staggered), politics every 30 min, body checks every 2 s only on existing bodies (<= `max_manifest`), governor reads the server's tick-time average once per second.
+- Hard caps: 12 events, 72 forced chunks, 16 entities per event and 160 total; the governor lowers these under load.
+- Venue lookups: one per roll at most, 64 chunk checks, cached 5 min per region; never generates chunks.
+- War camps: <= 11 x 11 x 6 blocks placed per camp, journal written before placement.
+- Sync: hierarchy snapshot on request (1 per 2 s per player, max 60 cards); world events payload max 16 entries, sent on change only.
 
 ## Edge cases
 
 - **Multiplayer: shared hierarchy per faction, per-player grudges (decision).** One captain is the same nemesis to everyone; grudges are per player. Fits shared world NPCs, invasions, bounties, feuds and fellowships. A good player and an evil player on one server see the same hosts; each is hunted by the other side's.
-- **Two players near one event:** it was staged for one player, but anyone can join. Release distance and logout rules follow the player it was staged for; if they leave, it hands over to another eligible player within 128 blocks instead of resolving, if there is one.
+- **Other players' events:** visible on the map within 1024 blocks and open to anyone; see Participation for credit. A player can be the owner of one event and a participant in others at the same time.
+- **Opposite-side players at one event:** each fights the NPCs that are hostile to them; PvP only under the server setting and fellowship rules; no renown or grudges from PvP.
 - **Two grudge holders together:** the nemesis targets the higher grudge; both get the boss bar.
-- **Player logs out in an event:** see auto-release; event resolves off-screen, tickets released.
-- **Server stop during an event:** tickets released; participants saved in chunks are discarded on load (event attachment with an unknown event id); nemeses in it count as `AT_LARGE`.
+- **Owner logs out in an event:** handover to a participant within 128 blocks (fellowship first), else off-screen resolution and release.
+- **Server stop during an event:** war camps restored, tickets released; participants saved in chunks are discarded on load (event attachment with an unknown event id); nemeses in it count as `AT_LARGE`.
+- **Crash during a war camp:** the journal survives (saved before placement); startup recovery restores the blocks.
+- **Player builds on a war-camp spot:** restore leaves player-placed blocks alone and only reverts our blocks or air.
+- **Venue destroyed or griefed by players:** the locator still returns it; events spawn only on valid open floor, and if fewer than half the participants can be placed the venue is skipped and cooled down.
 - **Player death in an ambush:** counts as a kill; the body retreats 5 s later.
 - **Hired units:** valid targets of nemeses and events; their kills of a nemesis count as the owner's for quests and achievements, not for alignment (normal hired-kill rules).
 - **Killed by other NPCs, beasts or the environment:** cheat-death and die-for-good rules apply; rumour to grudge holders.
@@ -300,26 +366,28 @@ Lists built with `Arrays.asList`.
 - **Name tag:** refused on a nemesis body and on event participants; the tag is not used up.
 - **Dimension change:** bodies and events exist only in `allowed_dimensions`; NPCs never change dimension.
 - **Datapack removes a faction from the tag or config disables it:** records stay, never manifest, feud or appear in events, and fade on schedule. Unknown trait ids are dropped on load with one warning.
-- **Peaceful:** no promotions, ambushes or events; existing bodies retreat, running events end off-screen.
+- **Peaceful:** no promotions, ambushes or events; existing bodies retreat, running events end off-screen (war camps restored).
 - **Banners placed during an event:** the event continues (protection blocks spawning, not pursuit), but no new participants spawn inside.
+- **Governor flaps under load:** the 10 s minimum hold and 5 ms hysteresis stop it; shed events are never restarted.
 
 ## Data and APIs
 
-- **NPC pod (new):** `npc/nemesis/` (records, SavedData `lotrrevival_nemeses`, attachment `lotrrevival:nemesis_link`, side calculation, traits, promotion, politics, ambush) and `npc/worldevent/` (scheduler, `TicketController` `lotrrevival:world_events`, event types, attachment `lotrrevival:world_event`, SavedData `lotrrevival_world_events`). Commands `/lotr nemesis list|info|spawn|renown|kill|purge` and `/lotr worldevent list|start <type>|end <id>` (op level 2).
-- **Datapack (npc datagen):** `#lotrrevival:nemesis_factions`, `#lotrrevival:never_nemesis`, `nemesis_traits/*.json`, `npc_names/nemesis_titles.json`, speech lines, lang, biome tags for beast hunts if needed.
+- **NPC pod (new):** `npc/nemesis/` (records, SavedData `lotrrevival_nemeses`, attachment `lotrrevival:nemesis_link`, side calculation, traits, promotion, politics, ambush) and `npc/worldevent/` (scheduler, governor, `TicketController` `lotrrevival:world_events`, venue selection, war-camp placer and journal, event types, attachment `lotrrevival:world_event`, SavedData `lotrrevival_world_events`). Commands `/lotr nemesis list|info|spawn|renown|kill|purge` and `/lotr worldevent list|start <type> [venue]|end <id>|restore` (op level 2).
+- **Datapack (npc datagen):** `#lotrrevival:nemesis_factions`, `#lotrrevival:never_nemesis`, `nemesis_traits/*.json`, `npc_names/nemesis_titles.json`, speech lines, lang, biome tags for beast hunts if needed. War camp NBT templates (original art, hand-built; NBT is the AGENTS.md exception to datagen).
 - **Events (NeoForge game bus):** `NemesisRisenEvent`, `NemesisRankChangedEvent`, `NemesisDefeatedEvent` (outcome `CHEATED_DEATH` / `DEAD`, cause, killer, killer is grudge holder), `NemesisAmbushEvent` (cancellable), `WorldEventStartedEvent` (cancellable), `WorldEventEndedEvent`.
 - **Read API:** `NemesisApi` (`find`, `atLarge(faction)`, `grudges(player)`, `side(player)`). If progression must not import npc, a `core.api.NemesisQuery` holder like `LandProtection` (`pod:core` ticket).
 - **Payloads:** `NemesisRosterRequest` (C2S), `NemesisRosterPayload` (S2C), `WorldEventsPayload` (S2C).
 - **Client:** `client/npc/nemesis/NemesisHierarchyScreen`; npc registers a `core.api.MapMarkerClient` backend. Menu hub page and map markers are drawn by progression (`pod:progression` tickets).
-- **Core APIs used:** alignment and pledge reads, kill path, faction kinds and `FactionRelations`, `Alignment.influence`, `LandProtection.blocksFactionSpawn`, `FellowshipQuery`, `ModDimensions.MIDDLE_EARTH`. New: `MapMarkerClient` (core).
-- **World pod:** a settlement lookup (nearest generated settlement of a faction within a radius, with its centre and bounds) for village raids (`pod:world` ticket if it does not exist by then).
+- **Core (new holders, `pod:core`):** `core.api.MapMarkerClient` (client markers, npc writes, progression reads) and `core.api.StructureVenues` (server structure locator, World registers the backend, npc reads). Both follow the `WaypointClient` / `LandProtection` pattern so pods never import each other.
+- **World (new, `pod:world`):** venue structure tags `#lotrrevival:event_venues/<kind>`, venue structures in every region, the locator backend. Depends on the World pod's structure spec, which is not written yet.
+- **Core APIs used:** alignment and pledge reads, kill path, faction kinds and `FactionRelations`, `Alignment.influence`, `LandProtection.blocksFactionSpawn`, `FellowshipQuery`, `ModDimensions.MIDDLE_EARTH`.
 - **Small NPC-pod edits:** `NpcEntity.alignmentKillValue()` rank multiplier, despawn exclusion for bodies and event participants, `NpcLoadoutData` rank tiers.
 
 ## Out of scope
 
 - Hiring or dominating nemeses (maintainer decision).
 - Promotion from surviving a fight (maintainer decision).
-- Sieges of protected land, events in other dimensions, events that place or break blocks.
+- Sieges of protected land, events in other dimensions, any block changes other than war-camp templates.
 - Player-vs-player nemeses.
 - Captured letters and other intel items (hook left in Intel).
 - Nemesis-specific models or textures beyond scale and gear.
@@ -333,20 +401,25 @@ Lists built with `Arrays.asList`.
 - [ ] GameTest: renown, seats and challengers; challenge resolution with a fixed seed.
 - [ ] GameTest: rank stat modifiers replaced (not stacked) on rank change.
 - [ ] GameTest: body unload → `AT_LARGE`; stale body discarded; never two bodies.
-- [ ] GameTest: ambush eligibility (Peaceful, creative, safe radius, protected land via `LandProtection.swapForTesting`, cooldown, cap) with dimension list overridden for the test server.
+- [ ] GameTest: ambush eligibility (Peaceful, creative, online time, safe radius, protected land via `LandProtection.swapForTesting`, 75/60 min cooldown, cap, Red governor) with dimension list overridden for the test server.
 - [ ] GameTest: escape and cheat-death chances with fixed RNG; weakness death and third death are permanent.
 - [ ] GameTest: rank kill-value multiplier through the kill path; `NemesisDefeatedEvent` once per death.
-- [ ] GameTest: world event scheduler respects band, spacing, exclusion radius, protected land, per-player and server caps.
-- [ ] GameTest: ticket manager forces at most 9 chunks per event and 54 total, releases on end, on staged-player logout/distance, and drops leftovers on start.
+- [ ] GameTest: scheduler respects band, spacing, exclusion radius, protected land, per-player cooldown and the player-scaled server cap.
+- [ ] GameTest: governor states from injected tick times (Green/Yellow/Red, hysteresis, minimum hold, Red shedding releases chunks).
+- [ ] GameTest: ticket manager forces at most 9 chunks per event (4 in Yellow) and 72 total, releases on end, owner logout/distance and shedding, drops leftovers on start.
+- [ ] GameTest: venue selection with a stub `StructureVenues` backend: preference order per type, fallback to open terrain, village raid dropped without a village, venue cooldown.
+- [ ] GameTest: war camp places only into air/plants, rejects > 5% blocked, journals before placing, restores exactly (including after a simulated restart from the saved journal), leaves player-placed blocks, drops nothing when broken or exploded.
+- [ ] GameTest: participation and credit: interferer kills give alignment and grudge/renown effects; win bonus only to winning-side participants over 20% damage; no renown from PvP kills; handover to a fellowship member.
 - [ ] GameTest: each event type in `npc_arena` resolves on-screen with a scripted outcome and writes the right renown/deaths; off-screen resolution with a fixed seed.
-- [ ] GameTest: `WorldEventsPayload` contents (radius filter, grudge events, max 16).
-- [ ] Playtest: die to a Mordor orc until one rises, see it on the menu page, get ambushed, scar it, kill it for good with its weakness.
-- [ ] Playtest: as an orc-pledged player, get a Gondor captain risen against you and ambushed by it.
-- [ ] Playtest: see an event marker on the map, ride there, swing a warband clash, check rumour, alignment and hierarchy.
+- [ ] GameTest: `WorldEventsPayload` contents (radius filter, other players' events included, grudge events, max 16, own flag).
+- [ ] Playtest: die to a Mordor orc until one rises, see it on the menu page, get ambushed (rarely), scar it, kill it for good with its weakness.
+- [ ] Playtest: as an orc-pledged player, get a Gondor captain risen against you.
+- [ ] Playtest: see events every 8-15 min, ride to one at a ruin, swing a warband clash; ride to a friend's event and help; break a war camp and check the ground is restored after it ends and after a restart.
+- [ ] Playtest: with a spark/profiler load test (20 bots), the governor holds tick time near 40 ms or below.
 
 ## Tickets
 
-Proposed 1-2 day tickets (not opened until this spec is approved; `pod:npc` unless marked; all after G3):
+Proposed 1-2 day tickets (not opened until this spec is approved; `pod:npc` unless marked; all after G3).
 
 **Nemesis core**
 1. Records and persistence: record, SavedData, `nemesis_link`, faction/opt-out tags, `disabled_factions` config, `/lotr nemesis list|info|purge`. (1.5 d)
@@ -361,25 +434,35 @@ Proposed 1-2 day tickets (not opened until this spec is approved; `pod:npc` unle
 10. **`pod:progression`:** Nemeses page in the menu hub. (0.5 d)
 
 **World events**
-11. Event framework and scheduler: event state machine, participant attachment, per-player rolls, cooldowns, distance band, site checks, territory, caps, outcomes into records, off-screen resolution, rumours, start/end events, `/lotr worldevent`. (2 d)
-12. Chunk ticket manager: `TicketController`, per-event and total limits, release rules, startup validation. (1 d)
-13. Ambush as an event type (own schedule, rules above). (1.5 d)
-14. Event types A: beast hunt, captain hunting, war camp. (2 d)
-15. Event types B: warband clash, feud duel (with politics staging). (2 d)
-16. Event types C: village raid, rescue. (2 d) Needs a **`pod:world`** settlement lookup ticket.
-17. Map sync: `WorldEventsPayload`, client cache, `MapMarkerClient` backend. (1 d) Needs a **`pod:core`** ticket for `core.api.MapMarkerClient`. (0.5 d)
-18. **`pod:progression`:** draw world-event markers on the map page (after #88 and the map GUI). (1 d)
+11. Event framework and scheduler: state machine, participant attachment, per-player rolls and cooldowns, band, site checks, territory, player-scaled caps, outcomes into records, off-screen resolution, rumours, start/end events, `/lotr worldevent`. (2 d)
+12. Performance governor: tick-time states, hysteresis, Yellow limits, Red shedding, config, logging. (1 d)
+13. Chunk ticket manager: `TicketController`, per-event and budget limits, release rules, startup validation. (1 d)
+14. Participation, credit and grudges: participant tracking and sides, win bonus, interferer grudge/renown, handover, PvP and fellowship rules. (1.5 d)
+15. Venue selection: `StructureVenues` client of the core holder, preference tables, open-terrain fallback, placement on venue floors, resident NPCs joining, venue cooldown, stub backend for tests. (1.5 d)
+16. War camp blocks: templates (original NBT, 2+ per group), placer with replace rule, journal, exact restore (end, stop, startup), no-drop/piston/silk-touch guards. (2 d)
+17. Ambush as a rare event type (own schedule and cooldowns). (1.5 d)
+18. Event types A: beast hunt, captain hunting (run-to-venue), war camp behaviour. (2 d)
+19. Event types B: warband clash, feud duel (with politics staging). (2 d)
+20. Event types C: village raid, rescue (weakness reveal). (2 d)
+21. Map sync: `WorldEventsPayload`, client cache, `MapMarkerClient` backend. (1 d)
 
-**Other pods and later**
-19. **`pod:progression`:** `nemesis_hunt` quest kind. (2 d)
-20. **`pod:progression`:** nemesis and world-event achievements, "Captain-bane" title. (1 d)
-21. Invasion leaders (after the invasion spec). (1 d)
-22. Admin and test tooling: `/lotr nemesis spawn|renown|kill`, fixed-RNG GameTest helpers, scripted event runner for `npc_arena`. (1 d)
+**Dependencies in other pods**
+22. **`pod:core`:** `core.api.MapMarkerClient` holder. (0.5 d)
+23. **`pod:core`:** `core.api.StructureVenues` holder (venue record: id, bounds, centre, kind, faction, residents, protected). (0.5 d)
+24. **`pod:world` (needs the World structure spec first):** venue structure set: ruins, small camps, outposts, watchtowers, towers, bridges and bandit hideouts per region, original NBT, density target >= 2 venues per 256 blocks of wild land. Likely several tickets, one per region group, sized by Opus 2.
+25. **`pod:world`:** venue tags `#lotrrevival:event_venues/<kind>` on every venue and settlement structure, with owning faction metadata. (1 d)
+26. **`pod:world`:** `StructureVenues` backend: locator over already-generated chunks / a World-side structure index, budgeted and cached. (1.5 d)
+27. **`pod:progression`:** draw world-event markers on the map page (after #88 and the map GUI). (1 d)
+28. **`pod:progression`:** `nemesis_hunt` quest kind. (2 d)
+29. **`pod:progression`:** nemesis and world-event achievements, "Captain-bane" title. (1 d)
+
+**Later**
+30. Invasion leaders (after the invasion spec). (1 d)
+31. Admin and test tooling: `/lotr nemesis spawn|renown|kill`, fixed-RNG GameTest helpers, scripted event runner for `npc_arena`, injectable tick-time source for governor tests. (1 d)
 
 ## Open questions for the maintainer
 
-1. Should Dunland, Near and Far Harad, Easterlings and half-trolls be on by default (they are in the tag but disabled in config)?
-2. Event rate: ~1 event per 30 min of eligible play, 12 min cooldown, 64-256 blocks away. Right feel?
-3. War camps: entities and one campfire only, or may they place a few temporary blocks (tents, banner) that are removed at the end?
-4. Should players see markers for events staged for other players within 1024 blocks (proposed yes), or only their own?
-5. Rescue reward: alignment only, or should freed captives sometimes reveal a nemesis's location or weakness (proposed: weakness)?
+1. Should Dunland, Near and Far Harad, Easterlings and half-trolls be on by default? (Default kept: off.)
+2. Governor thresholds: 30 ms (back off) and 40 ms (stop) of average tick time. Fine for your server, or tune per host?
+3. Should a war camp left standing the full time leave anything permanent (for example its tents stay as a ruin venue), or always restore? (Default: always restore.)
+4. Bridges as venues: worth asking World for them, or keep to ruins, camps, outposts, watchtowers, towers, villages and hideouts?
