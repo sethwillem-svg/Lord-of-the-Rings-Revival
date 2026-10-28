@@ -76,6 +76,9 @@ public final class DataGenerators {
         // Core: faction crafting tables
         FactionTableProviders.gather(event);
         // End Core: faction crafting tables
+        // Core: alloy forge and orc forge (#123)
+        ForgeProviders.gather(event);
+        // End Core: alloy forge and orc forge
 
         // Core: the only writers of minecraft: block and item tags; systems contribute entries above.
         VanillaTagProviders.gather(event);

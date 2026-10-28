@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.npc.spawn;
 
 import io.github.sethwillemsvg.lotrrevival.core.ModDimensions;
+import io.github.sethwillemsvg.lotrrevival.core.api.LandProtection;
 import io.github.sethwillemsvg.lotrrevival.core.tag.ModTags;
 import io.github.sethwillemsvg.lotrrevival.npc.NpcConfig;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcLoadoutData;
@@ -165,9 +166,14 @@ public final class NpcSpawner {
         }
     }
 
-    private static boolean trySpawn(
+    /** Tries one spawn at the spot; false if any rule, including banner protection, rejects it. */
+    public static boolean trySpawn(
             ServerLevel level, NpcSpawnData.Entry entry, BlockPos feet, List<ServerPlayer> players, RandomSource random) {
         if (!(entry.type().create(level) instanceof NpcEntity npc)) {
+            return false;
+        }
+        // An enemy-faction banner covering the spot keeps this faction's NPCs from spawning there.
+        if (LandProtection.blocksFactionSpawn(level, feet, npc.faction())) {
             return false;
         }
         if (!NpcSpawnRules.timeAllowed(npc.npcClass(), level.getDayTime())) {

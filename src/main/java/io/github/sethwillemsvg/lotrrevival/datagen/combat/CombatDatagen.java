@@ -3,6 +3,7 @@ package io.github.sethwillemsvg.lotrrevival.datagen.combat;
 import io.github.sethwillemsvg.lotrrevival.core.combat.CombatItems;
 import io.github.sethwillemsvg.lotrrevival.core.combat.GearCatalog;
 import io.github.sethwillemsvg.lotrrevival.core.combat.GearEntry;
+import io.github.sethwillemsvg.lotrrevival.core.combat.ranged.BoltEntities;
 import io.github.sethwillemsvg.lotrrevival.datagen.ModLangProvider;
 import io.github.sethwillemsvg.lotrrevival.datagen.VanillaTagProviders;
 import java.util.concurrent.CompletableFuture;
@@ -38,12 +39,19 @@ public final class CombatDatagen {
         });
         generator.addProvider(event.includeServer(), new NamedProvider("Combat recipes", new CombatRecipes(output, lookup)));
 
+        PoisonDatagen.gather(event, lookup);
+
         ModLangProvider.contribute(lang -> {
             lang.add("itemGroup.lotrrevival." + CombatItems.COMBAT_TAB_ID, "Combat");
             lang.add("itemGroup.lotrrevival." + CombatItems.MATERIALS_TAB_ID, "Materials");
+            lang.addEntityType(
+                    io.github.sethwillemsvg.lotrrevival.core.combat.throwing.ThrowingEntities.THROWN_SPEAR, "Thrown Spear");
+            lang.addEntityType(
+                    io.github.sethwillemsvg.lotrrevival.core.combat.throwing.ThrowingEntities.THROWN_AXE, "Thrown Axe");
             for (GearEntry entry : GearCatalog.entries()) {
                 lang.addItem(entry.item(), entry.name());
             }
+            lang.addEntityType(BoltEntities.BOLT, "Bolt");
         });
     }
 }

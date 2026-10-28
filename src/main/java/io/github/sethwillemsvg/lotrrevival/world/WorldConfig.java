@@ -13,6 +13,7 @@ public final class WorldConfig {
 
     // travel.*
     public static final ModConfigSpec.BooleanValue TRAVEL_ENABLED;
+    public static final ModConfigSpec.BooleanValue TRAVEL_COOLDOWN;
     public static final ModConfigSpec.IntValue TRAVEL_MIN_SECONDS;
     public static final ModConfigSpec.IntValue TRAVEL_MAX_SECONDS;
     public static final ModConfigSpec.DoubleValue TRAVEL_USE_DECAY;
@@ -42,6 +43,8 @@ public final class WorldConfig {
 
         b.comment("Fast travel between waypoints.").push("travel");
         TRAVEL_ENABLED = b.comment("Enable fast travel.").define("enabled", true);
+        TRAVEL_COOLDOWN = b.comment("Legacy-style wait between trips (min/max_seconds below). Off: travel any time.")
+                .define("cooldown", false);
         TRAVEL_MIN_SECONDS = b.comment("Shortest required time between trips, in seconds, after many uses.")
                 .defineInRange("min_seconds", 180, 0, 1_000_000);
         TRAVEL_MAX_SECONDS = b.comment("Required time for a first-time trip, in seconds.")

@@ -16,6 +16,7 @@ public final class BountySystem {
 
     public static void init(IEventBus modBus) {
         BountyItems.init(modBus);
+        BountyOffers.init();
     }
 
     /** Grants the backing advancement of an achievement row (criterion {@code c}); idempotent. */

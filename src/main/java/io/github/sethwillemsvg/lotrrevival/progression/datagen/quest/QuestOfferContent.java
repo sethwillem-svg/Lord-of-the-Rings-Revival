@@ -85,6 +85,8 @@ public final class QuestOfferContent {
                                 HolderSet.direct(EntityType.SPIDER.builtInRegistryHolder()), new CountRange(10, 20)),
                         0.5f,
                         List.of()));
+        context.register(
+                template("hobbits/bounty"), new QuestTemplate(HOBBITS, new QuestObjective.Bounty(), 1.0f, List.of()));
     }
 
     private static QuestTemplate collect(ItemPredicate item, int min, int max, float factor) {
@@ -101,6 +103,9 @@ public final class QuestOfferContent {
             lang.add("quest.lotrrevival.offer.kill.opening.1", "Trouble has been stirring nearby. Could you deal with it for us?");
             lang.add("quest.lotrrevival.offer.kill.opening.2", "There are things out there that should not be, and I am no fighter.");
             lang.add("quest.lotrrevival.offer.kill.opening.3", "You look capable. Would you rid us of a nuisance?");
+            lang.add("quest.lotrrevival.offer.bounty.opening.1", "There is a price on a troublemaker's head, and I would see it claimed.");
+            lang.add("quest.lotrrevival.offer.bounty.opening.2", "One person has done our people great harm. Will you bring them to account?");
+            lang.add("quest.lotrrevival.offer.bounty.opening.3", "We have set a reward for a certain outlaw. Do you have the stomach for it?");
             lang.add("quest.lotrrevival.offer.progress.1", "Not quite yet. I still need %s more.");
             lang.add("quest.lotrrevival.offer.progress.2", "Keep at it, friend. %s more and we are done.");
             lang.add("quest.lotrrevival.offer.thanks.1", "That is just what I needed. You have my thanks!");

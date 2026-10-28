@@ -47,6 +47,7 @@ public final class Gear {
                     case SWORD -> () -> new GearSword(material);
                     case BATTLEAXE -> () -> new GearBattleaxe(material);
                     case THROWING_AXE -> () -> new GearThrowingAxe(material);
+                    case SPEAR -> () -> new io.github.sethwillemsvg.lotrrevival.core.combat.item.GearSpear(material);
                     default -> () -> new GearWeapon(weaponClass, material);
                 };
         DeferredItem<Item> item = ModRegistries.ITEMS.<Item>register(id, factory);
@@ -209,6 +210,12 @@ public final class Gear {
                 id, name, factory, GearKind.SLING, ModelKind.GENERATED,
                 List.of(ModTags.Items.WEAPONS_SLINGS, ItemTags.DURABILITY_ENCHANTABLE),
                 recipes);
+    }
+
+    /** Stackable ammunition (pebbles, crossbow bolts): a flat generated model with the given tags and recipes. */
+    public static DeferredItem<Item> ammo(
+            String id, String name, Supplier<? extends Item> factory, List<TagKey<Item>> tags, GearRecipe... recipes) {
+        return ranged(id, name, factory, GearKind.AMMO, ModelKind.GENERATED, tags, recipes);
     }
 
     private static DeferredItem<Item> ranged(

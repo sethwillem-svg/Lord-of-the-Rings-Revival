@@ -5,6 +5,7 @@ import com.mojang.serialization.JsonOps;
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
 import io.github.sethwillemsvg.lotrrevival.core.coin.Coins;
 import io.github.sethwillemsvg.lotrrevival.core.faction.Factions;
+import io.github.sethwillemsvg.lotrrevival.core.test.TestArea;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.HobbitEntity;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntityTypes;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcRole;
@@ -317,6 +318,11 @@ public final class QuestOfferTest {
 
     @GameTest(template = "empty")
     public static void acceptIsValidatedOnTheServer(GameTestHelper helper) {
+        // Entities sit outside the 1x1 template's chunk; wait until that space ticks.
+        TestArea.whenTicking(helper, 8, () -> acceptIsValidatedOnTheServerBody(helper));
+    }
+
+    private static void acceptIsValidatedOnTheServerBody(GameTestHelper helper) {
         HobbitEntity npc = giver(helper, 2, 2);
         ServerPlayer near = player(helper, 2, 3);
         ServerPlayer far = player(helper, 2, 20);
@@ -556,6 +562,11 @@ public final class QuestOfferTest {
 
     @GameTest(template = "empty")
     public static void offerCommandForcesAnOffer(GameTestHelper helper) {
+        // Entities sit outside the 1x1 template's chunk; wait until that space ticks.
+        TestArea.whenTicking(helper, 8, () -> offerCommandForcesAnOfferBody(helper));
+    }
+
+    private static void offerCommandForcesAnOfferBody(GameTestHelper helper) {
         HobbitEntity npc = giver(helper, 2, 2);
         var server = helper.getLevel().getServer();
         server.getCommands()

@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.progression.bounty;
 
 import io.github.sethwillemsvg.lotrrevival.LOTRRevival;
+import io.github.sethwillemsvg.lotrrevival.core.alignment.Alignment;
 import io.github.sethwillemsvg.lotrrevival.core.event.FactionKillEvent;
 import io.github.sethwillemsvg.lotrrevival.progression.ProgressionConfig;
 import io.github.sethwillemsvg.lotrrevival.progression.quest.Quests;
@@ -27,7 +28,7 @@ public final class BountyEvents {
 
     /**
      * Kill records: direct kills by a survival or adventure player only. Hired-unit kills do not count, and the
-     * kill must be inside the faction's area of influence (always true until Core exposes the influence reader).
+     * kill must be inside the faction's area of influence ({@code Alignment.influence} above zero).
      */
     @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
     public static void onFactionKill(FactionKillEvent event) {
@@ -39,7 +40,9 @@ public final class BountyEvents {
         if (server == null || player.isCreative() || player.isSpectator()) {
             return;
         }
-        // TODO(core): skip when Alignment.influence(player, faction) is 0 once Core ships the accessor.
+        if (Alignment.influence(player, event.getVictimFaction()) <= 0.0f) {
+            return;
+        }
         Bounties.recordKill(server, player.getUUID(), event.getVictimFaction());
     }
 
