@@ -2,17 +2,20 @@
 
 Reference notes on the behavior of LOTR Mod Legacy 36.15 (Mevans, All Rights Reserved). Written in our own words for clean-room spec writing. Implementers may read these notes; never the original.
 
-Scope: every generated structure type, where it spawns, rough size, what is inside, how often, and the few things placed at fixed map positions. Names are our descriptive names. Biome names refer to `biomes.md`. Sizes are rough footprints estimated from the builds (W x L x H in blocks) and are good to about +/- 30%.
+Scope: every generated structure type, where it spawns, rough size, what is inside, how often, the few things placed at fixed map positions, garrisons, banners and placement details (sections 9-12, added for `specs/world/structures.md`). Names are our descriptive names. Biome names refer to `biomes.md`. Sizes are rough footprints estimated from the builds (W x L x H in blocks) and are good to about +/- 30%.
 
 ## 1. Placement rules (all structures)
 
 | Rule | Value |
 | --- | --- |
-| Scattered structures | Each biome lists structures with a "1 in N chunks" chance. Every chunk rolls each entry independently (seeded by chunk position), so "1/100" means about one per 100 chunks of that biome, i.e. one per 160 x 160 blocks. |
-| Ground checks | Most structures refuse to place on water, steep slopes or the wrong biome; failed rolls just produce nothing, so real density is lower than the raw chance. |
-| No-go zones | Scattered structures and villages skip chunks within about 16 blocks of a road, within 256 blocks of any fixed waypoint or fixed structure, on the fixed mountains, and in vineyard variants. |
-| Villages | Placed on a grid: one candidate per cell of 10-16 chunks (160-256 blocks), jittered by 1-2 chunks, accepted with the biome's village chance. A village claims a radius of 3-6 chunks (48-96 blocks), flattens terrain under it and lays its own paths in the culture's road style. |
-| Garrisons | Forts, camps, towers and warg pits contain an invisible **NPC respawner** that keeps a garrison topped up (typically up to 12 NPCs within 20-32 blocks, re-checked over time) once the area is loaded. Killing the garrison does not clear the site for good. |
+| Scattered structures | Each biome lists structures with a "1 in N chunks" chance. During chunk decoration every entry is rolled independently (seeded by chunk position), at a random spot in the chunk on the top solid block, so "1/100" means about one per 100 chunks of that biome, i.e. one per 160 x 160 blocks. Two structures can land in the same chunk and overlap; nothing checks for that. |
+| Ground checks | Most structures check every column of their footprint first: each must be a natural surface (grass, dirt, sand, stone; not water, not leaves) and, for about a third of the types, the highest and lowest columns may differ by at most 4-12 blocks (most often 6 or 8). A failed check simply produces nothing, so real density is lower than the raw chance. Builds then fill foundations down to the ground under every wall column, so they sit on slopes instead of flattening them. |
+| No-go zones (scattered) | Scattered structures skip a chunk when a road passes within 16 blocks of its centre, when the chunk's biome variant is a vineyard or orchard, and inside a narrow cross along the x = 0 and z = 0 lines (32 blocks either side). They do **not** keep away from waypoints. |
+| No-go zones (villages) | A random village candidate is dropped when a road, a fixed mountain or a fixed structure (spawn, Utumno entrance, Mordor cherry tree) lies within its claim radius plus 8 blocks, times 1.41. So random villages never sit on roads; only fixed villages do. All of the village's chunks must be in one of the culture's biomes and in a variant that suits a village (flat villages need flat variants). |
+| Waypoints and rivers | Within 256 blocks of any waypoint or fixed structure, the generator does not place lake or river biome variants, so waypoint sites stay dry. This is a terrain rule, not a structure rule. |
+| Villages | Placed on a grid: one candidate per cell of 10-16 chunks (160-256 blocks), jittered by 1-2 chunks, accepted with the biome's village chance. A village claims a radius of 3-6 chunks (48-96 blocks), flattens terrain under it and lays its own paths in the culture's road style. Fixed villages (Bree and its hamlets) claim a larger radius (13 chunks, 208 blocks). |
+| Garrisons | Forts, camps, towers, warg pits and every village contain one or more invisible **NPC respawners** (numbers in section 9). Killing the garrison does not clear the site for good. |
+| Resident NPCs | Besides respawners, buildings spawn their residents once, when the structure is built: traders, smiths, innkeepers, captains, families. They are persistent and tied to a home spot with a leash of 4-16 blocks (a few at 0 or 24). They are never replaced when killed, unless a respawner covers their type. |
 | Spawner chests | Tombs and pyramids use "spawner chests": opening the chest releases a guardian (barrow-wight, pyramid wraith) once. |
 | Crafting | Every culture's buildings include that culture's crafting table; forts add a command table (for hired units); smithies add a forge or alloy forge; hobbit holes and farms add a hobbit oven. Traders and smiths standing in buildings are the main trader locations. |
 | Loot | Chests use per-structure loot tables of 3-10 rolls: larders (food and drink), houses (tools, food, a little silver), treasure (coins, goblets, rings, gold and silver), military (culture weapons and armour, arrows), ruins (bones, old gear, coins). |
@@ -152,6 +155,46 @@ Rolls per chest in brackets. Items are named generically; our item set is up to 
 
 ## 8. Notes for our design
 
-- Legacy density is high: in Shire chunks about 1 in 25 chunks rolls some hobbit building. Our smaller scale (about 4x) argues for lower per-chunk chances or bigger spacing for military sites, or the map gets crowded.
+- Legacy density is high: in Shire chunks about 1 in 25 chunks rolls some hobbit building. Our map now uses Legacy's scale (128 blocks per biome pixel, see `dimension-and-mapgen.md`), so Legacy's per-biome chances can be used directly.
 - The respawner garrison makes forts permanent faction strongholds; it is a key behavior for alignment farming and conquest.
-- Legacy deliberately avoids fixed city builds; our landmark placement type (Bree, Brandywine Bridge) goes beyond it. Keep Legacy's no-go radius idea (256 blocks around landmarks) so scattered structures do not crowd landmarks.
+- Legacy deliberately avoids fixed city builds; our landmark placement type (Bree, Brandywine Bridge) goes beyond it. Legacy keeps scattered structures off roads but **not** away from waypoints; an earlier version of these notes said 256 blocks around waypoints, which is Legacy's no-lakes rule (section 1). A no-go radius around our landmarks is our own choice.
+
+## 9. NPC respawners in detail
+
+A respawner is an invisible, unbreakable-by-players marker (operators can see and edit it in creative). Each one is set up by its structure with these settings:
+
+| Setting | Default | Range used by structures | Meaning |
+| --- | --- | --- | --- |
+| Spawn interval | 3,600 ticks (3 min) | one Nurn farm uses 5 min | How often it tries |
+| No-player range | 24 blocks | one structure uses 8 | It does nothing while any player is within this distance, so garrisons never pop into view next to a player |
+| Count box | 8 blocks around, 4 down and up | 6-80 around, 12-24 down and up | NPCs of its types inside this box count toward the cap; it only works when every chunk of the box is loaded |
+| Cap | 4 | forts and camps 8-16 (most 12); towers 4-8; beacon tower 4; Black Uruk fort 24; Bree hamlet 20 men + 6 hobbits + 8 guards; big towns 100 residents | Tops up to this count |
+| Spawn spread | 4 blocks around, 2 down and up | 8-60 around (most 20-32) | Where new NPCs appear: on a solid block with two non-solid blocks above, 16 attempts per try |
+| Home leash | none | 1-100 (most 12-64) | The NPC is leashed to the respawner's position (or to its own spawn spot) with this radius |
+| Types | one or two NPC types | | With two, the second is picked 1 time in 3 (soldier / archer mixes) |
+| Mounts | from the NPC's own rule | can force mounted or unmounted | Cavalry garrisons |
+| Enemy spawn block | off | 35-64 (most 60 or 64) | Natural spawns of NPCs from factions hostile to the respawner's NPCs are blocked within this radius |
+
+Respawned NPCs are persistent and spawn with their normal equipment. A village has several respawners: residents (for example Bree hamlet: men up to 20, hobbits up to 6 in a 40-block box) and guards (up to 8). Towns stack several resident respawners and three guard respawners.
+
+## 10. Banners in structures
+
+- About 70 structure types place faction banners: standing banners on poles at gates, tower tops and tent fronts, and wall banners on halls and gatehouses. They are decoration. The banner's faction design matches the builders.
+- Only one structure, the Taurethrim jungle pyramid, places a **protecting** structure banner (radius 64, protects against everyone, cannot be edited). All other structures can be mined and looted by anyone.
+- Structure banners are entities in Legacy and can be broken by players like any decorative banner.
+
+## 11. Other placement details
+
+- **Command tables** (the conquest map table) appear in about 26 structures: the captain's room of forts, fortresses, war camps, towers and the elf lord houses.
+- **Spawner chests** appear in only a handful of structure types (barrows, the Harad and jungle pyramids, a few others).
+- **Waypoints:** no structure creates or depends on a waypoint, except the fixed Bree-land villages, which are placed at a fixed offset from their waypoint.
+- **Roads:** random villages avoid roads (above). Fixed villages lay their own streets, and the road generator stops at their edge. Bridges are part of the road generator, not structures.
+- **Builds are code, not templates.** Every structure is built block by block by code at generation time, with random choices per instance (brick variants, cracked or mossy blocks, furniture, which rooms exist, banner colours by fief). Two watchforts of the same type look alike but not identical. Ruins remove random blocks from a whole build.
+- **Operator tool:** a creative-only "structure spawner" item lets an operator place any structure by id, facing the player's direction, ignoring the ground checks.
+
+## 12. Catalogue size
+
+- About 104 distinct scattered structure types are listed in biome tables (section 4-6 rows expand to these), in about 275 biome entries.
+- 11 village cultures (Bree, Dúnedain, Gondor with its fiefs, Rohan, Harnennor, Southron coast, Umbar, Harad nomads, Gulf of Harad, Rhûn, Taurethrim) with about 130-140 village building and decoration pieces, plus three scattered "villages" (Morwaith, Dale, Angmar hill-men).
+- About 15 special generators outside the biome tables: carved dwarf houses, dwarven mines, orc dungeons, troll hoards, the jungle pyramid, the underwater elven ruin, Galadhrim flets and wood-elf platforms in giant trees, the two great ring walls and the easter eggs.
+- In total about 330 builder pieces.
