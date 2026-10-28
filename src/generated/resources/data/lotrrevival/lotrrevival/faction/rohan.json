@@ -1,0 +1,59 @@
+{
+  "color": "#7BA83C",
+  "disapproves_civilian_kills": true,
+  "kinds": [
+    "free",
+    "men"
+  ],
+  "pledge_rank": "r3",
+  "ranks": [
+    {
+      "id": "r1",
+      "threshold": 10.0
+    },
+    {
+      "id": "r2",
+      "threshold": 50.0
+    },
+    {
+      "id": "r3",
+      "threshold": 100.0
+    },
+    {
+      "id": "r4",
+      "threshold": 250.0
+    },
+    {
+      "id": "r5",
+      "threshold": 500.0
+    },
+    {
+      "id": "r6",
+      "threshold": 1000.0
+    },
+    {
+      "id": "r7",
+      "threshold": 2000.0
+    }
+  ],
+  "region": "westlands",
+  "relations": {
+    "lotrrevival:angmar": "mortal_enemy",
+    "lotrrevival:dale": "friend",
+    "lotrrevival:dol_guldur": "mortal_enemy",
+    "lotrrevival:dunedain_north": "friend",
+    "lotrrevival:dunland": "mortal_enemy",
+    "lotrrevival:easterling": "mortal_enemy",
+    "lotrrevival:far_harad": "enemy",
+    "lotrrevival:gondor": "ally",
+    "lotrrevival:gundabad": "mortal_enemy",
+    "lotrrevival:half_troll": "mortal_enemy",
+    "lotrrevival:hobbit": "friend",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:isengard": "mortal_enemy",
+    "lotrrevival:mordor": "mortal_enemy",
+    "lotrrevival:near_harad": "enemy",
+    "lotrrevival:utumno": "mortal_enemy"
+  },
+  "sort_order": 160
+}

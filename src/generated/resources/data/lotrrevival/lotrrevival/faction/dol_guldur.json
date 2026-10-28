@@ -1,0 +1,59 @@
+{
+  "color": "#4A4F3A",
+  "kinds": [
+    "orc"
+  ],
+  "pledge_rank": "r3",
+  "ranks": [
+    {
+      "id": "r1",
+      "threshold": 10.0
+    },
+    {
+      "id": "r2",
+      "threshold": 50.0
+    },
+    {
+      "id": "r3",
+      "threshold": 100.0
+    },
+    {
+      "id": "r4",
+      "threshold": 200.0
+    },
+    {
+      "id": "r5",
+      "threshold": 500.0
+    },
+    {
+      "id": "r6",
+      "threshold": 1000.0
+    },
+    {
+      "id": "r7",
+      "threshold": 2000.0
+    }
+  ],
+  "region": "westlands",
+  "relations": {
+    "lotrrevival:angmar": "ally",
+    "lotrrevival:blue_mountains": "mortal_enemy",
+    "lotrrevival:bree": "mortal_enemy",
+    "lotrrevival:dale": "mortal_enemy",
+    "lotrrevival:dorwinion": "mortal_enemy",
+    "lotrrevival:dunedain_north": "mortal_enemy",
+    "lotrrevival:durins_folk": "mortal_enemy",
+    "lotrrevival:fangorn": "mortal_enemy",
+    "lotrrevival:gondor": "mortal_enemy",
+    "lotrrevival:gundabad": "friend",
+    "lotrrevival:high_elf": "mortal_enemy",
+    "lotrrevival:hobbit": "mortal_enemy",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:lothlorien": "mortal_enemy",
+    "lotrrevival:mordor": "ally",
+    "lotrrevival:rohan": "mortal_enemy",
+    "lotrrevival:utumno": "mortal_enemy",
+    "lotrrevival:wood_elf": "mortal_enemy"
+  },
+  "sort_order": 90
+}

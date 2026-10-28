@@ -1,0 +1,16 @@
+{
+  "color": "#1F3F1F",
+  "fixed_alignment": -1.0,
+  "hidden": true,
+  "kinds": [
+    "tree"
+  ],
+  "ranks": [],
+  "region": "deeps",
+  "relations": {
+    "lotrrevival:bree": "mortal_enemy",
+    "lotrrevival:dunedain_north": "mortal_enemy",
+    "lotrrevival:hobbit": "mortal_enemy"
+  },
+  "sort_order": 280
+}

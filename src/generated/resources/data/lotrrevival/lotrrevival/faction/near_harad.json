@@ -1,0 +1,24 @@
+{
+  "color": "#C9A03C",
+  "disapproves_civilian_kills": true,
+  "kinds": [
+    "men"
+  ],
+  "pledge_rank": "r3",
+  "region": "harad",
+  "relations": {
+    "lotrrevival:dunedain_north": "enemy",
+    "lotrrevival:far_harad": "friend",
+    "lotrrevival:gondor": "mortal_enemy",
+    "lotrrevival:half_troll": "friend",
+    "lotrrevival:harad_jungle": "enemy",
+    "lotrrevival:high_elf": "enemy",
+    "lotrrevival:hostile": "mortal_enemy",
+    "lotrrevival:lothlorien": "enemy",
+    "lotrrevival:mordor": "friend",
+    "lotrrevival:rohan": "enemy",
+    "lotrrevival:utumno": "mortal_enemy",
+    "lotrrevival:wood_elf": "enemy"
+  },
+  "sort_order": 210
+}
