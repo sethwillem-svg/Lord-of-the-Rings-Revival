@@ -1,0 +1,14 @@
+{
+  "group": "lotrrevival:hobbits",
+  "objective": {
+    "type": "lotrrevival:collect",
+    "count": {
+      "max": 15,
+      "min": 4
+    },
+    "item": {
+      "items": "minecraft:bread"
+    }
+  },
+  "reward_factor": 1.0
+}

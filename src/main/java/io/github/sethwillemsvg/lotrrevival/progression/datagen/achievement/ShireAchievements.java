@@ -13,5 +13,6 @@ public final class ShireAchievements extends AchievementTabProvider {
     public void addRows(Consumer<AchievementRow> out) {
         AchievementFactions.addRankRows(AchievementTab.SHIRE, out);
         AchievementFactions.addKillRows(AchievementTab.SHIRE, out);
+        QuestAchievements.addShireRows(this::row, out);
     }
 }

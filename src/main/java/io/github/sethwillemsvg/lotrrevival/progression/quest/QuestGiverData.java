@@ -28,6 +28,8 @@ public record QuestGiverData(Optional<Offer> offer, Set<UUID> holders) {
      * A rolled offer: template, count and fixed base values.
      *
      * @param forPlayer set for private (scripted) offers
+     * @param bountyTarget the hunted player of a bounty offer (filled by the bounty offers ticket)
+     * @param bountyTargetName display name of that player
      */
     public record Offer(
             ResourceLocation template,
@@ -35,14 +37,33 @@ public record QuestGiverData(Optional<Offer> offer, Set<UUID> holders) {
             float alignmentBase,
             int coinBase,
             int ticksLeft,
-            Optional<UUID> forPlayer) {
+            Optional<UUID> forPlayer,
+            Optional<UUID> bountyTarget,
+            Optional<String> bountyTargetName) {
+        public Offer(
+                ResourceLocation template,
+                int count,
+                float alignmentBase,
+                int coinBase,
+                int ticksLeft,
+                Optional<UUID> forPlayer) {
+            this(template, count, alignmentBase, coinBase, ticksLeft, forPlayer, Optional.empty(), Optional.empty());
+        }
+
+        public Offer withTicksLeft(int ticks) {
+            return new Offer(
+                    template, count, alignmentBase, coinBase, ticks, forPlayer, bountyTarget, bountyTargetName);
+        }
+
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
                         ResourceLocation.CODEC.fieldOf("template").forGetter(Offer::template),
                         Codec.INT.fieldOf("count").forGetter(Offer::count),
                         Codec.FLOAT.fieldOf("alignment_base").forGetter(Offer::alignmentBase),
                         Codec.INT.fieldOf("coin_base").forGetter(Offer::coinBase),
                         Codec.INT.optionalFieldOf("ticks_left", OFFER_TICKS).forGetter(Offer::ticksLeft),
-                        UUIDUtil.CODEC.optionalFieldOf("for_player").forGetter(Offer::forPlayer))
+                        UUIDUtil.CODEC.optionalFieldOf("for_player").forGetter(Offer::forPlayer),
+                        UUIDUtil.CODEC.optionalFieldOf("bounty_target").forGetter(Offer::bountyTarget),
+                        Codec.STRING.optionalFieldOf("bounty_target_name").forGetter(Offer::bountyTargetName))
                 .apply(i, Offer::new));
     }
 
@@ -67,5 +88,10 @@ public record QuestGiverData(Optional<Offer> offer, Set<UUID> holders) {
             next.remove(player);
         }
         return new QuestGiverData(offer, next);
+    }
+
+    /** The same data with another offer (empty clears it). */
+    public QuestGiverData withOffer(Optional<Offer> next) {
+        return new QuestGiverData(next, holders);
     }
 }

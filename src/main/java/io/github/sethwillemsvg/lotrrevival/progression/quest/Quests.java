@@ -560,6 +560,37 @@ public final class Quests {
         store(player, get(player).withoutQuestsOrLog());
     }
 
+    /** A giver counts as moved when it is further than this (blocks) from the stored position. */
+    public static final double GIVER_MOVE_THRESHOLD = 16.0;
+
+    /**
+     * Refreshes {@code giver_pos} of the player's live quests from {@code giver} when the giver moved more than
+     * {@link #GIVER_MOVE_THRESHOLD} blocks (or changed dimension, or had no stored position).
+     *
+     * @return whether anything changed
+     */
+    public static boolean updateGiverPos(ServerPlayer player, UUID giver, GlobalPos pos) {
+        PlayerQuests quests = get(player);
+        boolean changed = false;
+        for (QuestInstance instance : quests.active()) {
+            if (!instance.live() || !instance.giver().equals(giver)) {
+                continue;
+            }
+            Optional<GlobalPos> stored = instance.giverPos();
+            boolean moved = stored.isEmpty()
+                    || !stored.get().dimension().equals(pos.dimension())
+                    || stored.get().pos().distSqr(pos.pos()) > GIVER_MOVE_THRESHOLD * GIVER_MOVE_THRESHOLD;
+            if (moved) {
+                quests = quests.replace(instance.withGiverPos(Optional.of(pos)));
+                changed = true;
+            }
+        }
+        if (changed) {
+            store(player, quests);
+        }
+        return changed;
+    }
+
     // ------------------------------------------------------------------ plumbing
 
     /** Writes the attachment and marks the {@code quests} sync dirty. */

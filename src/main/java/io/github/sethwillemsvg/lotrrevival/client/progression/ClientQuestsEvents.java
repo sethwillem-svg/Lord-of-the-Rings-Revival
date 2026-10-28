@@ -14,5 +14,6 @@ public final class ClientQuestsEvents {
     @SubscribeEvent
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientQuests.reset();
+        io.github.sethwillemsvg.lotrrevival.client.progression.quest.offer.ClientQuestOffers.reset();
     }
 }
