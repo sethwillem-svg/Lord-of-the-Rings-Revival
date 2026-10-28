@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "regions": {
+    "shire": {"name": "The Shire", "biomes": ["shire", "shire_woodlands", "shire_marshes", "shire_moors", "white_downs"]},
+    "old_forest": {"name": "The Old Forest", "biomes": ["old_forest"]},
+    "barrow_downs": {"name": "The Barrow-downs", "biomes": ["barrow_downs"]},
+    "bree_land": {"name": "Bree-land", "biomes": ["bree_land", "chetwood", "midgewater_marshes"]},
+    "lone_lands": {"name": "The Lone-lands", "biomes": ["lone_lands"]},
+    "tower_hills": {"name": "The Tower Hills", "biomes": ["tower_hills"]},
+    "ered_luin": {"name": "Ered Luin", "biomes": ["ered_luin_foothills"]}
+  },
+  "features": [
+    {"type": "Feature", "properties": {"id": "hobbiton", "name": "Hobbiton", "region": "shire", "faction": "hobbit", "lore": "Holes and gardens on the slopes of the Hill, beside the Water."}, "geometry": {"type": "Point", "coordinates": [1620, 1460]}},
+    {"type": "Feature", "properties": {"id": "bywater", "name": "Bywater", "region": "shire", "faction": "hobbit", "lore": "A busy village where the Water meets the East Road; known for its inn."}, "geometry": {"type": "Point", "coordinates": [1634, 1468]}},
+    {"type": "Feature", "properties": {"id": "overhill", "name": "Overhill", "region": "shire", "faction": "hobbit", "lore": "A quiet hamlet on the far side of the Hill."}, "geometry": {"type": "Point", "coordinates": [1622, 1445]}},
+    {"type": "Feature", "properties": {"id": "waymeet", "name": "Waymeet", "region": "shire", "faction": "hobbit", "lore": "A crossroads village in the Westfarthing where several lanes join the road."}, "geometry": {"type": "Point", "coordinates": [1588, 1470]}},
+    {"type": "Feature", "properties": {"id": "michel_delving", "name": "Michel Delving", "region": "shire", "faction": "hobbit", "lore": "The chief town of the Shire, dug into the White Downs."}, "geometry": {"type": "Point", "coordinates": [1500, 1470]}},
+    {"type": "Feature", "properties": {"id": "little_delving", "name": "Little Delving", "region": "shire", "faction": "hobbit", "lore": "A smaller cousin of Michel Delving, further along the Downs."}, "geometry": {"type": "Point", "coordinates": [1505, 1440]}},
+    {"type": "Feature", "properties": {"id": "needlehole", "name": "Needlehole", "region": "shire", "faction": "hobbit", "lore": "A village tucked among the woods of the north-west."}, "geometry": {"type": "Point", "coordinates": [1585, 1405]}},
+    {"type": "Feature", "properties": {"id": "tuckborough", "name": "Tuckborough", "region": "shire", "faction": "hobbit", "lore": "Old home of a great family, with many-tunnelled smials in the green hills."}, "geometry": {"type": "Point", "coordinates": [1600, 1500]}},
+    {"type": "Feature", "properties": {"id": "longbottom", "name": "Longbottom", "region": "shire", "faction": "hobbit", "lore": "Warm southern fields where the best pipe-weed grows."}, "geometry": {"type": "Point", "coordinates": [1590, 1585]}},
+    {"type": "Feature", "properties": {"id": "frogmorton", "name": "Frogmorton", "region": "shire", "faction": "hobbit", "lore": "A road village of the Eastfarthing with a well-kept inn."}, "geometry": {"type": "Point", "coordinates": [1662, 1462]}},
+    {"type": "Feature", "properties": {"id": "whitfurrows", "name": "Whitfurrows", "region": "shire", "faction": "hobbit", "lore": "Farmland and white furrows near the eastern end of the road."}, "geometry": {"type": "Point", "coordinates": [1680, 1462]}},
+    {"type": "Feature", "properties": {"id": "scary", "name": "Scary", "region": "shire", "faction": "hobbit", "lore": "A village by old quarries in the Eastfarthing hills."}, "geometry": {"type": "Point", "coordinates": [1655, 1415]}},
+    {"type": "Feature", "properties": {"id": "brockenborings", "name": "Brockenborings", "region": "shire", "faction": "hobbit", "lore": "Hobbit-holes among rough northern hills."}, "geometry": {"type": "Point", "coordinates": [1672, 1400]}},
+    {"type": "Feature", "properties": {"id": "stock", "name": "Stock", "region": "shire", "faction": "hobbit", "lore": "A marsh village at the edge of the Marish, close to the river."}, "geometry": {"type": "Point", "coordinates": [1690, 1488]}},
+    {"type": "Feature", "properties": {"id": "woodhall", "name": "Woodhall", "region": "shire", "faction": "hobbit", "lore": "A village beneath the eaves of the Woody End."}, "geometry": {"type": "Point", "coordinates": [1660, 1525]}},
+    {"type": "Feature", "properties": {"id": "bucklebury", "name": "Bucklebury", "region": "shire", "faction": "hobbit", "lore": "The chief village of Buckland, across the river from the rest of the Shire."}, "geometry": {"type": "Point", "coordinates": [1698, 1512]}},
+    {"type": "Feature", "properties": {"id": "brandywine_bridge", "name": "Brandywine Bridge", "region": "shire", "lore": "The great stone bridge that carries the East Road over the river."}, "geometry": {"type": "Point", "coordinates": [1696.6, 1459.5]}},
+    {"type": "Feature", "properties": {"id": "bucklebury_ferry", "name": "Bucklebury Ferry", "region": "shire", "lore": "A flat ferry that crosses the Brandywine below Stock."}, "geometry": {"type": "Point", "coordinates": [1699, 1497]}},
+    {"type": "Feature", "properties": {"id": "withywindle", "name": "Withywindle", "region": "old_forest", "lore": "A dark, slow river winding through the heart of the Old Forest."}, "geometry": {"type": "Point", "coordinates": [1752, 1540]}},
+    {"type": "Feature", "properties": {"id": "barrow_downs", "name": "Barrow-downs", "region": "barrow_downs", "lore": "Bare green hills crowned with ancient barrows and standing stones."}, "geometry": {"type": "Point", "coordinates": [1795, 1550]}},
+    {"type": "Feature", "properties": {"id": "bree", "name": "Bree", "region": "bree_land", "faction": "bree", "lore": "The chief village of Bree-land, where the East Road meets the Greenway."}, "geometry": {"type": "Point", "coordinates": [1819.5, 1466]}},
+    {"type": "Feature", "properties": {"id": "archet", "name": "Archet", "region": "bree_land", "faction": "bree", "lore": "The village on the edge of the Chetwood."}, "geometry": {"type": "Point", "coordinates": [1826, 1442]}},
+    {"type": "Feature", "properties": {"id": "staddle", "name": "Staddle", "region": "bree_land", "faction": "bree", "lore": "A village on the far slopes of Bree-hill, home to many hobbits."}, "geometry": {"type": "Point", "coordinates": [1832, 1478]}},
+    {"type": "Feature", "properties": {"id": "combe", "name": "Combe", "region": "bree_land", "faction": "bree", "lore": "A village in a deep valley east of the hill."}, "geometry": {"type": "Point", "coordinates": [1842, 1490]}},
+    {"type": "Feature", "properties": {"id": "chetwood", "name": "Chetwood", "region": "bree_land", "lore": "A wide wood north-east of Bree, rarely free of outlaws."}, "geometry": {"type": "Point", "coordinates": [1868, 1416]}},
+    {"type": "Feature", "properties": {"id": "midgewater", "name": "Midgewater Marshes", "region": "bree_land", "lore": "Endless bog and biting insects east of Bree."}, "geometry": {"type": "Point", "coordinates": [1905, 1482]}},
+    {"type": "Feature", "properties": {"id": "forsaken_inn", "name": "Forsaken Inn", "region": "lone_lands", "lore": "The last inn on the East Road, a day's ride beyond Bree."}, "geometry": {"type": "Point", "coordinates": [1958, 1462]}},
+    {"type": "Feature", "properties": {"id": "tower_hills", "name": "Tower Hills", "region": "tower_hills", "lore": "Green hills crowned by old white towers that look towards the sea."}, "geometry": {"type": "Point", "coordinates": [1400, 1480]}}
+  ]
+}

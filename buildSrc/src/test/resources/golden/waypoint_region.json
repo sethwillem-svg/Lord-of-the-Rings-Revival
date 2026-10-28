@@ -1,0 +1,7 @@
+{
+  "biomes": ["lotrrevival:bree_land", "lotrrevival:chetwood", "lotrrevival:midgewater_marshes"],
+  "name": {
+    "fallback": "Bree-land",
+    "translate": "waypoint_region.lotrrevival.bree_land"
+  }
+}

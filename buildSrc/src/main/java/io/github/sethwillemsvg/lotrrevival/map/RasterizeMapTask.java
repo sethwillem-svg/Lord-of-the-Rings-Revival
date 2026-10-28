@@ -53,6 +53,7 @@ public abstract class RasterizeMapTask extends DefaultTask {
         MapSource source = MapSource.load(getSourceDir().get().getAsFile().toPath());
         Rasterizer.Raster raster = Rasterizer.rasterize(source, table, windows);
         Rasterizer.writeImages(raster, out);
+        TravelJson.writeAll(TravelSource.load(getSourceDir().get().getAsFile().toPath()), out);
         getLogger().lifecycle("Rasterized the map in {} ms", (System.nanoTime() - start) / 1_000_000);
     }
 

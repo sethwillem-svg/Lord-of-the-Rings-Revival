@@ -1,0 +1,14 @@
+{
+  "faction": "lotrrevival:bree",
+  "hidden": false,
+  "lore": {
+    "fallback": "The chief village of Bree-land, where the East Road meets the Greenway.",
+    "translate": "waypoint.lotrrevival.bree.lore"
+  },
+  "name": {
+    "fallback": "Bree",
+    "translate": "waypoint.lotrrevival.bree"
+  },
+  "pos": [1819.5, 1466],
+  "region": "lotrrevival:bree_land"
+}
