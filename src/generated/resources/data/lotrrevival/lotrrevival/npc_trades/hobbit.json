@@ -1,0 +1,166 @@
+{
+  "farmer": {
+    "player_buys": [
+      {
+        "item": "minecraft:wheat",
+        "price": 2
+      },
+      {
+        "item": "minecraft:potato",
+        "price": 2
+      },
+      {
+        "item": "minecraft:carrot",
+        "price": 2
+      },
+      {
+        "item": "minecraft:beetroot",
+        "price": 2
+      },
+      {
+        "item": "minecraft:egg",
+        "price": 2
+      },
+      {
+        "item": "minecraft:apple",
+        "price": 3
+      },
+      {
+        "item": "minecraft:pumpkin",
+        "price": 3
+      },
+      {
+        "count": 4,
+        "item": "minecraft:melon_slice",
+        "price": 2
+      },
+      {
+        "item": "minecraft:bread",
+        "price": 5
+      },
+      {
+        "item": "minecraft:hay_block",
+        "price": 15
+      },
+      {
+        "count": 4,
+        "item": "minecraft:wheat_seeds",
+        "price": 1
+      }
+    ],
+    "player_sells": [
+      {
+        "item": "minecraft:bone_meal",
+        "price": 1
+      },
+      {
+        "item": "minecraft:bone",
+        "price": 1
+      },
+      {
+        "item": "minecraft:feather",
+        "price": 1
+      },
+      {
+        "item": "minecraft:string",
+        "price": 1
+      },
+      {
+        "item": "minecraft:leather",
+        "price": 2
+      },
+      {
+        "count": 4,
+        "item": "minecraft:rotten_flesh",
+        "price": 1
+      }
+    ]
+  },
+  "innkeeper": {
+    "player_buys": [
+      {
+        "item": "minecraft:bread",
+        "price": 5
+      },
+      {
+        "item": "minecraft:baked_potato",
+        "price": 5
+      },
+      {
+        "item": "minecraft:cooked_chicken",
+        "price": 5
+      },
+      {
+        "item": "minecraft:cooked_porkchop",
+        "price": 6
+      },
+      {
+        "item": "minecraft:cooked_mutton",
+        "price": 6
+      },
+      {
+        "count": 4,
+        "item": "minecraft:cookie",
+        "price": 5
+      },
+      {
+        "item": "minecraft:mushroom_stew",
+        "price": 10
+      },
+      {
+        "item": "minecraft:rabbit_stew",
+        "price": 10
+      },
+      {
+        "item": "minecraft:pumpkin_pie",
+        "price": 10
+      },
+      {
+        "item": "minecraft:cake",
+        "price": 14
+      },
+      {
+        "item": "lotrrevival:wooden_mug",
+        "price": 3
+      }
+    ],
+    "player_sells": [
+      {
+        "item": "minecraft:wheat",
+        "price": 1
+      },
+      {
+        "item": "minecraft:potato",
+        "price": 1
+      },
+      {
+        "item": "minecraft:carrot",
+        "price": 1
+      },
+      {
+        "item": "minecraft:beetroot",
+        "price": 1
+      },
+      {
+        "item": "minecraft:egg",
+        "price": 1
+      },
+      {
+        "item": "minecraft:sweet_berries",
+        "price": 1
+      },
+      {
+        "item": "minecraft:apple",
+        "price": 2
+      },
+      {
+        "item": "minecraft:sugar",
+        "price": 2
+      },
+      {
+        "item": "minecraft:honey_bottle",
+        "price": 3
+      }
+    ]
+  }
+}
