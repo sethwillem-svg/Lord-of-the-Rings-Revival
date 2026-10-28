@@ -1,0 +1,22 @@
+{
+  "type": "lotrrevival:faction_shaped",
+  "category": "equipment",
+  "key": {
+    "S": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "item": "minecraft:string"
+    }
+  },
+  "pattern": [
+    " SX",
+    "S X",
+    " SX"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lotrrevival:ranger_bow"
+  },
+  "table": "lotrrevival:ranger_crafting_table"
+}
