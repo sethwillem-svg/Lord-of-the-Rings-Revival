@@ -82,7 +82,13 @@ final class CombatRecipes extends RecipeProvider {
             for (Map.Entry<Character, RecipeKey> key : recipe.keys().entrySet()) {
                 builder.define(key.getKey(), key.getValue().toIngredient());
             }
-            RecipeKey unlock = recipe.keys().values().iterator().next();
+            // Map.copyOf iteration order differs between JVM runs; take the first key in the pattern instead.
+            RecipeKey unlock = recipe.pattern().stream()
+                    .flatMapToInt(String::chars)
+                    .filter(c -> c != ' ')
+                    .mapToObj(c -> recipe.keys().get((char) c))
+                    .findFirst()
+                    .orElseThrow();
             builder.unlockedBy("has_ingredient", criterion(unlock)).save(out, id);
         } else {
             ShapelessRecipeBuilder builder = ShapelessRecipeBuilder.shapeless(category, result, recipe.count());
