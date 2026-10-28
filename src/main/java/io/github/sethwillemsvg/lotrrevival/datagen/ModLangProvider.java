@@ -74,6 +74,42 @@ final class ModLangProvider extends LanguageProvider {
         add("commands.lotrrevival.faction.list.region", "%s:");
         add("commands.lotrrevival.faction.relation", "%s and %s: %s");
         add("commands.lotrrevival.faction.unknown", "Unknown faction: %s");
+
+        add("commands.lotrrevival.alignment.get.header", "Alignment of %s:");
+        add("commands.lotrrevival.alignment.get.none", "%s has no alignment with any faction.");
+        add("commands.lotrrevival.alignment.value", "%s: %s (%s)");
+        add("commands.lotrrevival.alignment.fixed", "%s has a fixed alignment that cannot be changed.");
+        add("commands.lotrrevival.alignment.set", "Set alignment with %s to %s for %s player(s).");
+        add("commands.lotrrevival.alignment.add", "Changed alignment with %s by %s for %s player(s).");
+        add("commands.lotrrevival.alignment.add.spread", "Applied a kill worth %2$s against %1$s to %3$s player(s).");
+        add("commands.lotrrevival.alignment.reset.all", "Reset all alignment for %s player(s).");
+        add("commands.lotrrevival.alignment.reset.one", "Reset alignment with %s for %s player(s).");
+        add("commands.lotrrevival.pledge.set", "%s is now pledged to %s.");
+        add("commands.lotrrevival.pledge.set.failed.unknown_faction", "Cannot pledge %s: unknown faction.");
+        add("commands.lotrrevival.pledge.set.failed.not_pledgeable", "%s cannot pledge to %s.");
+        add("commands.lotrrevival.pledge.set.failed.already_pledged", "%s is already pledged.");
+        add("commands.lotrrevival.pledge.set.failed.on_cooldown", "%s is still on pledge cooldown.");
+        add("commands.lotrrevival.pledge.set.failed.rank_too_low", "%s has not reached the pledge rank with %s.");
+        add("commands.lotrrevival.pledge.set.failed.mortal_enemy_positive",
+                "%s holds positive alignment with a mortal enemy of %s.");
+        add("commands.lotrrevival.pledge.set.failed.cancelled", "The pledge of %s to %s was cancelled.");
+        add("commands.lotrrevival.pledge.clear", "Broke the pledge of %s.");
+        add("commands.lotrrevival.pledge.clear.none", "%s is not pledged.");
+        add("commands.lotrrevival.pledge.cooldown", "Set the pledge cooldown of %s to %s ticks.");
+
+        add("alignment.lotrrevival.rank.neutral", "Neutral");
+        add("alignment.lotrrevival.rank.hostile", "Hostile");
+        add("alignment.lotrrevival.rank_changed", "%s: you are now %s.");
+        add("alignment.lotrrevival.drain_first",
+                "Holding standing with two factions that are mortal enemies slowly drains both.");
+        add("alignment.lotrrevival.drain_notice", "Your standing with %s faction(s) faded.");
+        add("pledge.lotrrevival.pledged", "You have pledged yourself to %s.");
+        add("pledge.lotrrevival.warning", "You have killed one of the people of %s or their allies. Do it again within a day and your pledge is broken.");
+        add("pledge.lotrrevival.broken.voluntary", "You have broken your pledge to %s.");
+        add("pledge.lotrrevival.broken.killed_ally", "Your pledge to %s is broken: you killed their people again.");
+        add("pledge.lotrrevival.broken.below_rank", "Your pledge to %s is broken: you no longer meet its requirements.");
+        add("pledge.lotrrevival.broken.command", "Your pledge to %s was ended.");
+        add("pledge.lotrrevival.cooldown_ended", "You may pledge yourself to a faction again.");
     }
 
     private static void check(String id) {

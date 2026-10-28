@@ -45,6 +45,8 @@ public final class LotrCommand {
                 .executes(ctx -> list(ctx.getSource(), false))
                 .then(Commands.literal("all").executes(ctx -> list(ctx.getSource(), true)));
         dispatcher.register(Commands.literal("lotr")
+                .then(AlignmentCommands.alignment())
+                .then(AlignmentCommands.pledge())
                 .then(Commands.literal("faction")
                         .then(factionList)
                         .then(Commands.literal("relation")
@@ -111,8 +113,20 @@ public final class LotrCommand {
     private static ResourceKey<Faction> factionArg(
             CommandContext<CommandSourceStack> ctx, String name, Registry<Faction> registry)
             throws CommandSyntaxException {
-        ResourceKey<Faction> key =
-                ResourceKey.create(ModDataRegistries.FACTION, ResourceLocationArgument.getId(ctx, name));
+        return resolveFaction(ctx.getSource(), ResourceLocationArgument.getId(ctx, name));
+    }
+
+    /** Resolves a typed faction id; a bare {@code gondor} (parsed as {@code minecraft:gondor}) means {@code lotrrevival:gondor}. */
+    static ResourceKey<Faction> resolveFaction(CommandSourceStack source, ResourceLocation id)
+            throws CommandSyntaxException {
+        Registry<Faction> registry = source.registryAccess().registryOrThrow(ModDataRegistries.FACTION);
+        ResourceKey<Faction> key = ResourceKey.create(ModDataRegistries.FACTION, id);
+        if (!registry.containsKey(key) && id.getNamespace().equals(ResourceLocation.DEFAULT_NAMESPACE)) {
+            ResourceKey<Faction> own = ResourceKey.create(ModDataRegistries.FACTION, LOTRRevival.id(id.getPath()));
+            if (registry.containsKey(own)) {
+                return own;
+            }
+        }
         if (!registry.containsKey(key)) {
             throw UNKNOWN_FACTION.create(key.location().toString());
         }
