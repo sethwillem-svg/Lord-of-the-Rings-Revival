@@ -1,5 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.npc;
 
+import io.github.sethwillemsvg.lotrrevival.npc.anchor.NpcAnchorEvents;
+import io.github.sethwillemsvg.lotrrevival.npc.anchor.NpcAttachments;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcLoadoutData;
 import io.github.sethwillemsvg.lotrrevival.npc.data.NpcRoleData;
 import io.github.sethwillemsvg.lotrrevival.npc.entity.NpcEntityTypes;
@@ -17,6 +19,8 @@ public final class NpcMod {
         NpcEntityTypes.init(modBus);
         NpcItems.init(modBus);
         NeoForge.EVENT_BUS.addListener(NpcMod::onAddReloadListeners);
+        NpcAttachments.init();
+        NpcAnchorEvents.register();
         NpcConfig.register(net.neoforged.fml.ModLoadingContext.get().getActiveContainer());
         NeoForge.EVENT_BUS.addListener(io.github.sethwillemsvg.lotrrevival.npc.spawn.NpcSpawner::onLevelTick);
     }
