@@ -75,8 +75,11 @@ public final class Quests {
 
     private Quests() {}
 
-    public static void setCoinPayout(CoinPayout payout) {
+    /** Replaces the payout (null pays nothing) and returns the previous one, so tests can restore it. */
+    public static CoinPayout setCoinPayout(CoinPayout payout) {
+        CoinPayout previous = coinPayout;
         coinPayout = payout == null ? (player, coins, giver) -> {} : payout;
+        return previous;
     }
 
     // ------------------------------------------------------------------ reads

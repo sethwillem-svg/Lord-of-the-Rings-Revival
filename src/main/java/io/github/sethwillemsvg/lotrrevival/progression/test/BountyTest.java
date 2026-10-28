@@ -376,7 +376,7 @@ public final class BountyTest {
         Capture capture = new Capture();
         AchievementService.Sink previous = AchievementService.setSink(capture);
         List<Integer> paid = new ArrayList<>();
-        Quests.setCoinPayout((player, coins, giver) -> paid.add(coins));
+        Quests.CoinPayout previousPayout = Quests.setCoinPayout((player, coins, giver) -> paid.add(coins));
         try {
             long now = Bounties.now(server);
             for (int n = 1; n <= 5; n++) {
@@ -396,7 +396,7 @@ public final class BountyTest {
                         done(helper, hunter, BountySystem.BOUNTY_HUNTER) == (n >= 5), "bounty_hunter at the fifth");
             }
         } finally {
-            Quests.setCoinPayout(null);
+            Quests.setCoinPayout(previousPayout);
             AchievementService.setSink(previous);
             server.getPlayerList().remove(hunter);
         }
