@@ -68,5 +68,6 @@ public final class CombatItems {
         RangedGear.init();
         GearCatalog.freeze();
         NeoForge.EVENT_BUS.register(LanceSlow.class);
+        io.github.sethwillemsvg.lotrrevival.core.combat.poison.PoisonItems.init(modBus);
     }
 }
