@@ -16,7 +16,7 @@ Captains remember you. A captain of a faction you are at war with that kills you
 
 1. **Rise.** A captain or soldier of a faction you are an enemy of kills you or one of your hired units. A red chat line: "*Gashnak Skull-Splitter* of Mordor has risen to **Marked**." For an evil player: "*Hirgon the Unbending* of Gondor has sworn to hunt you." It retreats (vanishes).
 2. **Hierarchy.** The Middle-earth menu (L) gains a **Nemeses** page: each enabled faction's war-host as a pyramid (Overlord on top), each card with name, title, rank, scars, known strengths and weakness, grudges, rivals and allies. Your grudges are highlighted; hosts of your own side are shown greyed.
-3. **World events.** Every 8-15 minutes or so something starts 64-256 blocks from you, often at a ruin, watchtower, hideout or village: a chat hint ("Steel rings out to the north-east") and a marker on the map. Other players' events nearby show on your map too. Ride there and join in, or ignore it and hear how it ended.
+3. **World events.** Every 8-15 minutes or so something starts 64-256 blocks from you, often at an outpost, castle, camp or bridge: a chat hint ("Steel rings out to the north-east") and a marker on the map. Other players' events nearby show on your map too. Ride there and join in, or ignore it and hear how it ended.
 4. **Ambush** is the rare event aimed at you (roughly once per one and a half hours of travel): a nemesis that holds a grudge finds you, speaks a taunt naming you, and attacks with its bodyguards, a rank-coloured boss bar and, at high ranks, a mount.
 5. **The fight.** Nemeses hit harder and have more health by rank and carry traits. Badly hurt, one may flee; killed, it may cheat death and return scarred. Exploit its weakness, or kill it after it has cheated death twice, and it dies for good.
 6. **Rewards.** Killing a nemesis pays (or costs) alignment scaled by rank, counts for achievements and titles, and completes hunt quests that enemy factions post on it.
@@ -149,7 +149,7 @@ A world event is a short, bounded scene staged near a player. It runs on force-l
 | **Feud duel** | Two nemeses settle a politics challenge in person, ringed by bodyguards who do not interfere. | a pending challenge between `AT_LARGE` nemeses of one faction | Winner takes the rank; loser `DEAD` (or cheats death) |
 | **War camp** | A nemesis musters 4-8 soldiers in a temporary camp of tents and a war standard (see War camp blocks); nobody attacks unless provoked. | open land in its faction's territory (never a structure) | Undisturbed for the duration: renown +3 and +2 bodyguards on its next appearance / camp broken: nemesis flees or fights |
 | **Village raid** | A nemesis warband attacks a settlement of an enemy faction; its guards defend. Raiders never break or place blocks. | a `village` venue in the band, not protected against the raiders' faction | Kills half the defenders or survives 5 min / dies or flees |
-| **Captain hunting** | A nemesis and 2 trackers chase a lone enemy-faction NPC (a Ranger, a scout, an orc runner), who runs for the nearest friendly outpost or watchtower. | open land | Catches and kills the quarry / quarry reaches safety or nemesis dies |
+| **Captain hunting** | A nemesis and 2 trackers chase a lone enemy-faction NPC (a Ranger, a scout, an orc runner), who runs for the nearest friendly outpost or castle. | open land | Catches and kills the quarry / quarry reaches safety or nemesis dies |
 | **Rescue** | A nemesis's warband holds a captive NPC (bound, cannot fight) of the player's side. | captive's faction is the player's side or one they have > 0 with | Captive executed at the timer end / players kill the guards and right-click the captive; the freer (and their fellowship within 32 blocks) learn the nemesis's weakness |
 
 - Every type except ambush and rescue may involve nemeses of the player's own side; events are about the war, not only about the player.
@@ -160,29 +160,29 @@ A world event is a short, bounded scene staged near a player. It runs on force-l
 
 Events prefer to happen **in** the world's structures, so the land feels lived in.
 
-- **Lookup:** the World pod tags structures by venue kind with structure tags `#lotrrevival:event_venues/<kind>`, kinds: `camp`, `ruin`, `outpost`, `watchtower`, `tower`, `village`, `hideout`, `bridge`. npc asks a structure-locator API (core holder `core.api.StructureVenues`, backend registered by World) for venues of a kind within the distance band: each answer has structure id, bounds, centre, owning faction (or none), whether it has resident NPCs, and whether banner protection covers it.
+- **Lookup:** the World pod tags structures by venue kind with structure tags `#lotrrevival:event_venues/<kind>`, four kinds: `outpost` (a faction's fortified post), `castle` (a faction's keep or fortress), `camp` (a **permanent** worldgen camp, not the temporary war camp below) and `bridge` (road and river bridges). `village` is a fifth tag used **only** by village raids, because settlements exist anyway; no other type uses it. npc asks a structure-locator API (core holder `core.api.StructureVenues`, backend registered by World) for venues of a kind within the distance band: each answer has structure id, bounds, centre, owning faction (or none), whether it has resident NPCs, and whether banner protection covers it.
 - **Only already-generated chunks** are searched (structure references stored in existing chunks or a World-side index); the lookup never generates terrain. Budget: one lookup per roll, max 64 chunk reference checks, results cached per 512-block region for 5 min.
 - **Preference per type** (first kind found in the band wins; ties: nearest to the band's middle, 160 blocks):
 
 | Type | Preferred venues | Fallback |
 | --- | --- | --- |
 | Ambush | none (happens where the player is) | n/a |
-| Beast hunt | `ruin`, `camp` | open terrain |
-| Warband clash | `ruin`, `bridge`, `watchtower`, `outpost` of either faction | open terrain on a faction border |
-| Feud duel | `ruin`, `tower`, `camp` of the duellists' faction | open terrain |
+| Beast hunt | `camp`, `bridge` | open terrain |
+| Warband clash | `bridge`, `outpost` of either faction, `camp` | open terrain on a faction border |
+| Feud duel | `castle`, `camp`, `outpost` of the duellists' faction | open terrain |
 | War camp | never a structure (builds its own) | open terrain only |
 | Village raid | `village` of an enemy faction (required) | none: the type is dropped |
-| Captain hunting | starts in open terrain; the quarry runs to an `outpost`/`watchtower`/`village` of its faction within 128 blocks | if none, it runs straight away from the hunters |
-| Rescue | `hideout`, `ruin`, `tower`, `camp` | open terrain |
+| Captain hunting | starts in open terrain; the quarry runs to an `outpost` or `castle` of its faction within 128 blocks | if none, it runs straight away from the hunters |
+| Rescue | `camp`, `outpost`, `castle` held by the captors' faction | open terrain |
 
-- **Using a venue:** the event centre is the structure's centre; participants spawn on open floor inside the bounds (two air blocks over a solid block, not in water). Chunk tickets cover the structure, centre-out, within the per-event chunk limit. Resident NPCs of a venue's faction join on their faction's side (a Gondor watchtower's guards fight the raiders). A venue whose banner protection keeps out a participating faction is never chosen.
+- **Using a venue:** the event centre is the structure's centre; participants spawn on open floor inside the bounds (two air blocks over a solid block, not in water). Chunk tickets cover the structure, centre-out, within the per-event chunk limit. Resident NPCs of a venue's faction join on their faction's side (a Gondor outpost's guards fight the raiders). A venue whose banner protection keeps out a participating faction is never chosen.
 - **Venue cooldown:** one event per venue per 30 min; at most one active event per venue.
-- **Density target** (World pod): in wild land of every region, on average >= 2 venues within 256 blocks of any point, with at least ruins and one faction outpost/watchtower kind per region. Until the World structure set exists, events use the open-terrain fallbacks and village raids only happen where settlements exist.
+- **Density target** (World pod): in wild land of every region, on average >= 2 venues within 256 blocks of any point, with at least one outpost and one camp per faction region, castles at faction strongholds, and bridges on roads and rivers. Until the World structure set exists, events use the open-terrain fallbacks and village raids only happen where settlements exist.
 - This depends on the **World pod's structure spec, which does not exist yet**; see the World tickets below.
 
 #### War camp blocks
 
-The only event that places blocks.
+The only event that places blocks. **War camps always clean up afterwards; nothing they place is ever permanent** (maintainer decision): every block is restored, whatever the outcome.
 
 - **Templates:** structure NBT `data/lotrrevival/structure/event/war_camp/<group>_<n>.nbt`, groups `orc`, `men`, `elf`, `dwarf`, 2+ variants each, footprint <= 11 x 11, height <= 6. **Original art built for this repo.** Contents: tents (decorative blocks), a campfire, and a faction **war standard** (a decorative banner block; it never grants land protection). No containers, no block entities with inventories, no fire blocks, no redstone.
 - **Site rules:** open terrain only; not inside or within 16 blocks of any structure's bounds; not in protected land; not within 128 blocks of spawn or respawn points; ground height varies <= 2 over the footprint; no terrain levelling.
@@ -414,7 +414,7 @@ Lists built with `Arrays.asList`.
 - [ ] GameTest: `WorldEventsPayload` contents (radius filter, other players' events included, grudge events, max 16, own flag).
 - [ ] Playtest: die to a Mordor orc until one rises, see it on the menu page, get ambushed (rarely), scar it, kill it for good with its weakness.
 - [ ] Playtest: as an orc-pledged player, get a Gondor captain risen against you.
-- [ ] Playtest: see events every 8-15 min, ride to one at a ruin, swing a warband clash; ride to a friend's event and help; break a war camp and check the ground is restored after it ends and after a restart.
+- [ ] Playtest: see events every 8-15 min, ride to one at a bridge or outpost, swing a warband clash; ride to a friend's event and help; break a war camp and check the ground is restored after it ends and after a restart.
 - [ ] Playtest: with a spark/profiler load test (20 bots), the governor holds tick time near 40 ms or below.
 
 ## Tickets
@@ -449,8 +449,8 @@ Proposed 1-2 day tickets (not opened until this spec is approved; `pod:npc` unle
 **Dependencies in other pods**
 22. **`pod:core`:** `core.api.MapMarkerClient` holder. (0.5 d)
 23. **`pod:core`:** `core.api.StructureVenues` holder (venue record: id, bounds, centre, kind, faction, residents, protected). (0.5 d)
-24. **`pod:world` (needs the World structure spec first):** venue structure set: ruins, small camps, outposts, watchtowers, towers, bridges and bandit hideouts per region, original NBT, density target >= 2 venues per 256 blocks of wild land. Likely several tickets, one per region group, sized by Opus 2.
-25. **`pod:world`:** venue tags `#lotrrevival:event_venues/<kind>` on every venue and settlement structure, with owning faction metadata. (1 d)
+24. **`pod:world` (needs the World structure spec first):** venue structure set per faction: outposts, castles and permanent camps (distinct from the npc pod's temporary war camps), plus road and river bridges (can build on the road-bridge work in #87); original NBT, density target >= 2 venues per 256 blocks of wild land. Likely several tickets, one per region or faction group, sized by Opus 2.
+25. **`pod:world`:** venue tags `#lotrrevival:event_venues/{outpost,castle,camp,bridge}` on venue structures and `#lotrrevival:event_venues/village` on settlements, with owning faction metadata. (1 d)
 26. **`pod:world`:** `StructureVenues` backend: locator over already-generated chunks / a World-side structure index, budgeted and cached. (1.5 d)
 27. **`pod:progression`:** draw world-event markers on the map page (after #88 and the map GUI). (1 d)
 28. **`pod:progression`:** `nemesis_hunt` quest kind. (2 d)
@@ -464,5 +464,3 @@ Proposed 1-2 day tickets (not opened until this spec is approved; `pod:npc` unle
 
 1. Should Dunland, Near and Far Harad, Easterlings and half-trolls be on by default? (Default kept: off.)
 2. Governor thresholds: 30 ms (back off) and 40 ms (stop) of average tick time. Fine for your server, or tune per host?
-3. Should a war camp left standing the full time leave anything permanent (for example its tents stay as a ruin venue), or always restore? (Default: always restore.)
-4. Bridges as venues: worth asking World for them, or keep to ruins, camps, outposts, watchtowers, towers, villages and hideouts?
