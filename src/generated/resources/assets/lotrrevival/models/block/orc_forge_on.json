@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "bottom": "lotrrevival:block/orc_forge_top",
+    "front": "lotrrevival:block/orc_forge_front_on",
+    "side": "lotrrevival:block/orc_forge_side",
+    "top": "lotrrevival:block/orc_forge_top"
+  }
+}
