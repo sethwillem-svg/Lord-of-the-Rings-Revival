@@ -238,8 +238,11 @@ public final class NpcCombatTest {
     public static void onlyTradersHeal(GameTestHelper helper) {
         NpcEntity innkeeper = spawnNoPersist(helper, NpcEntityTypes.HOBBIT.get(), 8, Z);
         innkeeper.setRole(NpcRole.INNKEEPER);
+        // Shield both from outside damage: the CI runtime-test runs inside a real world with mobs and nights.
+        innkeeper.setInvulnerable(true);
         innkeeper.setHealth(8.0f);
         NpcEntity guard = spawnNoPersist(helper, NpcEntityTypes.BREE_GUARD.get(), 12, Z);
+        guard.setInvulnerable(true);
         guard.setHealth(10.0f);
         helper.runAfterDelay(50, () -> {
             helper.assertTrue(innkeeper.getHealth() == 9.0f, "innkeeper heals 1 HP in 40 ticks, has " + innkeeper.getHealth());
