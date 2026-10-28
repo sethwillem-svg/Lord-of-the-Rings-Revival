@@ -2,7 +2,7 @@
 
 - **Pod:** world
 - **Lead:** Opus 2
-- **Status:** draft (the maintainer's rule for parity: "match Legacy"; additions are marked **[Ours]**)
+- **Status:** draft, revision 2 (the maintainer's rule for parity: "match Legacy"; additions are marked **[Ours]**). Revision 2 applies the maintainer's answers on PR #184: procedural first with NBT for landmarks, plus vetted third-party templates (section 11b); overlaps allowed as in Legacy, with venue and index rules for them (section 2e); Shire hamlets and bounder posts; Hobbiton 160-200 blocks east of the landing; bandit hideouts in Bree-land, the Lone-lands and the Shire edges; village lanes; standards breakable only by the holder's enemies; guarded mine entrances.
 - **Depends on:** `specs/world/dimension-and-mapgen.md` (canvas, biome ids, `has_structure` tags, landmark corridors, NovoAtlas terrain), `specs/world/waypoints-travel.md` (map source, road network, road feature and bridges, landing point), `specs/core/core-apis.md` (factions, `LandProtection`, registers, datagen rules, `/lotr` root), `specs/npc/npc-base.md` (NPC types, roles, home leash, spawn rules), `specs/progression/quests-fellowships-banners.md` (faction banner block, banner designs, structure banners). Draft specs that depend on this one: `specs/npc/nemesis.md` (PR #182: event venues, venue tags, `core.api.StructureVenues`, density target) and `specs/world/territory.md` (PR #183: held structures, standards, garrison swaps, strongholds, villages changing hands, wild provinces).
 - **Sources:** `docs/reference/legacy/structures.md` (every Legacy structure type with its biomes and chances, loot, fixed placements, garrisons, banners; our own words), `docs/reference/legacy/biomes.md`, `docs/reference/legacy/world-map-travel.md`. All layouts, templates, names and text are our own.
 - **Tags:** **[Legacy]** = behaviour and numbers taken from Legacy 36.15. **[Ours]** = our addition, mostly to serve the nemesis and territory specs.
@@ -20,7 +20,7 @@ The recommended build approach is **procedural first**: structures are original 
 1. **Exploring.** Each region has its own builds. The Shire is dotted with hobbit holes, taverns, windmills and farms; Bree-land has hamlets with hedges and a guard house; the Lone-lands have ranger camps, broken towers, hill-men and orc camps; the Barrow-downs are crowded with stone-ringed mounds. Structures sit on the land as it is: they follow slopes with foundations and do not appear on water, steep ground or roads.
 2. **People live in them.** Inns have innkeepers, smithies smiths, forts captains and soldiers. Garrisons of forts, camps and towers refill a few minutes after they are killed, but never while a player stands close by. Villages have residents and guards that also refill.
 3. **Loot.** Chests hold loot that fits the place: larders in hobbit holes, weapons in forts, old gear and coins in ruins, grave goods in barrows. Some grave chests wake a guardian when opened.
-4. **Flags.** Forts, camps and towers fly their faction's standard at the gate and on the roof. When a province falls (territory), those standards change to the conqueror's and so does the garrison. Breaking a standard is allowed; a broken standard is not replaced.
+4. **Flags.** Forts, camps and towers fly their faction's standard at the gate and on the roof. When a province falls (territory), those standards change to the conqueror's and so does the garrison. Only the holder's enemies (alignment below 0) can tear a standard down; a broken standard is not replaced.
 5. **Fixed places.** Bree and its three hamlets, the Brandywine Bridge, Bucklebury Ferry, Hobbiton and (later) every faction capital are at the same spot in every world, matching the map.
 6. **Events find them.** World events (nemesis spec) stage ambushes at bridges, raids on villages, duels in castles and rescues in hideouts, so the land's structures are where the war happens.
 7. **Operators** can place any structure with `/lotr structure place <id>` and inspect one with `/lotr structure info`.
@@ -79,7 +79,7 @@ Chances ("1 in N chunks" per biome) and grid settings are **[Legacy]** and are l
 | `shire/bounder_post` **[Ours]** | fort | hobbit | watchtower | A small hedged watch-house on a rise, 7 x 7; garrison Bounders cap 3. 1 in 700 in every Shire biome |
 | `bree/hamlet`, `bree/village` | settlement | bree | village | Legacy Bree culture (section 3 of the reference): houses, hobbit burrows, inn, market, smithy, stables, hedges and gates, guard house as guard post |
 | `bree/bree`, `bree/staddle`, `bree/combe`, `bree/archet` | settlement | bree | village | Fixed (section 8). Bree is walled, gatehouse and captain's office; Bree is a stronghold province (territory) |
-| `bree/bandit_hideout` **[Ours]** | dungeon | ruffians | hideout | A dug-in lair under a thicket or ruined cottage, 9 x 9, 3-5 ruffians (garrison cap 5, not holdable), loot chest of stolen goods. 1 in 1,200 in bree_land, chetwood; 1 in 2,000 in lone_lands |
+| `bree/bandit_hideout` **[Ours]** | dungeon | ruffians | hideout | A dug-in lair under a thicket or ruined cottage, 9 x 9, 3-5 ruffians (garrison cap 5, faction `ruffians`, not holdable by territory), loot chest of stolen goods. 1 in 1,200 in bree_land, chetwood; 1 in 2,000 in lone_lands; 1 in 2,500 in the Shire edges (shire_moors, shire_marshes, shire_woodlands, white_downs) |
 | `eriador/ranger_camp` | camp | dunedain_north | camp | Tents, captain, command table, ranger table; garrison cap 12 |
 | `eriador/ranger_watchtower` | tower | dunedain_north | watchtower | 9 x 9 x 25, garrison cap 8 |
 | `eriador/dunedain_village` | settlement | dunedain_north | village | The Angle (later region), palisade, lodge, smithy |
@@ -90,7 +90,7 @@ Chances ("1 in N chunks" per biome) and grid settings are **[Legacy]** and are l
 | `eriador/tower_hills_tower` | tower | high_elf | tower | Tall white tower, Lindon style |
 | `eriador/barrow` | tomb | - | ruin | Stone-ringed mound, burial chamber, guardian chest (wight) |
 | `blue_mountains/stronghold` | fort | blue_mountains | outpost | Cut into rock, forge, command table, larder; garrison cap 8 |
-| `blue_mountains/mine` | dungeon | blue_mountains | outpost (entrance only) | Legacy mine; **[Ours]** the surface entrance gets a garrison slot (dwarf guards cap 4) so it can be a mine-defence venue |
+| `blue_mountains/mine` | dungeon | blue_mountains | outpost (entrance only) | Legacy mine; **[Ours, maintainer decision]** the surface entrance gets a garrison slot (dwarf guards cap 4) and a standard, so it is a holdable outpost and a mine-defence venue. Same for every dwarven mine in later regions |
 | `blue_mountains/dwarf_house`, `blue_mountains/smithy` | home | blue_mountains | - | Carved into rock (4 tries per chunk, y 70-150) |
 | `ruin/stone_ruin` (styles: stone, arnor) | ruin | - | ruin | Broken walls in the local stone; chest 1 in 3. **[Ours]** Arnor style also 1 in 800 in tower_hills (density) |
 | `ruin/small_stone_ruin` | ruin | - | - | Under 7 x 7 |
@@ -116,21 +116,21 @@ Chances ("1 in N chunks" per biome) and grid settings are **[Legacy]** and are l
 
 ## 2. Placement
 
-### 2a. Scattered structures [Legacy, with Ours spacing]
+### 2a. Scattered structures [Legacy]
 
 | Rule | Value | Notes |
 | --- | --- | --- |
 | Chance | each structure has a table `biome (or biome tag) -> N`: a chunk whose centre column is in that biome rolls 1 in N | [Legacy] numbers from the reference |
 | Roll | seeded from world seed, chunk x/z and the structure's id hash, so rolls are deterministic and independent per structure | [Legacy] |
 | Position | a random column in the chunk (0-15, 0-15) and a random rotation | [Legacy] |
-| One per chunk | if several structures win the roll in one chunk, only the one with the lowest roll value is tried | **[Ours]**: Legacy allowed overlaps |
-| Spacing | a candidate is dropped if a scattered roll of any structure wins (roll only, no ground check) in a chunk within `claim` chunks (Chebyshev distance) that has a lower roll value. `claim` = 1 for footprints up to 16 blocks, 2 up to 40, 3 above | **[Ours]**. Deterministic and symmetric: of two clashing candidates exactly one survives |
+| Overlaps | allowed: every structure that wins its roll and passes its own checks generates, even if another structure already sits there or in the same chunk. Section 2e says how venues, garrisons and the index cope | [Legacy] (maintainer decision) |
 | Ground | every footprint column (sampled every 2 blocks, plus corners) must be dry natural surface: the top block is not water, lava or ice and not leaves; the spread between highest and lowest sample must be <= `ground.spread` (default 8; Legacy used 4-12 by type) | [Legacy]. Heights come from the generator's base height (image terrain), so the check runs before any block exists |
 | Foundations | after placing, walls and floors fill down to the ground with the structure's foundation block, at most 12 blocks; below that the column is skipped | [Legacy] |
 | Terrain adaptation | `beard_thin` for surface builds, `none` for underground and tree-borne builds | Vanilla. Works because NovoAtlas uses the vanilla noise chunk generator |
-| Roads | dropped if a road edge is within 16 blocks of the chunk centre | [Legacy]. Uses the road network index (`world.road`) |
-| Landmarks and landing | dropped within a landmark's `radius` + 64 blocks, and within 96 blocks of the Middle-earth landing point | **[Ours]** |
-| Villages | dropped inside any village's claim (computed from the village grid, so it is known before the village generates) | **[Ours]**: Legacy could overlap villages |
+| Roads (hard) | dropped if a road edge is within 16 blocks of the chunk centre | [Legacy]. Uses the road network index (`world.road`) |
+| Landmarks and landing (hard) | dropped if its box comes within a fixed landmark's `radius` + 64 blocks, or within 96 blocks of the Middle-earth landing point | **[Ours]** |
+| Banner-protected land (hard) | dropped if its box intersects the cube of any protecting banner (player or structure banner), read from a thread-safe snapshot of the banner index (`LandProtection.anyProtectedIn(level, box)`, new, see Data and APIs) | **[Ours]**. Blocks are only ever placed in newly generated chunks, but a banner's cube can reach into them |
+| Villages | not a keep-out: scattered structures may land inside a village, as in Legacy | [Legacy] |
 | Axis cross | none | Legacy's 32-block exclusion cross around x = 0 and z = 0 is not kept; the landing rule replaces it |
 | Variants | none of our biomes have vineyard or orchard variants yet; when they do, they get `#lotrrevival:no_structures` | [Legacy] |
 
@@ -141,7 +141,7 @@ Chances ("1 in N chunks" per biome) and grid settings are **[Legacy]** and are l
 | Grid | per culture: cell size 10-16 chunks, jitter 1-2 chunks, chance per biome (reference section 3). One candidate per cell |
 | Claim | 3-6 chunks radius by culture (Bree 4, Gondor 5, Rhûn 6...); fixed villages use their own radius (Bree 13) |
 | Biomes | every chunk of the claim must be in one of the culture's village biomes |
-| Keep-outs | dropped when a road, a landmark or a fixed mountain is within (claim + 8 blocks) x 1.41 of the centre, so random villages never sit on roads [Legacy]; **[Ours]** also dropped within 512 blocks of the landing point |
+| Keep-outs (hard) | dropped when a road, a landmark or a fixed mountain is within (claim + 8 blocks) x 1.41 of the centre, so random villages never sit on roads [Legacy]; **[Ours]** also dropped within 512 blocks of the landing point or when the claim intersects a protecting banner's cube. Villages may overlap scattered structures and other cultures' villages, as in Legacy |
 | Layout | the culture's layout plan picks a type (hamlet, village, town, fort by weight), places a centre piece and building plots along its streets, each plot rotated to face a street |
 | Terrain | each plot is flattened to the plot's median height (`beard_box`), streets follow the ground and use the culture's road style (`world.road` styles) |
 | Access lane **[Ours]** | a village within 256 blocks of a road lays a 3-wide lane in its street style from its nearest gate to the nearest road point (straight line, following the ground, bridging water like a road). This gives caravans and patrols a path between settlements. The lane is part of the village and never enters another structure's box |
@@ -163,6 +163,25 @@ Chances ("1 in N chunks" per biome) and grid settings are **[Legacy]** and are l
 | Mines | a surface entrance at a scattered position (1 in 150 chunks); corridors branch underground up to about 6 pieces deep (vanilla jigsaw depth limit of our own pool, or procedural pieces) |
 | Underwater ruin | 1 in 200 chunks in deep sea west of Lindon, on the sea floor |
 
+### 2e. Overlapping structures [Ours rules on Legacy behaviour]
+
+Overlaps are allowed (2a), so two structures can share ground: a ranger camp across a ruin, a ruffian hideout under a hamlet's edge. Blocks simply interleave, as in Legacy. The war systems need one clear answer per place, so the index resolves overlaps:
+
+| Rule | Value |
+| --- | --- |
+| Core box | each record has a **core box**: the declared footprint at ground level, inset by 2 blocks, from 2 below the ground to the top of the build. For a village, the core area is its claim circle |
+| Who competes | only records with at least one venue kind. Homes, decoration and non-venue ruins never shadow anything and are never shadowed |
+| Overlap | two competing records overlap when their core boxes (or a core box and a village claim) intersect |
+| Winner | a deterministic rank, independent of load order: villages first, then the larger core area (x z), then class order `castle` > `outpost` > `camp` > `tower` > `watchtower` > `hideout` > `ruin` > `bridge`, then the lower record id |
+| Loser | marked `shadowed_by` the winner. A shadowed record is **not a venue** (`find` skips it, `at` returns the winner), is **not holdable** (territory ignores it; its standards stay as decoration and are never swapped) and does not count for the density audit |
+| Garrisons of a loser | its `garrison` slots are **disabled** when its faction is an enemy of the winner's faction (core relations), so two hostile garrisons never respawn into each other forever. Otherwise they keep running. `once` and `guardian` slots always run |
+| Late discovery | a record can become shadowed when an overlapping, higher-ranked record is indexed later (its start lies in a chunk loaded later). Then: it stops being returned as a venue, territory drops its hold entry, and NPCs already spawned stay (they are not removed); its disabled slots spawn no more |
+| Chains | rank is applied pairwise; a record shadowed by any higher-ranked overlapping record is shadowed. A shadowed record does not shadow others |
+| Bridges | bridge sites compete like other venues, but a landmark bridge always wins over a generated site on the same crossing |
+| Hard exclusions still apply | fixed landmarks (plus 64 blocks), roads within 16 blocks, banner-protected land and the landing point keep every random structure out (2a, 2b) |
+
+The density audit's 60% factor also covers losses to shadowing; the `/lotr structure density` sampler counts only unshadowed venues.
+
 ## 3. Generation order and NovoAtlas
 
 1. Structure starts (vanilla `STRUCTURE_STARTS` stage) use the NovoAtlas biome source and the generator's base heights, so ground checks see the image terrain before blocks exist.
@@ -179,11 +198,11 @@ Chances ("1 in N chunks" per biome) and grid settings are **[Legacy]** and are l
 | Where | at recorded spots chosen by the builder: gate, roof or tower top, captain's room. 1-4 per holdable structure; 1 per village guard post |
 | Recorded | each standard spot (position, standing or wall, facing) is saved in the structure's index record (section 6) |
 | Placed design | the current holder's design at generation time (territory: a structure generated after a flip uses the current holder) |
-| Breakable | yes, by anyone, like any decorative banner. Drops a banner item of that design. A spot whose block is no longer our standard is skipped by later swaps (territory rule) |
+| Breakable | **only by players whose alignment with the current holder is below 0** (the holder's enemies tear down its flag; its friends and neutrals cannot). Creative-mode operators always can. Explosions, mobs and NPCs never break a standard. A broken standard drops a banner item of that design and is not restored; later swaps skip a spot whose block is no longer our standard (territory rule). Enforced by the `FactionStandards` backend (progression), which marks standards on the banner block entity (a `standard` flag, distinct from the protecting structure-banner flag) |
 | Swap | territory replaces the design at a spot through `core.api.FactionStandards` (below); this spec only places and records |
 | Protecting structure banner | only the jungle pyramid (later) places a protecting structure banner, radius 64, as in Legacy |
 
-`core.api.FactionStandards` **[Ours, pod:core holder, progression backend]**: `place(level, pos, faction, wall, facing)`, `factionAt(level, pos)` (empty if the block is not a standard), `replace(level, pos, faction)` (keeps form and facing). World never imports progression classes.
+`core.api.FactionStandards` **[Ours, pod:core holder, progression backend]**: `place(level, pos, faction, wall, facing)`, `factionAt(level, pos)` (empty if the block is not a standard), `replace(level, pos, faction)` (keeps form and facing), and the break rule above. World never imports progression classes. The holder used for the break check comes from `StructureVenues.at(level, pos)` (current holder of the record that owns the spot).
 
 ## 5. Garrisons and residents [Legacy numbers]
 
@@ -218,7 +237,8 @@ Structures do not spawn NPCs themselves. They record **slots**; the NPC pod's st
 | Record | id (`<structure id>@<start chunk x>,<start chunk z>`), structure id, class, venue kinds, generation faction, bounds (box of all pieces), centre (centre of the main piece at ground level), province (territory lookup of the centre), standard spots, slots, village data (claim, guard posts), landmark and stronghold flags, first-seen game time |
 | Filled when | the first full chunk that holds the start **or a reference** to it is loaded on the server thread. A reference resolves the start from its chunk only if that chunk is already at least at the structure-start stage in memory or on disk; otherwise the record is retried on the next load. **Never generates chunks** |
 | Stable | records are never removed when blocks are broken. A record whose structure id is no longer registered (data pack removed) stays but is reported as inactive |
-| Holder | not stored here; territory keeps holder and epoch per record id in its own data (territory spec's `lotrrevival_territory_holds` should keep only those two fields plus the id) |
+| Holder | not stored here; territory keeps holder and epoch per record id in its own data. **Required change to the territory spec (PR #183):** its `lotrrevival_territory_holds` entries must be cut to **structure id + holder + epoch**; bounds, centre, province, generation faction and standard spots are read from this index |
+| Overlaps | each record stores its core box and `shadowed_by` (section 2e) |
 | Bridges | virtual records for bridge venues (section 9), activated when the chunk at their centre is first loaded |
 
 ### `core.api.StructureVenues` (core holder, World backend)
@@ -271,7 +291,7 @@ A datagen-time **density audit** computes this table for every biome from the st
 | Landmark | Structure | Kind | Phase | Notes |
 | --- | --- | --- | --- | --- |
 | Bree, Staddle, Combe, Archet | `bree/bree` and hamlets | village | S1 | [Legacy] fixed villages; Bree claim 208 blocks. Positions from our `landmarks.geojson` (already present) |
-| Hobbiton | `shire/hobbiton` | village (stronghold) | S1 | A larger Shire hamlet with the Shirriff house as guard post; centred at least 160 blocks from the landing point (exact spot: open question) |
+| Hobbiton | `shire/hobbiton` | village (stronghold) | S1 | A larger Shire hamlet with the Shirriff house as guard post; centred **160-200 blocks east** of the landing point (maintainer decision), exact pixel chosen in the map source so the claim stays clear of the landing (>= 128 blocks) and of the East Road |
 | Brandywine Bridge | `shire/brandywine_bridge` | bridge | S1 | Three-arch stone bridge over the Brandywine; road feature skips its box |
 | Bucklebury Ferry | `shire/bucklebury_ferry` | decoration | S1 | Landing stages on both banks and a raft |
 | Old Forest heart glade | `eriador/old_forest_glade` | - | S1 | For territory's calming offering |
@@ -328,6 +348,20 @@ Why: agents can produce and review Java quickly and cannot build in-game; Legacy
 
 **Clean-room rule for builders:** layouts are designed new for this repo. Builders match the catalogue's footprint (+/- 30%), room list, contents and garrison, never Legacy's block-by-block layout. Implementers never see Legacy code; leads review against the reference notes only.
 
+### 11b. Third-party templates [Ours, maintainer decision]
+
+Templates found online may be used for landmarks and capitals (and as a starting point for any template piece), under these rules:
+
+| Rule | Value |
+| --- | --- |
+| Allowed licences | an **explicit** licence that lets us adapt the work and ship it with our CC BY-NC-SA 4.0 assets: **CC0, CC BY, CC BY-SA, CC BY-NC, CC BY-NC-SA** (version 4.0, or 3.0 where the source only offers that) |
+| Share-alike note | a CC BY-SA source stays CC BY-SA after our changes (it cannot become NC); its credits entry says so. CC0, CC BY and CC BY-NC sources may be shipped under our CC BY-NC-SA 4.0 |
+| Never | anything with no licence or only "free to use" wording; anything from the original LOTR Mod (Legacy, Renewed) or any other All Rights Reserved source; anything ripped from servers, server maps or world downloads; anything whose uploader is not clearly the author |
+| Credits | every template gets an entry in `ASSETS_CREDITS.md` (new, repo root; `NOTICE` points to it): our file path, source URL, author, licence with link, date retrieved, and our changes. The PR that adds the template also adds the entry |
+| Conversion | converted to our format before use: our block palette (vanilla and `lotrrevival:` blocks only; other mods' blocks replaced), our data markers (`standard`, `slot:<name>`, `loot:<table>`, light and door markers), no entities or command blocks, no signs or books with the source's text, sized to the catalogue footprint. The converted file goes to `data/lotrrevival/structure/thirdparty/<id>.nbt` with the original kept outside the repo |
+| Lead check | before an implementer uses a template, the World lead checks the licence (the page and the licence text, archived link in the ticket) and approves it in the ticket. Implementers never pick sources themselves |
+| Review | the template's PR shows the preview PNGs and the credits diff; the human maintainer approves art like any other asset |
+
 ### Registries and data
 
 | Item | Owner | Notes |
@@ -358,13 +392,14 @@ Why: agents can produce and review Java quickly and cannot build in-game; Legacy
 ## Edge cases
 
 - **Multiplayer:** garrisons never refill within 24 blocks of any player; two players opening a guardian chest at once wake one guardian.
-- **Chunk borders:** a structure always places its whole build across all chunks it touches, because each piece re-runs deterministically; the box never exceeds 3 chunks from its start chunk (spacing rule keeps neighbours out).
+- **Chunk borders:** a structure always places its whole build across all chunks it touches, because each piece re-runs deterministically; a piece never reaches more than 3 chunks from its start chunk.
+- **Overlaps:** builds interleave block by block; later-placed pieces in the same chunk overwrite earlier ones (vanilla order). Venue, holding and garrison effects follow section 2e.
 - **Partly generated structures:** chunks generated before the structure existed (an update adds a type) never get it. Existing worlds only get new structures in new chunks.
 - **Player builds and griefing:** blocks broken or replaced stay that way; the index keeps the record; events skip venues with too little open floor (nemesis spec).
 - **Ground check fails:** nothing generates; the density audit accounts for it with the 60% factor, and the sampler measures the real rate.
 - **Structure in two provinces:** its province is the one holding its centre (territory).
 - **Structure under a player banner:** placed normally; `protected` is reported to events; garrisons of enemy factions do not spawn inside.
-- **Standard broken or replaced:** not restored; later swaps skip that spot.
+- **Standard broken or replaced:** only the holder's enemies (alignment below 0) can break it; not restored; later swaps skip that spot. A standard on a shadowed record has no holder: it falls back to its generation faction for the break rule.
 - **Data pack removes a structure:** existing starts in chunks fail to load their type and are dropped by vanilla with a log line; the index marks the record inactive.
 - **Landing point and spawn:** no scattered structure within 96 blocks and no village within 512 blocks of the landing point; the ring portal's return portal is never built over.
 - **Rivers and roads:** structures never place on water; roads skip structure boxes; village lanes bridge water like roads.
@@ -380,8 +415,8 @@ Why: agents can produce and review Java quickly and cannot build in-game; Legacy
 - SavedData `lotrrevival_structures`.
 - Config `lotrrevival-world-server.toml` `[structures]`: `enabled` (true), `density_multiplier` (1.0, scales every 1/N), `garrisons` (true), `garrison_interval_ticks` (3600), `garrison_no_player_range` (24), `density_audit_min` (2.0, datagen side).
 - Commands (under `/lotr structure`, op level 2): `place <id> [rotation] [seed]`, `info` (the record you stand in), `list [kind] [radius]`, `density [radius]` (samples the index around you and prints venues per kind), `export <id> [seed]` (dev).
-- Core asks (`pod:core`): the two registers, `StructureVenues` and `FactionStandards` holders, tag keys, command table and culture tables.
-- Progression ask: `FactionStandards` backend.
+- Core asks (`pod:core`): the two registers, `StructureVenues` and `FactionStandards` holders, tag keys, command table and culture tables, and `LandProtection.anyProtectedIn(level, box)`, safe to call from worldgen threads (progression answers it from an immutable banner snapshot published on the server thread).
+- Progression ask: `FactionStandards` backend (placement, replacement, the standard flag and the enemies-only break rule) and the thread-safe `anyProtectedIn` answer.
 - NPC asks: structure population service, garrison rosters, role ids, guardian slots.
 
 ## Out of scope
@@ -396,7 +431,9 @@ Why: agents can produce and review Java quickly and cannot build in-game; Legacy
 
 The GameTest server has no Middle-earth level. Tests use the overworld test level, fake biome and height functions, the in-memory sink and stub backends.
 
-- [ ] GameTest: scattered roll is deterministic per (seed, chunk, id); one-per-chunk and spacing rules: of two clashing winners exactly one survives, symmetric.
+- [ ] GameTest: scattered roll is deterministic per (seed, chunk, id); two structures winning in the same chunk both generate.
+- [ ] GameTest: overlap ranking is independent of load order (index the pair both ways); a shadowed record is not found as a venue, not holdable, and its garrison slot is disabled only when its faction is an enemy of the winner's; late discovery shadows a record and keeps existing NPCs.
+- [ ] GameTest: banner keep-out drops a start whose box touches a stub protected cube.
 - [ ] GameTest: ground check rejects water, leaves and spread above the limit; accepts a slope within it; foundations fill down to ground.
 - [ ] GameTest: road keep-out (16 blocks), landmark keep-out (radius + 64), landing keep-outs (96 / 512), village claim keep-out, using a fake road network.
 - [ ] GameTest: village grid picks one candidate per cell, rejects candidates near roads and outside culture biomes, and the access lane reaches the road.
@@ -406,6 +443,7 @@ The GameTest server has no Middle-earth level. Tests use the overworld test leve
 - [ ] GameTest: index fills on chunk load from a start and from a reference, never generates a chunk, ids are stable; `find` honours band, kind, limit and the record budget; cache invalidates on add.
 - [ ] GameTest: venue owner reports the holder for holdable sites and none for ruins; `protected` follows a stub `LandProtection`.
 - [ ] GameTest: `FactionStandards` stub records place and replace; a standard spot holding another block is reported as missing.
+- [ ] GameTest (progression): a standard breaks for a mock player at -1 with the holder, not at 0 or above, not by explosion; creative always.
 - [ ] GameTest (NPC pod): garrison slot refills to cap after 3,600 ticks, not while a mock player is within 24 blocks, `once` slots never refill, guardian slot fires once.
 - [ ] Datagen check: density audit table passes for the painted pilot biomes.
 - [ ] Map build: validator rejects a fixed structure outside a window, too near the canvas edge, overlapping another or near the landing point; bridge sites are computed for the East Road's Brandywine crossing.
@@ -422,13 +460,14 @@ Proposed; opened after this spec is approved. Days are agent days. Gate is the m
 | S0-1 | core | Registers `STRUCTURE_PLACEMENTS` and `STRUCTURE_PROCESSORS`; holders `core.api.StructureVenues` (venue record, queries) and `core.api.FactionStandards`; tag keys `event_venues/*`, `holdable`, `landmark`, `has_structure/*`, `no_structures`; command table block if not yet present | 1 | Opus 1 | - |
 | S0-2 | world | Building kit: sinks (level, in-memory), rotation, palettes, shapes, foundations, decay, chests, standards, slots; preview GameTest writing PNGs; CI artifact upload of `build/structure-previews/` (touches the workflow: needs Opus 1) | 2 | sonnet-3 | - |
 | S0-3 | world | `lotrrevival:built` structure type and piece, metadata codec, ground check, terrain adaptation, structure and `has_structure` datagen helpers, `/lotr structure place|info` | 2 | sonnet-3 | S0-1, S0-2 |
-| S0-4 | world | Placements: `biome_chance` (rolls, one per chunk, spacing), `village_grid` (grid, claim, keep-outs, culture biomes), road, landmark and landing keep-outs, `density_multiplier` config | 2 | sonnet-4 | S0-1 |
-| S0-5 | world | Structure index SavedData, fill on chunk load (starts and references, no generation), `StructureVenues` backend, cache, `/lotr structure list|density` | 2 | sonnet-5 | S0-1, S0-3 |
-| S0-6 | progression | `FactionStandards` backend over the faction banner block | 0.5 | Opus 4 | S0-1 |
+| S0-4 | world | Placements: `biome_chance` (independent rolls, overlaps allowed), `village_grid` (grid, claim, keep-outs, culture biomes), hard keep-outs (roads, landmarks, landing, banner cubes via `anyProtectedIn`), `density_multiplier` config | 2 | sonnet-4 | S0-1 |
+| S0-5 | world | Structure index SavedData, fill on chunk load (starts and references, no generation), core boxes and overlap ranking (section 2e), `StructureVenues` backend, cache, `/lotr structure list|density` | 2 | sonnet-5 | S0-1, S0-3 |
+| S0-6 | progression | `FactionStandards` backend over the faction banner block (standard flag, enemies-only break rule); thread-safe `LandProtection.anyProtectedIn` from a banner snapshot | 1 | Opus 4 | S0-1 |
 | S0-7 | npc | Structure population service: garrison, once and guardian slots with the Legacy rules; garrison rosters data and datagen for pilot factions; enemy spawn block from `garrisonsNear` | 2 | sonnet-7 | S0-1, S0-5 |
 | S0-8 | world | Map source: `landmarks.geojson` structure properties, validator rules, generated fixed structure sets and corridor entries; bridge sites from road and river crossings; `lotrrevival:fixed` placement | 2 | sonnet-4 | S0-1 |
 | S0-9 | world | Loot provider and the pilot loot tables (larder, house, treasure, ruin, barrow, ranger, orc camp, Bree market, bandit stash) | 1 | sonnet-6 | - |
 | S0-10 | world | Density audit at datagen (fails under the minimum for painted biomes) and the village lane builder | 1 | sonnet-5 | S0-4 |
+| S0-11 | world | Vetted third-party template intake (section 11b): `ASSETS_CREDITS.md` with its format and a `NOTICE` pointer, a licence checklist in `docs/tooling.md`, an intake issue template (source URL, author, licence link, archived copy, lead approval box), the `template` piece type with data markers, and a converter dev command that maps a source `.nbt` to our palette and markers and rejects foreign blocks and entities | 1.5 | sonnet-6 | S0-3 |
 
 ### Phase S1: venue structures the nemesis and territory specs need, in the pilot window (G3)
 
@@ -443,9 +482,9 @@ Proposed; opened after this spec is approved. Days are agent days. Gate is the m
 | S1-7 | Ruined Dúnedain tower and Rhudaur castle (ruin) | 1.5 | sonnet-3 | S1-1 |
 | S1-8 | Barrows with guardian chests and cairns (ruin) | 1.5 | sonnet-5 | S0-7, S0-9 |
 | S1-9 | Gundabad camp (camp) and hill-men village and house (village) | 2 | sonnet-7 | S0-3, S0-7 |
-| S1-10 | Bandit hideout (hideout) [Ours] | 1 | sonnet-5 | S0-3, S0-7 |
+| S1-10 | Bandit hideout (hideout, `ruffians`) [Ours] in Bree-land, the Lone-lands and the Shire edges | 1 | sonnet-5 | S0-3, S0-7 |
 | S1-11 | Tower Hills tower (tower); Blue Mountains stronghold (outpost), dwarf house, smithy | 2 | sonnet-3 | S0-3 |
-| S1-12 | Dwarven mine with garrisoned entrance (outpost) | 2 | sonnet-7 | S1-11 |
+| S1-12 | Dwarven mine with garrisoned, standard-flying entrance (outpost) | 2 | sonnet-7 | S1-11 |
 | S1-13 | Landmarks: Brandywine Bridge (bridge), Bucklebury Ferry, Old Forest heart glade | 1.5 | sonnet-4 | S0-8 |
 | S1-14 | Playtest checklist `docs/playtest/structures-pilot.md` and screenshots (human) | 0.5 | Seth | S1-1..13 |
 
@@ -457,14 +496,19 @@ One group per region, each 3-6 tickets of 1-2 days, opened when the region's bio
 
 - Nemesis (PR #182) ticket 27 becomes S0-1, tickets 29-31 become S0-5, the venue tags in S0-3 and S1-1..13; its density target is section 6.
 - Territory (PR #183) ticket 9 is this spec; ticket 13 (held structures and swaps) needs S0-5 and S0-6; ticket 12c (calming) needs S1-8 and S1-13.
+- **Required change to PR #183** (to be made on that branch by its author, not here): held-structure data in `lotrrevival_territory_holds` becomes structure id + holder + epoch only; everything else comes from the structure index; territory ignores shadowed records (section 2e).
+
+## Maintainer decisions (PR #184)
+
+1. Procedural builders first, NBT for landmarks and capitals; vetted third-party templates allowed under section 11b.
+2. Overlaps allowed as in Legacy; section 2e resolves venues, holding and garrisons; hard exclusions kept (landmarks, roads within 16 blocks, banner-protected land, landing).
+3. Shire hamlets and bounder posts: yes.
+4. Hobbiton centred 160-200 blocks east of the landing point.
+5. Bandit hideouts held by `ruffians`, in Bree-land, the Lone-lands and the Shire edges.
+6. Village lanes to the nearest road within 256 blocks: yes.
+7. Standards breakable only by players with alignment below 0 with the holder.
+8. Small dwarf guard at mine entrances, so they are outposts.
 
 ## Open questions for the maintainer
 
-1. **Approach:** procedural builders first, NBT only for landmarks and capitals (section 11). Agree?
-2. **Overlaps:** Legacy let scattered structures overlap each other and villages. We allow one per chunk with a spacing rule. Agree?
-3. **Shire density:** Legacy's Shire has no venues besides rare ruins. We add Shire hamlets and bounder posts so events have places there. Agree, or leave the Shire quiet?
-4. **Hobbiton:** where should the Hobbiton build sit relative to the landing point (proposal: centred 160-200 blocks east, across the stream from the landing)?
-5. **Bandit hideouts:** new structure for the `hideout` venue, held by the `ruffians` faction. Agree, and which regions?
-6. **Village lanes:** Legacy villages avoid roads and have no road link. We add a short lane to the nearest road within 256 blocks. Agree?
-7. **Standards:** decorative and breakable by anyone (Legacy). Alternative: only players at +0 or more with the holder may break them. Which?
-8. **Mine entrances as outposts:** Legacy mines had no garrison. We add a small dwarf guard so the nemesis "mine defence" event has a venue. Agree?
+None at the moment.
