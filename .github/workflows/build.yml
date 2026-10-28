@@ -40,6 +40,8 @@ jobs:
   runtime-test:
     needs: build
     runs-on: ubuntu-latest
+    # A failing GameTest can leave the headless client hanging instead of exiting.
+    timeout-minutes: 15
     steps:
       - uses: actions/setup-java@v4
         with:

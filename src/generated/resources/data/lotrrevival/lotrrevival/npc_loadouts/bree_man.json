@@ -1,0 +1,16 @@
+{
+  "farmer": {
+    "mainhand": [
+      {
+        "item": "minecraft:wooden_hoe"
+      }
+    ]
+  },
+  "traveller": {
+    "feet": [
+      {
+        "item": "minecraft:leather_boots"
+      }
+    ]
+  }
+}

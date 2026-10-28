@@ -1,0 +1,15 @@
+{
+  "default": {
+    "head": [
+      {
+        "dye": 9056047,
+        "item": "minecraft:leather_helmet"
+      }
+    ],
+    "mainhand": [
+      {
+        "item": "minecraft:iron_sword"
+      }
+    ]
+  }
+}

@@ -137,6 +137,34 @@ public final class NpcNamesSpeechTest {
     }
 
     @GameTest(template = "empty")
+    public static void breeManRollsManNameAndTitledDisplay(GameTestHelper helper) {
+        var man = helper.spawn(NpcEntityTypes.BREE_MAN.get(), new BlockPos(2, 1, 2));
+        man.setNoAi(true);
+        man.finalizeSpawn(
+                helper.getLevel(),
+                helper.getLevel().getCurrentDifficultyAt(man.blockPosition()),
+                MobSpawnType.COMMAND,
+                null);
+        String[] parts = man.getNpcName().split(" ");
+        helper.assertTrue(parts.length == 2, "expected 'First Family', got '" + man.getNpcName() + "'");
+        helper.assertTrue(
+                NpcNames.bank(NpcNames.firstBankName(NpcRace.MAN, man.getGender())).contains(parts[0]),
+                "first name from the man bank: " + parts[0]);
+        helper.assertTrue(NpcNames.bank(NpcNames.familyBankName(NpcRace.MAN)).contains(parts[1]), "family name: " + parts[1]);
+        man.setRole(NpcRole.FARMER);
+        helper.assertTrue(
+                man.getName().getContents() instanceof TranslatableContents tc
+                        && tc.getKey().equals("npc.lotrrevival.titled_name")
+                        && tc.getArgs().length == 2
+                        && tc.getArgs()[0] instanceof net.minecraft.network.chat.Component name
+                        && name.getString().equals(man.getNpcName()),
+                "titled display name: " + man.getName());
+        man.setRole(NpcRole.VILLAGER);
+        helper.assertTrue(man.getName().getString().equals(man.getNpcName()), "villager shows the bare name");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
     public static void emptyNameBankShowsRaceNameAndWarnsOnce(GameTestHelper helper) {
         Map<String, List<String>> saved = NpcNames.snapshot();
         try {

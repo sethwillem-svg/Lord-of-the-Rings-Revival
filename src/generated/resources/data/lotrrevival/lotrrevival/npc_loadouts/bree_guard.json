@@ -1,0 +1,26 @@
+{
+  "default": {
+    "chest": [
+      {
+        "dye": 4086922,
+        "item": "minecraft:leather_chestplate"
+      }
+    ],
+    "head": [
+      {
+        "dye": 4086922,
+        "item": "minecraft:leather_helmet"
+      }
+    ],
+    "mainhand": [
+      {
+        "item": "minecraft:iron_sword",
+        "weight": 2
+      },
+      {
+        "item": "minecraft:iron_sword",
+        "label": "pike placeholder"
+      }
+    ]
+  }
+}
