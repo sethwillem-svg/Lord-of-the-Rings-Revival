@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mocap Rig Viewer</title>
+<style>
+:root{--bg:#15130f;--panel:#1f1b16;--line:#3a332a;--fg:#ece4d6;--muted:#a59a88;--accent:#e0893a;--accent-ink:#1b120a;--bad:#e5534b;--ok:#6fbf73;
+ --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--body:system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.4 var(--body);padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+h1{font-size:1.2rem;margin:0}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.85rem}
+.wrap{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;min-height:0}
+.stage{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#2b251d 0%,var(--bg) 75%);min-height:360px}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.labels{position:absolute;inset:0;pointer-events:none}
+.tag{position:absolute;transform:translate(-50%,-100%);font:11px var(--mono);background:#000a;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.tag.bad{color:#fff;background:var(--bad)}
+.drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#e0893a33;border:2px dashed var(--accent);font-size:1.1rem}
+.stage.dragging .drop{display:flex}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:24px}
+aside{display:flex;flex-direction:column;gap:12px;overflow:auto;min-width:0}
+.group{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--panel)}
+.label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row label{flex:1;min-width:0}
+input[type=range]{flex:1;accent-color:var(--accent)}
+button,select,input[type=text]{font:inherit;color:var(--fg);background:#2a241d;border:1px solid var(--line);border-radius:4px;padding:5px 9px}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.val{font:12px var(--mono);color:var(--muted);min-width:44px;text-align:right}
+.clip{border-top:1px solid var(--line);padding-top:6px;display:flex;flex-direction:column;gap:4px}
+.clip:first-child{border-top:0;padding-top:0}
+.clip .name{font:12px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qa{font:11px var(--mono);color:var(--muted)}
+.qa .bad{color:var(--bad)}.qa .ok{color:var(--ok)}
+.note{font-size:.8rem;color:var(--muted);margin:0}
+.timeline{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--panel)}
+.timeline input[type=range]{flex:1}
+.time{font:12px var(--mono);min-width:110px}
+.err{color:var(--bad);font-size:.85rem;white-space:pre-wrap}
+@media (max-width:820px){.wrap{grid-template-columns:1fr}.stage{height:55vh}}
+</style>
+</head>
+<body>
+<header>
+ <h1>Mocap Rig Viewer</h1>
+ <p class="sub">Drop a Blockbench <code>.bbmodel</code> and any number of BVH files. Each clip is retargeted live onto its own copy of the model, on one shared timeline.</p>
+</header>
+<div class="wrap">
+ <div class="stage" id="stage">
+  <canvas id="cv" aria-label="3D preview"></canvas>
+  <div class="labels" id="labels"></div>
+  <div class="empty" id="empty">Drop a .bbmodel and BVH files here, or use the buttons on the right.</div>
+  <div class="drop">Drop .bbmodel or .bvh files</div>
+ </div>
+ <aside>
+  <div class="group">
+   <span class="label">Files</span>
+   <div class="row">
+    <button id="pickModel">Load model</button><input id="modelFile" type="file" accept=".bbmodel,.json" hidden>
+    <button id="pickBvh">Add BVH clips</button><input id="bvhFile" type="file" accept=".bvh" multiple hidden>
+   </div>
+   <div class="note" id="modelInfo">No model loaded.</div>
+   <div class="row"><label for="rigMap">Rig map</label><select id="rigMap"></select></div>
+   <div class="err" id="err"></div>
+  </div>
+  <div class="group">
+   <span class="label">Retarget settings (applied to every clip)</span>
+   <div class="row"><label for="tilt">Torso tilt cap</label><input id="tilt" type="range" min="10" max="90" step="1" value="90"><span class="val" id="tiltV">off</span></div>
+   <div class="row"><label for="drop">Root drop</label><input id="drop" type="range" min="0" max="1" step="0.05" value="1"><span class="val" id="dropV">100%</span></div>
+   <div class="row"><label for="weapon">Weapon</label><select id="weapon"><option value="forearm">along forearm</option><option value="rest">rig rest grip</option></select></div>
+   <div class="row"><label><input id="mirror" type="checkbox"> Mirror (left-handed take)</label></div>
+   <div class="row"><label><input id="footLift" type="checkbox" checked> Keep feet above floor</label></div>
+  </div>
+  <div class="group">
+   <span class="label">Clips</span>
+   <div id="clips"><p class="note">No clips yet.</p></div>
+   <div class="row"><label for="rigName">Export rig name</label><input id="rigName" type="text" value="orc" size="10"></div>
+   <div class="row"><button id="exportAll">Export all (viewer JSON)</button></div>
+  </div>
+  <p class="note">Floor contact: a clip's label turns red while its weapon tip or hand is below the floor. Weapon IK is not implemented yet, so long weapons will often go through the floor at contact.</p>
+ </aside>
+</div>
+<div class="timeline">
+ <button id="play" class="primary" aria-label="Play or pause">Pause</button>
+ <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" aria-label="Time">
+ <span class="time" id="time">0.00 / 0.00 s</span>
+ <label><input id="align" type="checkbox"> Align hits</label>
+ <label><input id="loop" type="checkbox" checked> Loop</label>
+ <select id="speed" aria-label="Speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="retarget.js"></script>
+<script src="rigs.js"></script>
+<script>
+'use strict';
+const A = window.AnimRetarget, $ = (id) => document.getElementById(id);
+const D = Math.PI / 180, SPACING = 46;
+
+// ---------- three.js scene ----------
+const cv = $('cv'), stage = $('stage');
+const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
+R.setClearColor(0x000000, 0); R.outputEncoding = THREE.sRGBEncoding; R.setPixelRatio(Math.min(2, devicePixelRatio));
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xfff1dc, 0x2a2018, 0.75));
+const key = new THREE.DirectionalLight(0xffe2bf, 0.95); key.position.set(-30, 60, -50); scene.add(key);
+const rim = new THREE.DirectionalLight(0xff9a4a, 0.45); rim.position.set(40, 30, 60); scene.add(rim);
+const grid = new THREE.GridHelper(400, 25, 0x5a4a38, 0x3a3027); scene.add(grid);
+const cam = new THREE.PerspectiveCamera(35, 1, 0.5, 3000);
+let yaw = Math.PI + 0.55, pitch = 0.18, dist = 110; const target = new THREE.Vector3(0, 16, 0);
+function placeCam() {
+  cam.position.set(target.x + dist * Math.cos(pitch) * Math.sin(yaw), target.y + dist * Math.sin(pitch), target.z + dist * Math.cos(pitch) * Math.cos(yaw));
+  cam.lookAt(target);
+}
+
+// ---------- model building (Blockbench cubes, same face layout as the Orc Muster Viewer) ----------
+function faceQuad(c, k) {
+  const f = c.inflate || 0, o = c.origin || [0, 0, 0];
+  const [X1, Y1, Z1] = [c.from[0] - o[0] - f, c.from[1] - o[1] - f, c.from[2] - o[2] - f];
+  const [X2, Y2, Z2] = [c.to[0] - o[0] + f, c.to[1] - o[1] + f, c.to[2] - o[2] + f];
+  return { north: [[X2, Y2, Z1], [X1, Y2, Z1], [X1, Y1, Z1], [X2, Y1, Z1]], south: [[X1, Y2, Z2], [X2, Y2, Z2], [X2, Y1, Z2], [X1, Y1, Z2]],
+    east: [[X2, Y2, Z2], [X2, Y2, Z1], [X2, Y1, Z1], [X2, Y1, Z2]], west: [[X1, Y2, Z1], [X1, Y2, Z2], [X1, Y1, Z2], [X1, Y1, Z1]],
+    up: [[X1, Y2, Z1], [X2, Y2, Z1], [X2, Y2, Z2], [X1, Y2, Z2]], down: [[X1, Y1, Z2], [X2, Y1, Z2], [X2, Y1, Z1], [X1, Y1, Z1]] }[k];
+}
+let model = null;   // {rig, map, mats, geos: Map(uuid -> [{geo, tex}])}
+function prepareModel(bb, fileName) {
+  const rig = A.parseRig(bb);
+  const res = bb.resolution || { width: 16, height: 16 };
+  const mats = (bb.textures || []).map((t) => {
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, alphaTest: 0.5, side: THREE.DoubleSide });
+    if (t.source) {
+      const img = new Image(), tex = new THREE.Texture(img);
+      tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.encoding = THREE.sRGBEncoding;
+      img.onload = () => { tex.needsUpdate = true; mat.map = tex; mat.needsUpdate = true; };
+      img.src = t.source;
+    } else mat.color.set(0x8a7f70);
+    return { mat, w: t.uv_width || res.width, h: t.uv_height || res.height };
+  });
+  const fallback = { mat: new THREE.MeshLambertMaterial({ color: 0x8a7f70, side: THREE.DoubleSide }), w: res.width, h: res.height };
+  const geos = new Map();
+  let faces = 0;
+  for (const b of rig.bones) for (const c of b.cubes) {
+    const byTex = new Map();
+    for (const k in c.faces || {}) {
+      const fc = c.faces[k];
+      if (fc.texture === null || fc.texture === undefined || !fc.uv) continue;
+      const t = mats[fc.texture] || fallback;
+      if (!byTex.has(t)) byTex.set(t, { pos: [], uv: [], idx: [], n: 0 });
+      const g = byTex.get(t), P = faceQuad(c, k), [u1, v1, u2, v2] = fc.uv;
+      const U = [[u1, v1], [u2, v1], [u2, v2], [u1, v2]];
+      for (let i = 0; i < 4; i++) { g.pos.push(...P[i]); g.uv.push(U[i][0] / t.w, 1 - U[i][1] / t.h); }
+      g.idx.push(g.n, g.n + 2, g.n + 1, g.n, g.n + 3, g.n + 2); g.n += 4; faces++;
+    }
+    const list = [];
+    for (const [t, g] of byTex) {
+      let geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(g.uv, 2));
+      geo.setIndex(g.idx); geo = geo.toNonIndexed(); geo.computeVertexNormals();
+      list.push({ geo, mat: t.mat });
+    }
+    geos.set(c.uuid, list);
+  }
+  const cubes = rig.bones.reduce((a, b) => a + b.cubes.length, 0);
+  return { rig, mats, geos, fileName, cubes, faces };
+}
+function buildInstance() {
+  const { rig, geos } = model, root = new THREE.Group(), groups = [];
+  rig.bones.forEach((b, i) => {
+    const g = new THREE.Group(), po = b.parent < 0 ? [0, 0, 0] : rig.bones[b.parent].origin;
+    g.position.set(b.origin[0] - po[0], b.origin[1] - po[1], b.origin[2] - po[2]);
+    g.userData.base = g.position.clone();
+    g.quaternion.copy(matQuat(b.restMat));
+    for (const c of b.cubes) {
+      const cg = new THREE.Group(), co = c.origin || [0, 0, 0], r = c.rotation || [0, 0, 0];
+      cg.position.set(co[0] - b.origin[0], co[1] - b.origin[1], co[2] - b.origin[2]);
+      cg.rotation.order = 'ZYX'; cg.rotation.set(r[0] * D, r[1] * D, r[2] * D);
+      for (const { geo, mat } of geos.get(c.uuid) || []) cg.add(new THREE.Mesh(geo, mat));
+      g.add(cg);
+    }
+    (b.parent < 0 ? root : groups[b.parent]).add(g);
+    groups.push(g);
+  });
+  return { root, groups };
+}
+const _m4 = new THREE.Matrix4();
+function matQuat(m) {
+  _m4.set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1);
+  return new THREE.Quaternion().setFromRotationMatrix(_m4);
+}
+
+// ---------- clips ----------
+const clips = [];   // {name, bvh, clip, quats[bone][frame], inst, tag, error}
+let restClip = null, maxLen = 1, maxHit = 0;
+function settings() {
+  return { torsoTiltCap: +$('tilt').value, rootDrop: +$('drop').value, weapon: $('weapon').value,
+           mirror: $('mirror').checked, footLift: $('footLift').checked };
+}
+function currentMap() {
+  const id = $('rigMap').value;
+  return RIG_MAPS.find((m) => m.id === id) || null;
+}
+function runClip(c) {
+  c.error = null; c.clip = null;
+  try {
+    const map = currentMap();
+    if (!map) throw new Error('No rig map fits this model. Add one to rigs.js.');
+    c.clip = A.retarget(c.bvh, model.rig, map, settings());
+    c.quats = model.rig.bones.map((_, i) => c.clip.frames.map((fr) => matQuat(fr.locals[i])));
+  } catch (e) { c.error = e.message; }
+}
+function rebuild() {
+  $('err').textContent = '';
+  for (const c of [...clips, restClip].filter(Boolean)) { if (c.inst) scene.remove(c.inst.root); if (c.tag) c.tag.remove(); c.inst = null; c.tag = null; }
+  $('empty').style.display = model && clips.length ? 'none' : 'flex';
+  if (!model) { renderList(); return; }
+  const shown = clips.length ? clips : [{ name: '(rest pose)', rest: true }];
+  shown.forEach((c, k) => {
+    if (!c.rest) runClip(c);
+    const inst = buildInstance();
+    const row = Math.floor(k / 5), colN = Math.min(shown.length, 5);
+    inst.root.position.set(-((k % 5) - (colN - 1) / 2) * SPACING, 0, row * SPACING);   // list order reads left to right from the front
+    scene.add(inst.root);
+    c.inst = inst;
+    const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = c.name;
+    $('labels').appendChild(tag); c.tag = tag;
+    if (c.rest) { c.inst.restOnly = true; }
+  });
+  restClip = clips.length ? null : shown[0];
+  const n = Math.min(shown.length, 5), rows = Math.ceil(shown.length / 5);
+  target.set(0, 14, (rows - 1) * SPACING / 2);
+  dist = Math.max(80, n * SPACING * 1.25 + 30);
+  maxLen = Math.max(0.01, ...clips.filter((c) => c.clip).map((c) => c.clip.length));
+  maxHit = Math.max(0, ...clips.filter((c) => c.clip).map((c) => c.clip.hitTime));
+  renderList();
+}
+const fmt = (v) => (v === null || v === undefined || !isFinite(v) ? 'n/a' : v.toFixed(1));
+function renderList() {
+  const L = $('clips');
+  L.innerHTML = '';
+  if (!clips.length) { L.innerHTML = '<p class="note">No clips yet.</p>'; return; }
+  clips.forEach((c, k) => {
+    const d = document.createElement('div'); d.className = 'clip';
+    const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = `${k + 1}. ${c.name}`; nm.title = c.name;
+    d.appendChild(nm);
+    const qa = document.createElement('div'); qa.className = 'qa';
+    if (c.error) { qa.innerHTML = ''; const e = document.createElement('span'); e.className = 'bad'; e.textContent = c.error; qa.appendChild(e); }
+    else if (c.clip) {
+      const q = c.clip.qa, cls = (v) => (v !== null && v < -0.5 ? 'bad' : 'ok');
+      qa.innerHTML = `${c.clip.length.toFixed(2)} s, hit ${c.clip.hitTime.toFixed(2)} s<br>` +
+        `hand min <span class="${cls(q.handMin)}">${fmt(q.handMin)}</span> px, tip min <span class="${cls(q.tipMin)}">${fmt(q.tipMin)}</span> px, ` +
+        `foot min <span class="${cls(q.footMin)}">${fmt(q.footMin)}</span> px`;
+    }
+    d.appendChild(qa);
+    const row = document.createElement('div'); row.className = 'row';
+    const mk = (txt, fn, label) => { const b = document.createElement('button'); b.textContent = txt; b.onclick = fn; if (label) b.setAttribute('aria-label', label); row.appendChild(b); };
+    mk('Hit', () => { setTime(($('align').checked ? maxHit : c.clip ? c.clip.hitTime : 0)); playing = false; syncPlay(); }, 'Jump to hit of ' + c.name);
+    mk('Viewer JSON', () => exportClip(c, 'viewer'));
+    mk('PulseLib JSON', () => exportClip(c, 'pulselib'));
+    mk('Remove', () => { clips.splice(k, 1); rebuild(); }, 'Remove ' + c.name);
+    d.appendChild(row);
+    L.appendChild(d);
+  });
+}
+function baseName(n) { return n.replace(/\.[^.]+$/, '').replace(/[^a-z0-9_]+/gi, '_').toLowerCase(); }
+function download(name, obj) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function exportClip(c, kind) {
+  if (!c.clip) return;
+  const rigName = ($('rigName').value || 'rig').trim(), b = baseName(c.name);
+  if (kind === 'viewer') download(`${b}.viewer.json`, A.toViewerClip(c.clip, model.rig));
+  else download(`${b}.animation.json`, A.toPulseLibAnimation(c.clip, model.rig, `animation.${rigName}.${b}`));
+}
+$('exportAll').onclick = () => {
+  const out = {};
+  for (const c of clips) if (c.clip) out[baseName(c.name)] = A.toViewerClip(c.clip, model.rig);
+  if (Object.keys(out).length) download(`${($('rigName').value || 'rig').trim()}_clips.viewer.json`, out);
+};
+
+// ---------- posing ----------
+const _q = new THREE.Quaternion();
+function poseClip(c, t) {
+  const inst = c.inst, rig = model.rig;
+  if (!c.clip) { rig.bones.forEach((b, i) => { inst.groups[i].quaternion.copy(matQuat(b.restMat)); inst.groups[i].position.copy(inst.groups[i].userData.base); }); return false; }
+  const cl = c.clip, F = cl.frames.length;
+  let tt = t - ($('align').checked ? maxHit - cl.hitTime : 0);
+  tt = Math.max(0, Math.min(cl.length, tt));
+  const x = tt / cl.dt, i0 = Math.min(F - 1, Math.floor(x)), i1 = Math.min(F - 1, i0 + 1), a = x - i0;
+  rig.bones.forEach((b, i) => {
+    const g = inst.groups[i];
+    g.quaternion.copy(c.quats[i][i0]).slerp(c.quats[i][i1], a);
+    g.position.copy(g.userData.base);
+  });
+  const p0 = cl.frames[i0].rootPos, p1 = cl.frames[i1].rootPos, rg = inst.groups[cl.rootBone];
+  rg.position.set(rg.userData.base.x + p0[0] + (p1[0] - p0[0]) * a, rg.userData.base.y + p0[1] + (p1[1] - p0[1]) * a,
+                  rg.userData.base.z + p0[2] + (p1[2] - p0[2]) * a);
+  // live floor check on the nearest frame
+  const fr = cl.frames[a < 0.5 ? i0 : i1];
+  const fk = A.rigFK(rig, fr.locals, fr.rootPos);
+  const hand = fk.pos[rig.idx[currentMap().arms.right[2] || currentMap().arms.right[1]]];
+  return (fr.tip && fr.tip[1] < -0.5) || (hand && hand[1] < -0.5);
+}
+
+// ---------- timeline ----------
+let playing = true, clock = 0, last = performance.now();
+function syncPlay() { $('play').textContent = playing ? 'Pause' : 'Play'; }
+function setTime(t) { clock = t; }
+$('play').onclick = () => { playing = !playing; syncPlay(); };
+$('scrub').oninput = (e) => { playing = false; syncPlay(); clock = +e.target.value * totalLen(); };
+function totalLen() { return $('align').checked ? maxHit + Math.max(0, ...clips.filter((c) => c.clip).map((c) => c.clip.length - c.clip.hitTime)) : maxLen; }
+const _v = new THREE.Vector3();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (playing) {
+    clock += dt * +$('speed').value;
+    const L = totalLen() + 0.5;
+    if (clock > L) clock = $('loop').checked ? 0 : L;
+  }
+  const L = totalLen();
+  $('scrub').value = L > 0 ? Math.min(1, clock / L) : 0;
+  $('time').textContent = `${Math.min(clock, L).toFixed(2)} / ${L.toFixed(2)} s`;
+  const rect = cv.getBoundingClientRect();
+  for (const c of [...clips, restClip].filter(Boolean)) {
+    if (!c.inst) continue;
+    const bad = c.restOnly ? false : poseClip(c, clock);
+    if (c.tag) {
+      c.tag.classList.toggle('bad', !!bad);
+      _v.set(c.inst.root.position.x, 36, c.inst.root.position.z).project(cam);
+      c.tag.style.left = ((_v.x + 1) / 2 * rect.width) + 'px';
+      c.tag.style.top = ((1 - _v.y) / 2 * rect.height) + 'px';
+      c.tag.style.display = _v.z < 1 ? '' : 'none';
+    }
+  }
+  placeCam(); R.render(scene, cam); requestAnimationFrame(frame);
+}
+
+// ---------- input ----------
+function showErr(m) { $('err').textContent = m; }
+async function handleFiles(files) {
+  const list = [...files];
+  for (const f of list.filter((f) => /\.(bbmodel|json)$/i.test(f.name))) {
+    try {
+      const bb = JSON.parse(await f.text());
+      if (!bb.outliner || !bb.elements) throw new Error(f.name + ' is not a Blockbench project (.bbmodel).');
+      model = prepareModel(bb, f.name);
+      const auto = A.detectMap(model.rig, RIG_MAPS);
+      $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}${auto && auto.id === m.id ? ' (auto)' : ''}</option>`).join('');
+      if (auto) $('rigMap').value = auto.id;
+      $('modelInfo').textContent = `${f.name}: ${model.rig.bones.length} bones, ${model.cubes} cubes, ${model.faces} faces` + (auto ? '' : '. No rig map matches its bone names.');
+    } catch (e) { showErr(e.message); }
+  }
+  for (const f of list.filter((f) => /\.bvh$/i.test(f.name))) {
+    try { clips.push({ name: f.name, bvh: A.parseBVH(await f.text()) }); }
+    catch (e) { showErr(f.name + ': ' + e.message); }
+  }
+  rebuild();
+}
+$('pickModel').onclick = () => $('modelFile').click();
+$('pickBvh').onclick = () => $('bvhFile').click();
+$('modelFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
+$('bvhFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
+['dragenter', 'dragover'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.add('dragging'); }));
+['dragleave', 'drop'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.remove('dragging'); }));
+stage.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+function sliderLabels() {
+  $('tiltV').textContent = +$('tilt').value >= 90 ? 'off' : $('tilt').value + '°';
+  $('dropV').textContent = Math.round(+$('drop').value * 100) + '%';
+}
+for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'rigMap']) $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
+for (const id of ['tilt', 'drop']) $(id).addEventListener('input', sliderLabels);
+$('align').addEventListener('change', () => { clock = 0; });
+
+let drag = null;
+cv.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; });
+cv.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * 0.01; pitch = Math.max(-0.2, Math.min(1.3, pitch + (e.clientY - drag[1]) * 0.01)); drag = [e.clientX, e.clientY];
+});
+cv.addEventListener('pointerup', () => { drag = null; cv.style.cursor = 'grab'; });
+cv.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.max(30, Math.min(900, dist * (1 + e.deltaY * 0.001))); }, { passive: false });
+function resize() { const r = cv.parentElement.getBoundingClientRect(); R.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(cv.parentElement);
+$('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}</option>`).join('');
+resize(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
