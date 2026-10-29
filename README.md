@@ -92,11 +92,7 @@ Horses use vanilla.
 No book source (mod or game inventions, so design these freely): Taurethrim, Morwaith, Golden Easterlings, fire-throwers, Uruk crossbows, Utumno units, Graugs (from Shadow of Mordor), elk and zebra mounts.
 
 ## HY-Motion prompts
-
-HY-Motion only does human skeletons. For trolls, Ents, Graugs and the Balrog, generate a human proxy, retarget it, then exaggerate it. Quadrupeds, spiders and the mûmak need hand keyframes or a different tool.
-
-Keep each prompt under 30 words and each clip 2–4 s. For looping attacks, end back in a ready stance. Run each attack with 3–4 seeds and keep the best take.
-
+ For looping attacks, end back in a ready stance. Run each attack with 3–4 seeds and keep the best take.
 ### Men
 
 - Sword slash: A person holding a sword in the right hand steps forward and slashes diagonally downward from the right shoulder, then returns to a guarded stance.
@@ -152,9 +148,6 @@ Keep each prompt under 30 words and each clip 2–4 s. For looping attacks, end 
 - Wraith drain: A person floats forward with arms extended, hands clawed, and leans menacingly toward a target.
 
 ### Big proxies (retarget, then exaggerate)
-
-- Troll smash: A huge heavy person raises a club overhead with both hands and slams it into the ground, staggering forward.
-- Troll sweep: A heavy person swings a club horizontally in a wide arc from right to left, twisting the whole body.
 - Boulder throw: A person lifts a heavy object over the head with both hands and hurls it forward with full body effort.
 - Ground slam: A person raises both fists high and pounds them into the ground in front, crouching.
 - Ent stomp: A tall stiff person raises one leg slowly and stomps down hard, then sways.
