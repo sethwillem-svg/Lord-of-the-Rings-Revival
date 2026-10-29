@@ -2,7 +2,7 @@
 
 - **Pod:** core (the shared animation framework, dependency, benchmark and client config). Renderers per race stay in `client/npc/` (NPC pod).
 - **Lead:** Opus 1
-- **Status:** draft, revision 2 (maintainer's decisions on PR #185, see "Maintainer decisions" at the end: AzureLib is chosen; every NPC of every faction is animated; formation clips added for the discipline levels of `specs/npc/performance.md`, PR #186; pilot #10 becomes the bench rig; bundling, shared rig, adaptive detail, bump policy and Epic Fight scope accepted as proposed)
+- **Status:** draft, revision 3 (maintainer's decision, 2026-10-28: **PulseLib replaces AzureLib**. Every NPC of every faction is animated; formation clips for the discipline levels of `specs/npc/performance.md`, PR #186; pilot #10 becomes the bench rig. Section 2a lists what changes and what is still unknown. The comparison table in section 1 still describes AzureLib, which is the superseded candidate.)
 - **Depends on:** `specs/core/core-apis.md` (registers, shared constants, payload rules), draft `specs/npc/performance.md` (PR #186: squads, formations, discipline levels RIGID / ORGANIZED / LOOSE, formation animation hooks in its section 2h), `specs/core/combat-items.md` (weapon classes, `WeaponStats`), `specs/npc/npc-base.md` (races, roles, routines, nameplate rules, `client/npc/NpcHumanoidRenderer`). Feeds the NPC model content wave, villages, patrols, caravans and battles.
 - **Sources:** research on 2026-10-28, listed with links in section 13. No original LOTR Mod models, animations or code were used. The original mod rendered every NPC with a static biped model and no keyframe animation, so there is nothing of its to port here: this whole system is ours.
 
@@ -12,7 +12,7 @@ Seth wants Middle-earth to feel inhabited: villages of 20 to 40 people going abo
 
 This spec picks the animation technology, defines **animation level of detail (LOD)** so cost falls with distance, sets **render budgets**, fixes the **authoring pipeline** (Blockbench, rigs, file layout, animation names), defines how **AI state drives animation** with almost no network cost, and plans an optional **Flywheel instanced crowd path** for later. It also adds **soft Epic Fight compatibility** (data files only, no dependency).
 
-**Decision (maintainer, PR #185):** **AzureLib**, pinned to an exact version and bundled jar-in-jar, for **every NPC of every faction and every discipline level**, wrapped in a thin layer of our own (`client/core/anim`) that owns the LOD tiers, budgets, state-to-clip mapping and fallbacks. Before any NPC model content is made, a **benchmark gate** confirms the LOD settings and catches problems by measuring AzureLib against GeckoLib, vanilla keyframe animation and today's vanilla biped at 50, 100, 200 and 400 NPCs on Seth's PC. GeckoLib or vanilla keyframes replace AzureLib only if the gate fails badly (section 2c).
+**Decision (maintainer, 2026-10-28):** **PulseLib** (by ArcAnc, NeoForge 1.21.1 build 1.1.3) for **every NPC of every faction and every discipline level**, wrapped in a thin layer of our own (`client/core/anim`) that owns the LOD tiers, budgets, state-to-clip mapping and fallbacks. PulseLib is **not bundled**: its licence forbids redistribution without the author's permission (section 2a), so it is a required external dependency unless the author agrees. Before any NPC model content is made, a **benchmark gate** measures PulseLib against GeckoLib, vanilla keyframe animation and today's vanilla biped at 50, 100, 200 and 400 NPCs on Seth's PC, and checks the unknowns listed in section 2a. GeckoLib (or AzureLib, which the old spec chose) is the fallback if the gate fails badly (section 2c).
 
 ## Player-facing behavior
 
@@ -47,17 +47,17 @@ All facts were checked on 2026-10-28 against Modrinth, GitHub and project docs (
 
 ### 2a. Decision
 
-AzureLib is the maintainer's decision. The reasons below are the ones that led to it.
+PulseLib is the maintainer's decision. The reasons below are the ones that led to it.
 
-1. **AzureLib for every NPC**, pinned to one exact version (3.2.2 today) and bundled jar-in-jar like NovoAtlas, with a version range in `neoforge.mods.toml` limited to that minor line (`[3.2.2,3.3)`). Reasons:
-   - It is the only option with built-in distance LOD (bone depth and update rate), which is most of what crowds need.
-   - Since June 2026 most of its releases have been crowd-performance work: allocation-free sampling, Molang and bone poses, and skipping bones at rest.
-   - It has armour-on-bone and item-on-bone layers, crossfades and layered controllers, and a Blockbench plugin. Animations are data (JSON), so artist agents can make them without writing Java.
-   - MIT licence, active maintenance on exactly our Minecraft and loader version.
-2. **Our own thin wrapper** (`client/core/anim`) between NPC renderers and AzureLib. It owns tier selection, budgets, the adaptive governor, the state-to-clip resolver and fallbacks, and calls AzureLib's LOD hooks. Pods never call AzureLib's LOD or controller APIs directly. If AzureLib breaks or stalls, only the wrapper and the renderer base class change.
-3. **Explicit configuration only.** We always pass our own LOD values (section 4) and never depend on AzureLib defaults, because its docs and changelog disagree about them.
-4. **Not used:** AzureLib bone hitboxes (`AzHitboxHolder`). They make clients report poses to the server (upstream traffic, and a client the server must trust), and combat uses vanilla boxes. `AzCommand` server dispatch is not used for routine animation either (section 6).
-5. **GeckoLib** is a fallback only: if the gate fails badly, or AzureLib later becomes unmaintained or unstable. Both read the same Bedrock geo format, so models move over with little work; animation files need checking for AzureLib-only loop modes.
+1. **PulseLib for every NPC**, as a required dependency declared in `neoforge.mods.toml` (a version range of one minor line, set at R0). Reasons given by the maintainer: it advertises very high performance, animation stacking and layering, resource reloading, any-geometry models (including `.glb` from Blender or Maya as well as Blockbench), Molang, and a player-animation API. It is actively released on 1.21.1 (1.1.3, 2026-08-14).
+   - **Licence (blocking until settled):** PulseLib uses the author's own "License of Common Sense". As we read it, redistribution of the source or compiled mod needs the author's explicit permission, commercial use is barred, and using non-API code in our project requires our project to be open source. We are open source and non-commercial, but **we must not jar-in-jar it**. Players install PulseLib themselves, and the README, the Modrinth page and the modpack docs say so. **Ticket R0-0 (human, Seth):** ask the author for written permission to bundle it, and keep the answer in `docs/reference/`. Modpack authors also need to know before they redistribute it.
+   - **Unproven:** the project is small (about 1,200 downloads, 1 GitHub star at the time of writing). Docs are for 26.2 and use newer classes (`PEntityRenderer`, `PEntityRenderState`, `Identifier`) than 1.21.1 has, so the 1.21.1 API must be confirmed against the 1.21.1 jar. The docs say nothing about distance LOD, bone-depth culling, Maven coordinates, dedicated-server behaviour, or how armour and held items attach.
+2. **Our own thin wrapper** (`client/core/anim`) between NPC renderers and PulseLib. It owns tier selection, budgets, the adaptive governor, the state-to-clip resolver and fallbacks. Because PulseLib documents no LOD, the wrapper implements LOD itself: it skips animation updates by tier, holds cached key poses for far NPCs, and for far NPCs swaps to a cheaper render path (section 4). Pods never call PulseLib directly. If PulseLib breaks, stalls or loses its licence terms, only the wrapper and the renderer base class change.
+3. **Explicit configuration only.** We pass our own values (section 4) and never depend on PulseLib defaults.
+4. **State to clips stays the same:** AI state drives clips on the client from synced values (section 6); no PulseLib server features are used for routine animation.
+5. **Fallback is GeckoLib, or AzureLib** (both MIT, bundleable, with the Bedrock geo format and a Blockbench plugin). If the licence answer is no and the dependency burden is unacceptable, or the gate fails badly, we switch. Models authored as `.glb` or Bedrock geo move with little work; clip names and bones follow section 5.
+6. **Vanilla keyframe** is the last fallback, only if every library fails the gate badly.
+7. **Flywheel** is still a later, optional phase (section 8).
 6. **Vanilla keyframe** is the last fallback, only if both libraries fail the gate badly. We would keep our wrapper and LOD and give up crossfades, and the authoring output becomes generated Java.
 7. **Flywheel** is a later, optional phase (section 8), only if the benchmark shows the CPU cost of drawing far crowds is still the bottleneck after LOD.
 
@@ -65,9 +65,9 @@ AzureLib is the maintainer's decision. The reasons below are the ones that led t
 
 A dev-only client benchmark, built before any NPC model content, that renders N identical animated test NPCs with each technology and records frame data.
 
-**Packaging.** A separate Gradle source set `bench` with its own mod id `lotrrevival_bench`. It is never part of the release jar. GeckoLib and AzureLib are bench-only runtime dependencies here (until the decision). AzureLib uses its own packages, so both can be loaded at once. A run configuration `runBenchClient` starts it. A `benchJar` task builds `lotrrevival-bench-<version>.jar` so Seth can drop it into his normal launcher instance with Sodium and Iris.
+**Packaging.** A separate Gradle source set `bench` with its own mod id `lotrrevival_bench`. It is never part of the release jar. GeckoLib and PulseLib are bench-only runtime dependencies here (until the decision). PulseLib uses its own packages, so both can be loaded at once. A run configuration `runBenchClient` starts it. A `benchJar` task builds `lotrrevival-bench-<version>.jar` so Seth can drop it into his normal launcher instance with Sodium and Iris.
 
-**Test rig: the Blockbench pilot #10 hobbit** (maintainer decision). Pilot #10 is rescoped to the AzureLib format, the `humanoid` bones of section 5b and the clip names of section 5c. It delivers `move.idle`, `move.walk`, `attack.sword.1`, `attack.sword.2` and `move.march` (about 18 bones, about 30 cubes, 64x64 texture, all original). The same Blockbench project is also exported as Mojang-mapped Java keyframes for the `keyframe` contender; GeckoLib loads the same Bedrock JSON. The pilot's time and number of review rounds size the content wave.
+**Test rig: the Blockbench pilot #10 hobbit** (maintainer decision). Pilot #10 is rescoped to the PulseLib format, the `humanoid` bones of section 5b and the clip names of section 5c. It delivers `move.idle`, `move.walk`, `attack.sword.1`, `attack.sword.2` and `move.march` (about 18 bones, about 30 cubes, 64x64 texture, all original). The same Blockbench project is also exported as Mojang-mapped Java keyframes for the `keyframe` contender; GeckoLib loads the same Bedrock JSON. The pilot's time and number of review rounds size the content wave.
 
 **Contenders** (one entity type each, same hitbox, texture and equipment):
 
@@ -76,8 +76,9 @@ A dev-only client benchmark, built before any NPC model content, that renders N 
 | `baseline` | Today's `HumanoidModel` procedural renderer | The floor: the cheapest possible humanoid |
 | `keyframe` | `HierarchicalModel` + `AnimationDefinition` | Warden/Camel style |
 | `gecko` | GeckoLib 4.9.x renderer | No LOD |
-| `azure` | AzureLib renderer, LOD off | |
-| `azure_lod` | AzureLib + our tier wrapper with section 4 defaults | The candidate |
+| `azure` | AzureLib renderer, LOD off (reference for the superseded candidate) | |
+| `pulse` | PulseLib renderer, no wrapper LOD | |
+| `pulse_lod` | PulseLib + our tier wrapper with section 4 defaults | The candidate |
 
 **Behaviour.** Bench NPCs have no AI. A server-side scripter moves them along fixed circular paths at walking speed (so walk animations, movement packets and interpolation are realistic). It swings each NPC's weapon every 1 to 2 s (random, seeded) and hurts 5% of them every 5 s. Each wears an iron helmet and chestplate and holds an iron sword. Commands turn armour and held items off to measure layer cost.
 
@@ -110,16 +111,16 @@ A dev-only client benchmark, built before any NPC model content, that renders N 
 
 ### 2c. What the gate does (gate G-R0, Seth signs off on the results)
 
-AzureLib is already chosen. The gate exists to **confirm the LOD settings** (tier distances, caps, update rates, bone depths, the governor budget) and to **catch problems** before content production.
+PulseLib is chosen by the maintainer. The gate **confirms the unknowns in section 2a** (1.21.1 API, whether PulseLib has any LOD or culling hooks, armour and item attachment, dedicated-server loading, allocation per frame), **confirms the LOD settings** (tier distances, caps, update rates, bone depths, the governor budget) and **catches problems** before content production.
 
 **Pass:** in pass B on the reference PC, `azure_lod` meets the section 3 targets in `battle` with 200 NPCs. Opus 1 then tunes the section 4 numbers from the results and freezes them.
 
-**Problems, but AzureLib stays:** if `azure_lod` misses the targets by less than 25%, or is more than 15% slower than `keyframe` at p95, or allocates over 2 KB per NPC per frame, keep AzureLib. Then tighten the tiers (shorter T0 and T1 distances, lower caps), file upstream issues with the bench data, and pull the Flywheel phase (section 8) forward if entity CPU is the bottleneck.
+**Problems, but PulseLib stays:** if `pulse_lod` misses the targets by less than 25%, or is more than 15% slower than `keyframe` at p95, or allocates over 2 KB per NPC per frame, keep PulseLib. Then tighten the tiers (shorter T0 and T1 distances, lower caps), file upstream issues with the bench data, and pull the Flywheel phase (section 8) forward if entity CPU is the bottleneck.
 
 **Fails badly (fallback):** switch to GeckoLib (or, failing that, vanilla keyframes) only if one of these happens:
-- `azure_lod` misses the 200-NPC `battle` target by 25% or more on average FPS while GeckoLib or `keyframe` meets it.
-- AzureLib crashes, leaks memory or corrupts poses in the bench.
-- AzureLib breaks on a dedicated server.
+- `pulse_lod` misses the 200-NPC `battle` target by 25% or more on average FPS while GeckoLib or `keyframe` meets it.
+- PulseLib crashes, leaks memory or corrupts poses in the bench.
+- PulseLib breaks on a dedicated server.
 
 That decision goes back to Seth with the data.
 
@@ -158,8 +159,8 @@ Default distances (preset **High**; Low x0.6, Medium x0.8, Ultra x1.5):
 | | **T0 Full** | **T1 Reduced** | **T2 Static** | **T3 Culled** |
 | --- | --- | --- | --- | --- |
 | Distance | 0 to 16 blocks | 16 to 40 | 40 to entity render limit | Beyond the vanilla entity render limit (a humanoid's box gives about 64 blocks at 100% entity distance), outside the view frustum, or hidden by Entity Culling if installed |
-| Animation update | Every frame | Every 2 ticks (10 Hz), pose held in between (AzureLib animation LOD) | Not sampled. A **key pose** per state (mid-stride for walk and run, neutral for idle, guard for combat, seated, at work), refreshed when the state changes or every 20 ticks | None |
-| Bones | All | Tree depth 3 or less (hides fingers, cloak tails, hair, ornaments) via AzureLib bone LOD | Depth 2 or less | - |
+| Animation update | Every frame | Every 2 ticks (10 Hz), pose held in between (our wrapper skips updates; PulseLib has no documented LOD) | Not sampled. A **key pose** per state (mid-stride for walk and run, neutral for idle, guard for combat, seated, at work), refreshed when the state changes or every 20 ticks | None |
+| Bones | All | Tree depth 3 or less (hides fingers, cloak tails, hair, ornaments) by the wrapper hiding deeper bones, if PulseLib allows it (R0-1 checks; otherwise the far path uses a simplified rig) | Depth 2 or less | - |
 | Blending | Crossfades (4 ticks default per clip), layered controllers (base, upper, action), procedural head look | Snap changes (0 ticks), base and action only, no head look | None | - |
 | Keyframe sounds and particles | Yes | Particles off, sounds on | Off | Off |
 | Name tag | Per `npc-base` rules (crosshair within 8 blocks) | Never | Never | - |
@@ -179,13 +180,13 @@ Rules for every tier:
 
 ### 5a. Tools and flow
 
-1. **Blockbench** desktop with the **AzureLib Animator** plugin (2.2.0 or newer), project format "AzureLib entity". Artist agents use the Blockbench MCP server (`docs/tooling.md` section 5); humans use the desktop app.
+1. **Blockbench** desktop (or Blender, exporting `.glb`, whichever the R0 pilot shows works best with PulseLib). Artist agents use the Blockbench MCP server (`docs/tooling.md` section 5); humans use the desktop app. R0-2 records the exact plugin or export route that PulseLib loads.
 2. The artist builds the model on a **rig template** (section 5b), paints the texture, then animates the clips listed for that rig (section 5c).
 3. Export: geo to `geo/entity/`, animations to `animations/entity/`, texture to `textures/entity/` (section 5d). Files are committed as resources. They are not generated, so they live in `src/main/resources`; this is the same kind of exception AGENTS.md makes for textures.
 4. Review: the artist posts turntable and per-clip GIFs (Blockbench screenshot tools) in the ticket. The pod lead approves. Seth playtests in game.
-5. **Validator** (part of R1-1): at resource load the client checks every registered NPC renderer's geo for the required bones of its rig, and its animation file for every required clip (with fallbacks, section 5c). With `-Dlotrrevival.strictAssets=true` (dev runs and CI) a missing bone or clip, or a geo or animation file that does not load, is a hard error. In normal play it is logged once per file. This matters because AzureLib skips broken models with a log line instead of failing.
+5. **Validator** (part of R1-1): at resource load the client checks every registered NPC renderer's geo for the required bones of its rig, and its animation file for every required clip (with fallbacks, section 5c). With `-Dlotrrevival.strictAssets=true` (dev runs and CI) a missing bone or clip, or a geo or animation file that does not load, is a hard error. In normal play it is logged once per file. This matters because PulseLib skips broken models with a log line instead of failing.
 
-Pilot #10 (hobbit, Blockbench MCP) is rescoped to this pipeline (maintainer decision): AzureLib format, the `humanoid` rig bone names, and the clips listed for the bench rig in section 2b with the names below. It is the benchmark rig, and its time and review-round numbers size the content wave.
+Pilot #10 (hobbit, Blockbench MCP) is rescoped to this pipeline (maintainer decision): PulseLib format, the `humanoid` rig bone names, and the clips listed for the bench rig in section 2b with the names below. It is the benchmark rig, and its time and review-round numbers size the content wave.
 
 ### 5b. Rigs and bone names
 
@@ -232,7 +233,7 @@ root
       left_boot_armor
 ```
 
-Anchor bones (`*_armor`, `*_item`) carry no cubes. `AzArmorLayer` and `AzBlockAndItemLayer` render onto them. Detail bones that should vanish at range (fingers, hair, ornaments, belt pouches) go at depth 4 or more.
+Anchor bones (`*_armor`, `*_item`) carry no cubes. PulseLib's render layers (`PEntityRenderLayer`) render onto them. Detail bones that should vanish at range (fingers, hair, ornaments, belt pouches) go at depth 4 or more.
 
 ### 5c. Animation state names
 
@@ -304,7 +305,7 @@ src/main/resources/assets/lotrrevival/
 src/main/art/blockbench/<race>.bbmodel          Blockbench source projects (kept for re-export, never loaded)
 ```
 
-The renderer loads `<rig>.animation.json` and, if it exists, `<race>.animation.json`, with race clips overriding rig clips that have the same key. (AzureLib supports `includes` between animation files; the wrapper uses that or merges them itself.)
+The renderer loads `<rig>` clips and, if it exists, `<race>` clips, with race clips overriding rig clips that have the same key. (Whether PulseLib merges animation files itself is checked at R0-1; otherwise the wrapper merges them.)
 
 ## 6. How AI state drives animation
 
@@ -353,14 +354,14 @@ The troll smash is an ordinary attack (vanilla swing) resolved to `attack.smash.
 **Sync cost.** A changed byte goes out in vanilla's set-entity-data packet. That is about 8 bytes of payload (packet id, entity id varint, index, serializer id, value, end marker) plus about 2 bytes of framing, so roughly 10 bytes per change per tracking player. It is batched with any other data changes for that entity in the same tick. A battle of 200 NPCs with 2 changes each per second (formation states included, since they change only on state transitions) costs about 4 KB/s (about 32 kbit/s) per player, which is small next to the movement packets those 200 NPCs already send. Rules for the NPC pod:
 
 - Never set animation data every tick.
-- Never use AzureLib's `AzCommand` server dispatch for routine states, because its packets name the controller and animation by string and cost several times more.
+- Do not use any PulseLib-provided server-to-client animation dispatch for routine states, because named-animation packets cost several times more than our two synced values.
 - Never sync the locomotion state; the client works it out.
 
 ## 7. Client architecture (`client/core/anim`)
 
 | Piece | Job |
 | --- | --- |
-| `NpcAnimRenderer<T>` (base renderer) | Extends AzureLib's entity renderer. Applies the tier from `AnimLod`, skips animation when the tier or frame stamp says so, adds armour and item layers per tier, controls the shadow and the name tag per tier. NPC pod race renderers extend this. |
+| `NpcAnimRenderer<T>` (base renderer) | Extends PulseLib's entity renderer (`PEntityRenderer` in its docs; exact class confirmed against the 1.21.1 jar at R0-1). Applies the tier from `AnimLod`, skips animation when the tier or frame stamp says so, adds armour and item layers per tier (`PEntityRenderLayer`), controls the shadow and the name tag per tier. NPC pod race renderers extend this. |
 | `AnimLod` | Pure tier function (distance, hysteresis, caps, preset, governor scale) → tier. **No client imports**, so GameTests can call it. |
 | `CrowdGovernor` | Entity CPU timing (render stage events), moving average, scale factor, F3 line: `LOTR crowd: T0 24 T1 60 T2 80 hidden 36 | 3.2 ms (budget 6.0, scale 1.00)`. |
 | `ClipResolver` | State + weapon class + rig → clip key through the fallback table. Pure and data-driven, unit tested. |
@@ -377,21 +378,21 @@ The troll smash is an ordinary attack (vanilla swing) resolved to `attack.smash.
 **Plan:**
 
 - An optional integration package `client/core/anim/flywheel`, loaded only when `ModList` has `flywheel` (players get it from Create, or install it on its own; we do not bundle it). It is compiled against Flywheel's API artifact (`compileOnly`), with the runtime jar only in dev runs.
-- It applies to **T1 and T2 only**. T0 stays on the AzureLib path with all its layers.
-- It uses Flywheel's entity visualizer API: one `TransformedInstance` per **bone part** of the rig, with instancers keyed by (rig, part, texture atlas page). A dynamic visual writes bone matrices each frame (T1: from the AzureLib bone snapshot or our sampler at 10 Hz; T2: cached key pose matrices). Skins use a per-rig texture atlas so the number of instancers stays small.
+- It applies to **T1 and T2 only**. T0 stays on the PulseLib path with all its layers.
+- It uses Flywheel's entity visualizer API: one `TransformedInstance` per **bone part** of the rig, with instancers keyed by (rig, part, texture atlas page). A dynamic visual writes bone matrices each frame (T1: from our sampler at 10 Hz; T2: cached key pose matrices). Skins use a per-rig texture atlas so the number of instancers stays small.
 - Held items in T1 and T2 use per-item-model instances (Flywheel library model support) for the main hand only. Armour uses per-piece instanced models built from the vanilla armour model geometry and our armour textures.
-- **Shaders:** Flywheel turns itself off when a shader pack is in use (`VisualizationManager.supportsVisualization` is false). The visualizer then hands the entity back to the normal renderer, so shader users just get the AzureLib path. This is accepted (maintainer decision): with a shader pack and no compat mod, NPCs render normally through AzureLib with its LOD, just without the instancing boost. Players who install **Iris Flywheel Compat** (patches shader packs; works with many common packs, partial with advanced ones) or **Colorwheel** (needs a shader pack that supports it) get the instanced path back with shaders. These are user choices that we document but do not bundle, and we test them with one smoke playtest only. The player FAQ (`docs/faq.md`, "Why are big battles slower with shaders?") and `docs/playtest/animation.md` both say this.
+- **Shaders:** Flywheel turns itself off when a shader pack is in use (`VisualizationManager.supportsVisualization` is false). The visualizer then hands the entity back to the normal renderer, so shader users just get the PulseLib path. This is accepted (maintainer decision): with a shader pack and no compat mod, NPCs render normally through PulseLib with its LOD, just without the instancing boost. Players who install **Iris Flywheel Compat** (patches shader packs; works with many common packs, partial with advanced ones) or **Colorwheel** (needs a shader pack that supports it) get the instanced path back with shaders. These are user choices that we document but do not bundle, and we test them with one smoke playtest only. The player FAQ (`docs/faq.md`, "Why are big battles slower with shaders?") and `docs/playtest/animation.md` both say this.
 - **Exit criteria for the spike (R2-1):** at least 2x lower entity CPU at 400 NPCs in `battle` (pass B) with no visible pose errors. If it does not reach that, the code is dropped.
 
 Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywheel, and Create draws trains and contraptions with it. Neither animates skinned characters, so this phase is a real spike.
 
 ## 9. Compatibility: Sodium, Iris, Entity Culling
 
-- **Sodium** (NeoForge 1.21.1 build 0.8.13, Aug 2026): speeds up vanilla `ModelPart` vertex writing but not AzureLib or GeckoLib cubes. This favours `baseline` and `keyframe` in pass B, which is why the decision rule uses pass B. Nothing to do in code.
+- **Sodium** (NeoForge 1.21.1 build 0.8.13, Aug 2026): speeds up vanilla `ModelPart` vertex writing but not PulseLib or GeckoLib cubes. This favours `baseline` and `keyframe` in pass B, which is why the decision rule uses pass B. Nothing to do in code.
 - **Iris** (NeoForge 1.21.1 builds 1.8.x, LGPL-3.0):
-  - AzureLib draws through vanilla entity render types, so shader packs treat NPCs as entities and render them again in the shadow pass. The once-per-frame pose rule (section 4) keeps the shadow pass from animating twice.
+  - PulseLib draws through vanilla entity render types, so shader packs treat NPCs as entities and render them again in the shadow pass. The once-per-frame pose rule (section 4) keeps the shadow pass from animating twice.
   - The wrapper reads Iris's public API (`IrisApi`: whether a shader pack is in use and whether this is the shadow pass) through a soft-loaded adapter that is only touched when `ModList` has `iris`. It is a `compileOnly` dependency on Iris's API jar, or reflection if the API jar is not on a maven.
-  - NPC textures use cutout, not translucency (capes included). Glowmasks (orc eyes, lanterns) use AzureLib's glow layer, which got its Iris fix in 3.1.21.
+  - NPC textures use cutout, not translucency (capes included). Glowmasks (orc eyes, lanterns) need a PulseLib render type or layer that supports emissive output; R0-1 checks this, and with Iris the result is tested once.
   - Playtest: one shader pack with PBR (Complementary Reimagined) and one without.
 - **Entity Culling** (client-only, protective licence, never bundled): hides NPCs behind walls (good for villages and hobbit holes). Its tick culling stops client ticks of hidden entities, which is safe because our visuals are worked out at render time (section 4). We ship no whitelist entries. If a playtest shows a problem, our entity ids go into its whitelist config through its documented config, not code.
 
@@ -423,8 +424,8 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 ## 11. Dedicated-server safety
 
 - Everything under `client/` (renderers, `client/core/anim`, Iris and Flywheel adapters) is registered only from client mod-bus events (`@EventBusSubscriber(value = Dist.CLIENT)` or `if (FMLEnvironment.dist.isClient())` guards in the mod constructor).
-- Common code (`core.api.anim`, entity classes, AI) never imports `net.minecraft.client`, `com.mojang.blaze3d`, AzureLib render or animator packages, Flywheel or Iris.
-- AzureLib must be installed on dedicated servers (its packets register on both sides). Bundling it jar-in-jar covers that. We use none of its server features (hitboxes, server dispatch), but its classes must still load cleanly; the `runGameTestServer` CI job is a dedicated-server boot and proves this.
+- Common code (`core.api.anim`, entity classes, AI) never imports `net.minecraft.client`, `com.mojang.blaze3d`, PulseLib render or animator packages, Flywheel or Iris.
+- PulseLib must be installed on dedicated servers too, since the entity classes implement its `PAnimatable` interface. Because it is not bundled, the server operator installs it and the mod's dependency metadata says so (side `BOTH`). The `runGameTestServer` CI job is a dedicated-server boot and proves the classes load.
 - **Isolation check** (R1-1): a `checkClientIsolation` verification task in `buildSrc`, run by `./gradlew build`. It scans compiled classes outside `io/github/sethwillemsvg/lotrrevival/client/` for references to `net/minecraft/client/`, `com/mojang/blaze3d/`, `mod/azure/azurelib/.../render/` and `.../animation/` (client parts), `dev/engine_room/flywheel/` and `net/irisshaders/`, and fails with the class and reference. An allowlist file covers reviewed exceptions, each with a one-line reason.
 
 ## 12. GameTest and CI
@@ -434,15 +435,15 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
   - `AnimLod`: tier boundaries per preset; hysteresis (an NPC at 16.5 blocks moving inward from T1 stays T1 until 14); caps (40 NPCs within 10 blocks give 32 T0 and 8 T1, nearest first); governor scale 0.5 halves the distances.
   - `ClipResolver`: every weapon class in core's table resolves to some clip for the `humanoid` minimum set; the fallback order matches section 5c.
   - Server: `AnimSync.setAction` with an unchanged value leaves the entity data clean (no packet); a change marks it dirty once.
-- **runtime-test** (headless client smoke): AzureLib is inside our jar, so the staging step is unchanged. R1-1 adds `-Dlotrrevival.strictAssets=true` to the JVM args so a broken geo or animation file fails CI. Note that a headless client may not draw frames, so render-path bugs are found by the benchmark and playtests, not CI.
+- **runtime-test** (headless client smoke): PulseLib is a separate jar, so the staging step also copies the PulseLib jar into the test mods folder. R1-1 adds `-Dlotrrevival.strictAssets=true` to the JVM args so a broken geo or animation file fails CI. Note that a headless client may not draw frames, so render-path bugs are found by the benchmark and playtests, not CI.
 - **Bench** is never run in CI (needs a GPU). The `bench` source set must still compile in `./gradlew build` so it does not rot.
-- **Playtests** (`docs/playtest/animation.md`, written by R1-4): village of 30, a 200-fighter battle, the same with Sodium, Iris and Entity Culling, Animation quality presets, `debug_tier_colors`, and Epic Fight installed. If R2 ships, add a shaders-plus-Flywheel case: with Iris alone the battle falls back to AzureLib rendering (expected); with Iris plus Iris Flywheel Compat or Colorwheel the instanced path is active again.
+- **Playtests** (`docs/playtest/animation.md`, written by R1-4): village of 30, a 200-fighter battle, the same with Sodium, Iris and Entity Culling, Animation quality presets, `debug_tier_colors`, and Epic Fight installed. If R2 ships, add a shaders-plus-Flywheel case: with Iris alone the battle falls back to PulseLib rendering (expected); with Iris plus Iris Flywheel Compat or Colorwheel the instanced path is active again.
 
 ## Rules and numbers
 
 | Thing | Value | Notes |
 | --- | --- | --- |
-| Library | AzureLib 3.2.2, range `[3.2.2,3.3)`, jar-in-jar | Bumped once per milestone at most, in a core PR with a bench rerun |
+| Library | PulseLib 1.1.3 for 1.21.1 (confirmed at R0), range of one minor line, required external dependency (not bundled) | Bumped once per milestone at most, in a core PR with a bench rerun |
 | Tier distances (High) | T0 0-16, T1 16-40, T2 40 to render limit | Presets x0.6 / x0.8 / x1.0 / x1.5 |
 | Hysteresis | 2 blocks | |
 | Tier re-evaluation | every 5 ticks, staggered by entity id | |
@@ -464,9 +465,9 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 - **Death, logout, dimension change:** an NPC that dies plays `react.death` and holds its last frame until vanilla removes the body. `ANIM_ACTION` is saved with the NPC (NPC pod) so a seated innkeeper is still seated after a reload; `ANIM_PULSE` is not saved. Dimension change re-creates client entities, so they start fresh from synced data.
 - **Mounted NPCs:** the rider uses `move.ride` (base) plus its upper and action controllers; the mount has its own rig and tiers. The rider's tier is never better than its mount's, so they do not visibly desync.
 - **Many players near one battle:** each client pays its own render cost; the server cost does not change with LOD.
-- **Resource reload (F3+T) and pack changes:** AzureLib swaps caches after a reload (3.1.19). Our validator runs again; cached T2 key poses are cleared.
+- **Resource reload (F3+T) and pack changes:** PulseLib has resource reloading support. Our validator runs again; cached T2 key poses are cleared.
 - **Missing assets in normal play:** fall back to `move.idle`; never crash; log once.
-- **Spectator, invisibility, glowing:** follow vanilla (AzureLib fixed parity in 3.0.33).
+- **Spectator, invisibility, glowing:** follow vanilla. The base renderer must keep this behaviour; R1-1 adds a test case.
 - **Other mods that change entity rendering** (Entity Model Features, AcceleratedRendering): not supported for our NPCs. Bug reports are triaged, and fixes are not promised.
 
 ## Data and APIs
@@ -476,10 +477,10 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 - **NPC pod uses:** `NpcAnimRenderer` as the base for race renderers; `AnimSync` in `NpcEntity` and its AI goals; rig bone and clip names from this spec.
 - **Datagen:** `datagen/compat/EpicFightCapabilities` (R3-1) writes `data/lotrrevival/capabilities/weapons/*.json`.
 - **Build:**
-  - `build.gradle`: AzureLib `jarJar` and `implementation`, the `bench` source set and `runBenchClient`, `checkClientIsolation`.
+  - `build.gradle`: PulseLib as `implementation` (Maven source confirmed at R0-0), the `bench` source set and `runBenchClient`, `checkClientIsolation`. No `jarJar` unless the author grants permission.
   - `gradle.properties`: `azurelib_version`.
-  - `neoforge.mods.toml`: AzureLib as a required dependency with a range.
-  - `NOTICE`: an AzureLib entry (MIT) like the NovoAtlas one.
+  - `neoforge.mods.toml`: PulseLib as a required dependency with a range.
+  - `NOTICE`: a PulseLib entry that records the author's licence terms and any permission granted.
   - These are all shared files, so Opus 1 serializes them.
 - **No new packets.** No new registries.
 
@@ -496,7 +497,7 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 ## Acceptance tests
 
 - [ ] GameTest: the codec, `AnimLod`, `ClipResolver` and `AnimSync` cases in section 12.
-- [ ] CI: `checkClientIsolation` passes; `runGameTestServer` boots a dedicated server with AzureLib bundled; runtime-test passes with `strictAssets`.
+- [ ] CI: `checkClientIsolation` passes; `runGameTestServer` boots a dedicated server with the PulseLib jar installed; runtime-test passes with `strictAssets`.
 - [ ] Bench: Seth's passes A, B and C are committed to `docs/perf/results/` and the decision is recorded in this spec (status changes to approved with the chosen library).
 - [ ] Playtest: village of 30 NPCs at 120+ FPS on the reference PC (pass B setup); tier changes not noticeable at the High preset when walking through.
 - [ ] Playtest: 200-fighter battle at 60+ FPS average (pass B), 40+ with shaders (pass C).
@@ -510,7 +511,8 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 - AzureLib on Modrinth (MIT; versions, changelogs 3.1.10 to 3.2.2, "required on both"): https://modrinth.com/mod/azurelib and https://api.modrinth.com/v2/project/azurelib/version
 - AzureLib source and docs (renderer config, LOD, armour and item layers): https://github.com/AzureDoom/AzureLib, `docs/azurelib/misc/rendering/azrenderer_config.mdx`, `.../layers/adding_armor_layer.mdx`, `.../layers/adding_blockitem_layer.mdx`; https://moddedmc.wiki/en/project/azurelib/latest/docs/misc/rendering/azrenderer_config
 - GeckoLib on Modrinth (MIT; 4.9.3 for NeoForge 1.21.1; 5.5.7 for newer Minecraft): https://modrinth.com/mod/geckolib ; source https://github.com/bernie-g/geckolib
-- Blockbench plugin registry (AzureLib Animator 2.2.0, GeckoLib Models & Animations 4.2.5, Animation to Java Converter 1.2.0): https://github.com/JannisX11/blockbench-plugins/blob/master/plugins.json ; Modded Entity format Mojang animation templates: https://web.blockbench.net/docs/variables/generated_formats_java_modded_entity.AnimationTemplates.html
+- Blockbench plugin registry (GeckoLib Models & Animations 4.2.5, Animation to Java Converter 1.2.0; AzureLib Animator 2.2.0 for the superseded candidate): https://github.com/JannisX11/blockbench-plugins/blob/master/plugins.json ; Modded Entity format Mojang animation templates: https://web.blockbench.net/docs/variables/generated_formats_java_modded_entity.AnimationTemplates.html
+- PulseLib: Modrinth https://modrinth.com/mod/pulselib ; CurseForge https://www.curseforge.com/minecraft/mc-mods/pulselib ; source https://github.com/ArcAnc/PulseLib ; entity docs (26.2 version) https://arcanc.github.io/PulseLib/26.2/pulselib-entities/ ; licence https://github.com/ArcAnc/PulseLib (LICENSE.txt).
 - Vanilla keyframe API (`KeyframeAnimations.animate`): https://mappings.dev/1.19.4/net/minecraft/client/animation/KeyframeAnimations.html
 - Flywheel (MIT, API and maven): https://github.com/Engine-Room/Flywheel ; versions https://maven.createmod.net/dev/engine-room/flywheel/flywheel-neoforge-1.21.1/maven-metadata.xml ; Vanillin (MIT, "incompatible with shaders"): https://modrinth.com/mod/flw-vanillin ; Iris Flywheel Compat: https://modrinth.com/mod/iris-flw-compat ; Colorwheel: https://github.com/djefrey/Colorwheel ; Flywheel and shaders discussion: https://github.com/Engine-Room/Flywheel/issues/252
 - Epic Fight (GPL-3.0-or-later; 21.17.3.1 for NeoForge 1.21.1): https://modrinth.com/mod/epic-fight ; weapon capability datapacks: https://epicfight-docs.readthedocs.io/Guides/Weapons/page1/ ; mob patch datapacks: https://epicfight-docs.readthedocs.io/Guides/Entities/page1/ ; data-only compat precedent: https://modrinth.com/project/Udv3YbH7 ; regex auto-assignment: https://www.patreon.com/yessman/posts/use-regex-for-129811638
@@ -526,8 +528,9 @@ Proposed; opened after this spec is approved. Days are agent days. All `pod:core
 
 | # | Ticket | Days | Agent | Blocked by | Shared files |
 | --- | --- | --- | --- | --- | --- |
-| R0-1 | Bench source set and mod `lotrrevival_bench`: `runBenchClient`, `benchJar`, bench world preset, scripted movers, `/lotrbench run, suite, layers`, metrics (stage timing, allocation, GC, MSPT, environment), JSON and CSV output, `docs/perf/animation-benchmark.md` with Seth's run steps | 2 | sonnet-1 | - | build.gradle, gradle.properties |
-| R0-2 | **Pilot #10 rescoped** (art, edit the existing issue rather than opening a new one): the hobbit in AzureLib format on the section 5b bones, 64x64 texture, `move.idle`, `move.walk`, `move.march`, `attack.sword.1`, `attack.sword.2`; also exported as Mojang Java keyframes for the `keyframe` contender; record time and review rounds | 1 | artist | - | - |
+| R0-1 | Bench source set and mod `lotrrevival_bench`: `runBenchClient`, `benchJar`, bench world preset, scripted movers, `/lotrbench run, suite, layers`, metrics (stage timing, allocation, GC, MSPT, environment), JSON and CSV output, `docs/perf/animation-benchmark.md` with Seth's run steps **Also verify PulseLib on 1.21.1 (answers the section 2a unknowns): the real class names and Maven source, loading a rig, LOD or bone hiding, armour and held-item attachment, emissive layers, dedicated-server load, per-frame allocation, 400-NPC cost.** | 2 | sonnet-1 | - | build.gradle, gradle.properties |
+| R0-0 | **Licence and packaging** (human, Seth): ask ArcAnc for written permission to bundle PulseLib jar-in-jar; record the reply and the exact licence text in `docs/reference/`. Until answered, PulseLib is an external dependency | 0.5 | human | - | - |
+| R0-2 | **Pilot #10 rescoped** (art, edit the existing issue rather than opening a new one): the hobbit in PulseLib format on the section 5b bones, 64x64 texture, `move.idle`, `move.walk`, `move.march`, `attack.sword.1`, `attack.sword.2`; also exported as Mojang Java keyframes for the `keyframe` contender; record time and review rounds | 1 | artist | - | - |
 | R0-3 | The five contender renderers and entity types in the bench mod (baseline, keyframe, gecko, azure, azure_lod with a minimal tier wrapper) | 2 | sonnet-2 | R0-1, R0-2 | - |
 | R0-4 | **Seth runs passes A, B and C**; an agent commits the results and a summary to `docs/perf/results/`. Opus 1 updates section 3 targets and records the decision in this spec (gate G-R0). | 0.5 + Seth | Seth, Opus 1 | R0-3 | - |
 
@@ -577,15 +580,15 @@ None open.
 
 ## Maintainer decisions (PR #185)
 
-1. **AzureLib is chosen.** The benchmark gate stays, to confirm the LOD settings and catch problems. GeckoLib and vanilla keyframes are fallbacks only if the gate fails badly (section 2c).
+1. **PulseLib replaces AzureLib** (maintainer, 2026-10-28). The benchmark gate stays, to confirm the unknowns in section 2a and the LOD settings. GeckoLib or AzureLib are fallbacks if the gate fails badly or the licence answer blocks us (section 2c).
 2. **Every NPC is animated**: all factions and all discipline levels. Formation clips are in the minimum sets, with the rigs that need them (section 5c), and their sync values are in section 6. Discipline levels follow PR #186: RIGID (Gondor, dwarves, elves, Uruk-hai, Easterlings), ORGANIZED (Rohan, Dale, Rangers, Harad, Morgul), LOOSE (orcs, Dunlendings, hill-men, half-trolls, trolls, ruffians, shirriffs).
-3. **Pilot #10** is rescoped to the AzureLib format with our bone and clip names, and it is the benchmark rig (sections 2b and 5a, ticket R0-2).
+3. **Pilot #10** is rescoped to the PulseLib format with our bone and clip names, and it is the benchmark rig (sections 2b and 5a, ticket R0-2).
 4. **Defaults accepted:**
-   - AzureLib is bundled in our jar.
+   - PulseLib is **not** bundled: its licence forbids redistribution without permission. It is a required external dependency unless the author agrees in writing (ticket R0-0).
    - One shared `humanoid` rig covers hobbits and dwarves.
    - Adaptive crowd detail is on by default.
-   - AzureLib is bumped at most once per milestone, each time with a benchmark rerun.
+   - PulseLib is bumped at most once per milestone, each time with a benchmark rerun.
    - Epic Fight compatibility is weapon-type data only: no `impact` or `armor_negation` tuning, and the optional armour files are dropped.
 5. **Half-trolls get their own `half_troll` rig and clip set** (section 5b and 5c).
-6. **Shader users and Flywheel:** accepted. Without a compat mod they fall back to normal AzureLib rendering. Iris Flywheel Compat or Colorwheel restores the boost, and this is documented in the FAQ and the playtest notes (section 8).
+6. **Shader users and Flywheel:** accepted. Without a compat mod they fall back to normal PulseLib rendering. Iris Flywheel Compat or Colorwheel restores the boost, and this is documented in the FAQ and the playtest notes (section 8).
 7. **Reference PC:** Seth's specs are not shared, so the targets are calibrated against the mid-range reference PC (Ryzen 5 5600 or i5-12400, RTX 3060 or RX 6600, 16 GB). The harness compares results relative to the machine it runs on, so Seth's runs are still valid (section 3).
