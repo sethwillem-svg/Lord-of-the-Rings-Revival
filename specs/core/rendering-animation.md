@@ -12,7 +12,7 @@ Seth wants Middle-earth to feel inhabited: villages of 20 to 40 people going abo
 
 This spec picks the animation technology, defines **animation level of detail (LOD)** so cost falls with distance, sets **render budgets**, fixes the **authoring pipeline** (Blockbench, rigs, file layout, animation names), defines how **AI state drives animation** with almost no network cost, and plans an optional **Flywheel instanced crowd path** for later. It also adds **soft Epic Fight compatibility** (data files only, no dependency).
 
-**Decision (maintainer, 2026-10-28):** **PulseLib** (by ArcAnc, NeoForge 1.21.1 build 1.1.3) for **every NPC of every faction and every discipline level**, wrapped in a thin layer of our own (`client/core/anim`) that owns the LOD tiers, budgets, state-to-clip mapping and fallbacks. PulseLib is **not bundled**: its licence forbids redistribution without the author's permission (section 2a), so it is a required external dependency unless the author agrees. Before any NPC model content is made, a **benchmark gate** measures PulseLib against GeckoLib, vanilla keyframe animation and today's vanilla biped at 50, 100, 200 and 400 NPCs on Seth's PC, and checks the unknowns listed in section 2a. GeckoLib (or AzureLib, which the old spec chose) is the fallback if the gate fails badly (section 2c).
+**Decision (maintainer, 2026-10-28):** **PulseLib** (by ArcAnc, NeoForge 1.21.1, `com.arcanc.pulselib:pulselib-neoforge:1.21.1-1.2.0` from `https://arcanc.github.io/Maven/`, a 1.2.0 beta) for **every NPC of every faction and every discipline level**, wrapped in a thin layer of our own (`client/core/anim`) that owns the LOD tiers, budgets, state-to-clip mapping and fallbacks. PulseLib is **not bundled**: its licence forbids redistribution without the author's permission (section 2a), so it is a required external dependency unless the author agrees. Before any NPC model content is made, a **benchmark gate** measures PulseLib against GeckoLib, vanilla keyframe animation and today's vanilla biped at 50, 100, 200 and 400 NPCs on Seth's PC, and checks the unknowns listed in section 2a. GeckoLib (or AzureLib, which the old spec chose) is the fallback if the gate fails badly (section 2c).
 
 ## Player-facing behavior
 
@@ -51,7 +51,14 @@ PulseLib is the maintainer's decision. The reasons below are the ones that led t
 
 1. **PulseLib for every NPC**, as a required dependency declared in `neoforge.mods.toml` (a version range of one minor line, set at R0). Reasons given by the maintainer: it advertises very high performance, animation stacking and layering, resource reloading, any-geometry models (including `.glb` from Blender or Maya as well as Blockbench), Molang, and a player-animation API. It is actively released on 1.21.1 (1.1.3, 2026-08-14).
    - **Licence (blocking until settled):** PulseLib uses the author's own "License of Common Sense". As we read it, redistribution of the source or compiled mod needs the author's explicit permission, commercial use is barred, and using non-API code in our project requires our project to be open source. We are open source and non-commercial, but **we must not jar-in-jar it**. Players install PulseLib themselves, and the README, the Modrinth page and the modpack docs say so. **Ticket R0-0 (human, Seth):** ask the author for written permission to bundle it, and keep the answer in `docs/reference/`. Modpack authors also need to know before they redistribute it.
-   - **Unproven:** the project is small (about 1,200 downloads, 1 GitHub star at the time of writing). Docs are for 26.2 and use newer classes (`PEntityRenderer`, `PEntityRenderState`, `Identifier`) than 1.21.1 has, so the 1.21.1 API must be confirmed against the 1.21.1 jar. The docs say nothing about distance LOD, bone-depth culling, Maven coordinates, dedicated-server behaviour, or how armour and held items attach.
+   - **Source findings (2026-10-29, branch `1.21.1-multiloader`, 1.2.0 beta):**
+     - **It has a real 1.21.1 API** with a Maven repo (`https://arcanc.github.io/Maven/`, group `com.arcanc.pulselib`). Entities implement `PAnimatable<T>` and render through `PEntityRenderer<T>` with `PModelData.entity(...)`. Controllers, blending, Molang, animation events, root motion, armour and attachments, and a plugin system are documented in its wiki.
+     - **It loads GeckoLib files.** `PGeckoModelLoader` reads `assets/<ns>/geckolib/models/...geo.json` and the matching animation JSON, and a glTF/GLB loader is built in. So Blockbench's GeckoLib export works and our bone and clip names (section 5) carry over unchanged. glTF skinning and morph targets are not supported, only node/bone transforms.
+     - **Its own renderer, not vanilla's.** It queues meshes and draws them itself with its own OpenGL programs and GPU instancing (identical meshes in one frame become instances of one draw call), with GPU deformers. This is promising for crowds, but it also means NPCs bypass the vanilla entity render types.
+     - **No LOD or culling is documented.** Distance LOD stays our wrapper's job (section 4).
+     - **Shader packs are the big unknown.** The repo never mentions Iris, Sodium or OptiFine. Because it registers custom core shaders and draws outside the vanilla entity path, shader packs may not draw its models or may draw them wrong. R0-1 tests Iris with a shader pack, Sodium, and Entity Culling before anything else.
+     - **Young and moving fast:** about 1,200 downloads, 1 GitHub star, 1.2.0 is a beta with a big refactor (multiloader, plugin API), and 1.21.1 releases came every few days. We pin one exact version and bump rarely.
+   - **Unproven:** the section 2c gate measures all of this. The wiki and README are the author's own claims; the project page's "very high performance" has not been measured by anyone we know of.
 2. **Our own thin wrapper** (`client/core/anim`) between NPC renderers and PulseLib. It owns tier selection, budgets, the adaptive governor, the state-to-clip resolver and fallbacks. Because PulseLib documents no LOD, the wrapper implements LOD itself: it skips animation updates by tier, holds cached key poses for far NPCs, and for far NPCs swaps to a cheaper render path (section 4). Pods never call PulseLib directly. If PulseLib breaks, stalls or loses its licence terms, only the wrapper and the renderer base class change.
 3. **Explicit configuration only.** We pass our own values (section 4) and never depend on PulseLib defaults.
 4. **State to clips stays the same:** AI state drives clips on the client from synced values (section 6); no PulseLib server features are used for routine animation.
@@ -180,7 +187,7 @@ Rules for every tier:
 
 ### 5a. Tools and flow
 
-1. **Blockbench** desktop (or Blender, exporting `.glb`, whichever the R0 pilot shows works best with PulseLib). Artist agents use the Blockbench MCP server (`docs/tooling.md` section 5); humans use the desktop app. R0-2 records the exact plugin or export route that PulseLib loads.
+1. **Blockbench** desktop, using the **GeckoLib Models & Animations** plugin and its `.geo.json` / `.animation.json` export, which PulseLib's Gecko loader reads (R0-2 confirms with the pilot). glTF/GLB from Blender is the other route PulseLib supports, but we use GeckoLib files so artist agents can keep using the Blockbench MCP server (`docs/tooling.md` section 5); humans use the desktop app.
 2. The artist builds the model on a **rig template** (section 5b), paints the texture, then animates the clips listed for that rig (section 5c).
 3. Export: geo to `geo/entity/`, animations to `animations/entity/`, texture to `textures/entity/` (section 5d). Files are committed as resources. They are not generated, so they live in `src/main/resources`; this is the same kind of exception AGENTS.md makes for textures.
 4. Review: the artist posts turntable and per-clip GIFs (Blockbench screenshot tools) in the ticket. The pod lead approves. Seth playtests in game.
@@ -390,7 +397,7 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 
 - **Sodium** (NeoForge 1.21.1 build 0.8.13, Aug 2026): speeds up vanilla `ModelPart` vertex writing but not PulseLib or GeckoLib cubes. This favours `baseline` and `keyframe` in pass B, which is why the decision rule uses pass B. Nothing to do in code.
 - **Iris** (NeoForge 1.21.1 builds 1.8.x, LGPL-3.0):
-  - PulseLib draws through vanilla entity render types, so shader packs treat NPCs as entities and render them again in the shadow pass. The once-per-frame pose rule (section 4) keeps the shadow pass from animating twice.
+  - PulseLib draws with its own render backend and shaders, not vanilla entity render types. How Iris shader packs, shadow passes and Sodium treat that is unknown (R0-1 tests it first). If it fails with shader packs, the options are: ask the author for Iris support, fall back to GeckoLib when a shader pack is active, or document that shader packs are unsupported for NPCs. The once-per-frame pose rule (section 4) still applies to any shadow pass.
   - The wrapper reads Iris's public API (`IrisApi`: whether a shader pack is in use and whether this is the shadow pass) through a soft-loaded adapter that is only touched when `ModList` has `iris`. It is a `compileOnly` dependency on Iris's API jar, or reflection if the API jar is not on a maven.
   - NPC textures use cutout, not translucency (capes included). Glowmasks (orc eyes, lanterns) need a PulseLib render type or layer that supports emissive output; R0-1 checks this, and with Iris the result is tested once.
   - Playtest: one shader pack with PBR (Complementary Reimagined) and one without.
@@ -443,7 +450,7 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 
 | Thing | Value | Notes |
 | --- | --- | --- |
-| Library | PulseLib 1.1.3 for 1.21.1 (confirmed at R0), range of one minor line, required external dependency (not bundled) | Bumped once per milestone at most, in a core PR with a bench rerun |
+| Library | PulseLib `1.21.1-1.2.0` (beta), pinned to one exact version, required external dependency (not bundled) | Bumped once per milestone at most, in a core PR with a bench rerun |
 | Tier distances (High) | T0 0-16, T1 16-40, T2 40 to render limit | Presets x0.6 / x0.8 / x1.0 / x1.5 |
 | Hysteresis | 2 blocks | |
 | Tier re-evaluation | every 5 ticks, staggered by entity id | |
@@ -477,7 +484,7 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 - **NPC pod uses:** `NpcAnimRenderer` as the base for race renderers; `AnimSync` in `NpcEntity` and its AI goals; rig bone and clip names from this spec.
 - **Datagen:** `datagen/compat/EpicFightCapabilities` (R3-1) writes `data/lotrrevival/capabilities/weapons/*.json`.
 - **Build:**
-  - `build.gradle`: PulseLib as `implementation` (Maven source confirmed at R0-0), the `bench` source set and `runBenchClient`, `checkClientIsolation`. No `jarJar` unless the author grants permission.
+  - `build.gradle`: PulseLib as `implementation` (Maven repo `https://arcanc.github.io/Maven/`, `com.arcanc.pulselib:pulselib-neoforge`), the `bench` source set and `runBenchClient`, `checkClientIsolation`. No `jarJar` unless the author grants permission.
   - `gradle.properties`: `azurelib_version`.
   - `neoforge.mods.toml`: PulseLib as a required dependency with a range.
   - `NOTICE`: a PulseLib entry that records the author's licence terms and any permission granted.
