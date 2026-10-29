@@ -24,7 +24,7 @@ A rig map names the bones the mocap drives: root, upper body, optional pelvis an
 
 | Map | Bones | For |
 | --- | --- | --- |
-| `spec-humanoid` | `root > body > torso`, legs under `body`, `right_item` | The rig names in `specs/core/rendering-animation.md` section 5b |
+| `spec-biped` | `root > body > torso`, legs under `body`, `right_item` | The biped rigs in `specs/core/rendering-animation.md` section 5b (man, elf, dwarf, hobbit, orc, olog, half_troll) |
 | `muster-pack` | `root > body`, legs under `root`, `right_weapon` | The orc, olog and troll faction-pack models |
 
 Add a skeleton (for example a dwarf or troll rig with other bone names) by adding an entry. No code change is needed.

@@ -12,8 +12,8 @@
   'use strict';
   const RIG_MAPS = [
     {
-      id: 'spec-humanoid',
-      note: 'Bone names from specs/core/rendering-animation.md section 5b (humanoid, orc, half_troll).',
+      id: 'spec-biped',
+      note: 'Biped bone names from specs/core/rendering-animation.md section 5b (man, elf, dwarf, hobbit, orc, olog, half_troll).',
       root: 'root', pelvis: 'body', upper: 'torso', head: 'head',
       arms: { right: ['right_arm', 'right_forearm', 'right_hand'], left: ['left_arm', 'left_forearm', 'left_hand'] },
       legs: { right: ['right_leg', 'right_shin'], left: ['left_leg', 'left_shin'] },
