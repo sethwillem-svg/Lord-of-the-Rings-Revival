@@ -78,12 +78,19 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="row"><label><input id="footLift" type="checkbox" checked> Keep feet above floor</label></div>
   </div>
   <div class="group">
+   <span class="label">Weapon IK</span>
+   <div class="row"><label><input id="ik" type="checkbox" checked> Pull the weapon tip onto a target at the hit</label></div>
+   <div class="row"><label for="ikY">Strike height</label><input id="ikY" type="range" min="0" max="28" step="1" value="0"><span class="val" id="ikYV">ground</span></div>
+   <div class="row"><label for="ikReach">Reach</label><input id="ikReach" type="range" min="0.6" max="0.98" step="0.01" value="0.85"><span class="val" id="ikReachV">85%</span></div>
+   <p class="note">The target (red cube) sits in front of the character at the strike height, at the chosen share of arm plus weapon length. The tip rises onto it from the windup, holds it while the mocap stays down, and lets go as the arms rise.</p>
+  </div>
+  <div class="group">
    <span class="label">Clips</span>
    <div id="clips"><p class="note">No clips yet.</p></div>
    <div class="row"><label for="rigName">Export rig name</label><input id="rigName" type="text" value="orc" size="10"></div>
    <div class="row"><button id="exportAll">Export all (viewer JSON)</button></div>
   </div>
-  <p class="note">Floor contact: a clip's label turns red while its weapon tip or hand is below the floor. Weapon IK is not implemented yet, so long weapons will often go through the floor at contact.</p>
+  <p class="note">Floor contact: a clip's label turns red while its weapon tip or hand is below the floor.</p>
  </aside>
 </div>
 <div class="timeline">
@@ -197,10 +204,12 @@ function matQuat(m) {
 
 // ---------- clips ----------
 const clips = [];   // {name, bvh, clip, quats[bone][frame], inst, tag, error}
+const targetMat = new THREE.MeshBasicMaterial({ color: 0xe5534b });
 let restClip = null, maxLen = 1, maxHit = 0;
 function settings() {
   return { torsoTiltCap: +$('tilt').value, rootDrop: +$('drop').value, weapon: $('weapon').value,
-           mirror: $('mirror').checked, footLift: $('footLift').checked };
+           mirror: $('mirror').checked, footLift: $('footLift').checked,
+           ik: $('ik').checked, ikTargetY: +$('ikY').value, ikReach: +$('ikReach').value };
 }
 function currentMap() {
   const id = $('rigMap').value;
@@ -227,6 +236,11 @@ function rebuild() {
     const row = Math.floor(k / 5), colN = Math.min(shown.length, 5);
     inst.root.position.set(-((k % 5) - (colN - 1) / 2) * SPACING, 0, row * SPACING);   // list order reads left to right from the front
     scene.add(inst.root);
+    if (c.clip && c.clip.ik) {
+      const t = c.clip.ik.target, mk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), targetMat);
+      mk.position.set(t[0], t[1] + 0.6, t[2]);
+      inst.root.add(mk);
+    }
     c.inst = inst;
     const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = c.name;
     $('labels').appendChild(tag); c.tag = tag;
@@ -255,7 +269,8 @@ function renderList() {
       const q = c.clip.qa, cls = (v) => (v !== null && v < -0.5 ? 'bad' : 'ok');
       qa.innerHTML = `${c.clip.length.toFixed(2)} s, hit ${c.clip.hitTime.toFixed(2)} s<br>` +
         `hand min <span class="${cls(q.handMin)}">${fmt(q.handMin)}</span> px, tip min <span class="${cls(q.tipMin)}">${fmt(q.tipMin)}</span> px, ` +
-        `foot min <span class="${cls(q.footMin)}">${fmt(q.footMin)}</span> px`;
+        `foot min <span class="${cls(q.footMin)}">${fmt(q.footMin)}</span> px` +
+        (c.clip.ik ? `<br>IK: tip ${c.clip.ik.errorAtHit.toFixed(2)} px from target at hit, contact held to ${(c.clip.ik.C * c.clip.dt).toFixed(2)} s` : '');
     }
     d.appendChild(qa);
     const row = document.createElement('div'); row.className = 'row';
@@ -374,9 +389,11 @@ stage.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
 function sliderLabels() {
   $('tiltV').textContent = +$('tilt').value >= 90 ? 'off' : $('tilt').value + '°';
   $('dropV').textContent = Math.round(+$('drop').value * 100) + '%';
+  $('ikYV').textContent = +$('ikY').value === 0 ? 'ground' : $('ikY').value + ' px';
+  $('ikReachV').textContent = Math.round(+$('ikReach').value * 100) + '%';
 }
-for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'rigMap']) $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
-for (const id of ['tilt', 'drop']) $(id).addEventListener('input', sliderLabels);
+for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'rigMap', 'ik', 'ikY', 'ikReach']) $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
+for (const id of ['tilt', 'drop', 'ikY', 'ikReach']) $(id).addEventListener('input', sliderLabels);
 $('align').addEventListener('change', () => { clock = 0; });
 
 let drag = null;

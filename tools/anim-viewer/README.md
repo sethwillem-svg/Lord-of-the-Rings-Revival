@@ -39,11 +39,23 @@ Directions, not positions: rig proportions are far from human (orc arms are abou
 - The root moves with the hips (scaled by leg length) and is lifted so no foot goes below the floor.
 - **Weapon**: "along forearm" points the blade along the forearm; "rig rest grip" keeps the model's own grip angle.
 
-Settings: **Torso tilt cap** limits how far the upper body can lean from vertical (deep bows in the mocap fold blocky torsos flat), **Root drop** scales how far the hips sink, **Mirror** swaps left and right.
+Settings: **Torso tilt cap** limits how far the upper body can lean from vertical (deep bows in the mocap fold blocky torsos flat; 35 to 45 degrees suits overhead slams), **Root drop** scales how far the hips sink, **Mirror** swaps left and right.
+
+## Weapon IK
+
+Mocap has no weapon, and rig arms are longer than human ones, so copying arm angles alone sends long weapons through the floor. Weapon IK fixes the contact:
+
+1. **Markers** from the weapon tip's path (the right hand if the rig has no weapon bone): the hit H is the frame where the mocap hands are lowest, the windup A is the highest tip point before it, the contact hold lasts to C while the tip stays down, and the release ends at R once the arms have risen.
+2. **Target**: a point at the **strike height** (0 = the ground), in front of the character in the swing's direction, at the **reach** share of arm plus weapon length from the shoulder. It is drawn as a red cube.
+3. **Goal warp**: every frame the tip's goal is its own path plus w times the offset that would put it on the target at the hit. w rises with a minimum-jerk curve from A to H, holds at 1 until C, and eases back to 0 by R, so the swing keeps its timing and only bends toward the target. Goals never go below the floor.
+4. **Solve**: the elbow hinge is set so the shoulder-to-tip distance matches the goal, then the whole arm swings about the shoulder to aim at it. This keeps the mocap's elbow direction. Only the right upper arm and forearm change.
+
+On the Kimodo ground slam with the orc pack model the tip lands within 0.01 px of the target and stays above the floor for the whole clip, with no added jitter (the largest frame-to-frame change in tip velocity is unchanged).
 
 ## Known gaps
 
-- **No weapon IK yet.** Nothing pins the weapon tip or hands to a target, so long weapons on long-armed rigs go through the floor at contact. The QA numbers make this visible.
+- Weapon IK moves the arm only. The torso and root do not take a share of the reach yet, and the off hand is not pinned to the weapon (fine for one-handed weapons and shields, not for two-handed grips).
+- Weapon IK has no collision with the body: a blade can still cross the torso during the windup.
 - Hands keep their rest rotation; fingers are not mapped.
 - PulseLib export follows the conversion notes from the earlier pipeline work (rotation = XYZ Euler of `q_pose * q_rest^-1`, linear keys, root position in pixels). It has not been checked in game.
 
@@ -55,4 +67,4 @@ Settings: **Torso tilt cap** limits how far the upper body can lean from vertica
 python3 tools/anim/parity.py clip.bvh model.bbmodel
 ```
 
-It needs node, numpy and scipy, and exits non-zero if any bone differs by more than 0.01 degrees.
+It needs node, numpy and scipy, and exits non-zero if any bone differs by more than 0.01 degrees. Weapon IK exists only in the JS version, so the check runs with IK off.

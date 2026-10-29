@@ -172,7 +172,79 @@
     weapon: 'forearm',   // 'forearm': blade continues the forearm; 'rest': keep the rig's rest grip
     mirror: false,       // swap left and right (for left-handed takes)
     footLift: true,      // lift the root so no foot goes below the floor
+    ik: false,           // weapon IK: pull the weapon tip (or right hand) onto a target at the hit
+    ikTargetY: 0,        // target height above the floor, px (0 = ground strike)
+    ikReach: 0.85,       // target distance from the shoulder as a share of arm + weapon length
   };
+
+  /** Shortest-arc rotation taking unit vector a to unit vector b. */
+  function arc(a, b) {
+    const v = cross(a, b), c = dot(a, b);
+    if (c < -0.9999) {
+      const p = norm(Math.abs(a[0]) < 0.9 ? cross(a, [1, 0, 0]) : cross(a, [0, 1, 0]));
+      return [2 * p[0] * p[0] - 1, 2 * p[0] * p[1], 2 * p[0] * p[2], 2 * p[1] * p[0], 2 * p[1] * p[1] - 1, 2 * p[1] * p[2],
+              2 * p[2] * p[0], 2 * p[2] * p[1], 2 * p[2] * p[2] - 1];
+    }
+    const K = [0, -v[2], v[1], v[2], 0, -v[0], -v[1], v[0], 0], K2 = mul(K, K), k = 1 / (1 + c);
+    return I3().map((x, i) => x + K[i] + K2[i] * k);
+  }
+  const minJerk = (s) => s * s * s * (10 - 15 * s + 6 * s * s);
+  const wrapPi = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
+  /**
+   * Weapon IK (goal warp, Witkin and Popovic 1995). The effector (weapon tip, else hand) keeps its own path but is
+   * offset by w(t) * (target - effector at hit). w rises with a minimum-jerk curve from 0 at the windup extreme A to 1
+   * at the hit H, holds 1 while the mocap stays down (contact hold, to C), then eases back to 0 as the arms rise (R).
+   * Goals never go below the floor. Each frame is solved at full weight: the elbow hinge sets the shoulder-to-effector
+   * distance, then the whole arm is swung about the shoulder to aim at the goal (keeps the mocap's elbow plane).
+   * Only the arm's upper and lower bones change. Returns the markers and target.
+   */
+  function weaponIK(rig, frames, arm, effector, H, opts) {
+    const F = frames.length, iU = arm[0], iL = arm[1];
+    const trace = frames.map((fr) => effector(rigFK(rig, fr.locals, fr.rootPos)));
+    let A = 0;
+    for (let f = 0; f <= H; f++) if (trace[f][1] > trace[A][1]) A = f;
+    if (H - A < 3) A = Math.max(0, H - 10);
+    const span = Math.max(1, trace[A][1] - trace[H][1]);
+    let C = H;
+    while (C + 1 < F && trace[C + 1][1] <= trace[H][1] + 0.1 * span) C++;
+    let R = C;
+    while (R + 1 < F && trace[R + 1][1] < trace[H][1] + 0.6 * span) R++;
+    if (C < F - 1) R = Math.min(F - 1, Math.max(R + 1, C + 3));
+    // target on the plane y = ikTargetY, in front of the character and in the swing's horizontal direction from the
+    // shoulder, at ikReach of the arm-plus-weapon length (reachable, not folded under the shoulder)
+    const fkH = rigFK(rig, frames[H].locals, frames[H].rootPos), SH = fkH.pos[iU];
+    const reach = len(sub(fkH.pos[iL], SH)) + len(sub(trace[H], fkH.pos[iL]));
+    let dirH = [trace[H][0] - SH[0], 0, trace[H][2] - SH[2]];
+    // rig space faces -Z; strikes land in the front half
+    if (len(dirH) < 0.3 * reach || -norm(dirH)[2] < 0.25) dirH = [0, 0, -1];
+    dirH = norm(dirH);
+    const h = SH[1] - opts.ikTargetY, r = opts.ikReach * reach;
+    const horiz = Math.sqrt(Math.max(0, r * r - h * h));
+    const target = [SH[0] + dirH[0] * horiz, opts.ikTargetY, SH[2] + dirH[2] * horiz];
+    const off = sub(target, trace[H]);
+    for (let f = A; f <= R; f++) {
+      const w = f <= H ? minJerk((f - A) / Math.max(1, H - A))
+        : f <= C ? 1 : 1 - minJerk((f - C) / Math.max(1, R - C));
+      if (w <= 0) continue;
+      const fr = frames[f], G = add(trace[f], scl(off, w));
+      G[1] = Math.max(G[1], Math.min(0, opts.ikTargetY));
+      const fk = rigFK(rig, fr.locals, fr.rootPos);
+      const S = fk.pos[iU], E = fk.pos[iL], Ru = fk.rot[iU], Rl = fk.rot[iL];
+      const pu = rig.bones[iU].parent, Rp = pu < 0 ? I3() : fk.rot[pu];
+      const ul = apply(tr(Ru), sub(E, S)), vl = apply(tr(Rl), sub(effector(fk), E));
+      const Ll = mul(tr(Ru), Rl), th0 = Math.atan2(Ll[7], Ll[8]);
+      const d = Math.min(len(sub(G, S)), 0.99 * (len(ul) + len(vl)));
+      const cost = (th) => (len(add(ul, apply(rx(th), vl))) - d) ** 2 + 1e-3 * wrapPi(th - th0) ** 2;
+      let th = th0, c0 = cost(th0);
+      for (let k = -360; k < 360; k++) { const t = k * 0.5 * D2R, c = cost(t); if (c < c0) { c0 = c; th = t; } }
+      for (let k = -25; k <= 25; k++) { const t = th + k * 0.02 * D2R, c = cost(t); if (c < c0) { c0 = c; th = t; } }
+      const aim = arc(norm(apply(Ru, add(ul, apply(rx(th), vl)))), norm(sub(G, S)));
+      fr.locals[iU] = mul(tr(Rp), mul(aim, Ru));
+      fr.locals[iL] = rx(th);
+    }
+    return { A, H, C, R, target };
+  }
 
   /** Hinge limb in world space. du, dl: unit upper/lower directions; def: default hinge axis; state.last carries continuity. */
   function hingeLimb(du, dl, def, state) {
@@ -287,31 +359,44 @@
       frames.push({ locals, rootPos });
     }
 
-    // root: lift so no foot goes below the floor; then QA traces
-    const qa = { footMin: Infinity, handMin: Infinity, tipMin: Infinity, tipMax: -Infinity, lift: 0 };
-    const hand = limbs[0].bones[2] !== undefined ? limbs[0].bones[2] : limbs[0].bones[1];
+    // root: lift so no foot goes below the floor
+    const footY = (fk) => Math.min(...footDrop.map((d) => fk.pos[d.i][1] + d.d));
+    let lift = 0;
+    if (opts.footLift) {
+      for (const fr of frames) {
+        const y = footY(rigFK(rig, fr.locals, fr.rootPos));
+        if (y < 0) { fr.rootPos[1] -= y; lift = Math.max(lift, -y); }
+      }
+    }
+    // hit: frame where the mocap hands are lowest
     let hitF = 0, best = Infinity;
     for (let f = 0; f < F; f++) {
-      const fr = frames[f];
-      let fk = rigFK(rig, fr.locals, fr.rootPos);
-      const footY = () => Math.min(...footDrop.map((d) => fk.pos[d.i][1] + d.d));
-      if (opts.footLift) {
-        const y = footY();
-        if (y < 0) { fr.rootPos[1] -= y; qa.lift = Math.max(qa.lift, -y); fk = rigFK(rig, fr.locals, fr.rootPos); }
-      }
-      qa.footMin = Math.min(qa.footMin, footY());
-      qa.handMin = Math.min(qa.handMin, fk.pos[hand][1]);
-      if (tipLocal) {
-        const t = add(fk.pos[iWeapon], apply(fk.rot[iWeapon], tipLocal));
-        fr.tip = t;
-        qa.tipMin = Math.min(qa.tipMin, t[1]); qa.tipMax = Math.max(qa.tipMax, t[1]);
-      }
       const hs = g(f, 'LeftHand')[1] + g(f, 'RightHand')[1];
       if (hs < best) { best = hs; hitF = f; }
     }
+
+    const arm = limbs[0].bones, hand = arm[2] !== undefined ? arm[2] : arm[1];
+    const effector = (fk) => (tipLocal ? add(fk.pos[iWeapon], apply(fk.rot[iWeapon], tipLocal)) : fk.pos[hand]);
+    const ik = opts.ik ? weaponIK(rig, frames, arm, effector, hitF, opts) : null;
+
+    // QA traces
+    const qa = { footMin: Infinity, handMin: Infinity, tipMin: Infinity, tipMax: -Infinity, lift };
+    for (const fr of frames) {
+      const fk = rigFK(rig, fr.locals, fr.rootPos);
+      qa.footMin = Math.min(qa.footMin, footY(fk));
+      qa.handMin = Math.min(qa.handMin, fk.pos[hand][1]);
+      if (tipLocal) {
+        fr.tip = effector(fk);
+        qa.tipMin = Math.min(qa.tipMin, fr.tip[1]); qa.tipMax = Math.max(qa.tipMax, fr.tip[1]);
+      }
+    }
     if (!tipLocal) { qa.tipMin = null; qa.tipMax = null; }
+    if (ik) {
+      const fk = rigFK(rig, frames[hitF].locals, frames[hitF].rootPos);
+      ik.errorAtHit = len(sub(effector(fk), ik.target));
+    }
     return { frames, dt: bvh.dt, length: (F - 1) * bvh.dt, hitFrame: hitF, hitTime: hitF * bvh.dt, scale: s, qa,
-             rootBone: iRoot };
+             rootBone: iRoot, ik };
   }
 
   // ---------- export ----------
