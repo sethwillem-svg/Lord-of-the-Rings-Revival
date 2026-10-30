@@ -70,6 +70,52 @@ def find_bvh(value):
     return None
 
 
+def ask(question):
+    if not sys.stdin.isatty():
+        return ''
+    try:
+        return input(question).strip()
+    except EOFError:
+        return ''
+
+
+def ensure_gradio_client():
+    """Import gradio_client, offering to install it the first time."""
+    try:
+        from gradio_client import Client
+        return Client
+    except ImportError:
+        if ask('gradio_client is not installed. Install it now with pip? [Y/n] ').lower().startswith('n'):
+            sys.exit('gen needs gradio_client: pip install gradio_client')
+        if subprocess.run([sys.executable, '-m', 'pip', 'install', '--user', 'gradio_client']).returncode:
+            sys.exit('pip could not install it here (some Linux systems block pip outside a virtual environment). '
+                     'Use: python3 -m venv ~/.venvs/gen && ~/.venvs/gen/bin/pip install gradio_client, '
+                     'then run gen with ~/.venvs/gen/bin/python.')
+        import site, importlib
+        importlib.reload(site)
+        from gradio_client import Client
+        return Client
+
+
+def get_token(space):
+    """HF token from HF_TOKEN or the Hugging Face login store; for a Space, ask once and save it there."""
+    token = os.environ.get('HF_TOKEN')
+    if token or space.startswith(('http://', 'https://')):
+        return token
+    try:
+        from huggingface_hub import get_token as stored, login
+    except ImportError:
+        return None
+    token = stored()
+    if token:
+        return token
+    token = ask('Paste a Hugging Face access token (huggingface.co > Settings > Access Tokens, type Read) so '
+                'generation uses your quota, or press Enter to skip: ')
+    if token:
+        login(token=token, add_to_git_credential=False)   # saved for next time
+    return token or None
+
+
 def save_sidecar(out, name, info):
     with open(os.path.join(out, name + '.json'), 'w', encoding='utf-8') as f:
         json.dump(info, f, indent=1)
@@ -170,12 +216,9 @@ def main():
         run_hymotion(args, prompts)
         return
 
-    try:
-        from gradio_client import Client
-    except ImportError:
-        sys.exit('gradio_client is not installed: pip install gradio_client')
+    Client = ensure_gradio_client()
+    token = get_token(args.space)
     print(f'Connecting to {args.space} ...')
-    token = os.environ.get('HF_TOKEN')
     try:
         client = Client(args.space, token=token)        # gradio_client 2.x
     except TypeError:

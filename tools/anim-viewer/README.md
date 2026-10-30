@@ -13,12 +13,13 @@ A browser page that retargets mocap clips (BVH) onto a Blockbench rig live and p
 
 ## Quick start: `view` and `gen`
 
-Add these to `~/.bashrc` once (adjust the path if the repo is elsewhere), then open a new terminal:
+Needs Git, Python 3 and a browser. From the repo root, run once:
 
 ```sh
-alias view="$HOME/Lord-of-the-Rings-Revival/tools/anim-viewer/view.sh"
-alias gen="python3 $HOME/Lord-of-the-Rings-Revival/tools/anim-viewer/kimodo_batch.py"
+./tools/anim-viewer/view.sh
 ```
+
+It asks once whether to add the `view` and `gen` commands to your shell (answer Y; `view setup` adds them later if you said no), then opens the viewer in a new browser tab. After that, `view` works from anywhere.
 
 - `view` makes `<repo>/clips` (git-ignored), starts a local web server for the repo if one is not running, and opens the viewer in your default browser (Firefox works) watching that folder with `mordor_orc` loaded. `view gundabad_olog_hai` opens with another unit; `view stop` stops the server.
 - `gen "A person ..." --count 5` generates into `<repo>/clips`, and each take appears in the viewer as it lands.
@@ -30,7 +31,7 @@ Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** g
 
 `kimodo_batch.py` generates clips on the Kimodo Hugging Face Space and saves the BVH files into a folder; the viewer's **Watch folder** picks each one up as it lands, so nothing has to be uploaded by hand.
 
-1. Once: `pip install gradio_client`, and set `HF_TOKEN` to a Hugging Face token (ZeroGPU then uses your account's quota).
+1. Nothing to install by hand: the first `gen` offers to install `gradio_client` and asks once for a Hugging Face access token (type Read), which it saves in Hugging Face's own login store. Setting `HF_TOKEN` also works.
 2. Copy a model from `src/main/art/blockbench/<faction>/` into an empty folder, say `clips/`.
 3. Open the viewer watching `clips/`. The model loads by itself.
    - **Any browser (Firefox too):** in the repo root run `python3 -m http.server 8000`, then open `http://localhost:8000/tools/anim-viewer/?watch=/clips/`.
