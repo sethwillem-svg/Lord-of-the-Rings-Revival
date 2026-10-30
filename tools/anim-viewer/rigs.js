@@ -6,7 +6,7 @@
  *   pelvis optional; driven by the hips. Legs hang from it when present
  *   head   optional
  *   arms   [upper arm, forearm, hand?] per side; legs [thigh, shin] per side
- *   weapon optional held-weapon bone under the right hand
+ *   weapon optional held-weapon bone under the right hand (a name, or a list: the first one the rig has is used)
  */
 (function (root) {
   'use strict';
@@ -25,7 +25,7 @@
       root: 'root', upper: 'body', head: 'head',
       arms: { right: ['right_arm', 'right_forearm', 'right_hand'], left: ['left_arm', 'left_forearm', 'left_hand'] },
       legs: { right: ['right_leg', 'right_shin'], left: ['left_leg', 'left_shin'] },
-      weapon: 'right_weapon',
+      weapon: ['right_weapon', 'weapon'],   // orcs use right_weapon; ologs and trolls use weapon
     },
   ];
   if (typeof module !== 'undefined' && module.exports) module.exports = RIG_MAPS;

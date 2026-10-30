@@ -11,6 +11,21 @@ A browser page that retargets mocap clips (BVH) onto a Blockbench rig live and p
 5. Change the retarget settings; every clip is re-mapped immediately.
 6. Export a clip as **Viewer JSON** (the Orc Muster Viewer's animation format) or **PulseLib JSON** (Gecko-style animation file).
 
+## Quick start: `view` and `gen`
+
+Add these to `~/.bashrc` once (adjust the path if the repo is elsewhere), then open a new terminal:
+
+```sh
+alias view="$HOME/Lord-of-the-Rings-Revival/tools/anim-viewer/view.sh"
+alias gen="python3 $HOME/Lord-of-the-Rings-Revival/tools/anim-viewer/kimodo_batch.py"
+```
+
+- `view` makes `<repo>/clips` (git-ignored), starts a local web server for the repo if one is not running, and opens the viewer in your default browser (Firefox works) watching that folder with `mordor_orc` loaded. `view gundabad_olog_hai` opens with another unit; `view stop` stops the server.
+- `gen "A person ..." --count 5` generates into `<repo>/clips`, and each take appears in the viewer as it lands.
+- The **Model** menu in the sidebar lists every unit in `src/main/art/blockbench/`.
+
+Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** grip plus tilt, swing and twist angles (weapon IK follows the adjusted blade), camera presets, toggles for IK targets and the floor grid, and **Clear clips**. If the strike height is out of reach the target is raised to the lowest reachable point and the clip list says so.
+
 ## Generate straight into the viewer
 
 `kimodo_batch.py` generates clips on the Kimodo Hugging Face Space and saves the BVH files into a folder; the viewer's **Watch folder** picks each one up as it lands, so nothing has to be uploaded by hand.
@@ -42,7 +57,7 @@ A rig map names the bones the mocap drives: root, upper body, optional pelvis an
 | Map | Bones | For |
 | --- | --- | --- |
 | `spec-biped` | `root > body > torso`, legs under `body`, `right_item` | The biped rigs in `specs/core/rendering-animation.md` section 5b (man, elf, dwarf, hobbit, orc, olog, half_troll) |
-| `muster-pack` | `root > body`, legs under `root`, `right_weapon` | The orc, olog and troll faction-pack models |
+| `muster-pack` | `root > body`, legs under `root`, `right_weapon` (orcs) or `weapon` (ologs, trolls) | The orc, olog and troll faction-pack models |
 
 Add a skeleton (for example a dwarf or troll rig with other bone names) by adding an entry. No code change is needed.
 

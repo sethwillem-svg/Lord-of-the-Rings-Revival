@@ -7,10 +7,10 @@ Setup (once):  pip install gradio_client
 Token:         set HF_TOKEN to a Hugging Face token so ZeroGPU uses your account's quota (anonymous quota is small).
 
 Examples:
-  python3 kimodo_batch.py --out clips "A person swings both hands overhead and slams them down to the ground"
-  python3 kimodo_batch.py --out clips --count 5 --duration 3 "A person swings a sword in a wide horizontal slash"
-  python3 kimodo_batch.py --out clips --seeds 7 42 "A person thrusts a spear forward"
-  python3 kimodo_batch.py --out clips --prompts prompts.txt --count 10   # one prompt per line, seeds 1..10 each
+  python3 kimodo_batch.py "A person swings both hands overhead and slams them down to the ground"
+  python3 kimodo_batch.py --count 5 --duration 3 "A person swings a sword in a wide horizontal slash"
+  python3 kimodo_batch.py --seeds 7 42 "A person thrusts a spear forward"
+  python3 kimodo_batch.py --prompts prompts.txt --count 10   # one prompt per line, seeds 1..10 each
 
 Files are named <prompt-slug>_s<seed>.bvh, with a .json beside each holding the prompt and settings. Each file is
 written as .part and renamed when complete, so the viewer never reads half a file.
@@ -24,6 +24,7 @@ import sys
 import time
 
 DEFAULT_SPACE = 'hugging-apps/kimodo-motion'
+DEFAULT_OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'clips')
 
 
 def slug(text, n=40):
@@ -63,7 +64,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('prompt', nargs='*', help='motion prompt(s); start with "A person ..."')
     ap.add_argument('--prompts', help='text file with one prompt per line')
-    ap.add_argument('--out', default='kimodo_clips', help='folder to write .bvh files into (watch this in the viewer)')
+    ap.add_argument('--out', default=DEFAULT_OUT, help=f'folder to write .bvh files into (default {DEFAULT_OUT}, what `view` watches)')
     ap.add_argument('--seeds', nargs='+', type=int, help='exact seeds to generate')
     ap.add_argument('--count', type=int, default=1, help='takes per prompt, seeds 1..COUNT (ignored with --seeds)')
     ap.add_argument('--duration', type=float, default=3.0, help='seconds per clip (max 10)')
@@ -86,6 +87,10 @@ def main():
         sys.exit('gradio_client is not installed: pip install gradio_client')
 
     os.makedirs(args.out, exist_ok=True)
+    ignore = os.path.join(args.out, '.gitignore')
+    if os.path.abspath(args.out) == DEFAULT_OUT and not os.path.exists(ignore):
+        with open(ignore, 'w') as f:
+            f.write('*\n')   # keeps generated clips out of git
     print(f'Connecting to {args.space} ...')
     token = os.environ.get('HF_TOKEN')
     try:

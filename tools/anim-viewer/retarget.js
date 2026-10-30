@@ -175,7 +175,48 @@
     ik: false,           // weapon IK: pull the weapon tip (or right hand) onto a target at the hit
     ikTargetY: 0,        // target height above the floor, px (0 = ground strike)
     ikReach: 0.85,       // target distance from the shoulder as a share of arm + weapon length
+    weaponPitch: 0,      // extra weapon rotation in the hand, degrees: tilt the blade forward/back
+    weaponYaw: 0,        //   swing it left/right
+    weaponRoll: 0,       //   twist it about the grip
+    smooth: 0,           // Gaussian smoothing of the retargeted pose over time, sigma in frames (0 = off)
   };
+
+  function matToQuat(m) {
+    const t = m[0] + m[4] + m[8];
+    let x, y, z, w;
+    if (t > 0) { const s = Math.sqrt(t + 1) * 2; w = s / 4; x = (m[7] - m[5]) / s; y = (m[2] - m[6]) / s; z = (m[3] - m[1]) / s; }
+    else if (m[0] > m[4] && m[0] > m[8]) { const s = Math.sqrt(1 + m[0] - m[4] - m[8]) * 2; w = (m[7] - m[5]) / s; x = s / 4; y = (m[1] + m[3]) / s; z = (m[2] + m[6]) / s; }
+    else if (m[4] > m[8]) { const s = Math.sqrt(1 + m[4] - m[0] - m[8]) * 2; w = (m[2] - m[6]) / s; x = (m[1] + m[3]) / s; y = s / 4; z = (m[5] + m[7]) / s; }
+    else { const s = Math.sqrt(1 + m[8] - m[0] - m[4]) * 2; w = (m[3] - m[1]) / s; x = (m[2] + m[6]) / s; y = (m[5] + m[7]) / s; z = s / 4; }
+    return [x, y, z, w];
+  }
+  function quatToMat([x, y, z, w]) {
+    return [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+            2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+            2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)];
+  }
+  /** Gaussian-smooth every bone's local rotation (sign-aligned quaternion average) and the root position over time. */
+  function smoothFrames(frames, nBones, sigma) {
+    const F = frames.length, r = Math.ceil(3 * sigma), wts = [];
+    for (let k = -r; k <= r; k++) wts.push(Math.exp(-0.5 * (k / sigma) ** 2));
+    for (let i = 0; i < nBones; i++) {
+      const q = frames.map((fr) => matToQuat(fr.locals[i]));
+      for (let f = 1; f < F; f++) if (q[f].reduce((a, v, k) => a + v * q[f - 1][k], 0) < 0) q[f] = q[f].map((v) => -v);
+      const out = q.map((_, f) => {
+        const acc = [0, 0, 0, 0];
+        for (let k = -r; k <= r; k++) { const g = q[Math.min(F - 1, Math.max(0, f + k))], w = wts[k + r]; for (let j = 0; j < 4; j++) acc[j] += g[j] * w; }
+        const n = Math.hypot(...acc);
+        return acc.map((v) => v / n);
+      });
+      frames.forEach((fr, f) => { fr.locals[i] = quatToMat(out[f]); });
+    }
+    const pos = frames.map((fr) => fr.rootPos.slice());
+    frames.forEach((fr, f) => {
+      let sw = 0; const acc = [0, 0, 0];
+      for (let k = -r; k <= r; k++) { const g = pos[Math.min(F - 1, Math.max(0, f + k))], w = wts[k + r]; sw += w; for (let j = 0; j < 3; j++) acc[j] += g[j] * w; }
+      fr.rootPos = acc.map((v) => v / sw);
+    });
+  }
 
   /** Shortest-arc rotation taking unit vector a to unit vector b. */
   function arc(a, b) {
@@ -219,9 +260,10 @@
     // rig space faces -Z; strikes land in the front half
     if (len(dirH) < 0.3 * reach || -norm(dirH)[2] < 0.25) dirH = [0, 0, -1];
     dirH = norm(dirH);
-    const h = SH[1] - opts.ikTargetY, r = opts.ikReach * reach;
-    const horiz = Math.sqrt(Math.max(0, r * r - h * h));
-    const target = [SH[0] + dirH[0] * horiz, opts.ikTargetY, SH[2] + dirH[2] * horiz];
+    const r = opts.ikReach * reach;
+    const ty = Math.max(opts.ikTargetY, SH[1] - 0.98 * r);   // out of reach: the lowest point the chain can touch
+    const h = SH[1] - ty, horiz = Math.sqrt(Math.max(0, r * r - h * h));
+    const target = [SH[0] + dirH[0] * horiz, ty, SH[2] + dirH[2] * horiz];
     const off = sub(target, trace[H]);
     for (let f = A; f <= R; f++) {
       const w = f <= H ? minJerk((f - A) / Math.max(1, H - A))
@@ -243,7 +285,7 @@
       fr.locals[iU] = mul(tr(Rp), mul(aim, Ru));
       fr.locals[iL] = rx(th);
     }
-    return { A, H, C, R, target };
+    return { A, H, C, R, target, raised: ty > opts.ikTargetY + 1e-6 ? ty - opts.ikTargetY : 0 };
   }
 
   /** Hinge limb in world space. du, dl: unit upper/lower directions; def: default hinge axis; state.last carries continuity. */
@@ -311,8 +353,14 @@
       limbs.push({ kind: 'arm', bones: map.arms[side].map(B), j: [S + 'Arm', S + 'ForeArm', S + 'Hand'], state: {} });
       limbs.push({ kind: 'leg', bones: map.legs[side].map(B), j: [S + 'Leg', S + 'Shin', S + 'Foot'], state: {} });
     }
-    const iWeapon = map.weapon && rig.idx[map.weapon] !== undefined ? B(map.weapon) : -1;
-    const weaponLocal = iWeapon >= 0 && opts.weapon === 'forearm' ? rotAxis('X', 180) : null;
+    const wName = [].concat(map.weapon || []).find((n) => rig.idx[n] !== undefined);   // first weapon bone the rig has
+    const iWeapon = wName ? B(wName) : -1;
+    let weaponLocal = null;
+    if (iWeapon >= 0) {
+      const base = opts.weapon === 'forearm' ? rotAxis('X', 180) : rig.bones[iWeapon].restMat;
+      const adj = opts.weaponPitch || opts.weaponYaw || opts.weaponRoll;
+      weaponLocal = adj ? mul(eulerZYXtoMat([opts.weaponPitch, opts.weaponYaw, opts.weaponRoll]), base) : base;
+    }
 
     // lowest cube point below each lower-leg pivot; weapon tip (farthest cube corner from the pivot)
     const footDrop = limbs.filter((l) => l.kind === 'leg').map((l) => {
@@ -358,6 +406,8 @@
       const rootPos = [hp[0], hp[1] * opts.rootDrop, hp[2]];
       frames.push({ locals, rootPos });
     }
+
+    if (opts.smooth > 0) smoothFrames(frames, rig.bones.length, opts.smooth);
 
     // root: lift so no foot goes below the floor
     const footY = (fk) => Math.min(...footDrop.map((d) => fk.pos[d.i][1] + d.d));
