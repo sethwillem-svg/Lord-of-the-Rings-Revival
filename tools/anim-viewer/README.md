@@ -16,7 +16,7 @@ A browser page that retargets mocap clips (BVH) onto a Blockbench rig live and p
 `kimodo_batch.py` generates clips on the Kimodo Hugging Face Space and saves the BVH files into a folder; the viewer's **Watch folder** picks each one up as it lands, so nothing has to be uploaded by hand.
 
 1. Once: `pip install gradio_client`, and set `HF_TOKEN` to a Hugging Face token (ZeroGPU then uses your account's quota).
-2. Copy the model you want (for example `mordor_orc.bbmodel`) into an empty folder, say `clips/`.
+2. Copy a model from `src/main/art/blockbench/<faction>/` into an empty folder, say `clips/`.
 3. In Chrome or Edge, open `index.html`, press **Watch folder** and pick `clips/`. The model loads by itself.
 4. Generate:
    ```sh
