@@ -87,7 +87,11 @@ def main():
 
     os.makedirs(args.out, exist_ok=True)
     print(f'Connecting to {args.space} ...')
-    client = Client(args.space, hf_token=os.environ.get('HF_TOKEN'))
+    token = os.environ.get('HF_TOKEN')
+    try:
+        client = Client(args.space, token=token)        # gradio_client 2.x
+    except TypeError:
+        client = Client(args.space, hf_token=token)     # gradio_client 1.x and older
     endpoint, params = find_endpoint(client)
     print(f'Endpoint {endpoint}, parameters: {", ".join(params)}')
 
