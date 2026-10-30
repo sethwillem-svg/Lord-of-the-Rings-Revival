@@ -64,8 +64,10 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="row">
     <button id="pickModel">Load model</button><input id="modelFile" type="file" accept=".bbmodel,.json" hidden>
     <button id="pickBvh">Add BVH clips</button><input id="bvhFile" type="file" accept=".bvh" multiple hidden>
+    <button id="watchBtn">Watch folder</button>
    </div>
    <div class="note" id="modelInfo">No model loaded.</div>
+   <div class="note" id="watchInfo">Watch folder: new .bvh files (and a .bbmodel) in the folder load automatically. Chrome or Edge.</div>
    <div class="row"><label for="rigMap">Rig map</label><select id="rigMap"></select></div>
    <div class="err" id="err"></div>
   </div>
@@ -374,13 +376,51 @@ async function handleFiles(files) {
     } catch (e) { showErr(e.message); }
   }
   for (const f of list.filter((f) => /\.bvh$/i.test(f.name))) {
-    try { clips.push({ name: f.name, bvh: A.parseBVH(await f.text()) }); }
+    try {
+      const clip = { name: f.name, bvh: A.parseBVH(await f.text()) };
+      const k = clips.findIndex((c) => c.name === f.name);   // a re-generated file replaces its old clip
+      if (k >= 0) clips[k] = clip; else clips.push(clip);
+    }
     catch (e) { showErr(f.name + ': ' + e.message); }
   }
   rebuild();
 }
 $('pickModel').onclick = () => $('modelFile').click();
 $('pickBvh').onclick = () => $('bvhFile').click();
+
+// ---------- watch folder: kimodo_batch.py writes .bvh files here; new ones load automatically ----------
+let watch = null;
+async function scanWatch() {
+  if (!watch || watch.busy) return;
+  watch.busy = true;
+  try {
+    const fresh = [];
+    for await (const [name, h] of watch.dir.entries()) {
+      if (h.kind !== 'file' || !/\.(bvh|bbmodel)$/i.test(name)) continue;   // skips partial .part files
+      const f = await h.getFile(), key = `${name}:${f.lastModified}:${f.size}`;
+      if (watch.seen.has(key)) continue;
+      watch.seen.add(key);
+      if (/\.bbmodel$/i.test(name) && model) continue;   // keep the model you already have
+      fresh.push(f);
+    }
+    if (fresh.length) {
+      fresh.sort((a, b) => (/\.bbmodel$/i.test(a.name) ? -1 : 0) - (/\.bbmodel$/i.test(b.name) ? -1 : 0) || a.lastModified - b.lastModified);
+      await handleFiles(fresh);
+      $('watchInfo').textContent = `Watching ${watch.dir.name}: ${clips.length} clip(s), last added ${fresh[fresh.length - 1].name}`;
+    }
+  } catch (e) { showErr('Watch folder: ' + e.message); }
+  watch.busy = false;
+}
+$('watchBtn').onclick = async () => {
+  if (!window.showDirectoryPicker) { showErr('Watching a folder needs Chrome or Edge. Use Add BVH clips instead.'); return; }
+  let dir;
+  try { dir = await window.showDirectoryPicker(); } catch (e) { return; }
+  if (watch) clearInterval(watch.timer);
+  watch = { dir, seen: new Set(), busy: false, timer: null };
+  $('watchInfo').textContent = `Watching ${dir.name} for new .bvh files...`;
+  await scanWatch();
+  watch.timer = setInterval(scanWatch, 2000);
+};
 $('modelFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
 $('bvhFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
 ['dragenter', 'dragover'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.add('dragging'); }));
