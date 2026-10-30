@@ -45,9 +45,22 @@ The script finds the Space's generate endpoint itself (default `hugging-apps/kim
 
 Clip labels turn red while the weapon tip or the right hand is more than half a pixel below the floor. The clip list shows each clip's lowest hand, weapon tip and foot height in model pixels (16 px = 1 block).
 
+## Local models: Kimodo and HY-Motion
+
+`gen` (`kimodo_batch.py`) has two backends; both write BVH into `clips/`, so the viewer shows their takes side by side. Each clip's `.json` records its `source` (`kimodo` or `hymotion`), model and prompt. They do not fit on one 32 GB GPU together, so run one at a time.
+
+- **Kimodo, local:** run the Kimodo Space on your own GPU (its Hugging Face page, **Run locally**, gives a Docker command that serves it on `localhost:7860`), then `gen --space http://localhost:7860 --count 5 "A person ..."`.
+- **HY-Motion 1.0, local:** install [HY-Motion-1.0](https://github.com/Tencent-Hunyuan/HY-Motion-1.0) (its README: PyTorch, `git lfs pull`, `pip install -r requirements.txt`, weights into `ckpts/`), then
+  ```sh
+  gen --backend hymotion --hy-repo ~/HY-Motion-1.0 --count 4 --duration 3 "A person raises the right arm and chops down"
+  ```
+  It runs HY-Motion's `local_infer.py` once for the whole batch (`--hy-python` if HY-Motion lives in another Python environment, `--hy-model HY-Motion-1.0-Lite` for the smaller model) and converts each sample as it appears. HY-Motion picks its own seeds; `--count` is samples per prompt. VRAM: about 26 GB (1.0) or 24 GB (Lite).
+  `hymotion_to_bvh.py` does the conversion: HY-Motion saves SMPL-H rotations (`.npz`), and the converter writes the 22 body joints as BVH with the Kimodo joint names, using the skeleton template from the HY-Motion install, plus head-end and eye joints. Checked against SMPL forward kinematics on a synthetic clip (joint positions agree to 1e-5 cm); not yet run on real HY-Motion output.
+  HY-Motion is under the Tencent HY-Motion 1.0 licence: not for use in the EU, UK or South Korea, and its outputs may not be used to train other models.
+
 ## Input
 
-- **BVH**: Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
+- **BVH**: Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces) or HY-Motion output converted by `hymotion_to_bvh.py`, Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
 - **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Embedded textures are used; models with external textures render grey.
 
 ## Rig maps (`rigs.js`)

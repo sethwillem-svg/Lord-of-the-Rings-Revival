@@ -242,6 +242,7 @@
    */
   function weaponIK(rig, frames, arm, effector, H, opts) {
     const F = frames.length, iU = arm[0], iL = arm[1];
+    if (H < 3) return null;   // hit at the very start: no windup to warp from, leave the clip as it is
     const trace = frames.map((fr) => effector(rigFK(rig, fr.locals, fr.rootPos)));
     let A = 0;
     for (let f = 0; f <= H; f++) if (trace[f][1] > trace[A][1]) A = f;
