@@ -388,38 +388,76 @@ async function handleFiles(files) {
 $('pickModel').onclick = () => $('modelFile').click();
 $('pickBvh').onclick = () => $('bvhFile').click();
 
-// ---------- watch folder: kimodo_batch.py writes .bvh files here; new ones load automatically ----------
+// ---------- watch folder: kimodo_batch.py writes .bvh files there; new ones load automatically ----------
+// Two sources: a local folder picked in Chrome/Edge, or a folder served over HTTP (any browser, including Firefox:
+// run `python3 -m http.server` in the repo root and open .../tools/anim-viewer/?watch=/clips/).
 let watch = null;
+function dirSource(dir) {
+  return { label: dir.name, async list() {
+    const out = [];
+    for await (const [name, h] of dir.entries()) {
+      if (h.kind !== 'file') continue;
+      const f = await h.getFile();
+      out.push({ name, key: `${name}:${f.lastModified}:${f.size}`, get: async () => f });
+    }
+    return out;
+  } };
+}
+function httpSource(path) {
+  const base = new URL(path, location.href);
+  if (!base.pathname.endsWith('/')) base.pathname += '/';
+  return { label: base.pathname, async list() {
+    const res = await fetch(base, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${base.pathname} returned ${res.status}`);
+    const names = [...(await res.text()).matchAll(/href="([^"?#]+)"/g)].map((m) => decodeURIComponent(m[1])).filter((n) => !n.includes('/'));
+    const out = [];
+    for (const name of names) {
+      if (!/\.(bvh|bbmodel)$/i.test(name)) continue;
+      const u = new URL(encodeURIComponent(name), base), h = await fetch(u, { method: 'HEAD', cache: 'no-store' });
+      if (!h.ok) continue;
+      const lm = h.headers.get('last-modified');
+      out.push({ name, key: `${name}:${lm}:${h.headers.get('content-length')}`,
+        get: async () => new File([await (await fetch(u, { cache: 'no-store' })).blob()], name, { lastModified: Date.parse(lm) || Date.now() }) });
+    }
+    return out;
+  } };
+}
 async function scanWatch() {
   if (!watch || watch.busy) return;
   watch.busy = true;
   try {
     const fresh = [];
-    for await (const [name, h] of watch.dir.entries()) {
-      if (h.kind !== 'file' || !/\.(bvh|bbmodel)$/i.test(name)) continue;   // skips partial .part files
-      const f = await h.getFile(), key = `${name}:${f.lastModified}:${f.size}`;
-      if (watch.seen.has(key)) continue;
-      watch.seen.add(key);
-      if (/\.bbmodel$/i.test(name) && model) continue;   // keep the model you already have
-      fresh.push(f);
+    for (const e of await watch.src.list()) {
+      if (!/\.(bvh|bbmodel)$/i.test(e.name) || watch.seen.has(e.key)) continue;   // skips partial .part files
+      watch.seen.add(e.key);
+      if (/\.bbmodel$/i.test(e.name) && model) continue;   // keep the model you already have
+      fresh.push(await e.get());
     }
     if (fresh.length) {
       fresh.sort((a, b) => (/\.bbmodel$/i.test(a.name) ? -1 : 0) - (/\.bbmodel$/i.test(b.name) ? -1 : 0) || a.lastModified - b.lastModified);
       await handleFiles(fresh);
-      $('watchInfo').textContent = `Watching ${watch.dir.name}: ${clips.length} clip(s), last added ${fresh[fresh.length - 1].name}`;
+      $('watchInfo').textContent = `Watching ${watch.src.label}: ${clips.length} clip(s), last added ${fresh[fresh.length - 1].name}`;
     }
   } catch (e) { showErr('Watch folder: ' + e.message); }
   watch.busy = false;
 }
-$('watchBtn').onclick = async () => {
-  if (!window.showDirectoryPicker) { showErr('Watching a folder needs Chrome or Edge. Use Add BVH clips instead.'); return; }
-  let dir;
-  try { dir = await window.showDirectoryPicker(); } catch (e) { return; }
+async function startWatch(src) {
   if (watch) clearInterval(watch.timer);
-  watch = { dir, seen: new Set(), busy: false, timer: null };
-  $('watchInfo').textContent = `Watching ${dir.name} for new .bvh files...`;
+  watch = { src, seen: new Set(), busy: false, timer: null };
+  $('watchInfo').textContent = `Watching ${src.label} for new .bvh files...`;
   await scanWatch();
   watch.timer = setInterval(scanWatch, 2000);
+}
+$('watchBtn').onclick = async () => {
+  if (window.showDirectoryPicker) {
+    try { await startWatch(dirSource(await window.showDirectoryPicker())); } catch (e) { /* picker cancelled */ }
+  } else if (location.protocol.startsWith('http')) {
+    const path = prompt('Folder to watch, relative to the web server root:', '/clips/');
+    if (path) await startWatch(httpSource(path));
+  } else {
+    showErr('This browser cannot open folders from a file:// page. In the repo root run: python3 -m http.server 8000, ' +
+            'then open http://localhost:8000/tools/anim-viewer/?watch=/clips/');
+  }
 };
 $('modelFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
 $('bvhFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
@@ -448,6 +486,7 @@ function resize() { const r = cv.parentElement.getBoundingClientRect(); R.setSiz
 new ResizeObserver(resize).observe(cv.parentElement);
 $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}</option>`).join('');
 resize(); requestAnimationFrame(frame);
+{ const w = new URLSearchParams(location.search).get('watch'); if (w) startWatch(httpSource(w)); }
 </script>
 </body>
 </html>

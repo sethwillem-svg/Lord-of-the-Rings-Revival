@@ -17,14 +17,16 @@ A browser page that retargets mocap clips (BVH) onto a Blockbench rig live and p
 
 1. Once: `pip install gradio_client`, and set `HF_TOKEN` to a Hugging Face token (ZeroGPU then uses your account's quota).
 2. Copy a model from `src/main/art/blockbench/<faction>/` into an empty folder, say `clips/`.
-3. In Chrome or Edge, open `index.html`, press **Watch folder** and pick `clips/`. The model loads by itself.
+3. Open the viewer watching `clips/`. The model loads by itself.
+   - **Any browser (Firefox too):** in the repo root run `python3 -m http.server 8000`, then open `http://localhost:8000/tools/anim-viewer/?watch=/clips/`.
+   - **Chrome or Edge:** you can also open `index.html` directly, press **Watch folder** and pick `clips/`.
 4. Generate:
    ```sh
    python3 tools/anim-viewer/kimodo_batch.py --out clips --count 5 --duration 3 "A person swings both hands overhead and slams them down to the ground"
    ```
    Each take appears on its own model within about two seconds of being saved. `--prompts file.txt` runs one prompt per line; `--seeds 7 42` picks exact seeds.
 
-The script finds the Space's generate endpoint itself (default `hugging-apps/kimodo-motion`, Kimodo-SOMA-RP-v1.2), writes `<prompt>_s<seed>.bvh` plus a `.json` with the prompt and settings, and writes through a `.part` file so the viewer never reads half a clip. A regenerated file replaces its old clip in the viewer. Other browsers have no folder access: use **Add BVH clips** there.
+The script finds the Space's generate endpoint itself (default `hugging-apps/kimodo-motion`, Kimodo-SOMA-RP-v1.2), writes `<prompt>_s<seed>.bvh` plus a `.json` with the prompt and settings, and writes through a `.part` file so the viewer never reads half a clip. A regenerated file replaces its old clip in the viewer.
 
 Clip labels turn red while the weapon tip or the right hand is more than half a pixel below the floor. The clip list shows each clip's lowest hand, weapon tip and foot height in model pixels (16 px = 1 block).
 
