@@ -2,7 +2,7 @@
 
 - **Pod:** core (the shared animation framework, dependency, benchmark and client config). Renderers per race stay in `client/npc/` (NPC pod).
 - **Lead:** Opus 1
-- **Status:** draft, revision 3 (maintainer's decision, 2026-10-28: **PulseLib replaces AzureLib**. Every NPC of every faction is animated; formation clips for the discipline levels of `specs/npc/performance.md`, PR #186; pilot #10 becomes the bench rig. Section 2a lists what changes and what is still unknown. The comparison table in section 1 still describes AzureLib, which is the superseded candidate.)
+- **Status:** draft, revision 4 (maintainer's decision, 2026-10-29: **one rig per race** instead of one shared `humanoid` rig; see section 5b and decision 7. Revision 3, 2026-10-28: **PulseLib replaces AzureLib**. Every NPC of every faction is animated; formation clips for the discipline levels of `specs/npc/performance.md`, PR #186; pilot #10 becomes the bench rig. Section 2a lists what changes and what is still unknown. The comparison table in section 1 still describes AzureLib, which is the superseded candidate.)
 - **Depends on:** `specs/core/core-apis.md` (registers, shared constants, payload rules), draft `specs/npc/performance.md` (PR #186: squads, formations, discipline levels RIGID / ORGANIZED / LOOSE, formation animation hooks in its section 2h), `specs/core/combat-items.md` (weapon classes, `WeaponStats`), `specs/npc/npc-base.md` (races, roles, routines, nameplate rules, `client/npc/NpcHumanoidRenderer`). Feeds the NPC model content wave, villages, patrols, caravans and battles.
 - **Sources:** research on 2026-10-28, listed with links in section 13. No original LOTR Mod models, animations or code were used. The original mod rendered every NPC with a static biped model and no keyframe animation, so there is nothing of its to port here: this whole system is ours.
 
@@ -74,7 +74,7 @@ A dev-only client benchmark, built before any NPC model content, that renders N 
 
 **Packaging.** A separate Gradle source set `bench` with its own mod id `lotrrevival_bench`. It is never part of the release jar. GeckoLib and PulseLib are bench-only runtime dependencies here (until the decision). PulseLib uses its own packages, so both can be loaded at once. A run configuration `runBenchClient` starts it. A `benchJar` task builds `lotrrevival-bench-<version>.jar` so Seth can drop it into his normal launcher instance with Sodium and Iris.
 
-**Test rig: the Blockbench pilot #10 hobbit** (maintainer decision). Pilot #10 is rescoped to the PulseLib format, the `humanoid` bones of section 5b and the clip names of section 5c. It delivers `move.idle`, `move.walk`, `attack.sword.1`, `attack.sword.2` and `move.march` (about 18 bones, about 30 cubes, 64x64 texture, all original). The same Blockbench project is also exported as Mojang-mapped Java keyframes for the `keyframe` contender; GeckoLib loads the same Bedrock JSON. The pilot's time and number of review rounds size the content wave.
+**Test rig: the Blockbench pilot #10 hobbit** (maintainer decision). Pilot #10 is rescoped to the PulseLib format, the `hobbit` rig and biped bone names of section 5b and the clip names of section 5c. It delivers `move.idle`, `move.walk`, `attack.sword.1`, `attack.sword.2` and `move.march` (about 18 bones, about 30 cubes, 64x64 texture, all original). The same Blockbench project is also exported as Mojang-mapped Java keyframes for the `keyframe` contender; GeckoLib loads the same Bedrock JSON. The pilot's time and number of review rounds size the content wave.
 
 **Contenders** (one entity type each, same hitbox, texture and equipment):
 
@@ -193,24 +193,30 @@ Rules for every tier:
 4. Review: the artist posts turntable and per-clip GIFs (Blockbench screenshot tools) in the ticket. The pod lead approves. Seth playtests in game.
 5. **Validator** (part of R1-1): at resource load the client checks every registered NPC renderer's geo for the required bones of its rig, and its animation file for every required clip (with fallbacks, section 5c). With `-Dlotrrevival.strictAssets=true` (dev runs and CI) a missing bone or clip, or a geo or animation file that does not load, is a hard error. In normal play it is logged once per file. This matters because PulseLib skips broken models with a log line instead of failing.
 
-Pilot #10 (hobbit, Blockbench MCP) is rescoped to this pipeline (maintainer decision): PulseLib format, the `humanoid` rig bone names, and the clips listed for the bench rig in section 2b with the names below. It is the benchmark rig, and its time and review-round numbers size the content wave.
+Pilot #10 (hobbit, Blockbench MCP) is rescoped to this pipeline (maintainer decision): PulseLib format, the `hobbit` rig with the biped bone names, and the clips listed for the bench rig in section 2b with the names below. It is the benchmark rig, and its time and review-round numbers size the content wave.
 
 ### 5b. Rigs and bone names
 
-A **rig** is a bone hierarchy that animations are written against. Races with the same body plan share a rig and its animations; proportions may differ.
+A **rig** is a bone hierarchy that animations are written against. **Each race has its own rig and its own clips** (maintainer decision, 2026-10-29), so a dwarf, an elf and a man can each move like themselves. Units of one race (for example goblins, Uruk-hai and Mordor orcs on `orc`) share their race's rig with proportion variants.
 
-- **Rotation-only rule.** Animations on shared rigs key rotations only. The one exception is `root` translation for bob and crouch, in pixels, scaled per race by a rig-specific factor in the renderer. This lets one `walk` serve men, elves, hobbits and dwarves.
+- **Biped bone names.** Every two-legged rig below except `troll` uses the same bone names (the list after the table). Held-item and armour anchors, the renderer's layers and the mocap tooling therefore work on all of them unchanged.
+- **Rig fallback.** Each rig may name a **base rig**. When a clip is missing on a rig, the resolver looks for the same clip key on its base rig before it uses the clip fallback table (section 5c). Base rigs: `elf`, `dwarf` and `hobbit` fall back to `man`; `olog` falls back to `orc`; `half_troll` falls back to `man`. This lets a race ship on borrowed clips and replace them one by one.
+- **Rotation-only rule.** Clips key rotations only. The one exception is `root` translation for bob and crouch, in pixels, scaled per rig by a factor in the renderer. This keeps a clip valid on every proportion variant of its rig and when it is borrowed through rig fallback.
 
-| Rig | Used by | Notes |
-| --- | --- | --- |
-| `humanoid` | men of every faction (Gondor, Rohan, Dale, Bree, Rangers, Harad, Easterlings, Dunlendings, hill-men, ruffians, Morgul and Black Númenórean units), elves, dwarves, hobbits (shirriffs, bounders) | One shared rig with proportion variants per race (maintainer decision: hobbits and dwarves included) |
-| `orc` | orcs, goblins, Uruk-hai, half-orcs | Hunched and heavier; own clip set; same bone names as `humanoid`, so weapon and formation clips can be ported. |
-| `half_troll` | half-trolls | Own rig (maintainer decision): bulkier proportions (broad shoulders, thick limbs, short neck), the same bone names as `humanoid` so held-item and armour anchors work, but its own clip set because the mass and timing differ |
-| `troll` | trolls of every kind | Own bones (no fingers, heavy club arm), own clip set (section 5c). Never takes a formation slot. |
+| Rig | Used by | Base rig | Notes |
+| --- | --- | --- | --- |
+| `man` | men of every faction (Gondor, Rohan, Dale, Bree, Rangers, Harad, Easterlings, Dunlendings, hill-men, ruffians, Morgul and Black Númenórean units) | none | The reference biped. Its clip set is written first. |
+| `elf` | elves of every realm | `man` | Taller and lighter; own clip set for elven movement and fighting styles |
+| `dwarf` | dwarves | `man` | Short, broad and heavy; own clip set (shorter stride, heavier weapon swings) |
+| `hobbit` | hobbits (shirriffs, bounders, villagers) | `man` | Small; own clip set. Pilot #10 is built on this rig. |
+| `orc` | orcs, goblins, Uruk-hai, half-orcs | none | Hunched and heavier; own clip set |
+| `olog` | Olog-hai | `orc` | Troll-sized biped that fights like a soldier; own clip set for its mass and timing |
+| `half_troll` | half-trolls | `man` | Bulkier proportions (broad shoulders, thick limbs, short neck); own clip set because the mass and timing differ |
+| `troll` | stone, cave, hill and mountain trolls | none | Own bones (no fingers, heavy club arm), own clip set (section 5c). Never takes a formation slot. |
 | `horse` | horses and war-horses ridden by cavalry | Clip set in section 5c; owned by the mounts spec |
 | `warg`, `spider`, ... | later specs | Each gets its own table when its spec is written |
 
-`humanoid` and `orc` bones (exact names, all lowercase):
+Biped bones for every rig above except `troll` (exact names, all lowercase):
 
 ```
 root
@@ -246,7 +252,7 @@ Anchor bones (`*_armor`, `*_item`) carry no cubes. PulseLib's render layers (`PE
 
 Clip keys inside the animation file are `animation.<rig>.<group>.<name>[.<variant>]`, lowercase, with dots between parts and underscores inside a part. Variants are numbered `1`, `2`, ... Weapon classes match `combat-items.md`.
 
-| Group | Clips (humanoid) | Loop | Controller |
+| Group | Clips (biped rigs) | Loop | Controller |
 | --- | --- | --- | --- |
 | `move` | `idle`, `idle.<n>` (fidgets), `walk`, `run`, `sneak`, `swim`, `climb`, `fall`, `ride`, `march` (in step), `flee` (rout), `charge` (berserk run, weapon raised) | loop | base |
 | `pose` | `sit`, `sit_ground`, `sleep`, `guard` (standing at attention), `kneel` | loop | base |
@@ -262,16 +268,17 @@ Clip keys inside the animation file are `animation.<rig>.<group>.<name>[.<varian
 
 **Every NPC is animated** (maintainer decision): every faction, every role and every discipline level gets a model on one of the rigs above and at least the minimum set below. No NPC type ships on the old vanilla biped once its race's model lands.
 
-**Minimum sets.** These are written once per rig in `<rig>.animation.json` and shared by every race on that rig. Races add overrides only where they want personality.
+**Minimum sets.** Each rig carries its sets in `<rig>.animation.json`, shared by every unit of that race. Until a rig's own pack lands, its NPCs play the base rig's clips through rig fallback (section 5b), so every set below is required on the rig itself before that race's content ticket closes.
 
 | Set | Clips | Rigs that need it |
 | --- | --- | --- |
-| **Base** | `move.idle`, `move.walk`, `move.run`, `pose.sit`, `react.hurt`, `react.death`, `attack.unarmed.1`, `attack.sword.1`, `attack.sword.2`, `hold.sword`, `defend.block.shield`, `social.talk`, `emote.wave`, `work.farm`, `work.smith` | `humanoid`, `orc` (orcs swap `emote.wave` for `emote.taunt` and `work.farm` for `work.mine`) |
-| **Formation, all disciplines** | `move.flee` (rout), `emote.order` | `humanoid`, `orc` |
-| **Formation, RIGID and ORGANIZED** | `defend.brace.shield`, `hold.pike.lowered`, `ranged.bow.ready` (with `ranged.bow.draw` and `ranged.bow.release` for volleys in rank), `move.march` | `humanoid`, `orc`. Needed for the RIGID factions Gondor, dwarves, elves, Uruk-hai and Easterlings, and the ORGANIZED factions Rohan, Dale, Rangers, Harad and Morgul. The rig carries them once for all. |
-| **Cavalry** | `ride.idle`, `ride.lance.couched` (couched-lance charge); the horse plays `move.gallop` and `move.charge` | `humanoid` riders (Rohan, Gondor knights, Dale, Harad, Easterlings) and `horse`. `orc` riders use the warg spec later. |
-| **LOOSE flavour** | `emote.war_cry`, `move.charge` (berserk charge), `emote.taunt` | `orc` (orcs, goblins), `half_troll` and `humanoid` (Dunlendings, hill-men, ruffians; shirriffs use `emote.war_cry` only, played as a shout) |
+| **Base** | `move.idle`, `move.walk`, `move.run`, `pose.sit`, `react.hurt`, `react.death`, `attack.unarmed.1`, `attack.sword.1`, `attack.sword.2`, `hold.sword`, `defend.block.shield`, `social.talk`, `emote.wave`, `work.farm`, `work.smith` | `man`, `elf`, `dwarf`, `hobbit`, `orc`, `olog` (orcs and ologs swap `emote.wave` for `emote.taunt` and `work.farm` for `work.mine`; dwarves swap `work.farm` for `work.mine`) |
+| **Formation, all disciplines** | `move.flee` (rout), `emote.order` | `man`, `elf`, `dwarf`, `hobbit`, `orc` |
+| **Formation, RIGID and ORGANIZED** | `defend.brace.shield`, `hold.pike.lowered`, `ranged.bow.ready` (with `ranged.bow.draw` and `ranged.bow.release` for volleys in rank), `move.march` | `man`, `elf`, `dwarf`, `orc`. Needed for the RIGID factions Gondor, dwarves, elves, Uruk-hai and Easterlings, and the ORGANIZED factions Rohan, Dale, Rangers, Harad and Morgul. Each rig carries them once for all its units. |
+| **Cavalry** | `ride.idle`, `ride.lance.couched` (couched-lance charge); the horse plays `move.gallop` and `move.charge` | `man` riders (Rohan, Gondor knights, Dale, Harad, Easterlings) and `horse`. `orc` riders use the warg spec later. |
+| **LOOSE flavour** | `emote.war_cry`, `move.charge` (berserk charge), `emote.taunt` | `orc` (orcs, goblins), `olog`, `half_troll`, `man` (Dunlendings, hill-men, ruffians) and `hobbit` (shirriffs use `emote.war_cry` only, played as a shout) |
 | **Half-troll** | the **Base** set re-animated for the heavier body, the **LOOSE flavour** set and `attack.smash.1` (heavy two-handed overhead smash) | `half_troll` only. Half-trolls are LOOSE and never take a formation slot, but they do play `move.flee` when routing (add it to the set). |
+| **Olog** | the **Base** set re-animated for a troll-sized soldier, the **LOOSE flavour** set and `attack.smash.1` | `olog` only. Until its pack lands it plays `orc` clips through rig fallback. Whether ologs take formation slots is open (see the open questions). |
 | **Troll** | `move.idle`, `move.walk`, `move.run`, `move.charge`, `move.flee`, `react.hurt`, `react.death`, `attack.smash.1` (overhead two-handed smash), `attack.smash.2` (sweeping swat), `emote.war_cry` (roar) | `troll` only. No formation clips: trolls never take a slot (PR #186 section 2b). |
 
 Discipline mostly changes **which** of these clips the server asks for (section 6), not the clip set. RIGID blocks brace, lower pikes and march in step. ORGANIZED squads march, then charge and break into normal combat clips. LOOSE swarms war-cry, berserk-charge and flee when their captain dies. Everything not listed falls back.
@@ -296,7 +303,7 @@ Discipline mostly changes **which** of these clips the server asks for (section 
 | `ride.lance.couched` | `hold.spear` |
 | `emote.order` | `emote.point` |
 | `emote.war_cry` | `emote.taunt`, then none |
-| `attack.smash.*` (troll, half-troll) | `attack.unarmed.1` of the same rig |
+| `attack.smash.*` (troll, half-troll, olog) | `attack.unarmed.1` of the same rig |
 | `work.*`, `pose.kneel` | `move.idle` |
 | `social.*`, `emote.*` | none (base continues) |
 | `react.death.*` | `react.death` |
@@ -306,13 +313,13 @@ Discipline mostly changes **which** of these clips the server asks for (section 
 ```
 src/main/resources/assets/lotrrevival/
   geo/entity/<race>.geo.json                    one model per race (gender variants: <race>_female)
-  animations/entity/<rig>.animation.json        shared clips for the rig
+  animations/entity/<rig>.animation.json        clips for the rig (one rig per race, section 5b)
   animations/entity/<race>.animation.json       race-only clips and overrides (optional)
   textures/entity/<race>/<variant>.png          skins; <race>/<variant>_glow.png for glowmasks
 src/main/art/blockbench/<race>.bbmodel          Blockbench source projects (kept for re-export, never loaded)
 ```
 
-The renderer loads `<rig>` clips and, if it exists, `<race>` clips, with race clips overriding rig clips that have the same key. (Whether PulseLib merges animation files itself is checked at R0-1; otherwise the wrapper merges them.)
+The renderer loads the base rig's clips, then the `<rig>` clips, then, if it exists, the `<race>` file, each overriding keys from the one before (rig fallback, section 5b). `<race>` files are for unit-level overrides such as a captain's idle. (Whether PulseLib merges animation files itself is checked at R0-1; otherwise the wrapper merges them.)
 
 ## 6. How AI state drives animation
 
@@ -440,7 +447,7 @@ Precedent: Vanillin (MIT) draws minecarts, chests and bells instanced with Flywh
 - **GameTests** (`core/test`, `@GameTest(template = "empty")`):
   - `AnimAction` / `AnimPulse` byte codec round-trips every value and variant; the pulse counter wraps from 7 to 0.
   - `AnimLod`: tier boundaries per preset; hysteresis (an NPC at 16.5 blocks moving inward from T1 stays T1 until 14); caps (40 NPCs within 10 blocks give 32 T0 and 8 T1, nearest first); governor scale 0.5 halves the distances.
-  - `ClipResolver`: every weapon class in core's table resolves to some clip for the `humanoid` minimum set; the fallback order matches section 5c.
+  - `ClipResolver`: every weapon class in core's table resolves to some clip for the `man` minimum set; the fallback order matches section 5c; rig fallback is tried before the clip table (a clip missing on `elf` resolves to the `man` clip of the same key, a clip missing on `olog` to the `orc` one).
   - Server: `AnimSync.setAction` with an unchanged value leaves the entity data clean (no packet); a change marks it dirty once.
 - **runtime-test** (headless client smoke): PulseLib is a separate jar, so the staging step also copies the PulseLib jar into the test mods folder. R1-1 adds `-Dlotrrevival.strictAssets=true` to the JVM args so a broken geo or animation file fails CI. Note that a headless client may not draw frames, so render-path bugs are found by the benchmark and playtests, not CI.
 - **Bench** is never run in CI (needs a GPU). The `bench` source set must still compile in `./gradlew build` so it does not rot.
@@ -547,21 +554,22 @@ Proposed; opened after this spec is approved. Days are agent days. All `pod:core
 | --- | --- | --- | --- | --- | --- |
 | R1-1 | Adopt the chosen library: jarJar and pinned range, NOTICE, mods.toml; `checkClientIsolation` task; `strictAssets` flag in the runtime-test job; `AnimAssetValidator` | 1.5 | sonnet-1 | R0-4 | build.gradle, gradle.properties, NOTICE, build.yml |
 | R1-2 | `core.api.anim`: `AnimAction`, `AnimPulse`, `AnimSync`; GameTests | 1 | sonnet-2 | R0-4 | - |
-| R1-3 | `client/core/anim`: `AnimLod`, `CrowdGovernor` and F3 line, `ClipResolver` with the fallback table, `RigConfig` for `humanoid` and `orc`, `ClientAnimConfig`; GameTests for the pure parts | 2 | sonnet-1 | R1-1 | - |
+| R1-3 | `client/core/anim`: `AnimLod`, `CrowdGovernor` and F3 line, `ClipResolver` with rig fallback and the fallback table, `RigConfig` (with its base rig) for `man`, `elf`, `dwarf`, `hobbit`, `orc`, `olog`, `half_troll` and `troll`, `ClientAnimConfig`; GameTests for the pure parts | 2 | sonnet-1 | R1-1 | - |
 | R1-4 | `NpcAnimRenderer` base: tiers per section 4 (layers, shadow, name tag, once-per-frame pose, Iris adapter); `debug_tier_colors`; `docs/playtest/animation.md` | 2 | sonnet-2 | R1-2, R1-3 | - |
-| R1-5 (pod:npc, Opus 3) | Convert `NpcHumanoidRenderer` to `NpcAnimRenderer` with the humanoid rig; add `AnimSync` accessors to `NpcEntity` and set actions from routines (work, sit, talk) | 2 | NPC pod | R1-4 | NpcEntity |
+| R1-5 (pod:npc, Opus 3) | Convert `NpcHumanoidRenderer` to `NpcAnimRenderer`, one rig per race (elves, dwarves and hobbits play `man` clips through rig fallback until their packs land); add `AnimSync` accessors to `NpcEntity` and set actions from routines (work, sit, talk) | 2 | NPC pod | R1-4 | NpcEntity |
 | R1-6 (pod:npc, Opus 3) | Squad AI sets the formation values (`BRACE`, `PIKE_LOWER`, `VOLLEY_READY`, `MARCH`, `ROUT`, `LANCE_COUCH`, `BERSERK`, `ORDER`, `WAR_CRY`) per PR #186 section 2h; game-time phase for `move.march` in the renderer | 1 | NPC pod | R1-5, PR #186 squads | - |
 
 ### NPC model content wave (NPC pod and artists; starts after R1-4)
 
 Every NPC type of every faction gets a model; none stays on the vanilla biped. The work is split into one ticket per race (model, skins and race overrides) and one per rig clip pack. The packs go in this order, following the section 5c minimum sets:
 
-1. `humanoid` base, then `orc` base.
-2. Formation packs for both rigs (rout and order, then brace, pike lowered, bow ready and volley, march).
-3. Cavalry (`humanoid` rider and `horse`).
+1. `man` base, then `orc` base. Every biped race can be animated from here on through rig fallback.
+2. Formation packs for `man` and `orc` (rout and order, then brace, pike lowered, bow ready and volley, march).
+3. Cavalry (`man` rider and `horse`).
 4. LOOSE flavour (war-cry, berserk charge, taunt).
-5. The `half_troll` rig and its set, then the `troll` rig and its set.
-6. The weapon-class attack packs, work, social and emote.
+5. Race packs replacing borrowed clips: `elf` and `dwarf` (base and formation), then `hobbit` (base, formation-all and war-cry).
+6. The `olog` rig and its set, the `half_troll` rig and its set, then the `troll` rig and its set.
+7. The weapon-class attack packs, work, social and emote, per rig.
 
 Each art ticket links section 5 and must pass the validator in `strictAssets` mode. Sizing comes from pilot #10's numbers. Opus 3 opens these, ordered so the factions in the first battle playtests (Gondor, Mordor orcs, Rohan, Uruk-hai) are complete first.
 
@@ -583,7 +591,7 @@ Each art ticket links section 5 and must pass the validator in `strictAssets` mo
 
 ## Open questions for the maintainer
 
-None open.
+1. **Do Olog-hai take formation slots?** Section 5c gives `olog` the Base and LOOSE sets only. If ologs fight in ranks (for example in Mordor's RIGID or ORGANIZED squads), they also need the formation sets and `specs/npc/performance.md` must list them. Default until answered: LOOSE, no formation slot.
 
 ## Maintainer decisions (PR #185)
 
@@ -592,10 +600,11 @@ None open.
 3. **Pilot #10** is rescoped to the PulseLib format with our bone and clip names, and it is the benchmark rig (sections 2b and 5a, ticket R0-2).
 4. **Defaults accepted:**
    - PulseLib is **not** bundled: its licence forbids redistribution without permission. It is a required external dependency unless the author agrees in writing (ticket R0-0).
-   - One shared `humanoid` rig covers hobbits and dwarves.
+   - ~~One shared `humanoid` rig covers hobbits and dwarves.~~ Superseded by decision 7.
    - Adaptive crowd detail is on by default.
    - PulseLib is bumped at most once per milestone, each time with a benchmark rerun.
    - Epic Fight compatibility is weapon-type data only: no `impact` or `armor_negation` tuning, and the optional armour files are dropped.
 5. **Half-trolls get their own `half_troll` rig and clip set** (section 5b and 5c).
 6. **Shader users and Flywheel:** accepted. Without a compat mod they fall back to normal PulseLib rendering. Iris Flywheel Compat or Colorwheel restores the boost, and this is documented in the FAQ and the playtest notes (section 8).
+7. **One rig per race** (maintainer, 2026-10-29): `man`, `elf`, `dwarf`, `hobbit`, `orc`, `olog`, `half_troll` and `troll` each get their own rig and clip set, replacing the shared `humanoid` rig. The bipeds keep one set of bone names, and a rig without a clip borrows it from its base rig (section 5b), so the content wave can still start with `man` and `orc` alone.
 7. **Reference PC:** Seth's specs are not shared, so the targets are calibrated against the mid-range reference PC (Ryzen 5 5600 or i5-12400, RTX 3060 or RX 6600, 16 GB). The harness compares results relative to the machine it runs on, so Seth's runs are still valid (section 3).

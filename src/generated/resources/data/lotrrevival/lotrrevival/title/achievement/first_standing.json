@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:general/first_standing"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.first_standing"
-  }
-}

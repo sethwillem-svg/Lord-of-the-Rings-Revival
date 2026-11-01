@@ -1,7 +1,0 @@
-{
-  "unit_trader": {
-    "hire_min": 50.0,
-    "kill_value": 5.0,
-    "trade_min": 50.0
-  }
-}

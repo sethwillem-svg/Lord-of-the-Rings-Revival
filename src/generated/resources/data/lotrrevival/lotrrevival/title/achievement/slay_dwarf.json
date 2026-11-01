@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:combat/slay_dwarf"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.slay_dwarf"
-  }
-}

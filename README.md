@@ -1,44 +1,34 @@
 # The Lord of the Rings: Revival
 
-An open-source Middle-earth mod for **NeoForge 1.21.1**, built from scratch. The goal is feature parity with the classic LOTR Mod (Legacy, 1.7.10) on modern Minecraft.
+> **Unofficial fan project.** Not affiliated with, endorsed by, or connected to the Tolkien Estate, Middle-earth
+> Enterprises, the authors of the original LOTR Mod, or the authors of the Middle-earth mod. Non-commercial.
 
-> **Unofficial fan project.** Not affiliated with, endorsed by, or connected to the Tolkien Estate, Middle-earth Enterprises, or the authors of the original LOTR Mod. Non-commercial.
+## Status: regrouping (2026-11-01)
 
-## Status
+The from-scratch NeoForge mod was cleared out. The plan now is an **add-on for the Middle-earth mod** (Jukoz and
+ObliviousCrab, NeoForge 1.21.1 backport branch): PulseLib rendering and our own models and animations for its NPCs,
+then a nemesis system and a node-based map. The earlier mod code, men, gear, model generator, plan and other specs
+are in git history (before this commit) if anything is needed again.
 
-Pre-alpha. Nothing playable yet. See [the plan](docs/plan.md) and the [milestones](https://github.com/sethwillem-svg/Lord-of-the-Rings-Revival/milestones).
+What is kept:
 
-| Gate | Target | What it means |
-| --- | --- | --- |
-| G1 | Week 3 | Core APIs frozen |
-| G2 | Week 8 | Playable early game (Shire to Bree) |
-| G3 | Week 16 | All biomes, races and factions |
-| G4 | Week 24 | Parity beta |
+| Path | What |
+| --- | --- |
+| `tools/anim-viewer/` | Mocap to Blockbench rig pipeline: browser viewer, retargeter, clip library (Quaternius UAL, CMU mocap, local Unity packs), Kimodo and HY-Motion generation, PulseLib export. See its README. |
+| `tools/anim/` | Python reference retargeter and the parity check against the viewer. |
+| `src/main/art/blockbench/` | 104 orc, olog and troll faction models (eight factions, plus low-detail copies), the muster-pack rig. |
+| `specs/core/rendering-animation.md` | PulseLib decision, one rig per race, clip names, animation LOD, render budgets. |
+| `specs/world/waypoints-travel.md` | Waypoints, fast travel and roads: the starting point for the node-based map. |
+| `specs/npc/npc-base.md`, `specs/npc/hiring-trading.md` | NPC behaviour a nemesis system would build on. |
 
-## Building
-
-Requires JDK 21.
+## The animation viewer
 
 ```sh
-./gradlew build          # compile and package
-./gradlew runData        # regenerate src/generated/resources
-./gradlew runClient      # launch a dev client
-./gradlew runGameTestServer
+./tools/anim-viewer/view.sh mordor_orc      # serve the repo and open the viewer on an orc
 ```
 
-## Tooling
+## Licences
 
-See [docs/tooling.md](docs/tooling.md). Label an issue `claude` to have a cloud agent implement it.
-
-## Contributing
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md). AI agents must read [AGENTS.md](AGENTS.md) first.
-
-**No code or assets from the original LOTR Mod (Legacy or Renewed) may enter this repo.** They are All Rights Reserved. The original mod is used only as a behavior reference, through written specs in [`specs/`](specs/).
-
-## License
-
-- **Code:** [GNU LGPL v3.0](COPYING.LESSER) (which builds on the [GPL v3.0](LICENSE)).
-- **Assets** (textures, models, sounds, structures, lang text): [CC BY-NC-SA 4.0](ASSETS_LICENSE).
-- **Bundled libraries:** [NovoAtlas](https://github.com/TheDeathlyCow/novoatlas) (LGPL-3.0, by TheDeathlyCow) is included unmodified as a separate jar inside our jar. See [NOTICE](NOTICE).
-- Tolkien's names, places and characters are not covered by either license and belong to their respective owners.
+Code: LGPL-3.0 (`LICENSE`, `COPYING.LESSER`). Original art: `ASSETS_LICENSE`. Third-party notices: `NOTICE`.
+The Middle-earth mod is All Rights Reserved: an add-on may depend on it, but its code and assets are never copied
+into this repo.

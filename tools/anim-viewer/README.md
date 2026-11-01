@@ -91,9 +91,12 @@ blender -b -P tools/anim-viewer/fbx_to_bvh.py -- ~/Downloads/SomePack --race orc
 
 Each animation take becomes `library/local/orc.<take>.bvh` (Y up, joints renamed to the Mixamo names the retargeter reads; Mixamo, Unity humanoid, 3ds Max Biped and Unreal naming are understood). Rename a file to `orc.<clip key>.bvh` to give it a spec key; files without a race prefix show for every race. BVH files can go through the same script to rename their joints. Check each pack's licence before baking its clips into the mod: whether animations retargeted into a shipped open-source mod count as redistribution is the pack author's call.
 
-## Gear: generated weapons and armour
+## Gear panel
 
-The **Gear** panel merges weapons and armour from `src/main/art/blockbench/gear/` (built by `node tools/model-gen/build.mjs gear`, listed in `gear/index.json`) onto the loaded model with `gear.js`: **Weapon** goes on `right_item` (grip at the bone), **Off hand** (shields, bows) on `left_item`, **Armour** puts each faction set's pieces on the anchor bones (boot armour on the shin, forearm armour on the forearm, so they bend at the joints). Sets marked fitted (Gondor) load the copy built for the open model (`gear/armour/<set>/<model>.bbmodel`) and fall back to the generic size; the panel says which. Retargeting, weapon IK, blade angles and edge-first then use the real weapon. Needs the viewer served from the repo (`animview`). The model picker also lists the faction men in `man/<faction>/`.
+The **Gear** panel merges weapons and armour listed in `src/main/art/blockbench/gear/index.json` onto the loaded
+model with `gear.js` (weapon on `right_item`, off-hand item on `left_item`, armour groups on the anchor bones). The
+gear generator that produced those files was removed in the 2026-11-01 clear-out (it is in git history), so the
+panel stays empty until gear is added again.
 
 ## Generate straight into the viewer
 
@@ -152,7 +155,7 @@ It installs Kimodo (the `hugging-apps/kimodo-motion` app) and HY-Motion in separ
 ## Input
 
 - **BVH**: the clip library's UAL clips (`ual_to_bvh.js` output), CMU clips (`LowerBack`/`Spine`/`Spine1` read as the spine, `Head_End` as the head top), FBX conversions from `fbx_to_bvh.py`, Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), HY-Motion output converted by `hymotion_to_bvh.py`, or a Mixamo-style skeleton (`mixamorig:` prefixes are ignored; `LeftUpLeg` is the thigh, and without eye joints the head takes its side axis from the shoulders), for example the BVH export of the [HY-Motion Mixamo Space](https://huggingface.co/spaces/Yosun/hy-motion-mixamo). Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
-- **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Generated base men from `tools/model-gen` (`src/main/art/blockbench/man/`) use the `spec-biped` map and load directly (`animview man_base_7`). Embedded textures are used; models with external textures render grey.
+- **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Embedded textures are used; models with external textures render grey.
 
 ## Rig maps (`rigs.js`)
 
