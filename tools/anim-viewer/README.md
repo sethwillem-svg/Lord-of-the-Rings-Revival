@@ -19,7 +19,7 @@ Needs Git, Python 3 and a browser. From the repo root, run once:
 ./tools/anim-viewer/view.sh
 ```
 
-It asks once whether to add the `animview` and `animgen` commands to your shell (answer Y; `animview setup` adds them later if you said no), then opens the viewer in a new browser tab. After that, `animview` works from anywhere. (Not `animview`: on most Linux systems that is vim's read-only mode. Older `animview`/`gen` aliases from this tool are renamed on the next run.)
+It asks once whether to add the `animview` and `animgen` commands to your shell (answer Y; `animview setup` adds them later if you said no), then opens the viewer in a new browser tab. After that, `animview` works from anywhere. (Not `view`: on most Linux systems that is vim's read-only mode. Older `view`/`gen` aliases from this tool are renamed on the next run.)
 
 - `animview` makes `<repo>/clips` (git-ignored), starts a local web server for the repo if one is not running, and opens the viewer in your default browser (Firefox works) watching that folder with `mordor_orc` loaded. `animview gundabad_olog_hai` opens with another unit; `animview stop` stops the server.
 - `animgen "A person ..." --count 5` generates into `<repo>/clips`, and each take appears in the viewer as it lands.
