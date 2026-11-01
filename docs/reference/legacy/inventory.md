@@ -1,22 +1,38 @@
-# Legacy reference: block inventory
+# Legacy reference: content inventory (everything but items)
 
 Reference notes on the content of LOTR Mod Legacy 36.15 (Mevans, All Rights Reserved). Written in our own words for clean-room spec writing. Implementers may read these notes; never the original.
 
-Scope: every named block Legacy has, grouped by region and type, to size our block and texture backlog. Names are plain lowercase descriptions (proper names kept), not the original's ids. Counts come from the jar's file listing and block names only; no textures were opened, extracted or copied. Every block we add gets **original** art: this list says *what* exists, never *how* it looked.
+Scope: everything Legacy ships except items: every named block by region and type, then creatures and NPC skins, armour, capes, shields, placed-object models, screens, map, effects, sky, sounds, structure scans and text content. Use it to size our block, art, audio and writing backlog. Items are left for a later note. Names are plain lowercase descriptions (proper names kept), not the original's ids. Counts come from the jar's file listing and block names only; no textures, sounds or text were opened, extracted or copied. Everything we add is **original**: this list says *what* exists, never *how* it looked, sounded or read.
 
-## Totals
+## Summary
+
+| Area | Count |
+| --- | --- |
+| Named blocks | 1,329 (523 slabs, stairs, walls, fences) |
+| Block textures | 1,679 |
+| Creature and NPC skins | 577 |
+| Worn armour textures | 171 (incl. 20 mount armour) |
+| Capes / shields | 26 / 64 |
+| Placed-object model textures | 74 |
+| Screen, map, effect, sky and weather textures | 41 / 6 / 18 / 7 / 4 |
+| Sounds | 190 |
+| Structure scans | 75 |
+| Speech files / name lists / lore texts | 1,842 / 71 / 114 |
+| Item textures (not covered here) | 1,222 |
+
+## Blocks: totals
 
 - **1,329 named blocks.** 523 of them are slabs, stairs, walls, fences and fence gates. They are separate blocks to register but reuse their base block's texture.
 - **1,679 block texture files** behind about 808 textured blocks. The difference is mostly connected-texture pieces for gates and pillars, plus top/side/lit faces. We can simplify connected textures.
 - Some blocks render with models instead of block textures (chests, banners, weapon racks), so they need model art rather than a 16x16 tile.
 - For comparison, Legacy also has 1,222 item textures; see the item backlog separately.
 
-## How to read it
+## Blocks: how to read it
 
 - Region is assigned from the culture or material in the block's name. Trees, crops, gems, dyed glass and clay, and plain stone used across the map are under **General**. A few placements are judgement calls: cargon (red rock) and luigon (blue rock) are general, and some plants could belong to a region.
 - "Count" includes every colour or wood variant of a type; the list shows each distinct name once.
 
-## By region
+## Blocks by region
 
 | Region | Named blocks | Of which slabs, stairs, walls, fences |
 | --- | --- | --- |
@@ -44,7 +60,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | [General (shared trees, crops, gems, dyed and plain blocks)](#general-shared-trees-crops-gems-dyed-and-plain-blocks) | 688 | 237 |
 | **Total** | **1329** | **523** |
 
-## The Shire
+### The Shire
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -60,13 +76,13 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Plants and flowers | 1 | shire heather |
 | Utility and furniture | 1 | hobbit oven |
 
-## Bree-land
+### Bree-land
 
 | Type | Count | Blocks |
 | --- | --- | --- |
 | Crafting tables | 1 | bree-land crafting table |
 
-## Arnor and the Dúnedain of the North
+### Arnor and the Dúnedain of the North
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -77,7 +93,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Crafting tables | 1 | ranger crafting table |
 | Bricks and stone | 4 | arnor brick, carved arnor brick, cracked arnor brick, mossy arnor brick |
 
-## Angmar
+### Angmar
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -88,13 +104,13 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Crafting tables | 1 | angmar crafting table |
 | Bricks and stone | 5 | angmar brick, cracked angmar brick, gulduril angmar brick, gulduril cracked angmar brick, snowy angmar brick |
 
-## Gundabad and the Misty Mountains
+### Gundabad and the Misty Mountains
 
 | Type | Count | Blocks |
 | --- | --- | --- |
 | Crafting tables | 1 | gundabad crafting table |
 
-## Lindon and Rivendell (High Elves)
+### Lindon and Rivendell (High Elves)
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -108,7 +124,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Bricks and stone | 6 | carved high elven brick, cracked high elven brick, gold-trimmed high elven brick, high elven brick, mossy high elven brick, silver-trimmed high elven brick |
 | Lighting | 2 | high elven chandelier, high elven torch |
 
-## Lothlórien (Galadhrim)
+### Lothlórien (Galadhrim)
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -130,7 +146,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Utility and furniture | 1 | mallorn ladder |
 | Other | 1 | mallorn box |
 
-## Dol Guldur (southern Mirkwood)
+### Dol Guldur (southern Mirkwood)
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -142,7 +158,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Bricks and stone | 6 | carved dol guldur brick, cracked dol guldur brick, dol guldur brick, gulduril cracked dol guldur brick, gulduril dol guldur brick, mossy dol guldur brick |
 | Other | 1 | khamûl's fire |
 
-## Mirkwood and the Woodland Realm
+### Mirkwood and the Woodland Realm
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -159,7 +175,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Leaves and vines | 1 | mirk-oak leaves |
 | Saplings | 1 | mirk-oak sapling |
 
-## Dale and Esgaroth
+### Dale and Esgaroth
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -170,7 +186,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Crafting tables | 1 | dalish crafting table |
 | Bricks and stone | 4 | carved dalish brick, cracked dalish brick, dalish brick, mossy dalish brick |
 
-## Dwarves (Durin's folk and Blue Mountains)
+### Dwarves (Durin's folk and Blue Mountains)
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -187,13 +203,13 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Plants and flowers | 1 | dwarfwort |
 | Utility and furniture | 1 | dwarven forge |
 
-## Dunland
+### Dunland
 
 | Type | Count | Blocks |
 | --- | --- | --- |
 | Crafting tables | 1 | dunlending crafting table |
 
-## Rohan
+### Rohan
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -207,14 +223,14 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Bricks and stone | 4 | carved rohan brick, rohan brick, rohan rock, smooth rohan rock |
 | Plants and flowers | 1 | simbelmynë |
 
-## Fangorn and the Ents
+### Fangorn and the Ents
 
 | Type | Count | Blocks |
 | --- | --- | --- |
 | Lighting | 1 | ent jar |
 | Other | 2 | fangorn's beard, huorn leaf |
 
-## Gondor
+### Gondor
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -232,7 +248,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Bricks and stone | 15 | carved black gondor brick, carved gondor brick, cracked gondor brick, cracked gondor cobblebrick, dol amroth brick, gondor brick, gondor rock, gulduril cracked gondor brick, gulduril gondor brick, gulduril mossy gondor brick, gulduril númenórean brick, mossy gondor brick, mossy gondor cobblebrick, númenórean brick, smooth gondor rock |
 | Other | 4 | beacon of gondor, blackroot, gondor cobblebrick, lebethron casket |
 
-## Mordor and Minas Morgul
+### Mordor and Minas Morgul
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -252,13 +268,13 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Utility and furniture | 4 | obsidian taurethrim dart trap, orc bomb, orc chain, orc forge |
 | Other | 7 | mordor scrub, morgul-flowers, obsidian stalactite, obsidian stalagmite, orc plating, rusted orc plating, web of ungoliant |
 
-## Dead Marshes
+### Dead Marshes
 
 | Type | Count | Blocks |
 | --- | --- | --- |
 | Other | 2 | dead marsh plant, quagmire |
 
-## Rhûn and Dorwinion
+### Rhûn and Dorwinion
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -270,7 +286,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Crafting tables | 2 | dorwinion crafting table, rhûnic crafting table |
 | Bricks and stone | 13 | carved dorwinion brick, carved red rhûnic brick, carved rhûnic brick, cracked dorwinion brick, cracked rhûnic brick, dorwinion brick, flowery dorwinion brick, flowery rhûnic brick, gold-trimmed rhûnic brick, mossy dorwinion brick, mossy rhûnic brick, red rhûnic brick, rhûnic brick |
 
-## Near Harad and Umbar
+### Near Harad and Umbar
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -289,7 +305,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Utility and furniture | 1 | ancient haradric chest |
 | Other | 2 | flame of harad, harad daisy |
 
-## Far Harad and the jungles
+### Far Harad and the jungles
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -310,7 +326,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Utility and furniture | 2 | golden taurethrim dart trap, taurethrim dart trap |
 | Other | 3 | infested termite mound, jungle sprout, termite mound |
 
-## Utumno
+### Utumno
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -321,7 +337,7 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Bricks and stone | 7 | burning utumno brick, fiery obsidian utumno brick, fire utumno brick, glowing ice utumno brick, ice utumno brick, obsidian utumno brick, utumno entrance brick |
 | Other | 3 | fire utumno tiling, ice utumno tiling, obsidian utumno tiling |
 
-## General (shared trees, crops, gems, dyed and plain blocks)
+### General (shared trees, crops, gems, dyed and plain blocks)
 
 | Type | Count | Blocks |
 | --- | --- | --- |
@@ -347,3 +363,109 @@ Scope: every named block Legacy has, grouped by region and type, to size our blo
 | Utility and furniture | 24 | alloy forge, barrel, bronze bird cage, copper treasure pile, elven forge, elven rope, gold treasure pile, golden bird cage, iron bird cage, millstone, mob spawner, pressure plate, rope, silver bird cage, silver treasure pile, table of command, unsmeltery, weapon rack, wooden bird cage |
 | Other | 21 | button, cargon, drystone, grapevine post, ice stalactite, ice stalagmite, luigon, remains, smooth cargon, smooth luigon, stalactite, stalagmite, sunfruit, troll totem base, troll totem body, troll totem head |
 
+## Creatures and NPCs (entity skins)
+
+577 skin textures across 54 groups. Numbers in brackets are how many skin variants exist; NPCs have many face and outfit variants each.
+
+| Group | Skins | Variants |
+| --- | --- | --- |
+| aurochs | 4 | (base) (4) |
+| balrog | 3 | (base) (1), balrog (1), balrog bright (1) |
+| bandit | 11 | bandit (6), harad (5) |
+| barrow wight | 1 | wight (1) |
+| bear | 3 | (base) (3) |
+| bird | 23 | common (9), crebain (1), crow (1), far harad (9), gorcrow (1), magpie (1), seagull (1) |
+| boar | 2 | (base) (2) |
+| bree | 54 | (base) (8), bree female (9), bree male (30), headwear female (1), ruffian (5), ruffian hood (1) |
+| butterfly | 12 | common (5), jungle (5), lorien (1), mirkwood (1) |
+| camel | 4 | (base) (4) |
+| char | 9 | (base) (9) |
+| crocodile | 1 | (base) (1) |
+| dale | 10 | (base) (2), dale female (2), dale male (3), dale soldier (3) |
+| deer | 2 | (base) (2) |
+| dikdik | 3 | (base) (3) |
+| dorwinion | 12 | dorwinion female (4), dorwinion male (4), outfit (4) |
+| dunland | 12 | (base) (1), berserker (1), dunlending female (3), dunlending male (4), outfit (3) |
+| dwarf | 18 | (base) (5), blue mountains female (3), blue mountains male (3), dwarf female (3), dwarf male (3), wicked male (1) |
+| elf | 71 | (base) (12), dorwinion female (3), dorwinion male (3), galadhrim female (3), galadhrim male (4), high elf female (11), high elf male (18), jazz female (3), jazz male (3), jazz outfit (1), tormented (3), wood elf female (3), wood elf male (4) |
+| elk | 4 | (base) (1), elk (3) |
+| ent | 5 | (base) (5) |
+| fish | 6 | clownfish (1), common (4), salmon (1) |
+| flamingo | 2 | (base) (2) |
+| gemsbok | 1 | (base) (1) |
+| giraffe | 2 | (base) (2) |
+| gondor | 47 | (base) (8), gondor female (14), gondor male (10), gondor soldier (6), headwear female (2), outfit (1), ranger (3), swan knight (3) |
+| half troll | 6 | (base) (3), half troll (3) |
+| hillman | 8 | hillman female (4), hillman male (3), outfit (1) |
+| hobbit | 38 | (base) (6), child female (3), child male (3), hobbit female (13), hobbit male (13) |
+| huorn | 5 | face (5) |
+| kine araw | 2 | (base) (2) |
+| lion | 3 | (base) (3) |
+| midge | 1 | (base) (1) |
+| moredain | 14 | moredain female (4), moredain male (5), outfit (5) |
+| near harad | 45 | (base) (3), haradrim female (3), haradrim male (5), harnedor female (3), harnedor male (5), harnedor outfit (3), harnedor warrior (5), nomad female (3), nomad hat (2), nomad male (5), renegade hood (1), slave gondor male (2), slave morwaith male (1), slave near harad male (2), slave taurethrim male (1), warrior (1) |
+| nurn | 7 | slave female (3), slave male (4) |
+| orc | 14 | black uruk (3), orc (8), uruk hai (3) |
+| rabbit | 5 | (base) (5) |
+| ranger | 9 | (base) (1), ranger female (3), ranger male (5) |
+| rhino | 2 | (base) (2) |
+| rhun | 11 | (base) (1), easterling female (5), easterling male (5) |
+| rohan | 29 | (base) (7), rohan female (7), rohan male (6), shieldmaiden (3), warrior (6) |
+| scorpion | 2 | (base) (2) |
+| scrap trader | 2 | (base) (2) |
+| spider | 5 | (base) (5) |
+| swan | 1 | (base) (1) |
+| tauredain | 12 | outfit (4), shaman outfit (1), tauredain female (3), tauredain male (4) |
+| termite | 1 | (base) (1) |
+| troll | 18 | (base) (6), mirk troll (1), mirk troll armor (1), mountain troll (1), olog hai (1), olog hai armor (2), snow troll (1), troll (1), utumno (4) |
+| warg | 8 | (base) (8) |
+| white oryx | 3 | (base) (3) |
+| wraith | 2 | (base) (2) |
+| zebra | 1 | (base) (1) |
+
+## Worn armour
+
+151 worn-armour layer textures covering 68 sets, plus 20 mount armour textures (horse, warg and other mount barding). Sets: angmar, arnor, black numenorean, black uruk, blackroot, blue dwarven, bone, bronze, corsair, dale, dol amroth, dol guldur, dorwinion, dorwinion elf, dunlending, dwarven, dwarven gold, dwarven mithril, dwarven silver, fur, galadhrim, galvorn, gambeson dale, gambeson dol amroth, gambeson dol amroth legs, gambeson gondor, gambeson lebennin, gemsbok, gondolin, gondor, gulf harad, gundabad uruk, half troll, harad nomad, harad robes, harad turban, harnedor, hat, high elven, hithlain, jacket lamedon, kaftan, lamedon, lossarnach, mithril, mordor, moredain, moredain lion armor, morgul, near harad, partyhat, pelargir, pinnath gelin, ranger, ranger ithilien, rhun, rhun gold, rivendell, rohan, rohan marshal, tauredain, tauredain gold, umbar, uruk, uruk helmet, utumno, wood elven, wood elven scout.
+
+## Capes
+
+26 capes: blackroot, dale, dorwinion captain, dorwinion elf captain, dunlending berserker, galadhrim, galadhrim trader, gandalf, gondor, gondor tower guard, gulf, harad champion, high elf, lamedon, lossarnach, near harad, pelargir, pinnath gelin, ranger, ranger ithilien, rivendell, rivendell trader, rohan, santa, taurethrim, wood elf.
+
+## Player shields (cosmetic)
+
+64 shields: 38 faction shields (one per faction), 4 achievement tiers (bronze, silver, gold, mithril), and 22 special or event shields (contests, supporters, team roles).
+
+## Model textures for placed objects
+
+74 textures for things drawn as 3D models rather than block tiles (placed drinking vessels, chests, banners, weapon racks and so on). ale horn, ale horn gold, armor stand, arrow poisoned, banner (43), beacon, boss trophy (2), chest (5), crossbow bolt, glass bottle, goblet copper, goblet gold, goblet silver, goblet wood, kebab (4), mug, mug clay, skull cup, skull staff, troll totem, unsmeltery (2), weapon rack, wine glass. Banners are 43 faction and pattern designs.
+
+## Screens and HUD
+
+41 GUI textures: achievements – icons, achievements – page, alignment, anvil, armor stand, attack meter, banner edit, barrel – barrel, barrel – brewing, beacon, branding iron, coin exchange, dale cracker, effects, factions, factions full, fellowships, forge, horn select, menu icons, menu overlay, message, millstone, mob spawner, npc – gollum, npc – hired, npc – hired farmer, npc – hired warrior, npc – trade, npc – unit trade, npc – unit trade buttons, oven, pouch, pouch with chest, quest – miniquest, quest – red book, quest – red book miniquests, quest – tracker, squadron item, unsmelter, widgets.
+
+## Map
+
+6 map textures: the world map, its overlay, the map screen frame, terrain shading, conquest overlay and one easter-egg map. **Ours must be our own drawing** (see docs/tooling.md).
+
+## Effects and overlays
+
+17 textures: burn overlay, compass, elvenportal 0, elvenportal 1, elvenportal overlay, frost overlay, gulduril glow, mist overlay, morgulportal overlay, particles, particles2, portal, portal overlay, portal writing, utumno portal light circle, water particles, wight.
+
+## Sky and weather
+
+7 sky textures (sun, moon, Eärendil star, clouds, three night skies) and 4 weather textures (ash, rain, sandstorm, snow).
+
+## Sounds
+
+190 sound files: ambient – terrain (3), ambient – weather (9), aurochs (5), bear (5), bird (16), bird – crow (5), bird – seagull (4), block – gate (4), block – plate (1), block – treasure (7), crocodile (3), deer (4), dwarf (4), elf (1), elf – male (3), elk (4), ent (1), ent – mallorn (2), event (7), flamingo (5), gollum (5), half troll (5), item (12), lion (3), midges (3), misc (1), music (1), orc (5), rabbit (5), rhino (3), swan (1), troll (7), warg (18), wight (23), wraith (2), zebra (3). Music is not bundled (players add their own).
+
+## Structure scans
+
+75 hand-built structure pieces stored as scans (most other structures are generated in code; see structures.md): black uruk fort, bree barn, bree garden, bree gatehouse, bree house, bree inn, bree market, bree office, bree ruffian house, bree smithy, bree stable, bree well, corsair camp cage, corsair camp centre, corsair cove, dunland fort, dunland house, dunland tavern, gulf altar, gulf bazaar, gulf farm, gulf house, gulf pasture, gulf pyramid, gulf smithy, gulf tavern, gulf totem, gulf tower, gulf war camp, harad pyramid, harad ruined fort, harnedor farm, harnedor fort, harnedor house, harnedor house ruined, harnedor market, harnedor pasture, harnedor smithy, harnedor stables, harnedor tavern, harnedor tavern ruined, harnedor tower, hobbit burrow, mumak skeleton, nomad bazaar, nomad tent, nomad tent chieftain, nomad tent large, southron barracks, southron bazaar, southron farm, southron fort, southron fortress gate, southron house, southron mansion, southron pasture, southron smithy, southron stable, southron statue base, southron statue bird, southron statue mumak, southron statue snake, southron tavern, southron tower, southron town corner, southron town gate, southron training, southron well, taurethrim farm, taurethrim house, taurethrim smithy, umbar statue pharazon, umbar statue pillar, umbar statue snake, warg pit.
+
+## Text content (counts only; we write our own)
+
+- **NPC speech:** 1842 speech files, 1351 of them for mini-quests. By faction: angmar (14), blue dwarf (13), bree (33), char (15), dale (15), dol guldur (9), dorwinion (27), dunlending (7), dwarf (16), ent (5), galadhrim (15), gondor (40), gundabad (9), half troll (7), high elf (10), hobbit (16), isengard (9), misc (6), mordor (15), moredain (6), near harad (98), ranger north (11), rhun (18), rivendell (14), rohan (23), special (5), tauredain (16), troll (4), utumno (3), wood elf (11).
+- **Name lists:** 71 name lists for NPC names by culture.
+- **Lore books:** 114 readable lore texts (letters, diaries, poems, recipes, histories) found in structure loot.
+- **Languages:** 22 translations, including a Quenya one.

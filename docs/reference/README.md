@@ -12,7 +12,7 @@ The original mod is All Rights Reserved. These notes were written by pod leads (
 | [brewing.md](legacy/brewing.md) | Barrel, strength tiers, 29 drinks, vessels, drunkenness | Core |
 | [biomes.md](legacy/biomes.md) | 169 biomes by region: climate, height, trees, spawns, invasions | World |
 | [structures.md](legacy/structures.md) | Villages, forts, camps, ruins, fixed placements, loot | World |
-| [blocks.md](legacy/blocks.md) | 1,329 named blocks (1,679 textures) by region and type, for the block and art backlog | Core |
+| [inventory.md](legacy/inventory.md) | Everything but items: 1,329 blocks by region, 577 mob skins, armour, GUI, sounds, structures, text counts | Core |
 | [world-map-travel.md](legacy/world-map-travel.md) | Scale, portals, 274 waypoints, fast travel, 56 roads, calendar | World |
 | [npcs.md](legacy/npcs.md) | Shared NPC behavior, every NPC type by faction | NPCs |
 | [hiring-units.md](legacy/hiring-units.md) | Hiring costs, unit lists, commands, leveling | NPCs |
