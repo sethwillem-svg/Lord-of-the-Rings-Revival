@@ -8,16 +8,17 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
-import net.sevenstars.middleearth.entity.EntitiesME;
 import net.sevenstars.middleearth.entity.npcs.NpcEntity;
-import net.sevenstars.middleearth.entity.npcs.initializer.NpcEntityInitializer;
+import net.sevenstars.middleearth.entity.npcs.initializer.NpcEntityBuilder;
 import net.sevenstars.middleearth.registries.DynamicRegistriesME;
 import net.sevenstars.middleearth.resources.datas.npc_types.NpcType;
 
@@ -64,17 +65,16 @@ public final class BenchCommands {
         Vec3 fwd = Vec3.directionFromRotation(0, yaw), right = new Vec3(-fwd.z, 0, fwd.x);
         int cols = Mth.ceil(Math.sqrt(count)), made = 0;
         for (int i = 0; i < count; i++) {
-            NpcEntity npc = EntitiesME.NPC.create(level);
-            if (npc == null) break;
             int row = i / cols, col = i % cols;
             Vec3 p = origin.add(fwd.scale(4 + row * 1.5)).add(right.scale((col - (cols - 1) / 2.0) * 1.5));
-            npc.moveTo(p.x, level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, Mth.floor(p.x), Mth.floor(p.z)), p.z,
-                    yaw + 180, 0);
+            int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(p.x), Mth.floor(p.z));
+            ResourceLocation id = type != null ? type : all.get(level.random.nextInt(all.size()));
+            // Middle-earth's own builder: sets the type, then prepares gear and skin textures
+            NpcEntity npc = new NpcEntityBuilder(level, BlockPos.containing(p.x, y, p.z)).withNpcType(id).build();
+            if (npc == null || npc.isRemoved()) continue;
+            npc.moveTo(p.x, y, p.z, yaw + 180, 0);
             npc.setYHeadRot(yaw + 180);
             npc.setYBodyRot(yaw + 180);
-            npc.prepareNpcIdentifier(type != null ? type : all.get(level.random.nextInt(all.size())));
-            NpcEntityInitializer.initializeNpcEntity(level, npc);
-            if (npc.isRemoved()) continue;
             npc.setNoAi(!ai);
             npc.setPersistenceRequired();
             npc.addTag(TAG);
