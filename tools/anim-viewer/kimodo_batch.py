@@ -87,11 +87,11 @@ def ensure_gradio_client():
         return Client
     except ImportError:
         if ask('gradio_client is not installed. Install it now with pip? [Y/n] ').lower().startswith('n'):
-            sys.exit('gen needs gradio_client: pip install gradio_client')
+            sys.exit('animgen needs gradio_client: pip install gradio_client')
         if subprocess.run([sys.executable, '-m', 'pip', 'install', '--user', 'gradio_client']).returncode:
             sys.exit('pip could not install it here (some Linux systems block pip outside a virtual environment). '
                      'Use: python3 -m venv ~/.venvs/gen && ~/.venvs/gen/bin/pip install gradio_client, '
-                     'then run gen with ~/.venvs/gen/bin/python.')
+                     'then run kimodo_batch.py with ~/.venvs/gen/bin/python.')
         import site, importlib
         importlib.reload(site)
         from gradio_client import Client
@@ -208,7 +208,7 @@ def main():
     ap.add_argument('--prompts', help='prompt file: one prompt, or `clip.key | seconds | prompt`, per line (see prompts/)')
     ap.add_argument('--only', nargs='+', help='with --prompts: only clip keys starting with these, e.g. attack move.walk')
     ap.add_argument('--dry-run', action='store_true', help='list what would be generated, then stop')
-    ap.add_argument('--out', default=DEFAULT_OUT, help=f'folder to write .bvh files into (default {DEFAULT_OUT}, what `view` watches)')
+    ap.add_argument('--out', default=DEFAULT_OUT, help=f'folder to write .bvh files into (default {DEFAULT_OUT}, what `animview` watches)')
     ap.add_argument('--seeds', nargs='+', type=int, help='exact seeds to generate')
     ap.add_argument('--count', type=int, default=1, help='takes per prompt, seeds 1..COUNT (ignored with --seeds)')
     ap.add_argument('--duration', type=float, default=3.0, help='seconds per clip (max 10); prompt-file lines can set their own')

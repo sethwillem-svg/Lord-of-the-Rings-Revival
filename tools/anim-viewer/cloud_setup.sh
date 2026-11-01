@@ -7,7 +7,7 @@
 #   bash tools/anim-viewer/cloud_setup.sh kimodo        # or only one: kimodo | hymotion
 #
 # Then (new shell, or `source ~/.bashrc`):
-#   kimodo-up      start Kimodo (about 17 GB VRAM), then: gen --space http://localhost:7860 --prompts tools/anim-viewer/prompts/orc.txt --count 3
+#   kimodo-up      start Kimodo (about 17 GB VRAM), then: animgen --space http://localhost:7860 --prompts tools/anim-viewer/prompts/orc.txt --count 3
 #   kimodo-down    stop it (free the GPU for HY-Motion)
 #   gen-hy --prompts tools/anim-viewer/prompts/orc.txt --count 3      HY-Motion (about 26 GB VRAM)
 # Clips land in <repo>/clips and show up in the viewer link printed at the end. On a 32 GB card run one model at a time.
@@ -47,7 +47,7 @@ if [ "$WHICH" != hymotion ]; then
 cd "$WORK/kimodo-motion" && GRADIO_SERVER_PORT=7860 nohup "$WORK/venv-kimodo/bin/python" app.py > "$WORK/kimodo.log" 2>&1 &
 echo "Kimodo starting (log: $WORK/kimodo.log) ..."
 for _ in \$(seq 1 360); do
-  grep -q "Running on" "$WORK/kimodo.log" 2>/dev/null && { echo "Kimodo ready: gen --space http://localhost:7860 ..."; exit 0; }
+  grep -q "Running on" "$WORK/kimodo.log" 2>/dev/null && { echo "Kimodo ready: animgen --space http://localhost:7860 ..."; exit 0; }
   pgrep -f "$WORK/venv-kimodo/bin/python app.py" >/dev/null || { echo "Kimodo stopped while starting:"; tail -30 "$WORK/kimodo.log"; exit 1; }
   sleep 5
 done
@@ -68,7 +68,7 @@ if [ "$WHICH" != kimodo ]; then
   (cd "$WORK/HY-Motion-1.0" && hfdl tencent/HY-Motion-1.0 --include "HY-Motion-1.0/*" --local-dir ckpts/tencent)
   cat > "$BIN/gen-hy" <<EOF
 #!/usr/bin/env bash
-# gen with the local HY-Motion install (text encoders download on the first run)
+# animgen with the local HY-Motion install (text encoders download on the first run)
 exec python3 "$REPO/tools/anim-viewer/kimodo_batch.py" --backend hymotion --hy-repo "$WORK/HY-Motion-1.0" --hy-python "$WORK/venv-hy/bin/python" "\$@"
 EOF
 fi
@@ -78,8 +78,8 @@ grep -q "# lotr-anim-viewer-cloud" "$HOME/.bashrc" 2>/dev/null || cat >> "$HOME/
 
 # lotr-anim-viewer-cloud
 export PATH="$BIN:\$PATH"
-alias view="VIEW_BIND=0.0.0.0 VIEW_BROWSER=true $REPO/tools/anim-viewer/view.sh"
-alias gen="python3 $REPO/tools/anim-viewer/kimodo_batch.py"
+alias animview="VIEW_BIND=0.0.0.0 VIEW_BROWSER=true $REPO/tools/anim-viewer/view.sh"
+alias animgen="python3 $REPO/tools/anim-viewer/kimodo_batch.py"
 EOF
 mkdir -p "$HOME/.config/lotr-anim-viewer" && touch "$HOME/.config/lotr-anim-viewer/no-commands"   # view.sh: don't ask
 
@@ -87,8 +87,8 @@ say "Viewer"
 VIEW_BIND=0.0.0.0 VIEW_BROWSER=true "$REPO/tools/anim-viewer/view.sh" </dev/null
 echo
 echo "Done. Open a new shell (or: source ~/.bashrc), then:"
-if [ "$WHICH" != hymotion ]; then echo "  kimodo-up && gen --space http://localhost:7860 --prompts tools/anim-viewer/prompts/orc.txt --count 3"; fi
+if [ "$WHICH" != hymotion ]; then echo "  kimodo-up && animgen --space http://localhost:7860 --prompts tools/anim-viewer/prompts/orc.txt --count 3"; fi
 if [ "$WHICH" != kimodo ]; then echo "  gen-hy --prompts tools/anim-viewer/prompts/orc.txt --count 3      (run kimodo-down first on a 32 GB card)"; fi
-echo "  gen ... --dry-run     to preview a batch;  view stop   to stop the viewer server"
+echo "  animgen ... --dry-run     to preview a batch;  animview stop   to stop the viewer server"
 echo "Open the viewer link above in your own browser (RunPod: expose HTTP port 8000 on the pod). Export good takes from there."
 echo "Stop the machine when you are done: you pay for every hour it runs."

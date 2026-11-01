@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Open the mocap rig viewer watching <repo>/clips (any browser).
 #
-#   view                      start (or reuse) the server and open the viewer with mordor_orc
-#   view gundabad_olog_hai    same, with another unit from src/main/art/blockbench (name without .bbmodel)
-#   view stop                 stop the server
-#   view setup                (re)add the `view` and `gen` commands to your shell
+#   animview                      start (or reuse) the server and open the viewer with mordor_orc
+#   animview gundabad_olog_hai    same, with another unit from src/main/art/blockbench (name without .bbmodel)
+#   animview stop                 stop the server
+#   animview setup                (re)add the `animview` and `animgen` commands to your shell
 #
-# First run from the repo (./tools/anim-viewer/view.sh) offers to add the `view` and `gen` commands for you.
+# First run from the repo (./tools/anim-viewer/view.sh) offers to add the `animview` and `animgen` commands for you.
+# (Not `view`/`gen`: `view` is vim's read-only mode on most Linux systems.)
 # Port: VIEW_PORT (default 8000). VIEW_BIND=0.0.0.0 serves other machines too (cloud GPU). Browser: VIEW_BROWSER (default: your default browser via xdg-open or open).
 set -euo pipefail
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
@@ -15,16 +16,23 @@ BIND="${VIEW_BIND:-127.0.0.1}"   # 0.0.0.0 to reach the viewer from another mach
 
 RC="$HOME/.bashrc"; [ "${SHELL##*/}" = "zsh" ] && RC="$HOME/.zshrc"
 MARK="$HOME/.config/lotr-anim-viewer/no-commands"
-setup_commands() {   # add `view` and `gen` aliases to the shell config, once
-  grep -q "# lotr-anim-viewer" "$RC" 2>/dev/null && { [ "${1:-}" = force ] && echo "Commands are already in $RC."; return 0; }
+setup_commands() {   # add `animview` and `animgen` aliases to the shell config, once
+  if grep -q '^# lotr-anim-viewer$' "$RC" 2>/dev/null; then   # replace the old `view`/`gen` aliases (view clashes with vim)
+    sed -i.bak '/^# lotr-anim-viewer$/,/^alias gen=/d' "$RC"
+    add_aliases; echo "Renamed the commands to animview and animgen (view is vim's). Run: source $RC"; return 0
+  fi
+  grep -q "alias animview=" "$RC" 2>/dev/null && { [ "${1:-}" = force ] && echo "Commands are already in $RC."; return 0; }
   if [ "${1:-}" != force ]; then
     [ -t 0 ] && [ ! -f "$MARK" ] || return 0
-    read -r -p "Add the 'view' and 'gen' commands to $RC so they work from anywhere? [Y/n] " answer
+    read -r -p "Add the 'animview' and 'animgen' commands to $RC so they work from anywhere? [Y/n] " answer
     case "$answer" in [nN]*) mkdir -p "$(dirname "$MARK")"; touch "$MARK"; return 0;; esac
   fi
-  printf '\n# lotr-anim-viewer\nalias view="%s"\nalias gen="python3 %s"\n' \
-    "$REPO/tools/anim-viewer/view.sh" "$REPO/tools/anim-viewer/kimodo_batch.py" >> "$RC"
+  add_aliases
   echo "Added. New terminals have them; in this one run: source $RC"
+}
+add_aliases() {
+  printf '\n# lotr-anim-viewer commands\nalias animview="%s"\nalias animgen="python3 %s"\n' \
+    "$REPO/tools/anim-viewer/view.sh" "$REPO/tools/anim-viewer/kimodo_batch.py" >> "$RC"
 }
 if [ "${1:-}" = "setup" ]; then setup_commands force; exit 0; fi
 setup_commands
@@ -54,6 +62,6 @@ fi
 URL="http://localhost:$PORT/tools/anim-viewer/?watch=/clips/&model=/$MODEL"
 echo "Viewer: $URL"
 [ -n "${RUNPOD_POD_ID:-}" ] && echo "From your own browser: https://$RUNPOD_POD_ID-$PORT.proxy.runpod.net/tools/anim-viewer/?watch=/clips/&model=/$MODEL"
-echo "Clips folder: $REPO/clips   (generate with: gen \"A person ...\")"
+echo "Clips folder: $REPO/clips   (generate with: animgen \"A person ...\")"
 OPEN="${VIEW_BROWSER:-$(command -v xdg-open || command -v open || true)}"
 if [ -n "$OPEN" ]; then "$OPEN" "$URL" >/dev/null 2>&1 & else echo "Open that address in your browser."; fi

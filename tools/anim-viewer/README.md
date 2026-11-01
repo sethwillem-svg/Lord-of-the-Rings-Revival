@@ -11,7 +11,7 @@ A browser page that retargets mocap clips (BVH) onto a Blockbench rig live and p
 5. Change the retarget settings; every clip is re-mapped immediately.
 6. Export a clip as **Viewer JSON** (the Orc Muster Viewer's animation format) or **PulseLib JSON** (Gecko-style animation file).
 
-## Quick start: `view` and `gen`
+## Quick start: `animview` and `animgen`
 
 Needs Git, Python 3 and a browser. From the repo root, run once:
 
@@ -19,10 +19,10 @@ Needs Git, Python 3 and a browser. From the repo root, run once:
 ./tools/anim-viewer/view.sh
 ```
 
-It asks once whether to add the `view` and `gen` commands to your shell (answer Y; `view setup` adds them later if you said no), then opens the viewer in a new browser tab. After that, `view` works from anywhere.
+It asks once whether to add the `animview` and `animgen` commands to your shell (answer Y; `animview setup` adds them later if you said no), then opens the viewer in a new browser tab. After that, `animview` works from anywhere. (Not `animview`: on most Linux systems that is vim's read-only mode. Older `animview`/`gen` aliases from this tool are renamed on the next run.)
 
-- `view` makes `<repo>/clips` (git-ignored), starts a local web server for the repo if one is not running, and opens the viewer in your default browser (Firefox works) watching that folder with `mordor_orc` loaded. `view gundabad_olog_hai` opens with another unit; `view stop` stops the server.
-- `gen "A person ..." --count 5` generates into `<repo>/clips`, and each take appears in the viewer as it lands.
+- `animview` makes `<repo>/clips` (git-ignored), starts a local web server for the repo if one is not running, and opens the viewer in your default browser (Firefox works) watching that folder with `mordor_orc` loaded. `animview gundabad_olog_hai` opens with another unit; `animview stop` stops the server.
+- `animgen "A person ..." --count 5` generates into `<repo>/clips`, and each take appears in the viewer as it lands.
 - The **Model** menu in the sidebar lists every unit in `src/main/art/blockbench/`.
 
 Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** grip plus tilt, swing and twist angles (weapon IK follows the adjusted blade), camera presets, toggles for IK targets and the floor grid, and **Clear clips**. If the strike height is out of reach the target is raised to the lowest reachable point and the clip list says so.
@@ -31,7 +31,7 @@ Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** g
 
 `kimodo_batch.py` generates clips on the Kimodo Hugging Face Space and saves the BVH files into a folder; the viewer's **Watch folder** picks each one up as it lands, so nothing has to be uploaded by hand.
 
-1. Nothing to install by hand: the first `gen` offers to install `gradio_client` and asks once for a Hugging Face access token (type Read), which it saves in Hugging Face's own login store. Setting `HF_TOKEN` also works.
+1. Nothing to install by hand: the first `animgen` offers to install `gradio_client` and asks once for a Hugging Face access token (type Read), which it saves in Hugging Face's own login store. Setting `HF_TOKEN` also works.
 2. Copy a model from `src/main/art/blockbench/<faction>/` into an empty folder, say `clips/`.
 3. Open the viewer watching `clips/`. The model loads by itself.
    - **Any browser (Firefox too):** in the repo root run `python3 -m http.server 8000`, then open `http://localhost:8000/tools/anim-viewer/?watch=/clips/`.
@@ -51,8 +51,8 @@ Clip labels turn red while the weapon tip or the right hand is more than half a 
 `prompts/<rig>.txt` holds every clip the spec's minimum sets need for that rig (`specs/core/rendering-animation.md` section 5c): 165 clips over man, elf, dwarf, hobbit, orc, olog, half_troll and troll, with a race movement style in each prompt. `prompts/CLIPS.md` is the readable list. Lines are `clip.key | seconds | prompt`, and takes are named after the spec clip (`orc.attack.sword.1_s2.bvh`).
 
 ```sh
-gen --prompts tools/anim-viewer/prompts/orc.txt --count 3              # every orc clip, 3 takes each
-gen --prompts tools/anim-viewer/prompts/orc.txt --only attack --dry-run # preview just the attacks
+animgen --prompts tools/anim-viewer/prompts/orc.txt --count 3              # every orc clip, 3 takes each
+animgen --prompts tools/anim-viewer/prompts/orc.txt --only attack --dry-run # preview just the attacks
 ```
 
 Edit the tables in `prompts/build_prompts.py` and run it to regenerate the files. Loop clips (idle, walk, run, march, holds, work) still need trimming to a seamless loop: neither model makes loops.
@@ -70,12 +70,12 @@ It installs Kimodo (the `hugging-apps/kimodo-motion` app) and HY-Motion in separ
 
 ## Local models: Kimodo and HY-Motion
 
-`gen` (`kimodo_batch.py`) has two backends; both write BVH into `clips/`, so the viewer shows their takes side by side. Each clip's `.json` records its `source` (`kimodo` or `hymotion`), model and prompt. They do not fit on one 32 GB GPU together, so run one at a time.
+`animgen` (`kimodo_batch.py`) has two backends; both write BVH into `clips/`, so the viewer shows their takes side by side. Each clip's `.json` records its `source` (`kimodo` or `hymotion`), model and prompt. They do not fit on one 32 GB GPU together, so run one at a time.
 
-- **Kimodo, local:** run the Kimodo Space on your own GPU (its Hugging Face page, **Run locally**, gives a Docker command that serves it on `localhost:7860`), then `gen --space http://localhost:7860 --count 5 "A person ..."`.
+- **Kimodo, local:** run the Kimodo Space on your own GPU (its Hugging Face page, **Run locally**, gives a Docker command that serves it on `localhost:7860`), then `animgen --space http://localhost:7860 --count 5 "A person ..."`.
 - **HY-Motion 1.0, local:** install [HY-Motion-1.0](https://github.com/Tencent-Hunyuan/HY-Motion-1.0) (its README: PyTorch, `git lfs pull`, `pip install -r requirements.txt`, weights into `ckpts/`), then
   ```sh
-  gen --backend hymotion --hy-repo ~/HY-Motion-1.0 --count 4 --duration 3 "A person raises the right arm and chops down"
+  animgen --backend hymotion --hy-repo ~/HY-Motion-1.0 --count 4 --duration 3 "A person raises the right arm and chops down"
   ```
   It runs HY-Motion's `local_infer.py` once for the whole batch (`--hy-python` if HY-Motion lives in another Python environment, `--hy-model HY-Motion-1.0-Lite` for the smaller model) and converts each sample as it appears. HY-Motion picks its own seeds; `--count` is samples per prompt. VRAM: about 26 GB (1.0) or 24 GB (Lite).
   `hymotion_to_bvh.py` does the conversion: HY-Motion saves SMPL-H rotations (`.npz`), and the converter writes the 22 body joints as BVH with the Kimodo joint names, using the skeleton template from the HY-Motion install, plus head-end and eye joints. Checked against SMPL forward kinematics on a synthetic clip (joint positions agree to 1e-5 cm); not yet run on real HY-Motion output.
