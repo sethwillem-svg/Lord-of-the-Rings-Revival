@@ -31,8 +31,8 @@ public final class NpcSkin {
 
     /**
      * An NPC's skin layers, bottom to top. eye is the index of the eye layer in sprites (-1 if none) and blinking says whether
-     * it is hidden this frame: the eye layer keeps its place in the stack either way, so the merged mesh of the other layers
-     * stays the same while the NPC blinks.
+     * it is hidden this frame. The eye layer keeps its place in the stack either way, so every other layer keeps its growth step
+     * (and its mesh) while the NPC blinks.
      */
     public record Layers(List<TextureAtlasSprite> sprites, int eye, boolean blinking) {
         public static final Layers NONE = new Layers(List.of(), -1, false);

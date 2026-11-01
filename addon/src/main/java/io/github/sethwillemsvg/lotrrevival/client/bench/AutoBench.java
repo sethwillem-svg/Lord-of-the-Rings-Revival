@@ -29,14 +29,13 @@ import java.util.Map;
 /**
  * Unattended renderer benchmark for development (-Dlotr_revival.autotest=COUNT; run it with addon/bench.sh). Creates a flat
  * creative world at render distance 12, spawns COUNT NPCs, waits until they exist and the world has finished building, then
- * measures the renderers in the order theirs, vanilla, pulse_layers, pulse, then the same reversed (the mirrored order cancels slow drift),
+ * measures the renderers in the order theirs, vanilla, pulse, then the same reversed (the mirrored order cancels slow drift),
  * each 4 s settle + 8 s measured by the clock. Writes run/bench_results.txt and a screenshot per renderer, then quits.
  */
 public final class AutoBench {
     private static final Logger LOG = LogUtils.getLogger();
     private static final int COUNT = Integer.getInteger("lotr_revival.autotest", 0);
-    private static final Mode[] ORDER = {Mode.THEIRS, Mode.VANILLA, Mode.PULSE_LAYERS, Mode.PULSE,
-            Mode.PULSE, Mode.PULSE_LAYERS, Mode.VANILLA, Mode.THEIRS};
+    private static final Mode[] ORDER = {Mode.THEIRS, Mode.VANILLA, Mode.PULSE, Mode.PULSE, Mode.VANILLA, Mode.THEIRS};
     private static final int ROUND = ORDER.length / 2;
     private static final long SETTLE_NS = 4_000_000_000L, MEASURE_NS = 8_000_000_000L;
     private static final long SPAWN_TIMEOUT_NS = 60_000_000_000L, CHUNK_TIMEOUT_NS = 120_000_000_000L;
@@ -164,7 +163,7 @@ public final class AutoBench {
         out.add("GPU: " + GlUtil.getRenderer() + " (" + GlUtil.getVendor() + ")");
         out.add("CPU: " + GlUtil.getCpuInfo() + ", " + Runtime.getRuntime().availableProcessors() + " threads");
         out.add("Window: " + mc.getWindow().getWidth() + "x" + mc.getWindow().getHeight() + ", render distance " + RENDER_DISTANCE);
-        out.add("NPCs requested: " + COUNT + ". Each renderer: 4 s settle, 8 s measured; order theirs, vanilla, pulse_layers, pulse, then reversed.");
+        out.add("NPCs requested: " + COUNT + ". Each renderer: 4 s settle, 8 s measured; order theirs, vanilla, pulse, then reversed.");
         if (!waitNote.isEmpty()) out.add("Note: " + waitNote);
         out.add("");
         out.add("Average of both rounds:");
@@ -178,10 +177,8 @@ public final class AutoBench {
         out.addAll(RESULTS);
         out.add("");
         out.add("theirs       = Middle-earth's renderer (skin + 3D hair/ears/nose/feet + armour + held items)");
-        out.add("vanilla      = our skin layers on Minecraft's CPU model path + armour + held items (no 3D hair/ears/nose/feet yet)");
-        out.add("pulse_layers = the same, skin layers on PulseLib: one mesh per layer and body part, batched across NPCs");
-        out.add("pulse        = the same, skin layers on PulseLib: each NPC's layers merged into one mesh per body part");
-        out.add("(armour and held items are Minecraft's own layers in vanilla and both pulse modes)");
+        out.add("vanilla      = our skin layers + armour + held items on Minecraft's CPU path (no 3D hair/ears/nose/feet yet)");
+        out.add("pulse        = the same skin, armour and held items on PulseLib's instanced GPU path");
         try {
             Files.write(mc.gameDirectory.toPath().resolve("bench_results.txt"), out);
         } catch (IOException e) {
