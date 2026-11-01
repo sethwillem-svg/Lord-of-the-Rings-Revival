@@ -109,6 +109,17 @@ Directions, not positions: rig proportions are far from human (orc arms are abou
 
 Settings: **Torso tilt cap** limits how far the upper body can lean from vertical (deep bows in the mocap fold blocky torsos flat; 35 to 45 degrees suits overhead slams), **Root drop** scales how far the hips sink, **Mirror** swaps left and right, **Plant feet** sets the root height every frame so the lowest foot matches the mocap's (takes that start crouched no longer float), **BVH rotation order** auto-detects files whose exporter writes the rotation channels in the reverse of the header's order (the HY-Motion Mixamo Space does; the clip list shows which reading was used), **In place** drops forward and sideways travel (attacks usually play on the spot while the game moves the mob).
 
+## Cube-rig refinements
+
+These default on in the viewer (off in `retarget.js` defaults, so the Python parity check covers the base path):
+
+- **Cube joint limits**: elbows and knees bend at most 140 degrees (box limbs clip when folded further); the upper arm cannot point across the body into the torso box, though it can reach further across in front; and each foot stays at least three quarters of the hip spacing out from the middle, because box boots touch as soon as the legs close in.
+- **Torso share** (weapon IK): the upper body turns about its pivot, leaning and twisting together, to absorb part of the change in reach that the IK target asks for, so the arm keeps more of the mocap's extension instead of bending to fit. 40 percent by default, capped at 35 degrees.
+- **Foot lock**: a foot counts as planted while the mocap ankle is near its floor and barely moving for at least three frames. The rig foot is pinned where it landed and the leg is solved to it, with a short blend in and out. If a tilted box boot dips a corner below the floor, that plant's pin is raised. A body travelling further than the leg reaches still slides, so use In place for attacks.
+- **Stance width**: scales the leg spacing (each thigh turns about its parent's forward axis).
+- **Wrist follows the mocap**: with finger joints in the BVH (Kimodo), the hand frame comes from the wrist and knuckles. The first frame counts as neutral, because skeletons disagree on hand axes, and later frames follow the change from it, limited by swing and twist to 60 degrees of bend and 90 of roll about the forearm (the cube forearm cannot roll, so forearm roll lands on the wrist). Without finger joints (Mixamo) the hand keeps its rest angle.
+- **Edge first**: the weapon twists about its blade so the blade plane contains the tip's motion and the edge leads. The blade normal is the thinnest axis of the weapon's cubes; the twist is speed-weighted and smoothed, and never more than 90 degrees from the grip, so it never flips.
+
 ## Weapon IK
 
 Mocap has no weapon, and rig arms are longer than human ones, so copying arm angles alone sends long weapons through the floor. Weapon IK fixes the contact:

@@ -81,6 +81,9 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="row"><label for="smooth">Smoothing</label><input id="smooth" type="range" min="0" max="4" step="0.25" value="0"><span class="val" id="smoothV">off</span></div>
    <div class="row"><label><input id="mirror" type="checkbox"> Mirror (left-handed take)</label></div>
    <div class="row"><label><input id="inPlace" type="checkbox"> In place (strip forward and sideways travel)</label></div>
+   <div class="row"><label><input id="jointLimits" type="checkbox" checked> Cube joint limits (elbows/knees, arms out of the torso, feet apart)</label></div>
+   <div class="row"><label><input id="footLock" type="checkbox" checked> Foot lock (no sliding while a foot is planted)</label></div>
+   <div class="row"><label for="stance">Stance width</label><input id="stance" type="range" min="0.7" max="1.5" step="0.05" value="1"><span class="val" id="stanceV">100%</span></div>
    <div class="row"><label><input id="footLift" type="checkbox" checked> Plant feet (match the mocap's foot height every frame)</label></div>
   </div>
   <div class="group">
@@ -90,6 +93,8 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="row"><label for="wYaw">Swing left/right</label><input id="wYaw" type="range" min="-180" max="180" step="5" value="0"><span class="val" id="wYawV">0°</span></div>
    <div class="row"><label for="wRoll">Twist</label><input id="wRoll" type="range" min="-180" max="180" step="5" value="0"><span class="val" id="wRollV">0°</span></div>
    <div class="row"><button id="wReset">Reset angle</button></div>
+   <div class="row"><label><input id="wristMocap" type="checkbox" checked> Wrist follows the mocap (needs finger joints)</label></div>
+   <div class="row"><label><input id="edgeFirst" type="checkbox" checked> Edge first (blade edge leads the swing)</label></div>
    <p class="note">Angles rotate the weapon in the hand. Weapon IK uses the adjusted blade, so the tip still lands on the target.</p>
   </div>
   <div class="group">
@@ -101,6 +106,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <span class="label">Weapon IK</span>
    <div class="row"><label><input id="ik" type="checkbox" checked> Pull the weapon tip onto a target at the hit</label></div>
    <div class="row"><label for="ikY">Strike height</label><input id="ikY" type="range" min="0" max="28" step="1" value="0"><span class="val" id="ikYV">ground</span></div>
+   <div class="row"><label for="torsoShare">Torso share</label><input id="torsoShare" type="range" min="0" max="0.8" step="0.05" value="0.4"><span class="val" id="torsoShareV">40%</span></div>
    <div class="row"><label for="ikReach">Reach</label><input id="ikReach" type="range" min="0.6" max="0.98" step="0.01" value="0.85"><span class="val" id="ikReachV">85%</span></div>
    <p class="note">The target (red cube) sits in front of the character at the strike height, at the chosen share of arm plus weapon length. The tip rises onto it from the windup, holds it while the mocap stays down, and lets go as the arms rise.</p>
   </div>
@@ -231,7 +237,9 @@ function settings() {
   return { torsoTiltCap: +$('tilt').value, rootDrop: +$('drop').value, weapon: $('weapon').value,
            mirror: $('mirror').checked, footLift: true, footPlant: $('footLift').checked, inPlace: $('inPlace').checked,
            ik: $('ik').checked, ikTargetY: +$('ikY').value, ikReach: +$('ikReach').value,
-           rotOrder: $('rotOrder').value, weaponPitch: +$('wPitch').value, weaponYaw: +$('wYaw').value, weaponRoll: +$('wRoll').value, smooth: +$('smooth').value };
+           rotOrder: $('rotOrder').value, jointLimits: $('jointLimits').checked, footLock: $('footLock').checked, stance: +$('stance').value,
+           wrist: $('wristMocap').checked ? 'auto' : 'rest', edgeFirst: $('edgeFirst').checked, ikTorsoShare: +$('torsoShare').value,
+           weaponPitch: +$('wPitch').value, weaponYaw: +$('wYaw').value, weaponRoll: +$('wRoll').value, smooth: +$('smooth').value };
 }
 function currentMap() {
   const id = $('rigMap').value;
@@ -303,7 +311,9 @@ function renderList() {
       const q = c.clip.qa, cls = (v) => (v !== null && v < -0.5 ? 'bad' : 'ok');
       qa.innerHTML = `${c.clip.length.toFixed(2)} s, hit ${c.clip.hitTime.toFixed(2)} s, rotations ${c.clip.rotOrder}<br>` +
         `hand min <span class="${cls(q.handMin)}">${fmt(q.handMin)}</span> px, tip min <span class="${cls(q.tipMin)}">${fmt(q.tipMin)}</span> px, ` +
-        `foot min <span class="${cls(q.footMin)}">${fmt(q.footMin)}</span> px` +
+        `foot min <span class="${cls(q.footMin)}">${fmt(q.footMin)}</span> px<br>` +
+        `max elbow/knee bend ${q.maxBend.toFixed(0)}°, closest feet ${fmt(q.minFootGap)} px, ` +
+        `foot slide ${c.clip.locks.length ? q.footSlide.toFixed(2) + ' px over ' + c.clip.locks.length + ' plant(s)' : 'no plants found'}, wrist ${q.wrist}` +
         (c.clip.ik ? `<br>IK: tip ${c.clip.ik.errorAtHit.toFixed(2)} px from target at hit, contact held to ${(c.clip.ik.C * c.clip.dt).toFixed(2)} s` +
           (c.clip.ik.raised ? `<br><span class="bad">Strike height out of reach: target raised ${c.clip.ik.raised.toFixed(1)} px (lower the torso tilt cap or raise the strike height)</span>` : '') : '');
     }
@@ -532,10 +542,12 @@ function sliderLabels() {
   $('ikReachV').textContent = Math.round(+$('ikReach').value * 100) + '%';
   $('smoothV').textContent = +$('smooth').value === 0 ? 'off' : $('smooth').value + ' fr';
   for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id + 'V').textContent = $(id).value + '°';
+  $('stanceV').textContent = Math.round(+$('stance').value * 100) + '%';
+  $('torsoShareV').textContent = Math.round(+$('torsoShare').value * 100) + '%';
 }
-for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'inPlace', 'rotOrder', 'rigMap', 'ik', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll'])
+for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'inPlace', 'rotOrder', 'jointLimits', 'footLock', 'stance', 'wristMocap', 'edgeFirst', 'torsoShare', 'rigMap', 'ik', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll'])
   $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
-for (const id of ['tilt', 'drop', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll']) $(id).addEventListener('input', sliderLabels);
+for (const id of ['tilt', 'drop', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll', 'stance', 'torsoShare']) $(id).addEventListener('input', sliderLabels);
 $('wReset').onclick = () => { for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id).value = 0; sliderLabels(); rebuild(); };
 $('clearClips').onclick = () => { clips.length = 0; rebuild(); };   // files already seen stay hidden; new takes still load
 $('reloadFolder').onclick = () => {
@@ -561,7 +573,7 @@ new ResizeObserver(resize).observe(cv.parentElement);
 $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}</option>`).join('');
 resize(); requestAnimationFrame(frame);
 // remember the sidebar settings between visits (per browser; ignored if storage is blocked)
-const SAVED = ['tilt', 'drop', 'rotOrder', 'smooth', 'mirror', 'footLift', 'inPlace', 'weapon', 'wPitch', 'wYaw', 'wRoll', 'ik', 'ikY', 'ikReach',
+const SAVED = ['tilt', 'drop', 'rotOrder', 'jointLimits', 'footLock', 'stance', 'wristMocap', 'edgeFirst', 'torsoShare', 'smooth', 'mirror', 'footLift', 'inPlace', 'weapon', 'wPitch', 'wYaw', 'wRoll', 'ik', 'ikY', 'ikReach',
                'showTargets', 'showGrid', 'align', 'loop', 'speed', 'rigName'];
 try {
   const saved = JSON.parse(localStorage.getItem('animviewer.settings') || '{}');
