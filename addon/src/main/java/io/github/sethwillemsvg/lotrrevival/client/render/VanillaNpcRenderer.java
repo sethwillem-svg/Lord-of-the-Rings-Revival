@@ -79,6 +79,19 @@ public class VanillaNpcRenderer extends MobRenderer<NpcEntity, NpcBipedModel> {
         };
     }
 
+    /** Middle-earth draws riders half a block lower than their attachment point (its mounts seat them high). */
+    @Override
+    public void render(NpcEntity entity, float yaw, float partialTick, PoseStack poseStack, MultiBufferSource buffers, int light) {
+        if (!entity.isPassenger()) {
+            super.render(entity, yaw, partialTick, poseStack, buffers, light);
+            return;
+        }
+        poseStack.pushPose();
+        poseStack.translate(0f, -0.5f, 0f);
+        super.render(entity, yaw, partialTick, poseStack, buffers, light);
+        poseStack.popPose();
+    }
+
     @Override
     protected void scale(NpcEntity entity, PoseStack poseStack, float partialTick) {
         // NpcEntity.getWidthScale throws and catches an exception when the attribute is missing (as it is client side): check first
