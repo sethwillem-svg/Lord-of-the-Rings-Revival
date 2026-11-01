@@ -7,6 +7,7 @@
 #   ME_JAR=/path/to.jar ./addon/bench.sh   if your Middle-earth jar is not in ~/middle-earth
 #
 # Results: addon/run/bench_results.txt   Screenshots: addon/run/screenshots/bench_*.png
+# The test world (addon/run/saves/lotr_bench) is kept and reopened directly next time; delete it to start fresh.
 # Uses the NVIDIA GPU when the laptop has one (GPU=intel to force the Intel one).
 # Don't touch the game window while it runs (about 2-3 minutes after the game has loaded).
 set -euo pipefail
@@ -32,7 +33,9 @@ chmod +x gradlew
 rm -f run/bench_results.txt run/screenshots/bench_*.png
 mkdir -p run
 echo "Running... (first launch downloads Minecraft and takes a few minutes; full output in addon/run/bench_output.log)"
-./gradlew runClient -PmeJar="$ME_JAR" -Pautotest="$COUNT" --console=plain > run/bench_output.log 2>&1 || true
+QUICK=()
+[ -d run/saves/lotr_bench ] && QUICK=(-PquickPlay=lotr_bench)   # skip the menus and world generation after the first run
+./gradlew runClient -PmeJar="$ME_JAR" -Pautotest="$COUNT" "${QUICK[@]}" --console=plain > run/bench_output.log 2>&1 || true
 echo
 if [ -f run/bench_results.txt ]; then
   cat run/bench_results.txt

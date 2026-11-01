@@ -19,7 +19,9 @@ public class SwitchingNpcRenderer extends EntityRenderer<NpcEntity> {
         THEIRS,
         /** Our skin layers through Minecraft's CPU model path, plus armour and held items. */
         VANILLA,
-        /** The same skin layers through PulseLib's instanced GPU path; armour and held items as in VANILLA. */
+        /** The same skin layers through PulseLib, one mesh per layer and body part, batched across NPCs; armour and items as in VANILLA. */
+        PULSE_LAYERS,
+        /** The same through PulseLib, with each NPC's skin layers merged into one mesh per body part (the default). */
         PULSE;
 
         public String id() { return name().toLowerCase(Locale.ROOT); }
@@ -29,13 +31,15 @@ public class SwitchingNpcRenderer extends EntityRenderer<NpcEntity> {
 
     private final NpcEntityRenderer theirs;
     private final VanillaNpcRenderer vanilla;
+    private final PulseNpcRenderer pulseLayers;
     private final PulseNpcRenderer pulse;
 
     public SwitchingNpcRenderer(EntityRendererProvider.Context context) {
         super(context);
         theirs = new NpcEntityRenderer(context);
         vanilla = new VanillaNpcRenderer(context);
-        pulse = new PulseNpcRenderer(context);
+        pulseLayers = new PulseNpcRenderer(context, false);
+        pulse = new PulseNpcRenderer(context, true);
         shadowRadius = 0.5f;
     }
 
@@ -43,6 +47,7 @@ public class SwitchingNpcRenderer extends EntityRenderer<NpcEntity> {
         return switch (mode) {
             case THEIRS -> theirs;
             case VANILLA -> vanilla;
+            case PULSE_LAYERS -> pulseLayers;
             case PULSE -> pulse;
         };
     }

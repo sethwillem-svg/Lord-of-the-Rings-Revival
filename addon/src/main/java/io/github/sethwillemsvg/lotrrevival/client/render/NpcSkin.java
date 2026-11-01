@@ -29,20 +29,34 @@ public final class NpcSkin {
         return AtlasesME.getAtlasFromPath(ModTexturedRenderLayers.CHARACTER_ATLAS_TEXTURES);
     }
 
-    public static List<TextureAtlasSprite> layers(NpcEntity entity, TextureAtlas atlas) {
-        List<TextureAtlasSprite> out = new ArrayList<>(10);
-        if (entity.isInvisible()) return out;
+    /**
+     * An NPC's skin layers, bottom to top. eye is the index of the eye layer in sprites (-1 if none) and blinking says whether
+     * it is hidden this frame: the eye layer keeps its place in the stack either way, so the merged mesh of the other layers
+     * stays the same while the NPC blinks.
+     */
+    public record Layers(List<TextureAtlasSprite> sprites, int eye, boolean blinking) {
+        public static final Layers NONE = new Layers(List.of(), -1, false);
+
+        public boolean drawn(int i) {
+            return i != eye || !blinking;
+        }
+    }
+
+    public static Layers layers(NpcEntity entity, TextureAtlas atlas) {
+        if (entity.isInvisible()) return Layers.NONE;
         NpcTextureData data = entity.retrieveNpcTextureData();
-        if (data == null) return out;
+        if (data == null) return Layers.NONE;
+        List<TextureAtlasSprite> out = new ArrayList<>(10);
         if (ModClientConfigs.ENABLE_SIMPLIFIED_CHARACTER_RENDERING && data.getSimplifiedSkin() != null) {
             out.add(atlas.getSprite(data.getSimplifiedSkin()));
-            return out;
+            return new Layers(out, -1, false);
         }
-        if (data.get(NpcRenderedPart.BODY) == null || data.get(NpcRenderedPart.HEAD) == null || data.get(NpcRenderedPart.EYE) == null) return out;
+        if (data.get(NpcRenderedPart.BODY) == null || data.get(NpcRenderedPart.HEAD) == null || data.get(NpcRenderedPart.EYE) == null) return Layers.NONE;
         add(out, atlas, data.get(NpcRenderedPart.BODY), NpcPrefix.SKIN);
         add(out, atlas, data.get(NpcRenderedPart.HEAD), NpcPrefix.SKIN);
-        int blink = entity.tickCount % NpcEntityRenderer.BLINKING_INTERVAL;
-        if (blink < NpcEntityRenderer.BLINKING_INTERVAL - NpcEntityRenderer.BLINKING_DURATION) add(out, atlas, data.get(NpcRenderedPart.EYE), NpcPrefix.EYE);
+        int eye = out.size();
+        add(out, atlas, data.get(NpcRenderedPart.EYE), NpcPrefix.EYE);
+        boolean blinking = entity.tickCount % NpcEntityRenderer.BLINKING_INTERVAL >= NpcEntityRenderer.BLINKING_INTERVAL - NpcEntityRenderer.BLINKING_DURATION;
         add(out, atlas, data.get(NpcRenderedPart.EYEBROW), NpcPrefix.HAIR);
         add(out, atlas, data.get(NpcRenderedPart.SCAR), NpcPrefix.SKIN);
         add(out, atlas, data.get(NpcRenderedPart.BEARD), NpcPrefix.HAIR);
@@ -53,7 +67,7 @@ public final class NpcSkin {
         add(out, atlas, over, NpcPrefix.CLOTHES_OVER);
         add(out, atlas, extra, NpcPrefix.CLOTHES_EXTRA);
         add(out, atlas, data.get(NpcRenderedPart.HAIR), NpcPrefix.HAIR);
-        return out;
+        return new Layers(out, eye, blinking);
     }
 
     private static void add(List<TextureAtlasSprite> out, TextureAtlas atlas, ResourceLocation id, NpcPrefix prefix) {

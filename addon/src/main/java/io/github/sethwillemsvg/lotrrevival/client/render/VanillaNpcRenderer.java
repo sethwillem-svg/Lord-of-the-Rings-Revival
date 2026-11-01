@@ -64,8 +64,9 @@ public class VanillaNpcRenderer extends MobRenderer<NpcEntity, NpcBipedModel> {
                 VertexConsumer base = buffers.getBuffer(ModTexturedRenderLayers.getCharacterTexturesRenderLayer());
                 int overlay = getOverlayCoords(entity, 0f);
                 NpcBipedModel model = getParentModel();
-                for (TextureAtlasSprite sprite : NpcSkin.layers(entity, atlas))
-                    model.renderToBuffer(poseStack, sprite.wrap(base), light, overlay);
+                NpcSkin.Layers layers = NpcSkin.layers(entity, atlas);
+                for (int i = 0; i < layers.sprites().size(); i++)
+                    if (layers.drawn(i)) model.renderToBuffer(poseStack, layers.sprites().get(i).wrap(base), light, overlay);
             }
         };
     }

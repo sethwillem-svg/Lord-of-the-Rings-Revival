@@ -51,7 +51,7 @@ public final class LotrRevivalClient {
             AutoBench.tick();
         }
 
-        /** /lotrrender theirs|vanilla|pulse   switch the NPC renderer;   /lotrrender hud   toggle the frame-time meter */
+        /** /lotrrender theirs|vanilla|pulse_layers|pulse   switch the NPC renderer;   /lotrrender hud   toggle the frame-time meter */
         @SubscribeEvent
         public static void commands(RegisterClientCommandsEvent e) {
             e.getDispatcher().register(Commands.literal("lotrrender")
@@ -67,7 +67,7 @@ public final class LotrRevivalClient {
                                 try {
                                     SwitchingNpcRenderer.mode = SwitchingNpcRenderer.Mode.valueOf(m);
                                 } catch (IllegalArgumentException ex) {
-                                    c.getSource().sendFailure(Component.literal("Use theirs, vanilla or pulse"));
+                                    c.getSource().sendFailure(Component.literal("Use theirs, vanilla, pulse_layers or pulse"));
                                     return 0;
                                 }
                                 FrameStats.reset();
