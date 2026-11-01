@@ -96,7 +96,8 @@
   }
 
   /** World joint positions P[f][j] (cm). Channel rotations compose in listed order (intrinsic). */
-  function bvhFK(b) {
+  /** reversed: compose each joint's rotation channels in the opposite order to the header (some exporters do). */
+  function bvhFK(b, reversed) {
     const P = [];
     for (let f = 0; f < b.frames; f++) {
       const row = b.data[f], Pw = [], Rw = [];
@@ -106,7 +107,7 @@
         for (const ch of b.chan[j]) {
           const v = row[c++];
           if (ch.endsWith('position')) pos['XYZ'.indexOf(ch[0])] = v;
-          else rot = mul(rot, rotAxis(ch[0], v));
+          else rot = reversed ? mul(rotAxis(ch[0], v), rot) : mul(rot, rotAxis(ch[0], v));
         }
         const p = b.parent[j];
         if (p < 0) { Pw.push(pos); Rw.push(rot); }
@@ -172,12 +173,15 @@
     weapon: 'forearm',   // 'forearm': blade continues the forearm; 'rest': keep the rig's rest grip
     mirror: false,       // swap left and right (for left-handed takes)
     footLift: true,      // lift the root so no foot goes below the floor
+    footPlant: false,    // set the root height every frame so the lowest foot is as high as the mocap's (fixes takes
+                         // that start crouched, where frame-0-relative hips leave the feet floating)
     ik: false,           // weapon IK: pull the weapon tip (or right hand) onto a target at the hit
     ikTargetY: 0,        // target height above the floor, px (0 = ground strike)
     ikReach: 0.85,       // target distance from the shoulder as a share of arm + weapon length
     weaponPitch: 0,      // extra weapon rotation in the hand, degrees: tilt the blade forward/back
     weaponYaw: 0,        //   swing it left/right
     weaponRoll: 0,       //   twist it about the grip
+    rotOrder: 'auto',    // BVH rotation channel order: 'auto', 'listed' (as the header says) or 'reversed'
     smooth: 0,           // Gaussian smoothing of the retargeted pose over time, sigma in frames (0 = off)
     inPlace: false,      // drop horizontal root travel (attacks played on the spot; the game moves the entity)
   };
@@ -335,7 +339,29 @@
       ? { LeftLeg: 'LeftUpLeg', RightLeg: 'RightUpLeg', LeftShin: 'LeftLeg', RightShin: 'RightLeg', HeadEnd: 'HeadTop_End', Neck1: 'Neck' }
       : {};
     const has = (n) => (ALIAS[n] || n) in byName;
-    const P = bvhFK(bvh), F = bvh.frames, J = (n) => {
+    // Rotation order: as the header says, reversed, or auto (pick the reading where the body is plausible:
+    // no foot above the hips, lowest foot near the floor). Some BVH exporters write the angles in reverse order.
+    const roleIdx = (n) => byName[ALIAS[n] || n];
+    const implausible = (Pk) => {
+      const feet = ['LeftFoot', 'RightFoot'].map(roleIdx), hips = roleIdx('Hips');
+      if (feet.some((x) => x === undefined) || hips === undefined) return 0;
+      let floor0 = Infinity;
+      for (const fr of Pk) for (const x of feet) floor0 = Math.min(floor0, fr[x][1]);
+      const legLen = Math.max(1e-6, Pk[0][hips][1] - floor0);
+      let score = 0;
+      for (const fr of Pk) {
+        const lo = Math.min(fr[feet[0]][1], fr[feet[1]][1]), hi = Math.max(fr[feet[0]][1], fr[feet[1]][1]);
+        score += (lo - floor0) / legLen + (hi > fr[hips][1] ? 5 : 0);
+      }
+      return score / Pk.length;
+    };
+    let P, rotOrder = opts.rotOrder || 'auto';
+    if (rotOrder === 'auto') {
+      const a = bvhFK(bvh, false), r = bvhFK(bvh, true);
+      const sa = implausible(a), sr = implausible(r);
+      if (sr < sa * 0.5) { P = r; rotOrder = 'reversed (auto)'; } else { P = a; rotOrder = 'as written (auto)'; }
+    } else P = bvhFK(bvh, rotOrder === 'reversed');
+    const F = bvh.frames, J = (n) => {
       if (opts.mirror) n = n.replace(/^Left/, '#').replace(/^Right/, 'Left').replace(/^#/, 'Right');
       const j = byName[ALIAS[n] || n];
       if (j === undefined) throw new Error('BVH has no joint ' + n + (ALIAS[n] ? ` (${ALIAS[n]})` : ''));
@@ -428,7 +454,14 @@
     // root: lift so no foot goes below the floor
     const footY = (fk) => Math.min(...footDrop.map((d) => fk.pos[d.i][1] + d.d));
     let lift = 0;
-    if (opts.footLift) {
+    if (opts.footPlant) {
+      frames.forEach((fr, f) => {
+        const src = Math.min(...feet.map((n) => g(f, n)[1])) - floor;   // mocap's lowest foot above its floor
+        const delta = src * s - footY(rigFK(rig, fr.locals, fr.rootPos));
+        fr.rootPos[1] += delta;
+        lift = Math.max(lift, Math.abs(delta));
+      });
+    } else if (opts.footLift) {
       for (const fr of frames) {
         const y = footY(rigFK(rig, fr.locals, fr.rootPos));
         if (y < 0) { fr.rootPos[1] -= y; lift = Math.max(lift, -y); }
@@ -461,7 +494,7 @@
       const fk = rigFK(rig, frames[hitF].locals, frames[hitF].rootPos);
       ik.errorAtHit = len(sub(effector(fk), ik.target));
     }
-    return { frames, dt: bvh.dt, length: (F - 1) * bvh.dt, hitFrame: hitF, hitTime: hitF * bvh.dt, scale: s, qa,
+    return { frames, dt: bvh.dt, length: (F - 1) * bvh.dt, hitFrame: hitF, hitTime: hitF * bvh.dt, scale: s, qa, rotOrder,
              rootBone: iRoot, ik };
   }
 

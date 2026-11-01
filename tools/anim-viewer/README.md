@@ -107,7 +107,7 @@ Directions, not positions: rig proportions are far from human (orc arms are abou
 - The root moves with the hips (scaled by leg length) and is lifted so no foot goes below the floor.
 - **Weapon**: "along forearm" points the blade along the forearm; "rig rest grip" keeps the model's own grip angle.
 
-Settings: **Torso tilt cap** limits how far the upper body can lean from vertical (deep bows in the mocap fold blocky torsos flat; 35 to 45 degrees suits overhead slams), **Root drop** scales how far the hips sink, **Mirror** swaps left and right, **In place** drops forward and sideways travel (attacks usually play on the spot while the game moves the mob).
+Settings: **Torso tilt cap** limits how far the upper body can lean from vertical (deep bows in the mocap fold blocky torsos flat; 35 to 45 degrees suits overhead slams), **Root drop** scales how far the hips sink, **Mirror** swaps left and right, **Plant feet** sets the root height every frame so the lowest foot matches the mocap's (takes that start crouched no longer float), **BVH rotation order** auto-detects files whose exporter writes the rotation channels in the reverse of the header's order (the HY-Motion Mixamo Space does; the clip list shows which reading was used), **In place** drops forward and sideways travel (attacks usually play on the spot while the game moves the mob).
 
 ## Weapon IK
 

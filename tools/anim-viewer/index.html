@@ -77,10 +77,11 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <span class="label">Retarget settings (applied to every clip)</span>
    <div class="row"><label for="tilt">Torso tilt cap</label><input id="tilt" type="range" min="10" max="90" step="1" value="90"><span class="val" id="tiltV">off</span></div>
    <div class="row"><label for="drop">Root drop</label><input id="drop" type="range" min="0" max="1" step="0.05" value="1"><span class="val" id="dropV">100%</span></div>
+   <div class="row"><label for="rotOrder">BVH rotation order</label><select id="rotOrder"><option value="auto">auto-detect</option><option value="listed">as written</option><option value="reversed">reversed</option></select></div>
    <div class="row"><label for="smooth">Smoothing</label><input id="smooth" type="range" min="0" max="4" step="0.25" value="0"><span class="val" id="smoothV">off</span></div>
    <div class="row"><label><input id="mirror" type="checkbox"> Mirror (left-handed take)</label></div>
    <div class="row"><label><input id="inPlace" type="checkbox"> In place (strip forward and sideways travel)</label></div>
-   <div class="row"><label><input id="footLift" type="checkbox" checked> Keep feet above floor</label></div>
+   <div class="row"><label><input id="footLift" type="checkbox" checked> Plant feet (match the mocap's foot height every frame)</label></div>
   </div>
   <div class="group">
    <span class="label">Weapon</span>
@@ -228,9 +229,9 @@ let restClip = null, maxLen = 1, maxHit = 0;
 let built = [], framedFor = -1;   // every model instance in the scene; clip count the camera was framed for
 function settings() {
   return { torsoTiltCap: +$('tilt').value, rootDrop: +$('drop').value, weapon: $('weapon').value,
-           mirror: $('mirror').checked, footLift: $('footLift').checked, inPlace: $('inPlace').checked,
+           mirror: $('mirror').checked, footLift: true, footPlant: $('footLift').checked, inPlace: $('inPlace').checked,
            ik: $('ik').checked, ikTargetY: +$('ikY').value, ikReach: +$('ikReach').value,
-           weaponPitch: +$('wPitch').value, weaponYaw: +$('wYaw').value, weaponRoll: +$('wRoll').value, smooth: +$('smooth').value };
+           rotOrder: $('rotOrder').value, weaponPitch: +$('wPitch').value, weaponYaw: +$('wYaw').value, weaponRoll: +$('wRoll').value, smooth: +$('smooth').value };
 }
 function currentMap() {
   const id = $('rigMap').value;
@@ -300,7 +301,7 @@ function renderList() {
     if (c.error) { qa.innerHTML = ''; const e = document.createElement('span'); e.className = 'bad'; e.textContent = c.error; qa.appendChild(e); }
     else if (c.clip) {
       const q = c.clip.qa, cls = (v) => (v !== null && v < -0.5 ? 'bad' : 'ok');
-      qa.innerHTML = `${c.clip.length.toFixed(2)} s, hit ${c.clip.hitTime.toFixed(2)} s<br>` +
+      qa.innerHTML = `${c.clip.length.toFixed(2)} s, hit ${c.clip.hitTime.toFixed(2)} s, rotations ${c.clip.rotOrder}<br>` +
         `hand min <span class="${cls(q.handMin)}">${fmt(q.handMin)}</span> px, tip min <span class="${cls(q.tipMin)}">${fmt(q.tipMin)}</span> px, ` +
         `foot min <span class="${cls(q.footMin)}">${fmt(q.footMin)}</span> px` +
         (c.clip.ik ? `<br>IK: tip ${c.clip.ik.errorAtHit.toFixed(2)} px from target at hit, contact held to ${(c.clip.ik.C * c.clip.dt).toFixed(2)} s` +
@@ -532,7 +533,7 @@ function sliderLabels() {
   $('smoothV').textContent = +$('smooth').value === 0 ? 'off' : $('smooth').value + ' fr';
   for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id + 'V').textContent = $(id).value + '°';
 }
-for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'inPlace', 'rigMap', 'ik', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll'])
+for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'inPlace', 'rotOrder', 'rigMap', 'ik', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll'])
   $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
 for (const id of ['tilt', 'drop', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll']) $(id).addEventListener('input', sliderLabels);
 $('wReset').onclick = () => { for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id).value = 0; sliderLabels(); rebuild(); };
@@ -560,7 +561,7 @@ new ResizeObserver(resize).observe(cv.parentElement);
 $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}</option>`).join('');
 resize(); requestAnimationFrame(frame);
 // remember the sidebar settings between visits (per browser; ignored if storage is blocked)
-const SAVED = ['tilt', 'drop', 'smooth', 'mirror', 'footLift', 'inPlace', 'weapon', 'wPitch', 'wYaw', 'wRoll', 'ik', 'ikY', 'ikReach',
+const SAVED = ['tilt', 'drop', 'rotOrder', 'smooth', 'mirror', 'footLift', 'inPlace', 'weapon', 'wPitch', 'wYaw', 'wRoll', 'ik', 'ikY', 'ikReach',
                'showTargets', 'showGrid', 'align', 'loop', 'speed', 'rigName'];
 try {
   const saved = JSON.parse(localStorage.getItem('animviewer.settings') || '{}');
