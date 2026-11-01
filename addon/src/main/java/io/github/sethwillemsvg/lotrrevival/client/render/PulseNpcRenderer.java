@@ -58,9 +58,11 @@ import java.util.WeakHashMap;
  *    a layer are left out. All layers share Middle-earth's character atlas.
  *  - Armour: each armour model's body parts (vanilla's or an item's custom NeoForge model) recorded once at rest, one mesh per
  *    (part, texture), moved with the NPC's posed body parts; layer tints per instance; trims from the trim atlas. Not drawn: the
- *    enchantment glint, and animations a custom armour model plays on its own sub-parts. Armour Middle-earth draws with its own
- *    renderers (most of it: helmet variants, hoods, capes, custom pieces) still goes through those renderers and Minecraft's
- *    buffers, as in their mod.
+ *    enchantment glint, and animations a custom armour model plays on its own sub-parts.
+ *  - Middle-earth armour (most of it: helmet variants, hoods, capes, custom pieces; drawn by its own ArmorRenderers): what its
+ *    renderer draws is recorded once per armour look on a resting armour model, every face tagged with the body part that drew
+ *    it (PartCapture, like PulseLib/GeckoLib bones bound to humanoid parts), then replayed on the posed parts. Capes follow the
+ *    body parts they hang from; their own walk swing is replaced by our animation.
  *  - Held items: what Minecraft's item renderer draws for an item in hand, recorded once per item look, attached to the posed
  *    hand. Not drawn: glint; items whose look changes every frame (compass, clock) keep their first look. Items with their own
  *    renderer (banners, banner shields) are drawn the normal way: their pattern layers share one surface and need draw order.
@@ -75,6 +77,9 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
 
     private final List<List<Quad>> bodyQuads = new ArrayList<>();
     private final HumanoidArmorModel<NpcEntity> innerArmour, outerArmour;
+    /** Never posed: Middle-earth armour is recorded on these (at rest), then replayed on the posed body parts. */
+    private final HumanoidArmorModel<NpcEntity> innerRest, outerRest;
+    private final Map<ArmourKey, List<ArmourPiece>> meArmour = new HashMap<>();
     private final ItemInHandRenderer itemInHand;
 
     private final Map<TextureAtlasSprite, PGeometryData[][]> skinMeshes = new HashMap<>();
@@ -86,6 +91,11 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
 
     private record ItemKey(int stackHash, ItemDisplayContext context, boolean left) {}
 
+    private record ArmourKey(int stackHash, EquipmentSlot slot) {}
+
+    /** A recorded piece of Middle-earth armour: the body part it follows, render type, mesh and colour. */
+    private record ArmourPiece(int part, RenderType type, PGeometryData mesh, int color) {}
+
     /** One drawable piece of a held item: PulseLib render type, mesh and colour. */
     private record Piece(RenderType type, PGeometryData mesh, int color) {}
 
@@ -93,6 +103,8 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         super(context);
         for (ModelPart part : new NpcBipedModel().parts) bodyQuads.add(PulseGeometry.capture(part));
         innerArmour = new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
+        innerRest = new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
+        outerRest = new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR));
         outerArmour = new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR));
         itemInHand = context.getItemInHandRenderer();
     }
@@ -115,6 +127,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                     armourQuads.clear();
                     armourMeshes.clear();
                     itemPieces.clear();
+                    meArmour.clear();
                     atlasSeen = atlas;
                 }
                 NpcBipedModel model = getParentModel();
@@ -171,12 +184,22 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             if (!(stack.getItem() instanceof ArmorItem item) || item.getEquipmentSlot() != slot) continue;
             boolean inner = slot == EquipmentSlot.LEGS;
             // Middle-earth draws most of its armour (helmet variants, hoods, capes, custom chest/legs/boots) with its own
-            // renderers: use them as their mod does (Minecraft's buffers, not PulseLib) until those pieces are ported.
+            // renderers. Record what one draws once per armour look, with each piece tagged by the body part that drew it,
+            // and replay it on PulseLib on the posed parts. If the recording is empty, draw it the normal way.
             ArmorRenderer own = ArmorRenderer.get(stack.getItem());
             if (own != null) {
-                HumanoidArmorModel<NpcEntity> context = inner ? innerArmour : outerArmour;
-                getModel().copyPropertiesTo(context);
-                own.render(poseStack, buffers, stack, entity, slot, light, (HumanoidModel<LivingEntity>) (HumanoidModel<?>) context);
+                List<ArmourPiece> pieces = meArmour.computeIfAbsent(new ArmourKey(ItemStack.hashItemAndComponents(stack), slot),
+                        k -> recordArmour(own, entity, stack, slot, inner));
+                if (pieces.isEmpty()) {
+                    HumanoidArmorModel<NpcEntity> context = inner ? innerArmour : outerArmour;
+                    getModel().copyPropertiesTo(context);
+                    own.render(poseStack, buffers, stack, entity, slot, light, (HumanoidModel<LivingEntity>) (HumanoidModel<?>) context);
+                    continue;
+                }
+                for (ArmourPiece piece : pieces) {
+                    Matrix4f m = at[piece.part];
+                    if (m != null) submit(piece.type, piece.mesh, m, piece.color, light, OverlayTexture.NO_OVERLAY);
+                }
                 continue;
             }
             Model model = ClientHooks.getArmorModel(entity, stack, slot, inner ? innerArmour : outerArmour);
@@ -226,6 +249,46 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             meshes.put(key, mesh);
         }
         return mesh == NONE ? null : mesh;
+    }
+
+    /**
+     * Draws a Middle-earth armour piece once on the resting armour model into a recorder, with PartCapture tagging every face
+     * by the body part that drew it (in that part's space). Packs one mesh per (body part, texture, colour, draw); later draws
+     * of the same piece (dye overlays) are pushed out a little so they stay on top. Faces drawn outside a body part follow the
+     * body.
+     */
+    @SuppressWarnings("unchecked")
+    private List<ArmourPiece> recordArmour(ArmorRenderer own, NpcEntity entity, ItemStack stack, EquipmentSlot slot, boolean inner) {
+        PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
+        HumanoidArmorModel<NpcEntity> rest = inner ? innerRest : outerRest;
+        PartCapture.begin();
+        try {
+            own.render(new PoseStack(), buffers, stack, entity, slot, 0xF000F0, (HumanoidModel<LivingEntity>) (HumanoidModel<?>) rest);
+        } catch (RuntimeException e) {
+            LOG.warn("lotr_revival: could not record armour {} for PulseLib", stack.getItem(), e);
+            return List.of();
+        } finally {
+            PartCapture.end();
+        }
+        buffers.flush();
+        List<ArmourPiece> pieces = new ArrayList<>();
+        buffers.byType.forEach((rt, rec) -> {
+            String name = rt.toString();
+            if (name.contains("glint")) return;
+            ResourceLocation texture = PulseGeometry.texture(rt).orElse(null);
+            if (texture == null) return;
+            RenderType type = name.contains("translucent")
+                    ? PRenderTypes.RenderTypeProvider.trianglesTranslucent(texture)
+                    : PRenderTypes.RenderTypeProvider.trianglesCutout(texture);
+            Map<List<Integer>, List<Quad>> groups = new LinkedHashMap<>();
+            for (Quad q : rec.quads)
+                groups.computeIfAbsent(List.of(q.part() < 0 ? BODY : q.part(), q.color(), Math.max(0, q.draw())), g -> new ArrayList<>()).add(q);
+            groups.forEach((g, quads) -> {
+                PGeometryData mesh = PulseGeometry.pack(quads, null, g.get(2) * LAYER_GROW);
+                if (mesh != null) pieces.add(new ArmourPiece(g.get(0), type, mesh, g.get(1)));
+            });
+        });
+        return pieces;
     }
 
     // ---- held items ----

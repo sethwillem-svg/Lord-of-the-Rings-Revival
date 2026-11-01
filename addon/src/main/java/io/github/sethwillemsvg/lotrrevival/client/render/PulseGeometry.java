@@ -34,31 +34,43 @@ final class PulseGeometry {
 
     private PulseGeometry() {}
 
-    /** One recorded face: 4 corners, their UVs, the face normal and the colour Minecraft gave it. */
-    record Quad(Vector3f[] pos, float[] u, float[] v, Vector3f normal, int color) {}
+    /** One recorded face: 4 corners, their UVs, the face normal and the colour Minecraft gave it. While PartCapture is active,
+     *  part is the body part that drew it (corners and normal in that part's own space) and draw the model draw it came from. */
+    record Quad(Vector3f[] pos, float[] u, float[] v, Vector3f normal, int color, int part, int draw) {
+        Quad(Vector3f[] pos, float[] u, float[] v, Vector3f normal, int color) {
+            this(pos, u, v, normal, color, -1, -1);
+        }
+    }
 
     /** Collects ModelPart / item output, 4 vertices per face. */
     static final class Recorder implements VertexConsumer {
         final List<Quad> quads = new ArrayList<>();
         private final Vector3f[] pos = new Vector3f[4];
         private final float[] u = new float[4], v = new float[4];
-        private int n = -1, color = -1;
+        private int n = -1, color = -1, part = -1, draw = -1;
         private Vector3f normal = new Vector3f(0, 1, 0);
 
         @Override public VertexConsumer addVertex(float x, float y, float z) {
             if (n == 3) flush();
-            pos[++n] = new Vector3f(x, y, z);
+            Vector3f p = new Vector3f(x, y, z);
+            if (n == -1) { part = PartCapture.active ? PartCapture.part : -1; draw = PartCapture.active ? PartCapture.draw : -1; }
+            if (part >= 0) PartCapture.toLocal.transformPosition(p);
+            pos[++n] = p;
             return this;
         }
         @Override public VertexConsumer setColor(int r, int g, int b, int a) { color = a << 24 | r << 16 | g << 8 | b; return this; }
         @Override public VertexConsumer setUv(float uu, float vv) { u[n] = uu; v[n] = vv; return this; }
         @Override public VertexConsumer setUv1(int a, int b) { return this; }
         @Override public VertexConsumer setUv2(int a, int b) { return this; }
-        @Override public VertexConsumer setNormal(float x, float y, float z) { normal = new Vector3f(x, y, z); return this; }
+        @Override public VertexConsumer setNormal(float x, float y, float z) {
+            normal = new Vector3f(x, y, z);
+            if (part >= 0) PartCapture.toLocalNormal.transform(normal);
+            return this;
+        }
 
         void flush() {
             if (n < 3) return;
-            quads.add(new Quad(pos.clone(), u.clone(), v.clone(), new Vector3f(normal).normalize(), color));
+            quads.add(new Quad(pos.clone(), u.clone(), v.clone(), new Vector3f(normal).normalize(), color, part, draw));
             n = -1;
         }
     }

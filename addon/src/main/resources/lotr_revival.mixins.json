@@ -4,10 +4,12 @@
   "package": "io.github.sethwillemsvg.lotrrevival.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "AgeableListModelCaptureMixin",
     "CompositeRenderTypeAccessor",
     "CompositeStateAccessor",
     "HumanoidModelMixin",
     "LivingEntityRendererMixin",
+    "ModelPartCaptureMixin",
     "TextureStateShardAccessor"
   ],
   "injectors": { "defaultRequire": 1 }
