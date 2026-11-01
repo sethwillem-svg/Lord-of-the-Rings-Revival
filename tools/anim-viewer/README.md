@@ -27,6 +27,36 @@ It asks once whether to add the `animview` and `animgen` commands to your shell 
 
 Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** grip plus tilt, swing and twist angles (weapon IK follows the adjusted blade), camera presets, toggles for IK targets and the floor grid, **Clear clips** (hides what is in the watched folder now; new takes still appear) and **Reload folder** (brings them back). Sidebar settings are remembered in the browser between visits. If the strike height is out of reach the target is raised to the lowest reachable point and the clip list says so.
 
+## Clip library (Quaternius UAL, CC0)
+
+`library/ual/` holds the 84 clips of Quaternius' Universal Animation Library 1 and 2 (CC0, see `library/ual/LICENSE.txt`) as BVH, and `library.js` says which clip plays each spec clip key for each race. In the sidebar's **Clip library**:
+
+1. **Race** is picked from the model's file name (`*troll*` troll, `*olog*` olog, orc/uruk/goblin orc, else man); change it to preview another race's set on any model.
+2. **Load race set** replaces the clips with that race's spec minimum set (from `prompts/<race>.txt`), sets the export rig name and the race's stance and torso tilt cap. Untick **Spec minimum set only** to add the extras too (fidgets, more attack variants, work, swim, crossbow).
+3. **Add** puts one clip from the list next to what is loaded, for example to compare a library clip with generated takes.
+
+The library needs the viewer served over http (`animview` does that). Exports use the spec key, so `orc.attack.sword.1` exports as `animation.orc.attack.sword.1`.
+
+Each library clip shows its source and the settings it fixes. Library clips play in place with weapon IK off, except the smash clips, which keep IK to land the weapon on the ground. Entries can join clips (attack + recovery), cut a frame range out of a combo, slow a clip down for heavy bodies or mirror it. Change them in `library.js`.
+
+| Race | Required clips covered | Not in the packs (use `animgen`) |
+| --- | --- | --- |
+| man | 20 of 28 | `emote.wave`, `emote.war_cry`, `emote.taunt`, `hold.pike.lowered`, `ranged.bow.*`, `ride.lance.couched` |
+| elf, dwarf | 18 of 23 | `emote.wave`, `hold.pike.lowered`, `ranged.bow.*` |
+| hobbit | 16 of 18 | `emote.wave`, `emote.shout` |
+| orc | 19 of 25 | `emote.taunt`, `emote.war_cry`, `hold.pike.lowered`, `ranged.bow.*` |
+| olog | 16 of 18 | `emote.taunt`, `emote.war_cry` |
+| half_troll | 17 of 20 | `emote.wave`, `emote.war_cry`, `emote.taunt` |
+| troll | 9 of 10 | `emote.war_cry` |
+
+Race choices: elves and hobbits punch with the jab; elves lead with the quicker rising slash; hobbits farm by kneeling to plant; orcs get the lunging hook, the feint-and-chop combo and a slouched fidget; ologs move 10% slower and add the heavy overhead smash (cut from `Sword_Heavy_Combo`); half-trolls and trolls use the zombie idle and lumbering walk, 10% and 20% slower, and the troll swat is the zombie swipe. Stand-ins are marked in their notes: tree chopping for `work.mine` and `work.smith`, the chair sit for `pose.sit`, the driving loop for `ride.idle`, the mirrored spell cast for `emote.order`.
+
+To convert the packs again (for example a newer release), download them from quaternius.com and run, for each pack:
+
+```sh
+node tools/anim-viewer/ual_to_bvh.js "Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb" tools/anim-viewer/library/ual
+```
+
 ## Generate straight into the viewer
 
 `kimodo_batch.py` generates clips on the Kimodo Hugging Face Space and saves the BVH files into a folder; the viewer's **Watch folder** picks each one up as it lands, so nothing has to be uploaded by hand.
@@ -83,7 +113,7 @@ It installs Kimodo (the `hugging-apps/kimodo-motion` app) and HY-Motion in separ
 
 ## Input
 
-- **BVH**: Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), HY-Motion output converted by `hymotion_to_bvh.py`, or a Mixamo-style skeleton (`mixamorig:` prefixes are ignored; `LeftUpLeg` is the thigh, and without eye joints the head takes its side axis from the shoulders), for example the BVH export of the [HY-Motion Mixamo Space](https://huggingface.co/spaces/Yosun/hy-motion-mixamo). Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
+- **BVH**: the clip library's UAL clips (`ual_to_bvh.js` output), Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), HY-Motion output converted by `hymotion_to_bvh.py`, or a Mixamo-style skeleton (`mixamorig:` prefixes are ignored; `LeftUpLeg` is the thigh, and without eye joints the head takes its side axis from the shoulders), for example the BVH export of the [HY-Motion Mixamo Space](https://huggingface.co/spaces/Yosun/hy-motion-mixamo). Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
 - **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Embedded textures are used; models with external textures render grey.
 
 ## Rig maps (`rigs.js`)

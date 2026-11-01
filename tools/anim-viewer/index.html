@@ -74,6 +74,13 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="err" id="err"></div>
   </div>
   <div class="group">
+   <span class="label">Clip library</span>
+   <div class="row"><label for="libRace">Race</label><select id="libRace"></select></div>
+   <div class="row"><label><input id="libRequired" type="checkbox" checked> Spec minimum set only</label><button id="libLoad" class="primary">Load race set</button></div>
+   <div class="row"><select id="libClip" aria-label="Library clip" style="flex:1;min-width:0"></select><button id="libAdd">Add</button></div>
+   <div class="note" id="libInfo"></div>
+  </div>
+  <div class="group">
    <span class="label">Retarget settings (applied to every clip)</span>
    <div class="row"><label for="tilt">Torso tilt cap</label><input id="tilt" type="range" min="10" max="90" step="1" value="90"><span class="val" id="tiltV">off</span></div>
    <div class="row"><label for="drop">Root drop</label><input id="drop" type="range" min="0" max="1" step="0.05" value="1"><span class="val" id="dropV">100%</span></div>
@@ -131,6 +138,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="retarget.js"></script>
 <script src="rigs.js"></script>
+<script src="library.js"></script>
 <script>
 'use strict';
 const A = window.AnimRetarget, $ = (id) => document.getElementById(id);
@@ -250,7 +258,7 @@ function runClip(c) {
   try {
     const map = currentMap();
     if (!map) throw new Error('No rig map fits this model. Add one to rigs.js.');
-    c.clip = A.retarget(c.bvh, model.rig, map, settings());
+    c.clip = A.retarget(c.bvh, model.rig, map, Object.assign(settings(), c.opts || {}));
     c.quats = model.rig.bones.map((_, i) => c.clip.frames.map((fr) => matQuat(fr.locals[i])));
   } catch (e) { c.error = e.message; }
 }
@@ -318,6 +326,12 @@ function renderList() {
           (c.clip.ik.raised ? `<br><span class="bad">Strike height out of reach: target raised ${c.clip.ik.raised.toFixed(1)} px (lower the torso tilt cap or raise the strike height)</span>` : '') : '');
     }
     d.appendChild(qa);
+    if (c.lib) {
+      const n = document.createElement('div'); n.className = 'qa';
+      const o = Object.entries(c.opts || {}).map(([k, v]) => `${k} ${v}`).join(', ');
+      n.textContent = `from ${c.lib.src}` + (c.lib.note ? ` (${c.lib.note})` : '') + (o ? `. Fixed: ${o}` : '');
+      d.appendChild(n);
+    }
     const row = document.createElement('div'); row.className = 'row';
     const mk = (txt, fn, label) => { const b = document.createElement('button'); b.textContent = txt; b.onclick = fn; if (label) b.setAttribute('aria-label', label); row.appendChild(b); };
     mk('Hit', () => { setTime(($('align').checked ? maxHit : c.clip ? c.clip.hitTime : 0)); playing = false; syncPlay(); }, 'Jump to hit of ' + c.name);
@@ -336,13 +350,13 @@ function download(name, obj) {
 }
 function exportClip(c, kind) {
   if (!c.clip) return;
-  const rigName = ($('rigName').value || 'rig').trim(), b = baseName(c.name);
+  const rigName = ($('rigName').value || 'rig').trim(), b = c.key || baseName(c.name);
   if (kind === 'viewer') download(`${b}.viewer.json`, A.toViewerClip(c.clip, model.rig));
   else download(`${b}.animation.json`, A.toPulseLibAnimation(c.clip, model.rig, `animation.${rigName}.${b}`));
 }
 $('exportAll').onclick = () => {
   const out = {};
-  for (const c of clips) if (c.clip) out[baseName(c.name)] = A.toViewerClip(c.clip, model.rig);
+  for (const c of clips) if (c.clip) out[c.key || baseName(c.name)] = A.toViewerClip(c.clip, model.rig);
   if (Object.keys(out).length) download(`${($('rigName').value || 'rig').trim()}_clips.viewer.json`, out);
 };
 
@@ -403,6 +417,83 @@ function frame(now) {
   placeCam(); R.render(scene, cam); requestAnimationFrame(frame);
 }
 
+// ---------- clip library (library.js: spec clip key -> Quaternius UAL clip, per race) ----------
+const LIB = window.ANIM_LIBRARY, libText = new Map(), libRequired = new Map();
+async function libFetch(rel) {
+  if (!libText.has(rel)) {
+    libText.set(rel, fetch(rel, { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(`${rel} returned ${r.status}`); return r.text(); }));
+  }
+  try { return await libText.get(rel); } catch (e) { libText.delete(rel); throw e; }
+}
+/** Required clip keys for a race, from prompts/<race>.txt (the spec's minimum set). */
+async function requiredKeys(race) {
+  if (!libRequired.has(race)) {
+    try {
+      const txt = await libFetch(`prompts/${race}.txt`);
+      libRequired.set(race, txt.split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('#')).map((l) => l.split('|')[0].trim()));
+    } catch (e) { return null; }
+  }
+  return libRequired.get(race);
+}
+/** Join the entry's source clips, cut its range, apply its speed. */
+async function libBvh(entry) {
+  const parts = [];
+  for (const s of [].concat(entry.src)) parts.push(A.parseBVH(await libFetch(LIB.dir + encodeURIComponent(s) + '.bvh')));
+  const b = parts[0];
+  for (const p of parts.slice(1)) {
+    if (p.names.join() !== b.names.join()) throw new Error(`${entry.src} do not share a skeleton`);
+    b.data = b.data.concat(p.data);
+  }
+  if (entry.range) b.data = b.data.slice(entry.range[0], entry.range[1] + 1);
+  b.frames = b.data.length;
+  if (entry.speed) b.dt /= entry.speed;
+  return b;
+}
+async function addLibClip(race, key) {
+  const entry = LIB.races[race].clips[key];
+  const src = [].concat(entry.src).join(' + ') + (entry.range ? ` [${entry.range[0]}-${entry.range[1]}]` : '') + (entry.speed ? ` x${entry.speed}` : '');
+  const clip = { name: `${race}.${key}`, key, bvh: await libBvh(entry), lib: { src, note: entry.note },
+                 opts: Object.assign({}, LIB.defaults, entry.mirror ? { mirror: true } : {}, entry.opts || {}) };
+  const k = clips.findIndex((c) => c.name === clip.name);
+  if (k >= 0) clips[k] = clip; else clips.push(clip);
+}
+function applyRaceSettings(race) {
+  const s = LIB.races[race].settings || {};
+  $('rigName').value = race;
+  $('stance').value = s.stance || 1;
+  $('tilt').value = s.torsoTiltCap || 90;
+  sliderLabels(); saveSettings();
+}
+async function fillLibClips() {
+  const race = $('libRace').value, r = LIB.races[race], req = (await requiredKeys(race)) || [];
+  const mapped = Object.keys(r.clips), extras = mapped.filter((k) => !req.includes(k));
+  const opt = (k) => `<option value="${k}">${k} (${[].concat(r.clips[k].src).join(' + ')})</option>`;
+  $('libClip').innerHTML = `<optgroup label="Spec minimum set">${req.filter((k) => r.clips[k]).map(opt).join('')}</optgroup>` +
+    `<optgroup label="Extras">${extras.map(opt).join('')}</optgroup>`;
+  const gaps = req.filter((k) => !r.clips[k]);
+  $('libInfo').textContent = `${LIB.credit}. ${r.label}: ${req.length - gaps.length} of ${req.length} required clips, ${extras.length} extras.` +
+    (gaps.length ? ` Not in the packs (generate with animgen): ${gaps.join(', ')}.` : '') +
+    (req.length ? '' : ' Serve the repo over http (animview) to read the spec set.');
+}
+if (LIB) {
+  $('libRace').innerHTML = Object.entries(LIB.races).map(([k, r]) => `<option value="${k}">${r.label}</option>`).join('');
+  $('libRace').onchange = fillLibClips;
+  fillLibClips();
+  const guard = async (fn) => {
+    if (!location.protocol.startsWith('http')) { showErr('The clip library needs the viewer served over http: run animview (or python3 -m http.server in the repo root).'); return; }
+    try { await fn(); } catch (e) { showErr('Library: ' + e.message); }
+    rebuild();
+  };
+  $('libLoad').onclick = () => guard(async () => {
+    const race = $('libRace').value, r = LIB.races[race], req = await requiredKeys(race);
+    const keys = $('libRequired').checked && req ? req.filter((k) => r.clips[k]) : [...(req || []).filter((k) => r.clips[k]), ...Object.keys(r.clips).filter((k) => !(req || []).includes(k))];
+    applyRaceSettings(race);
+    clips.length = 0;
+    for (const k of keys) await addLibClip(race, k);
+  });
+  $('libAdd').onclick = () => guard(() => addLibClip($('libRace').value, $('libClip').value));
+} else $('libInfo').textContent = 'library.js did not load.';
+
 // ---------- input ----------
 function showErr(m) { $('err').textContent = m; }
 function setModel(bb, name) {
@@ -411,6 +502,7 @@ function setModel(bb, name) {
   const auto = A.detectMap(model.rig, RIG_MAPS);
   $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}${auto && auto.id === m.id ? ' (auto)' : ''}</option>`).join('');
   if (auto) $('rigMap').value = auto.id;
+  if (window.ANIM_LIBRARY) { $('libRace').value = ANIM_LIBRARY.raceForModel(name); fillLibClips(); }
   $('modelInfo').textContent = `${name}: ${model.rig.bones.length} bones, ${model.cubes} cubes, ${model.faces} faces` + (auto ? '' : '. No rig map matches its bone names.');
 }
 async function loadModelUrl(url) {
