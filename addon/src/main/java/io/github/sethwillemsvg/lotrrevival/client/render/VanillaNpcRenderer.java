@@ -24,12 +24,13 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Baseline for the benchmark: Minecraft's own model path (every vertex of every layer transformed on the CPU each frame),
  * drawing the same skin layers as {@link PulseNpcRenderer}, plus armour and held items through Minecraft's standard layers
- * (shared with PulseNpcRenderer, which only moves the skin onto PulseLib). A MobRenderer like Middle-earth's, so names only show when looked at.
+ * (PulseNpcRenderer draws the same skin, armour and items with PulseLib instead). A MobRenderer like Middle-earth's, so names only show when looked at.
  */
 public class VanillaNpcRenderer extends MobRenderer<NpcEntity, NpcBipedModel> {
     public VanillaNpcRenderer(EntityRendererProvider.Context context) {
         super(context, new NpcBipedModel(), 0.5f);
         addLayer(skinLayer(this));
+        if (!vanillaEquipment()) return;
         // armour and held items: Minecraft's own layers, as Middle-earth uses them (same distance cut-off)
         addLayer(new HumanoidArmorLayer<>(this, new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
                 new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)), context.getModelManager()) {
@@ -48,6 +49,12 @@ public class VanillaNpcRenderer extends MobRenderer<NpcEntity, NpcBipedModel> {
                     super.render(poseStack, buffers, light, entity, limbSwing, limbSwingAmount, partialTick, ageInTicks, netHeadYaw, headPitch);
             }
         });
+    }
+
+    /** Whether armour and held items are drawn with Minecraft's layers (PulseNpcRenderer draws them itself). Called from the
+     *  constructor, so overrides must not use their own fields. */
+    protected boolean vanillaEquipment() {
+        return true;
     }
 
     /** Middle-earth's rule: equipment shows on frozen (no-AI) NPCs and within its configured distance. */
