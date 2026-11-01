@@ -8,6 +8,7 @@
     "CompositeRenderTypeAccessor",
     "CompositeStateAccessor",
     "GlStateManagerMixin",
+    "HierarchicalModelMixin",
     "HumanoidModelMixin",
     "LivingEntityRendererMixin",
     "ModelPartCaptureMixin",
