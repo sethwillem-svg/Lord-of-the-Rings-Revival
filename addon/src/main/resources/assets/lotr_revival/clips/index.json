@@ -1,0 +1,63 @@
+{
+ "man": [
+  "idle",
+  "walk",
+  "run",
+  "hurt",
+  "death",
+  "attack_sword_1",
+  "attack_sword_2",
+  "attack_sword_3",
+  "attack_unarmed_1",
+  "attack_unarmed_2"
+ ],
+ "elf": [
+  "idle",
+  "walk",
+  "run",
+  "hurt",
+  "death",
+  "attack_sword_1",
+  "attack_sword_2",
+  "attack_sword_3",
+  "attack_unarmed_1",
+  "attack_unarmed_2"
+ ],
+ "dwarf": [
+  "idle",
+  "walk",
+  "run",
+  "hurt",
+  "death",
+  "attack_sword_1",
+  "attack_sword_2",
+  "attack_sword_3",
+  "attack_unarmed_1",
+  "attack_unarmed_2"
+ ],
+ "hobbit": [
+  "idle",
+  "walk",
+  "run",
+  "hurt",
+  "death",
+  "attack_sword_1",
+  "attack_sword_2",
+  "attack_sword_3",
+  "attack_unarmed_1",
+  "attack_unarmed_2"
+ ],
+ "orc": [
+  "idle",
+  "walk",
+  "run",
+  "hurt",
+  "death",
+  "attack_sword_1",
+  "attack_sword_2",
+  "attack_sword_3",
+  "attack_sword_4",
+  "attack_unarmed_1",
+  "attack_unarmed_2"
+ ]
+}

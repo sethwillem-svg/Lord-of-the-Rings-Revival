@@ -1,0 +1,36 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '1.0.17'
+}
+
+version = mod_version
+group = mod_group
+base { archivesName = mod_id }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('run')
+        }
+    }
+    mods {
+        "${mod_id}" { sourceSet(sourceSets.main) }
+    }
+}
+
+dependencies {
+    // The Middle-earth mod is All Rights Reserved: it is never compiled against or bundled. The add-on only needs it at runtime.
+    def me = providers.gradleProperty('meJar').getOrElse('')
+    if (me) runtimeOnly files(me)
+}
+
+tasks.named('processResources', ProcessResources) {
+    def props = [mod_id: mod_id, mod_name: mod_name, mod_version: mod_version]
+    inputs.properties(props)
+    filesMatching('META-INF/neoforge.mods.toml') { expand(props) }
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
