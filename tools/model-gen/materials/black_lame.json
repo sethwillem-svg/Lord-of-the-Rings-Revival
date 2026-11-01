@@ -1,12 +1,11 @@
 {
-  "kind": "plate",
+  "kind": "metal",
   "colour": "cloth",
-  "bands": 2,
-  "bevel": true,
   "rim": "trim",
   "rivets": {
     "spacing": 3,
     "rows": "top"
   },
-  "note": "Black enamelled lames with a silver bottom rim and small rivets."
+  "note": "Black enamelled lames with a silver bottom rim and small rivets.",
+  "polish": null
 }

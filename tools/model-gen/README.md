@@ -79,12 +79,22 @@ men pokes through at rest. The viewer's Gear panel shows them on any man.
 
 ## Armour texturing tool (materials)
 
-Armour pieces are painted from material recipes in `materials/*.json` (painter: `lib/surface.mjs`, light from the
-top-left, six tones from one colour). Fields: `kind` (plate, mail, leather, cloth), `colour` (palette slot such as
-metal, cloth, trim, accent, leather, or a hex colour), `bands` (1-4 tone steps down a face), `polish` (0-1, x of a
-bright streak, or null), `bevel`, `rim` (bottom edge colour), `border` (raised band one pixel in), `rivets`
-(`{ "spacing": 2-6, "rows": "top" | "both" }`, silver on rimmed or bordered pieces), `scratches` (0-0.3), `engrave`
-(scroll, filigree, fluting), `lames` (a seam every N rows), `note`.
+Armour pieces are painted from material recipes in `materials/*.json` by `lib/surface.mjs`, which follows the
+Minecraft texturing guides (Blockbench Minecraft style guide, Faithful 32x guidelines, metal-shading tutorials):
+
+- **Hue-shifted ramps**: six tones from one colour, highlights warm and desaturated, shadows cool; greys take the
+  tint fully, colours shift at most 20-25 degrees (gold darkens through amber, not purple). Wide contrast for metal.
+- **Material from clusters, not bands or noise**: metal faces 6 px or taller reflect a light sky zone, a dark
+  horizon band, a polish streak with one specular glint and a counter-reflection above the dark bottom edge;
+  smaller faces get a simple lit-top, dark-bottom gradient; mail is offset rows of 2 px links (not a checkerboard).
+- **Faces lit by direction** (entity rule): top brightest, front and the right side (light from the top-left)
+  brighter than the back and left side, bottom darkest.
+- Banding (`bands`), all-round bevels (pillow/pancake shading) and random scratches (noise) were removed.
+
+Fields: `kind` (metal, mail, leather, cloth), `colour` (palette slot such as metal, cloth, trim, accent, leather,
+or a hex colour), `polish` (0-1: x of the streak and glint, or null), `rim` (bottom edge colour), `border` (raised
+band one pixel in), `rivets` (`{ "spacing": 2-6, "rows": "top" | "both" }`, silver on rimmed or bordered pieces),
+`engrave` (scroll, filigree, fluting; one tone deep), `lames` (a soft seam every N rows; 4+ avoids stripes), `note`.
 
 ```sh
 node tools/model-gen/build.mjs materials            # swatch sheet -> tools/model-gen/out/materials.png
@@ -95,8 +105,7 @@ node tools/model-gen/build.mjs gear                 # repaint the armour with th
 
 The sheet shows every recipe on a large plate and a thin lame (front and turned), four per row in file-name order,
 then the Gondor armour on a man. A recipe with a problem fails with the field named. An armour piece picks its
-recipe with `material` in `gear/armour.mjs` (Gondor: steel_plate, steel_engraved, steel_banded, black_lame,
-black_bordered, gold_trim, ring_mail).
+recipe with `material` in `gear/armour.mjs`.
 
 **Later:** elves and dwarves are new race tables; faction clothing parts (different cuts per faction) come
 with the gear parts.

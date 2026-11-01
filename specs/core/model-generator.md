@@ -91,9 +91,9 @@ exists and falls back to the generic set built on the largest man.
 **Armour style** (Gondor first, 2026-11-01): shells that follow the body (helm crown, sides and back around an open
 face; breastplate; limb plates) instead of loose boxes; layered lames; `plate` shading lit from the top-left with
 dark bottom and right edges and rivets; `rings` for mail; black lames rimmed in silver; a gold accent belt. Detail
-comes from the texture, shape from the cubes. Armour is painted from material recipes (`tools/model-gen/materials/*.json`:
-tone bands, polish streak, bevel, rim, raised border, rivets, scratches, engraving, lames), previewed with
-`build.mjs materials [--watch]`, the armour texturing tool.
+comes from the texture, shape from the cubes. Armour is painted from material recipes (`tools/model-gen/materials/*.json`),
+previewed with `build.mjs materials [--watch]`, the armour texturing tool, which follows the Minecraft texturing
+guides: hue-shifted contrasty ramps, reflection clusters instead of bands or noise, faces lit by direction.
 
 **Armour convention:** one `.bbmodel` per faction in `gear/armour/`, groups named after the anchor bones
 (`head_armor`, `chest_armor`, `*_arm_armor`, `*_leg_armor`, `*_boot_armor`, `cape`); each group's pivot is that

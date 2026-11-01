@@ -1,10 +1,7 @@
 {
-  "kind": "plate",
+  "kind": "metal",
   "colour": "metal",
-  "bands": 2,
   "polish": 0.3,
-  "bevel": true,
-  "lames": 3,
-  "scratches": 0.03,
-  "note": "Greaves and cuisses: steel made of overlapping lames (a seam every 3 rows)."
+  "lames": 4,
+  "note": "Greaves, cuisses and vambraces: steel in overlapping lames (a soft seam every 4 rows)."
 }

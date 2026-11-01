@@ -1,13 +1,10 @@
 {
-  "kind": "plate",
+  "kind": "metal",
   "colour": "metal",
-  "bands": 3,
   "polish": 0.3,
-  "bevel": true,
   "rivets": {
     "spacing": 4,
     "rows": "top"
   },
-  "scratches": 0.03,
   "note": "Polished steel: three tone bands from a lit top, a polish streak, rivets along the top edge, light wear."
 }

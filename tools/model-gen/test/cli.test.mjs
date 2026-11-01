@@ -129,7 +129,7 @@ test('a broken material recipe fails with its problems', () => {
 
 test('--materials renders another recipe set', () => {
   const dir = tmp(), out = path.join(tmp(), 'alt.png');
-  writeFileSync(path.join(dir, 'blue_steel.json'), JSON.stringify({ kind: 'plate', colour: '#5a6a8a', bands: 3, polish: 0.4 }));
+  writeFileSync(path.join(dir, 'blue_steel.json'), JSON.stringify({ kind: 'metal', colour: '#5a6a8a', polish: 0.4 }));
   const r = run(['materials', '--materials', dir, '--out', out]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /blue_steel/);

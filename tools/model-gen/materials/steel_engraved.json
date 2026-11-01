@@ -1,14 +1,11 @@
 {
-  "kind": "plate",
+  "kind": "metal",
   "colour": "metal",
-  "bands": 3,
   "polish": 0.25,
-  "bevel": true,
   "rivets": {
     "spacing": 3,
     "rows": "both"
   },
-  "scratches": 0.02,
   "engrave": "scroll",
   "note": "Breastplate: polished steel with fine scroll etching and rivets top and bottom."
 }
