@@ -2,8 +2,8 @@
 export const MAN = {
   id: 'man',
   legs: [11, 13],
-  torso: [12, 13],
-  head: [7, 8],
+  torso: [11, 12],
+  head: [8, 9],     // includes the 1 px gap the collar fills under the skull
   shoulders: [8, 10],
   depth: [4, 5],
   arm: [11, 12],

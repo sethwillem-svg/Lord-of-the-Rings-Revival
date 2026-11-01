@@ -15,6 +15,16 @@ export class Assembly {
     this.body = body;
     this.cubes = [];
     this.names = new Set();
+    this.meta = {};   // shared facts between parts (for example the head geometry hair and beards fit to)
+  }
+
+  get(name) {
+    return this.cubes.find((c) => c.name === name);
+  }
+
+  remove(name) {
+    this.cubes = this.cubes.filter((c) => c.name !== name);
+    this.names.delete(name);
   }
 
   add(spec) {
