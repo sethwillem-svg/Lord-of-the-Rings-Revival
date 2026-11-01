@@ -7,5 +7,6 @@ They use the `muster-pack` bone layout (`root > body`, legs under `root`, `right
 ## `man/` (generated)
 
 Base men (no gear) built by `tools/model-gen` (`node tools/model-gen/build.mjs man`), on the spec biped rig
-(`specs/core/rendering-animation.md` 5b), with low-detail copies in `man/lod/` and `preview.png`. Do not
+(`specs/core/rendering-animation.md` 5b), with low-detail copies in `man/lod/` and `preview.png`. Faction colour sets (same men, faction palettes) are in
+`man/<faction>/` for rohan, dale, dunedain, gondor, dunland and harad (`build.mjs man --palette all`). Do not
 edit these by hand: a rebuild overwrites them. Change the race table or parts in `tools/model-gen/` instead.

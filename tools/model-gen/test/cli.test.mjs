@@ -67,3 +67,27 @@ test('output does not depend on the system locale', () => {
   run(['man', '--seeds', '7', '--out', b], { env: { ...process.env, LC_ALL: 'cs_CZ.UTF-8', LANG: 'cs_CZ.UTF-8' } });
   assert.ok(readFileSync(path.join(a, 'man_base_7.bbmodel')).equals(readFileSync(path.join(b, 'man_base_7.bbmodel'))));
 });
+
+test('--palette writes faction men named after the faction', () => {
+  const out = tmp();
+  const r = run(['man', '--seeds', '7', '--palette', 'rohan', '--out', out]);
+  assert.equal(r.status, 0, r.stderr);
+  for (const f of ['man_rohan_7.bbmodel', 'lod/man_rohan_7_lod.bbmodel', 'preview.png']) assert.ok(existsSync(path.join(out, f)), f);
+});
+
+test('--palette all writes one folder per faction', () => {
+  const out = tmp();
+  const r = run(['man', '--seeds', '7', '--palette', 'all', '--out', out]);
+  assert.equal(r.status, 0, r.stderr);
+  for (const f of ['rohan', 'dale', 'dunedain', 'gondor', 'dunland', 'harad']) {
+    assert.ok(existsSync(path.join(out, f, `man_${f}_7.bbmodel`)), f);
+    assert.ok(existsSync(path.join(out, f, 'preview.png')), `${f} preview`);
+  }
+  assert.ok(!existsSync(path.join(out, 'base')), 'base is not a faction');
+});
+
+test('an unknown palette explains itself', () => {
+  const r = run(['man', '--seeds', '1', '--palette', 'mordor_pink', '--out', tmp()]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /unknown palette/);
+});

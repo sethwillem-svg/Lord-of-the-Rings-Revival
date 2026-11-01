@@ -5,6 +5,8 @@
  *   node tools/model-gen/build.mjs man                      the race's showcase seeds into src/main/art/blockbench/man/
  *   node tools/model-gen/build.mjs man --seeds 1-8
  *   node tools/model-gen/build.mjs man --seeds 4,9 --out DIR
+ *   node tools/model-gen/build.mjs man --palette rohan       faction colours into src/main/art/blockbench/man/rohan/
+ *   node tools/model-gen/build.mjs man --palette all         every faction palette, one folder each
  *   node tools/model-gen/build.mjs man --seeds 1-8 --watch  rebuild into <repo>/clips/ on every save (viewer watches it)
  *
  * Writes <out>/<race>_base_<seed>.bbmodel, <out>/lod/<race>_base_<seed>_lod.bbmodel, <out>/preview.png and
@@ -20,11 +22,12 @@ const REPO = path.resolve(HERE, '../..');
 const fail = (msg) => { process.stderr.write(msg + '\n'); process.exit(1); };
 
 function parseArgs(argv) {
-  const args = { race: argv[0], seeds: null, out: null, watch: false };
+  const args = { race: argv[0], seeds: null, out: null, watch: false, palette: 'base' };
   for (let i = 1; i < argv.length; i++) {
     if (argv[i] === '--seeds') args.seeds = argv[++i];
     else if (argv[i] === '--out') args.out = argv[++i];
     else if (argv[i] === '--watch') args.watch = true;
+    else if (argv[i] === '--palette') args.palette = argv[++i];
     else fail(`unknown argument ${argv[i]}`);
   }
   if (!args.race || args.race.startsWith('-')) fail('usage: build.mjs <race> --seeds A-B|A,B,C [--out DIR] [--watch]');
@@ -39,7 +42,7 @@ function parseArgs(argv) {
   return args;
 }
 
-async function build(args) {
+async function loadLib() {
   let lib;
   try {
     lib = {
@@ -51,15 +54,34 @@ async function build(args) {
     if (/pngjs/.test(String(e && e.message))) fail('run npm install in tools/model-gen (the pngjs package is missing)');
     throw e;
   }
-  const out = path.resolve(args.out || path.join(REPO, 'src/main/art/blockbench', args.race));
+  return lib;
+}
+
+/** Build every requested palette: 'base' into the race folder, a faction into <race folder>/<faction>/. */
+async function build(args) {
+  const lib = await loadLib();
+  if (args.palette !== 'all' && !lib.PALETTES.includes(args.palette)) {
+    fail(`unknown palette "${args.palette}" (known: ${lib.PALETTES.join(', ')}, or all)`);
+  }
+  const palettes = args.palette === 'all' ? lib.PALETTES.filter((p) => p !== 'base') : [args.palette];
+  const root = path.resolve(args.out || path.join(REPO, 'src/main/art/blockbench', args.race));
+  let failed = 0;
+  for (const palette of palettes) {
+    const sub = args.palette === 'all' || (!args.out && palette !== 'base') ? palette : '';
+    failed += await buildSet(lib, args, palette, path.join(root, sub));
+  }
+  return failed;
+}
+
+async function buildSet(lib, args, palette, out) {
   if (!args.seedList) args.seedList = lib.showcaseSeeds(args.race);
   const report = [], tiles = [];
   let failed = 0;
   for (const seed of args.seedList) {
     let full, lod;
     try {
-      full = lib.buildModel(args.race, seed);
-      lod = lib.buildModel(args.race, seed, { lod: true });
+      full = lib.buildModel(args.race, seed, { palette });
+      lod = lib.buildModel(args.race, seed, { palette, lod: true });
     } catch (e) { fail(e.message); }
     const problems = [...full.qa.problems, ...lod.qa.problems.map((p) => `lod: ${p}`)];
     const st = full.styles;
@@ -80,7 +102,7 @@ async function build(args) {
     writeFileSync(path.join(out, 'preview.png'), sheet.toPng());
   }
   mkdirSync(path.join(HERE, 'out'), { recursive: true });
-  writeFileSync(path.join(HERE, 'out', `${args.race}_report.txt`), report.join('\n') + '\n');
+  writeFileSync(path.join(HERE, 'out', `${args.race}_${palette}_report.txt`), report.join('\n') + '\n');
   process.stdout.write(report.join('\n') + `\n${tiles.length} built into ${out}${failed ? `, ${failed} failed` : ''}\n`);
   return failed;
 }
@@ -92,7 +114,7 @@ if (!args.watch) {
   const clips = path.join(REPO, 'clips');
   mkdirSync(clips, { recursive: true });
   if (!existsSync(path.join(clips, '.gitignore'))) writeFileSync(path.join(clips, '.gitignore'), '*\n');
-  const child = ['--seeds', args.seeds || 'showcase', '--out', args.out || clips];
+  const child = ['--seeds', args.seeds || 'showcase', '--palette', args.palette, '--out', args.out || clips];
   const rebuild = () => {
     const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), args.race, ...child], { encoding: 'utf8' });
     const last = (r.stdout || '').trim().split('\n').pop();

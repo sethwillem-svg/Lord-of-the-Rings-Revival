@@ -30,7 +30,7 @@ None in game yet. The output is source models under `src/main/art/blockbench/` (
 | Beard | about 5 styles | Includes none |
 | Clothes | tunic (belted), trousers, boots | One shape each in the PoC; variety comes from proportions and colours |
 | Cubes per model | 40 to 80 | Orc-pack detail level |
-| Texture | 128 x 128, one sheet per model, embedded | About one texel per model pixel; flat 3 to 4 shade ramps, light from above, pattern brushes for cloth, stitching, leather and soles; no noise or dithering |
+| Texture | 128 x 128, one sheet per model, embedded | About one texel per model pixel; flat 3 to 4 shade ramps, light from above, pattern brushes for cloth, stitching, leather and soles; no noise or dithering, except a palette's grime (mud and smudges, deterministic per pixel) |
 | Colour slots | `skin`, `hair`, `eye`, `tunic`, `tunic_trim`, `trousers`, `boots`, `belt`, `metal` | Each slot is a shade ramp. Skin, hair and eye come from the race's ranges by seed; clothes from `palettes/base.json` |
 | Low-detail copy | about half the cubes | Drops cubes parts mark as detail (nose, ears, buckle, boot cuffs, beard strands), merges the beard into one block, same texture |
 | Committed seeds | 8 | Chosen to cover the range: slim and stocky, short and tall, bald, long-haired, bearded, clean-shaven |
@@ -61,7 +61,7 @@ None in game yet. The output is source models under `src/main/art/blockbench/` (
 
 - Elves, dwarves and the other races (later race tables on the same parts system).
 - Gear: helmets, armour, weapons, capes.
-- **Per-faction looks for men** (maintainer wish, next step after the PoC): faction palettes that recolour the slots, plus faction-specific clothing parts (for example Rohan, Gondor, Dale, Bree, Harad), so men differ in what they wear, not only in colour.
+- **Faction clothing parts for men** (maintainer wish): faction-specific cuts and pieces, so men differ in what they wear, not only in colour. Faction palettes are done: rohan, dale, dunedain, gondor, dunland, harad (2026-11-01; Rohan, Gondor and Harad kempt, Dunland dirty).
 - GeckoLib / PulseLib export (rendering-animation 5a export step).
 - Protecting hand edits from rebuilds.
 

@@ -1,0 +1,27 @@
+{
+  "name": "Gondor",
+  "note": "kempt: black, silver trim, bright steel, grey eyes",
+  "grime": 0,
+  "tunic": "#1f2226",
+  "tunic_trim": "#c4c8cc",
+  "trousers": "#383d46",
+  "boots": "#1c1a1a",
+  "belt": "#2c2520",
+  "metal": "#cfd3d8",
+  "skin": [
+    "#f1d2b6",
+    "#e3b48f",
+    "#c99068"
+  ],
+  "hair": [
+    "#1c1a18",
+    "#2e2219",
+    "#3b2a1e",
+    "#5a3d27"
+  ],
+  "eye": [
+    "#7a8a96",
+    "#5a6a7a",
+    "#3a5a7a"
+  ]
+}

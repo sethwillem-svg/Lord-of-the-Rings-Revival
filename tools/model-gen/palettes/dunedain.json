@@ -1,0 +1,27 @@
+{
+  "name": "Dunedain",
+  "note": "rangers: dark grey-green, travel-worn, grey eyes",
+  "grime": 0.3,
+  "tunic": "#3a4232",
+  "tunic_trim": "#687060",
+  "trousers": "#2e2a26",
+  "boots": "#2a2018",
+  "belt": "#4a3424",
+  "metal": "#8a8a84",
+  "skin": [
+    "#e3b48f",
+    "#d8a882",
+    "#c99068"
+  ],
+  "hair": [
+    "#1c1a18",
+    "#2e2219",
+    "#3b2a1e",
+    "#4a3526"
+  ],
+  "eye": [
+    "#7a8a96",
+    "#6a7a84",
+    "#5a6a5a"
+  ]
+}

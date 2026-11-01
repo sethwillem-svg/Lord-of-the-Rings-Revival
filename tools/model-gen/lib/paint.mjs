@@ -74,7 +74,32 @@ function stamp(canvas, box, s, palette) {
   }));
 }
 
-export function paintModel(model, atlas, partCubes, palette) {
+const MUD = [58, 44, 30], SOOT = [40, 32, 24];
+const DIRTY = new Set(['tunic', 'tunic_trim', 'trousers', 'skin', 'hair', 'belt', 'boots']);
+const hash01 = (text) => {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) / 4294967296;
+};
+
+/**
+ * Grime (palette `grime`, 0 clean .. 1 filthy): mud climbing the boots and trouser hems, and smudges on
+ * cloth, skin and hair. Deterministic per cube, face and pixel, so rebuilds stay byte-identical.
+ */
+function dirty(canvas, box, face, slot, name, grime) {
+  if (!(grime > 0) || !DIRTY.has(slot)) return;
+  const [u1, v1, u2, v2] = box, h = v2 - v1;
+  const mudRows = (slot === 'boots' || slot === 'trousers') && SIDES.includes(face) ? Math.ceil(h * grime * 0.6) : 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < u2 - u1; x++) {
+    const c = canvas.get(u1 + x, v1 + y);
+    let out = null;
+    if (y >= h - mudRows) out = mix(c, MUD, 0.45);
+    else if (hash01(`${name}|${face}|${x}|${y}`) < grime * 0.12) out = mix(c, SOOT, 0.35);
+    if (out) canvas.set(u1 + x, v1 + y, [out[0], out[1], out[2], 255]);
+  }
+}
+
+export function paintModel(model, atlas, partCubes, palette, { grime = 0 } = {}) {
   const byName = new Map(partCubes.map((c) => [c.name, c]));
   for (const cube of model.cubes) {
     const part = byName.get(cube.name);
@@ -82,6 +107,7 @@ export function paintModel(model, atlas, partCubes, palette) {
     for (const [face, rect] of Object.entries(cube.faces)) {
       const box = paintFace(atlas.canvas, rect, face, palette[part.slot], part.style);
       if (part.stamps && part.stamps[face]) stamp(atlas.canvas, box, part.stamps[face], palette);
+      dirty(atlas.canvas, box, face, part.slot, cube.name, grime);
     }
   }
 }

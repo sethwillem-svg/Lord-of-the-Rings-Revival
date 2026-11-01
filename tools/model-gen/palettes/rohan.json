@@ -1,0 +1,28 @@
+{
+  "name": "Rohan",
+  "note": "kempt: deep green, gold trim, fair and blond",
+  "grime": 0,
+  "tunic": "#2e5233",
+  "tunic_trim": "#c9a447",
+  "trousers": "#5b4630",
+  "boots": "#3b2a1c",
+  "belt": "#6b4a2b",
+  "metal": "#c2a25e",
+  "skin": [
+    "#f1d2b6",
+    "#e8c4a2",
+    "#e3b48f"
+  ],
+  "hair": [
+    "#e6cf98",
+    "#d9bc7a",
+    "#c8a560",
+    "#b08a52",
+    "#8a6a3e"
+  ],
+  "eye": [
+    "#3a5a7a",
+    "#4a6a5a",
+    "#5a6a7a"
+  ]
+}

@@ -1,4 +1,6 @@
 {
+  "name": "Base",
+  "grime": 0,
   "tunic": "#6b5a43",
   "tunic_trim": "#3f3326",
   "trousers": "#4b4a3e",

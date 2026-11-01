@@ -19,6 +19,8 @@ Node 20 or newer. The only package is `pngjs`; the model toolkit is vendored in 
 ```sh
 node tools/model-gen/build.mjs man                        # the 8 showcase men into src/main/art/blockbench/man/ (+ lod/, preview.png)
 node tools/model-gen/build.mjs man --seeds 1-40 --out /tmp/men   # browse more
+node tools/model-gen/build.mjs man --palette rohan          # one faction into src/main/art/blockbench/man/rohan/
+node tools/model-gen/build.mjs man --palette all            # every faction, one folder each
 node tools/model-gen/build.mjs man --seeds 4,9 --out /tmp/men
 node tools/model-gen/build.mjs man --seeds 1-8 --watch    # rebuilds into clips/ on every save
 cd tools/model-gen && npm test                            # all checks
@@ -27,7 +29,7 @@ cd tools/model-gen && npm test                            # all checks
 With `--watch`, open the viewer on a generated man (`animview man_base_7` opens a committed man and watches `clips/`): every save
 under `lib/`, `parts/`, `races/` or `palettes/` rebuilds the models in `clips/`, and the viewer reloads the open model when its rebuilt file (same name) appears there.
 
-The report (`tools/model-gen/out/man_report.txt`) lists each seed's height, build, part styles and cube counts.
+The report (`tools/model-gen/out/man_<palette>_report.txt`) lists each seed's height, build, part styles and cube counts.
 `showcase` in `races/man.mjs` lists the seeds committed to the repo, chosen from the report to cover the range.
 
 ## How it fits together
@@ -41,7 +43,7 @@ The report (`tools/model-gen/out/man_report.txt`) lists each seed's height, buil
 | `lib/build.mjs` | One model: body, parts, low-detail copy, UVs, paint, checks |
 | `lib/qa.mjs` | Spec bones, empty anchors, sealed joints (1 px shared), no hidden cubes, 40-80 cubes |
 | `lib/bbmodel.mjs` | Writes the Blockbench 4.10 layout the viewer and orc packs use |
-| `palettes/base.json` | Clothes colours. A faction palette (later) is another file with the same slots |
+| `palettes/*.json` | `base` plus one per faction (rohan, dale, dunedain, gondor, dunland, harad): clothes slot colours, optional skin/hair/eye choices that replace the race's, and `grime` (0 clean, 1 filthy: mud on boots and hems, smudges) |
 
 **Adding a part:** export `STYLES` and `addX(asm, body, rng, style)` from a file in `parts/`, add cubes with
 `asm.add({ name, bone, from, to, slot, style, detail, lodGroup, stamps })`, call it from `parts/index.mjs`
@@ -49,4 +51,9 @@ with its own `rng.fork('x')` (so other parts keep their picks). Sizes must be wh
 half pixels. Mark small pieces `detail: true` so the low-detail copy drops them. Run `npm test`: the seal and
 hidden-cube checks tell you which cube to move.
 
-**Later:** elves and dwarves are new race tables; faction looks are palettes plus faction clothing parts.
+**Factions:** a palette only recolours. The same seed has the same body and parts in every faction, so a
+faction set is the showcase men in that faction's colours. Rohan, Gondor and Harad are kempt (grime 0); Dale
+is lightly lived-in, the Dunedain travel-worn and Dunland dirty. Add a faction by adding a palette file.
+
+**Later:** elves and dwarves are new race tables; faction clothing parts (different cuts per faction) come
+with the gear parts.
