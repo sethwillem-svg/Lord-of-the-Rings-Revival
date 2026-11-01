@@ -100,3 +100,13 @@ test('trousers stay slim: no leg cube is wider than its thigh, legs are 3 px', (
     }
   }
 });
+
+test('the tunic is no wider than the hips plus two pixels and there are no shoulder pads', () => {
+  for (let s = 1; s <= 50; s++) {
+    const { body, asm, rng } = fresh(s);
+    addMan(asm, body, rng);
+    const t = asm.get('tunic');
+    assert.ok(t.to[0] - t.from[0] <= 2 * body.legThick + 2, `seed ${s}: tunic ${t.to[0] - t.from[0]} px wide`);
+    assert.ok(!asm.cubes.some((c) => c.name.startsWith('shoulder_')), `seed ${s}: shoulder pads`);
+  }
+});

@@ -28,7 +28,7 @@ export function addClothes(asm, body, rng) {
   const bx = sw / 2 + 0.5, bz = D / 2 + 1;
   add('belt', 'body', [-bx, L, -bz], [bx, L + 1, bz], 'belt', 'leather');
   add('buckle', 'body', [-1, L, -bz - 1], [1, L + 1, -bz], 'metal', 'metal', { detail: true });
-  add('belt_end', 'body', [1, L - 2, -bz - 1], [2, L, -bz], 'belt', 'leather', { detail: true });
+  add('belt_end', 'body', [-0.5, L - 2, -bz - 1], [0.5, L, -bz], 'belt', 'leather', { detail: true });   // hangs under the buckle
   const pz = (D + 1) / 2;
   add('pouch', 'body', [-sw / 2 + 0.5, L - 3, -pz - 1], [-sw / 2 + 2.5, L - 1, -pz], 'belt', 'leather', { detail: true });
   add('pouch_flap', 'body', [-sw / 2 + 0.5, L - 2, -pz - 2], [-sw / 2 + 2.5, L - 1, -pz - 1], 'belt', 'leather', { detail: true });
@@ -41,12 +41,12 @@ export function addClothes(asm, body, rng) {
     const ax = [Math.min(xi, xo), Math.max(xi, xo)];
     const elbow = top - upperArm, wrist = elbow - forearm;
     add(`sleeve_${k}`, `${side}_arm`, [ax[0], elbow, -aT / 2], [ax[1], top, aT / 2], 'tunic', 'cloth');
-    add(`shoulder_${k}`, `${side}_arm`, [ax[0] - 0.5, top - 2, -(aT + 1) / 2], [ax[1] + 0.5, top + 1, (aT + 1) / 2], 'tunic', 'cloth', { detail: true });
     add(`sleeve_cuff_${k}`, `${side}_arm`, [ax[0] - 0.5, elbow, -(aT + 1) / 2], [ax[1] + 0.5, elbow + 1, (aT + 1) / 2], 'tunic_trim', 'cloth', { detail: true });
     add(`forearm_${k}`, `${side}_forearm`, [ax[0] + 0.5, wrist, -(aT - 1) / 2], [ax[1] - 0.5, elbow + 1, (aT - 1) / 2], 'skin', 'skin');
     add(`wrist_wrap_${k}`, `${side}_forearm`, [ax[0], wrist + 1, -aT / 2], [ax[1], wrist + 2, aT / 2], 'tunic_trim', 'cloth', { detail: true });
     add(`hand_${k}`, `${side}_hand`, [ax[0], top - arm, -aT / 2], [ax[1], wrist + 1, aT / 2], 'skin', 'skin');
     const tx = s < 0 ? ax[1] - 1 : ax[0];
+    add(`fingers_${k}`, `${side}_hand`, [ax[0] + 0.5, top - arm, -aT / 2 - 1], [ax[1] - 0.5, top - arm + 1, -aT / 2], 'skin', 'skin', { detail: true });
     add(`thumb_${k}`, `${side}_hand`, [tx, wrist - 1, -aT / 2 - 1], [tx + 1, wrist + 1, -aT / 2], 'skin', 'skin', { detail: true });
 
     const lx = [s < 0 ? -lT : 0, s < 0 ? 0 : lT];

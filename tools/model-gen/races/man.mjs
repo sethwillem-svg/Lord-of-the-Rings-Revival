@@ -6,7 +6,7 @@ export const MAN = {
   legs: [11, 13],
   torso: [11, 12],
   head: [8, 9],     // includes the 1 px gap the collar fills under the skull
-  shoulders: [8, 10],
+  shoulders: [7, 8],   // tunic width: at most the hips (2 x legThick) plus 2
   depth: [4, 5],
   arm: [11, 12],
   armThick: [3, 4],
