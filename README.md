@@ -21,6 +21,19 @@ What is kept:
 | `specs/world/waypoints-travel.md` | Waypoints, fast travel and roads: the starting point for the node-based map. |
 | `specs/npc/npc-base.md`, `specs/npc/hiring-trading.md` | NPC behaviour a nemesis system would build on. |
 
+## The add-on (`addon/`)
+
+NeoForge 1.21.1 add-on for the Middle-earth mod (branch `neoforge-fixes`). For now it only plays our mocap clips on
+Middle-earth's own NPC model: idle, walk, run, hurt, death and sword or unarmed attacks, chosen per race (man, elf, dwarf,
+hobbit, orc). It never compiles against or bundles the Middle-earth jar.
+
+```sh
+node tools/anim-viewer/bake_vanilla.js      # re-bake addon/src/main/resources/assets/lotr_revival/clips
+cd addon && ./gradlew build                 # -> addon/build/libs/lotr_revival-0.1.0.jar
+```
+
+Put that jar in the same `mods` folder as the Middle-earth jar, or run `./gradlew runClient -PmeJar=/path/to/middle-earth.jar`.
+
 ## The animation viewer
 
 ```sh
