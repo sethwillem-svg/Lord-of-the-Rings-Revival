@@ -27,6 +27,7 @@ public final class AutoBench {
     private static final SwitchingNpcRenderer.Mode[] ORDER = {SwitchingNpcRenderer.Mode.THEIRS, SwitchingNpcRenderer.Mode.VANILLA,
             SwitchingNpcRenderer.Mode.PULSE};
 
+    private static final java.util.List<String> RESULTS = new java.util.ArrayList<>();
     private static boolean worldRequested;
     private static int ticks = -1, step = -1;
 
@@ -68,6 +69,7 @@ public final class AutoBench {
         int phase = (ticks - 200) / 240, within = (ticks - 200) % 240;   // 12 s per renderer
         if (phase >= ORDER.length) {
             LOG.info("[lotr_revival bench] done");
+            writeResults(mc);
             mc.stop();
             return;
         }
@@ -78,6 +80,31 @@ public final class AutoBench {
         if (within == 80) FrameStats.reset();                            // discard the first 4 s
         if (within == 200) Screenshot.grab(mc.gameDirectory, "bench_" + ORDER[phase].id() + ".png", mc.getMainRenderTarget(),
                 c -> LOG.info("[lotr_revival bench] screenshot {}", c.getString()));
-        if (within == 239) LOG.info("[lotr_revival bench] {} -> {}", ORDER[phase].id(), FrameStats.summary());
+        if (within == 239) {
+            String line = String.format("%-8s %s", ORDER[phase].id(), FrameStats.summary());
+            RESULTS.add(line);
+            LOG.info("[lotr_revival bench] {}", line);
+        }
+    }
+
+    /** run/bench_results.txt: the numbers plus the machine they came from (bench.sh prints it). */
+    private static void writeResults(Minecraft mc) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        out.add("LOTR Revival renderer benchmark, " + java.time.LocalDateTime.now().withNano(0));
+        out.add("GPU: " + com.mojang.blaze3d.platform.GlUtil.getRenderer() + " (" + com.mojang.blaze3d.platform.GlUtil.getVendor() + ")");
+        out.add("CPU: " + com.mojang.blaze3d.platform.GlUtil.getCpuInfo() + ", " + Runtime.getRuntime().availableProcessors() + " threads");
+        out.add("Window: " + mc.getWindow().getWidth() + "x" + mc.getWindow().getHeight() + ", render distance " + mc.options.renderDistance().get());
+        out.add("NPCs requested: " + COUNT + "  (12 s per renderer, first 4 s discarded, then 5 s measured)");
+        out.add("");
+        out.addAll(RESULTS);
+        out.add("");
+        out.add("theirs  = Middle-earth's renderer (skin + 3D hair/ears/nose/feet + armour + held items)");
+        out.add("vanilla = our skin layers on Minecraft's CPU model path");
+        out.add("pulse   = the same skin layers on PulseLib's instanced GPU path");
+        try {
+            java.nio.file.Files.write(mc.gameDirectory.toPath().resolve("bench_results.txt"), out);
+        } catch (java.io.IOException e) {
+            LOG.warn("could not write bench_results.txt", e);
+        }
     }
 }
