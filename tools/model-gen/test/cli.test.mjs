@@ -91,3 +91,17 @@ test('an unknown palette explains itself', () => {
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /unknown palette/);
 });
+
+test('gear builds weapons, armour sets, an index and a preview', () => {
+  const out = tmp();
+  const r = run(['gear', '--out', out]);
+  assert.equal(r.status, 0, r.stderr);
+  const idx = JSON.parse(readFileSync(path.join(out, 'index.json'), 'utf8'));
+  assert.equal(idx.weapons.length, 16);
+  assert.equal(idx.armour.length, 6);
+  for (const w of idx.weapons) assert.ok(existsSync(path.join(out, w.file)), w.file);
+  for (const a of idx.armour) assert.ok(existsSync(path.join(out, a.file)), a.file);
+  assert.ok(existsSync(path.join(out, 'preview.png')));
+  assert.equal(idx.weapons.find((w) => w.id === 'longsword').file, 'weapons/longsword.bbmodel');
+  assert.equal(idx.armour.find((a) => a.id === 'gondor').file, 'armour/gondor.bbmodel');
+});

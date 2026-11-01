@@ -6,7 +6,7 @@
 import { BONES, ANCHORS } from './body.mjs';
 
 export const SLOTS = ['skin', 'hair', 'eye', 'tunic', 'tunic_alt', 'tunic_trim', 'trousers', 'boots', 'belt', 'metal', 'emblem', 'paint'];
-export const STYLES = ['flat', 'cloth', 'leather', 'skin', 'hair', 'metal'];
+export const STYLES = ['flat', 'cloth', 'leather', 'skin', 'hair', 'metal', 'mail', 'scale'];
 const BONE_NAMES = new Set(BONES.map(([n]) => n));
 const isHalf = (v) => Number.isInteger(v * 2);
 

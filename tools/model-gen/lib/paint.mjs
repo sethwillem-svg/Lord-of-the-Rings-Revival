@@ -59,7 +59,10 @@ function paintFace(canvas, rect, face, ramp, style, pattern, alt) {
       else if (style === 'cloth' && w >= 3 && x % 3 === 2 && y % 4 !== 0) k = 2;   // fabric folds
       else if (style === 'leather' && y === 1 && h >= 4 && x % 2 === 0) k = 3;
       else if (style === 'hair' && x % 2 === 1) k = 2;
+      else if (style === 'mail') k = (x + y) % 2 === 0 ? 1 : 2;   // chain rings
+      else if (style === 'scale') k = y % 2 === 1 && (x + (y >> 1)) % 2 === 0 ? 3 : 1;   // overlapping scales
     } else if (face === 'up' && style === 'hair' && x % 2 === 1) k = 1;
+    else if (face === 'up' && style === 'mail' && (x + y) % 2 === 1) k = 1;
     const second = pattern === 'stripes' ? SIDES.includes(face) && y % 3 === 1 && y < h - 1
       : pattern === 'plaid' ? ((x >> 1) + (y >> 1)) % 2 === 0 : false;
     put(x, y, (second ? alt : ramp)[k]);

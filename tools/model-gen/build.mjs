@@ -7,6 +7,7 @@
  *   node tools/model-gen/build.mjs man --seeds 4,9 --out DIR
  *   node tools/model-gen/build.mjs man --palette rohan       faction colours into src/main/art/blockbench/man/rohan/
  *   node tools/model-gen/build.mjs man --palette all         every faction palette, one folder each
+ *   node tools/model-gen/build.mjs gear                      weapons, armour sets and gear/index.json into src/main/art/blockbench/gear/
  *   node tools/model-gen/build.mjs man --seeds 1-8 --watch  rebuild into <repo>/clips/ on every save (viewer watches it)
  *
  * Writes <out>/<race>_base_<seed>.bbmodel, <out>/lod/<race>_base_<seed>_lod.bbmodel, <out>/preview.png and
@@ -108,6 +109,15 @@ async function buildSet(lib, args, palette, out) {
 }
 
 const args = parseArgs(process.argv.slice(2));
+if (args.race === 'gear') {
+  await loadLib();   // exits with the npm install hint if pngjs is missing
+  const { writeGear } = await import('./lib/gearset.mjs');
+  const out = path.resolve(args.out || path.join(REPO, 'src/main/art/blockbench/gear'));
+  const { index, problems } = writeGear(out);
+  if (problems.length) fail(`gear checks failed:\n  ${problems.join('\n  ')}`);
+  process.stdout.write(`${index.weapons.length} weapons and ${index.armour.length} armour sets built into ${out}\n`);
+  process.exit(0);
+}
 if (!args.watch) {
   process.exit((await build(args)) ? 1 : 0);
 } else {

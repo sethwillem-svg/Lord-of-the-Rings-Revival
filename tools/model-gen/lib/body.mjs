@@ -27,10 +27,21 @@ export function solveBody(race, rng) {
   const arm = rng.range(race.arm);
   const shoulders = sized(race.shoulders), depth = sized(race.depth);
   const armThick = sized(race.armThick), legThick = sized(race.legThick);
+  const colours = { skin: rng.pick(race.skin), hair: rng.pick(race.hair), eye: rng.pick(race.eye) };
+  return { race: race.id, build, ...layoutBody({ legs, torso, head, shoulders, depth, arm, armThick, legThick }), colours };
+}
+
+/** The race's largest body (every range at its maximum): what armour is sized to. */
+export function largestBody(race) {
+  const max = (k) => race[k][1];
+  return { race: race.id, build: 1, ...layoutBody({ legs: max('legs'), torso: max('torso'), head: max('head'), shoulders: max('shoulders'),
+    depth: max('depth'), arm: max('arm'), armThick: max('armThick'), legThick: max('legThick') }), colours: {} };
+}
+
+/** Derived lengths and the pivot of every spec bone from the main body sizes. */
+export function layoutBody({ legs, torso, head, shoulders, depth, arm, armThick, legThick }) {
   const thigh = Math.ceil(legs / 2), shin = legs - thigh;
   const hand = 2, upperArm = Math.ceil(arm / 2), forearm = arm - upperArm - hand;
-  const colours = { skin: rng.pick(race.skin), hair: rng.pick(race.hair), eye: rng.pick(race.eye) };
-
   const top = legs + torso;                     // shoulder line
   const ax = shoulders / 2 + armThick / 2, lx = legThick / 2;
   const sy = top - armThick / 2;                // shoulder joint
@@ -51,8 +62,8 @@ export function solveBody(race, rng) {
     p[`${side}_boot_armor`] = p[`${side}_shin`];
   }
   return {
-    race: race.id, build, height: legs + torso + head,
+    height: legs + torso + head,
     legs, thigh, shin, torso, head, shoulders, depth, arm, upperArm, forearm, hand, armThick, legThick,
-    colours, pivots: p,
+    pivots: p,
   };
 }
