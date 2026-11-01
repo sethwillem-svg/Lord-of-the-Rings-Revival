@@ -55,7 +55,7 @@ if [ -f run/bench_results.txt ]; then
   # Spark profiles (uploaded by Spark): which renderer each link belongs to
   if grep -q "spark profile of" run/logs/latest.log 2>/dev/null; then
     echo; echo "Spark profiles (open in a browser; send these links to Claude):"
-    LINKS=$(awk '/spark profile of .* start / {sub(/.*spark profile of /,""); m[++nm]=$1} match($0,/https?:\/\/spark\.lucko\.me\/[A-Za-z0-9]+/) {l[++nl]=substr($0,RSTART,RLENGTH)} END {for (i=1;i<=nl;i++) print "  " (i<=nm ? m[i] : "profile " i) ": " l[i]}' run/logs/latest.log)
+    LINKS=$(awk '/spark profile of .* start / {sub(/.*spark profile of /,""); m[++nm]=$1} match($0,/https?:\/\/spark\.lucko\.me\/[A-Za-z0-9]+/) && substr($0,RSTART,RLENGTH) !~ /\/docs$/ {l[++nl]=substr($0,RSTART,RLENGTH)} END {for (i=1;i<=nl;i++) print "  " (i<=nm ? m[i] : "profile " i) ": " l[i]}' run/logs/latest.log)
     if [ -n "$LINKS" ]; then echo "$LINKS"; else
       echo "  (no links found; what Spark said:)"
       grep -i "spark" run/logs/latest.log | grep -v "Loading\|spark 1.10\|Found mod\|mod file" | tail -n 25 | cut -c1-250

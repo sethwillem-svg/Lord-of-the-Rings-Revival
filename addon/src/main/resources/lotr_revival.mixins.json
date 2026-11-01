@@ -7,9 +7,11 @@
     "AgeableListModelCaptureMixin",
     "CompositeRenderTypeAccessor",
     "CompositeStateAccessor",
+    "GlStateManagerMixin",
     "HumanoidModelMixin",
     "LivingEntityRendererMixin",
     "ModelPartCaptureMixin",
+    "PulseLibSamplerMixin",
     "TextureStateShardAccessor"
   ],
   "injectors": { "defaultRequire": 1 }
