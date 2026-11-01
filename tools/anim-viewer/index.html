@@ -77,6 +77,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <span class="label">Clip library</span>
    <div class="row"><label for="libRace">Race</label><select id="libRace"></select></div>
    <div class="row"><label><input id="libRequired" type="checkbox" checked> Spec minimum set only</label><button id="libLoad" class="primary">Load race set</button></div>
+   <div class="row"><button id="libUnique" title="The race's 10 CMU takes that no other race uses">Load 10 uniques</button><button id="libLocal" title="Every clip in library/local for this race">Load local</button></div>
    <div class="row"><select id="libClip" aria-label="Library clip" style="flex:1;min-width:0"></select><button id="libAdd">Add</button></div>
    <div class="note" id="libInfo"></div>
   </div>
@@ -417,8 +418,30 @@ function frame(now) {
   placeCam(); R.render(scene, cam); requestAnimationFrame(frame);
 }
 
-// ---------- clip library (library.js: spec clip key -> Quaternius UAL clip, per race) ----------
+// ---------- clip library (library.js: spec clip key -> UAL / CMU / local clip, per race) ----------
 const LIB = window.ANIM_LIBRARY, libText = new Map(), libRequired = new Map();
+let libLocalFiles = null;   // file names in library/local (git-ignored), read from the server's folder listing
+/** Local clips for a race: <race>.<key>.bvh files belong to that race, other names show for every race. */
+async function localEntries(race) {
+  if (libLocalFiles === null) {
+    try {
+      const res = await fetch(LIB.sources.local.dir, { cache: 'no-store' });
+      libLocalFiles = res.ok ? [...(await res.text()).matchAll(/href="([^"?#]+)"/g)].map((m) => decodeURIComponent(m[1]))
+        .filter((n) => !n.includes('/') && /\.bvh$/i.test(n)) : [];
+    } catch (e) { libLocalFiles = []; }
+  }
+  const out = {}, races = Object.keys(LIB.races);
+  for (const f of libLocalFiles) {
+    const base = f.replace(/\.bvh$/i, ''), dot = base.indexOf('.'), r = dot > 0 ? base.slice(0, dot) : '';
+    if (races.includes(r) && r !== race) continue;
+    out[r === race ? base.slice(dot + 1) : 'local.' + base] = { from: 'local', src: base, note: 'local clip (not in git)' };
+  }
+  return out;
+}
+async function libEntry(race, key) {
+  const r = LIB.races[race];
+  return r.clips[key] || (r.unique || {})[key] || (await localEntries(race))[key];
+}
 async function libFetch(rel) {
   if (!libText.has(rel)) {
     libText.set(rel, fetch(rel, { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(`${rel} returned ${r.status}`); return r.text(); }));
@@ -438,7 +461,8 @@ async function requiredKeys(race) {
 /** Join the entry's source clips, cut its range, apply its speed. */
 async function libBvh(entry) {
   const parts = [];
-  for (const s of [].concat(entry.src)) parts.push(A.parseBVH(await libFetch(LIB.dir + encodeURIComponent(s) + '.bvh')));
+  const dir = (LIB.sources && LIB.sources[entry.from || 'ual'] || { dir: LIB.dir }).dir;
+  for (const s of [].concat(entry.src)) parts.push(A.parseBVH(await libFetch(dir + encodeURIComponent(s) + '.bvh')));
   const b = parts[0];
   for (const p of parts.slice(1)) {
     if (p.names.join() !== b.names.join()) throw new Error(`${entry.src} do not share a skeleton`);
@@ -450,8 +474,10 @@ async function libBvh(entry) {
   return b;
 }
 async function addLibClip(race, key) {
-  const entry = LIB.races[race].clips[key];
-  const src = [].concat(entry.src).join(' + ') + (entry.range ? ` [${entry.range[0]}-${entry.range[1]}]` : '') + (entry.speed ? ` x${entry.speed}` : '');
+  const entry = await libEntry(race, key);
+  if (!entry) throw new Error(`no library clip ${key} for ${race}`);
+  const label = entry.from && entry.from !== 'ual' ? LIB.sources[entry.from].label + ' ' : '';
+  const src = label + [].concat(entry.src).join(' + ') + (entry.range ? ` [${entry.range[0]}-${entry.range[1]}]` : '') + (entry.speed ? ` x${entry.speed}` : '');
   const clip = { name: `${race}.${key}`, key, bvh: await libBvh(entry), lib: { src, note: entry.note },
                  opts: Object.assign({}, LIB.defaults, entry.mirror ? { mirror: true } : {}, entry.opts || {}) };
   const k = clips.findIndex((c) => c.name === clip.name);
@@ -467,11 +493,15 @@ function applyRaceSettings(race) {
 async function fillLibClips() {
   const race = $('libRace').value, r = LIB.races[race], req = (await requiredKeys(race)) || [];
   const mapped = Object.keys(r.clips), extras = mapped.filter((k) => !req.includes(k));
-  const opt = (k) => `<option value="${k}">${k} (${[].concat(r.clips[k].src).join(' + ')})</option>`;
-  $('libClip').innerHTML = `<optgroup label="Spec minimum set">${req.filter((k) => r.clips[k]).map(opt).join('')}</optgroup>` +
-    `<optgroup label="Extras">${extras.map(opt).join('')}</optgroup>`;
+  const uniq = r.unique || {}, local = await localEntries(race);
+  const opt = (set) => (k) => `<option value="${k}">${k} (${[].concat(set[k].src).join(' + ')}${set[k].note && set[k].from === 'cmu' ? ': ' + set[k].note : ''})</option>`;
+  $('libClip').innerHTML = `<optgroup label="Spec minimum set">${req.filter((k) => r.clips[k]).map(opt(r.clips)).join('')}</optgroup>` +
+    `<optgroup label="Extras">${extras.map(opt(r.clips)).join('')}</optgroup>` +
+    `<optgroup label="Unique to ${r.label} (CMU)">${Object.keys(uniq).map(opt(uniq)).join('')}</optgroup>` +
+    (Object.keys(local).length ? `<optgroup label="Local (library/local)">${Object.keys(local).map(opt(local)).join('')}</optgroup>` : '');
   const gaps = req.filter((k) => !r.clips[k]);
-  $('libInfo').textContent = `${LIB.credit}. ${r.label}: ${req.length - gaps.length} of ${req.length} required clips, ${extras.length} extras.` +
+  $('libInfo').textContent = `${LIB.credit}. ${r.label}: ${req.length - gaps.length} of ${req.length} required clips, ${extras.length} extras, ` +
+    `${Object.keys(uniq).length} unique, ${Object.keys(local).length} local.` +
     (gaps.length ? ` Not in the packs (generate with animgen): ${gaps.join(', ')}.` : '') +
     (req.length ? '' : ' Serve the repo over http (animview) to read the spec set.');
 }
@@ -492,6 +522,15 @@ if (LIB) {
     for (const k of keys) await addLibClip(race, k);
   });
   $('libAdd').onclick = () => guard(() => addLibClip($('libRace').value, $('libClip').value));
+  const loadSet = (keysOf) => () => guard(async () => {
+    const race = $('libRace').value, keys = await keysOf(race);
+    if (!keys.length) throw new Error('nothing to load for ' + LIB.races[race].label);
+    applyRaceSettings(race);
+    clips.length = 0;
+    for (const k of keys) await addLibClip(race, k);
+  });
+  $('libUnique').onclick = loadSet(async (race) => Object.keys(LIB.races[race].unique || {}));
+  $('libLocal').onclick = loadSet(async (race) => { libLocalFiles = null; return Object.keys(await localEntries(race)); });
 } else $('libInfo').textContent = 'library.js did not load.';
 
 // ---------- input ----------

@@ -27,13 +27,15 @@ It asks once whether to add the `animview` and `animgen` commands to your shell 
 
 Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** grip plus tilt, swing and twist angles (weapon IK follows the adjusted blade), camera presets, toggles for IK targets and the floor grid, **Clear clips** (hides what is in the watched folder now; new takes still appear) and **Reload folder** (brings them back). Sidebar settings are remembered in the browser between visits. If the strike height is out of reach the target is raised to the lowest reachable point and the clip list says so.
 
-## Clip library (Quaternius UAL, CC0)
+## Clip library (Quaternius UAL, CMU mocap, your local clips)
 
 `library/ual/` holds the 84 clips of Quaternius' Universal Animation Library 1 and 2 (CC0, see `library/ual/LICENSE.txt`) as BVH, and `library.js` says which clip plays each spec clip key for each race. In the sidebar's **Clip library**:
 
 1. **Race** is picked from the model's file name (`*troll*` troll, `*olog*` olog, orc/uruk/goblin orc, else man); change it to preview another race's set on any model.
 2. **Load race set** replaces the clips with that race's spec minimum set (from `prompts/<race>.txt`), sets the export rig name and the race's stance and torso tilt cap. Untick **Spec minimum set only** to add the extras too (fidgets, more attack variants, work, swim, crossbow).
-3. **Add** puts one clip from the list next to what is loaded, for example to compare a library clip with generated takes.
+3. **Load 10 uniques** replaces the clips with the race's 10 CMU mocap takes (below). No take is shared between races.
+4. **Load local** loads the race's clips from `library/local/` (your Unity Asset Store conversions, not in git).
+5. **Add** puts one clip from the list next to what is loaded, for example to compare a library clip with generated takes.
 
 The library needs the viewer served over http (`animview` does that). Exports use the spec key, so `orc.attack.sword.1` exports as `animation.orc.attack.sword.1`.
 
@@ -56,6 +58,38 @@ To convert the packs again (for example a newer release), download them from qua
 ```sh
 node tools/anim-viewer/ual_to_bvh.js "Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb" tools/anim-viewer/library/ual
 ```
+
+### Unique clips per race (CMU Motion Capture Database)
+
+`library/cmu/` holds 80 takes from the [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu) (BVH conversion by Bruce Hahne; no restrictions, see `library/cmu/LICENSE.txt`), 10 per race, each cut to its busiest 2 to 9 seconds at 30 fps. They are real actors, so they have weight and timing the UAL loops lack. Keys are spec-style names outside the minimum sets; heavy races play theirs slower (olog and half-troll 0.9, troll 0.8).
+
+| Race | Unique clips (CMU take) |
+| --- | --- |
+| orc | heavyset walk (17_08), angry walk (17_01), gorilla prowl (120_02), boxing (13_17), punch combo (144_20), kicks (143_24), devil taunt (55_23), angry quarrel (18_10), sneaky walk (142_22), digging (79_04) |
+| troll | bear walk (54_02), dancing bear taunt (55_12), zombie lumber (104_41), bear charge (79_45), tiger swipes (79_63), heavy box lift (79_25), get up face down (140_01), limp (77_19), bent walk (136_01), panther prowl (80_59) |
+| olog | strong-man walk (137_42) and idle (137_41), flexing war cry (79_94), weight lifting (79_93), boxing (80_10), march (142_11), front kicks (144_05), zombie walk (120_22), arguing order (80_48), gorilla charge (80_49) |
+| half_troll | drunk walk (137_16), clumsy walk (142_02), wild-arms walk (132_54), zombie march (20_08), boxing (14_01), punches (143_23), get up from the side (140_03), duck-footed walk (132_14), dodge (77_09), arm blocks (144_07) |
+| man | marching (138_01), soldiers march (21_06), swordplay (02_07, 02_08), wave / direct traffic (13_26), confident walk (82_09), sad walk (82_10), ready stance (77_03), waiting (137_32), punch / strike (02_05) |
+| elf | graceful walk (137_24), bow draw and shot (79_86), roundhouse kick (135_07), side kick (135_11), knife-hand block (135_10), lunge punch (135_09), low block (135_05), sneaking (139_29), wave (143_25), jumps, kicks and punches (86_01) |
+| dwarf | chopping wood (79_01, 80_71), hammering (62_07, 62_08), digging a hole (80_05), marching (132_37), sweeping (80_19), punch combo (144_13), arm blocks (144_26), cheering (79_69) |
+| hobbit | sneaking (139_31), quick little steps (136_31), planting (79_26), raking (79_87), crouched walk (136_09), creeping walk (77_29), scared (79_73), old walk (137_33), ducking (139_09), fishing (79_34) |
+
+To change a pick: add the take to `TAKES` in `cmu_import.py` (window length and start, or `None` for the busiest window), run it, and point the race's `unique` entry in `library.js` at the take id. Take ids and descriptions are in the [mirror's index](https://github.com/Shriinivas/cmubvh).
+
+```sh
+python3 tools/anim-viewer/cmu_import.py            # imports any takes in TAKES that are missing
+python3 tools/anim-viewer/cmu_import.py 17_08      # re-cut one take after changing its window
+```
+
+### Unity Asset Store and other packs you may not redistribute (`library/local/`)
+
+Store licences usually let you use animations in a game but not share the files, and this repo is public, so these clips live in `library/local/`, which git ignores. Convert a pack's FBX files with Blender (or the `bpy` module, `pip install bpy`):
+
+```sh
+blender -b -P tools/anim-viewer/fbx_to_bvh.py -- ~/Downloads/SomePack --race orc
+```
+
+Each animation take becomes `library/local/orc.<take>.bvh` (Y up, joints renamed to the Mixamo names the retargeter reads; Mixamo, Unity humanoid, 3ds Max Biped and Unreal naming are understood). Rename a file to `orc.<clip key>.bvh` to give it a spec key; files without a race prefix show for every race. BVH files can go through the same script to rename their joints. Check each pack's licence before baking its clips into the mod: whether animations retargeted into a shipped open-source mod count as redistribution is the pack author's call.
 
 ## Generate straight into the viewer
 
@@ -113,7 +147,7 @@ It installs Kimodo (the `hugging-apps/kimodo-motion` app) and HY-Motion in separ
 
 ## Input
 
-- **BVH**: the clip library's UAL clips (`ual_to_bvh.js` output), Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), HY-Motion output converted by `hymotion_to_bvh.py`, or a Mixamo-style skeleton (`mixamorig:` prefixes are ignored; `LeftUpLeg` is the thigh, and without eye joints the head takes its side axis from the shoulders), for example the BVH export of the [HY-Motion Mixamo Space](https://huggingface.co/spaces/Yosun/hy-motion-mixamo). Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
+- **BVH**: the clip library's UAL clips (`ual_to_bvh.js` output), CMU clips (`LowerBack`/`Spine`/`Spine1` read as the spine, `Head_End` as the head top), FBX conversions from `fbx_to_bvh.py`, Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), HY-Motion output converted by `hymotion_to_bvh.py`, or a Mixamo-style skeleton (`mixamorig:` prefixes are ignored; `LeftUpLeg` is the thigh, and without eye joints the head takes its side axis from the shoulders), for example the BVH export of the [HY-Motion Mixamo Space](https://huggingface.co/spaces/Yosun/hy-motion-mixamo). Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
 - **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Embedded textures are used; models with external textures render grey.
 
 ## Rig maps (`rigs.js`)

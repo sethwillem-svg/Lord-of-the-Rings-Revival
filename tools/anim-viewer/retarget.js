@@ -407,8 +407,10 @@
     // LeftUpLeg and LeftLeg is the shin. Joints are looked up by SOMA role names below.
     const byName = {};
     bvh.names.forEach((n, i) => { const k = n.replace(/^[^:]*:/, ''); if (!(k in byName)) byName[k] = i; });
-    const ALIAS = 'LeftUpLeg' in byName
-      ? { LeftLeg: 'LeftUpLeg', RightLeg: 'RightUpLeg', LeftShin: 'LeftLeg', RightShin: 'RightLeg', HeadEnd: 'HeadTop_End', Neck1: 'Neck' }
+    // CMU (cgspeed BVH conversion) uses the Mixamo limb names with LowerBack/Spine/Spine1, Neck/Neck1 and LHipJoint.
+    const MIXAMO_LEGS = { LeftLeg: 'LeftUpLeg', RightLeg: 'RightUpLeg', LeftShin: 'LeftLeg', RightShin: 'RightLeg' };
+    const ALIAS = 'LHipJoint' in byName && !('Spine2' in byName) ? Object.assign({}, MIXAMO_LEGS, { HeadEnd: 'Head_End', Spine2: 'Spine1' })
+      : 'LeftUpLeg' in byName ? Object.assign({}, MIXAMO_LEGS, { HeadEnd: 'HeadTop_End' in byName ? 'HeadTop_End' : 'Head_End', Neck1: 'Neck' })
       : {};
     const has = (n) => (ALIAS[n] || n) in byName;
     // Rotation order: as the header says, reversed, or auto (pick the reading where the body is plausible:
