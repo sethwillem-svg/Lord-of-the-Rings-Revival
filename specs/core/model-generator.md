@@ -57,10 +57,44 @@ None in game yet. The output is source models under `src/main/art/blockbench/` (
 - **Viewer:** no changes expected. `rigs.js` already maps `spec-biped`, and `library.js` picks the Man race from the file name.
 - Build tooling lives in `tools/` only. No change to `build.gradle`, game code or resources.
 
+## Gear: weapons and armour for men (added 2026-11-01)
+
+Source models and a viewer preview only; in-game items come later. Built by `node tools/model-gen/build.mjs gear`.
+
+**Weapon convention** (replaces the orc packs' habit of modelling each weapon in place on one unit, slanted and
+offset, which cannot be reused on another body; matches how PulseLib attaches a model: the attachment's pivot
+is moved onto the anchor bone, then an offset, rotation and scale from data are applied):
+
+| Rule | Value |
+| --- | --- |
+| File | one `.bbmodel` per weapon in `src/main/art/blockbench/gear/weapons/`, one root bone `weapon`, nothing else at the root |
+| Pivot | `weapon` pivot at `[0, 0, 0]` = the middle of the closed fist on the grip |
+| Axes | +Y runs along the blade or shaft toward the striking end; -Z is the cutting edge or striking face (axe bit, blade edge); flats face +-X. Shields: face toward -Z, boss centred on the grip. Bows: limbs along +-Y, string on the +Z (archer) side, arrows fly -Z |
+| Scale | model pixels, as the bodies (16 px = 1 block). Real lengths at 1 px = about 5.6 cm (a 1.8 m man is 32 px) |
+| Sizes | longsword 20 px, Rohan sword 18, scimitar 16, spear 40 (grip a third up from the butt), hand axe 11, great axe 22, club 14, javelin 30, longbow 32, short bow 22, Haradrim bow 24, round shield 12-13 across, tall shield 21 high |
+| Hand | main-hand weapons attach to `right_item`; shields and bows to `left_item` |
+| Texture | own 64 x 64 sheet, colour slots from the faction palette (metal, dark metal, wood, leather, cloth, trim, emblem, string) |
+| Index | `gear/index.json` lists every item: id, name, hand, kind, factions, length, grip and tip points; the viewer reads it, and in-game display transforms will be derived from it |
+
+**Armour convention:** one `.bbmodel` per faction in `gear/armour/`, groups named after the anchor bones
+(`head_armor`, `chest_armor`, `*_arm_armor`, `*_leg_armor`, `*_boot_armor`, `cape`); each group's pivot is that
+anchor's pivot on the race's largest body, and the viewer moves each group onto the loaded man's anchor.
+Pieces are sized to the largest body of the race, so at rest no main body cube (tunic, sleeves, thighs, skirt,
+shins, boots) pokes through the piece that covers it; small detail cubes may be covered.
+
+| Faction | Weapons | Armour |
+| --- | --- | --- |
+| Rohan | Rohan sword, spear, short bow, round shield (white horse on green) | mail, leather pauldrons and greaves, nasal helm with a horsehair crest |
+| Gondor | longsword, spear, longbow, tall shield (White Tree) | mail under a black surcoat, steel pauldrons and greaves, high-crowned helm with cheek guards and white sea-bird wings |
+| Harad | scimitar, red-tipped spear, Haradrim bow, round spiked shield (yellow and black) | red and gold scale corselet, open spiked helm |
+| Dunland | hand axe, great axe, club, javelin, hide shield | hide jerkin, leather cap |
+| Dale | longsword, spear, longbow | studded brigandine, kettle hat |
+| Dunedain | longsword, longbow | leather jerkin, grey hooded cloak |
+
 ## Out of scope
 
 - Elves, dwarves and the other races (later race tables on the same parts system).
-- Gear: helmets, armour, weapons, capes.
+- Gear for other races, in-game items and recipes for the gear.
 - **Faction clothing parts for men** (maintainer wish): faction-specific cuts and pieces, so men differ in what they wear, not only in colour. Faction palettes are done: rohan, dale, dunedain, gondor, dunland, harad (2026-11-01; Rohan, Gondor and Harad kempt, Dunland dirty), with outfits that repaint (patterns, emblems, sleeves, tall boots, leg wraps, war paint) and weight the existing hair and beard styles, without growing past the base silhouette.
 - GeckoLib / PulseLib export (rendering-animation 5a export step).
 - Protecting hand edits from rebuilds.
