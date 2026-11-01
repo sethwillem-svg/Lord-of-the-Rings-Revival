@@ -46,7 +46,8 @@ Renderer benchmark, in game:
 
 The meter bottom-left shows the renderer, NPCs in view and frame time, FPS and 1% low over 5 s (`/lotrrender hud` hides it).
 `vanilla` vs `pulse` compares the engines on identical geometry; `theirs` shows what armour and 3D features add.
-`./gradlew runClient -PmeJar=... -Pautotest=100` runs the whole comparison unattended and logs the numbers.
+`./addon/bench.sh` runs the whole comparison unattended (200 NPCs; `./addon/bench.sh 400` for another count): it builds
+the add-on, opens the game, creates a flat test world, measures each renderer, quits and prints `addon/run/bench_results.txt`.
 
 ## The animation viewer
 
