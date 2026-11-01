@@ -41,6 +41,11 @@ if [ -f run/bench_results.txt ]; then
   cat run/bench_results.txt
   echo
   echo "Saved to $(pwd)/run/bench_results.txt (screenshots in run/screenshots/). Paste it back to Claude."
+  # how each Middle-earth armour piece was recorded for PulseLib (for debugging the pulse renderer)
+  grep -A6 "lotr_revival: recorded\|lotr_revival: could not record\|is not a HumanoidModel" run/logs/latest.log > run/armour_debug.txt 2>/dev/null || true
+  if [ -s run/armour_debug.txt ]; then
+    echo; echo "Armour recordings (also in $(pwd)/run/armour_debug.txt):"; head -n 40 run/armour_debug.txt | cut -c1-300
+  fi
 else
   echo "The benchmark did not finish. Last lines of the game log:"
   tail -n 30 run/logs/latest.log 2>/dev/null || true

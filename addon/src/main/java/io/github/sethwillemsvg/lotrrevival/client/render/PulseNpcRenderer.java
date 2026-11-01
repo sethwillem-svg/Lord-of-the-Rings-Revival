@@ -291,8 +291,29 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                 if (mesh != null) pieces.add(new ArmourPiece(g.get(0), type, mesh, g.get(1)));
             });
         });
+        if (DEBUG) {
+            StringBuilder sb = new StringBuilder();
+            buffers.byType.forEach((rt, rec) -> {
+                int[] perPart = new int[8];
+                org.joml.Vector3f min = new org.joml.Vector3f(Float.MAX_VALUE), max = new org.joml.Vector3f(-Float.MAX_VALUE);
+                java.util.Set<Integer> colors = new java.util.HashSet<>();
+                for (Quad q : rec.quads) {
+                    perPart[q.part() + 1]++;
+                    colors.add(q.color());
+                    for (org.joml.Vector3f p : q.pos()) { min.min(p); max.max(p); }
+                }
+                sb.append("\n    ").append(rt.toString(), 0, Math.min(160, rt.toString().length()))
+                        .append("\n      texture=").append(PulseGeometry.texture(rt).orElse(null))
+                        .append(" quads per part (none,head,hat,body,rArm,lArm,rLeg,lLeg)=").append(java.util.Arrays.toString(perPart))
+                        .append(" bounds=").append(min).append("..").append(max)
+                        .append(" colors=").append(colors.stream().map(Integer::toHexString).toList());
+            });
+            LOG.info("lotr_revival: recorded {} {}: {} pieces{}", stack.getItem(), slot, pieces.size(), sb);
+        }
         return pieces;
     }
+
+    private static final boolean DEBUG = Boolean.getBoolean("lotr_revival.debug") || Integer.getInteger("lotr_revival.autotest", 0) > 0;
 
     // ---- held items ----
     private void items(NpcEntity entity, NpcBipedModel model, PoseStack poseStack, MultiBufferSource buffers, int light) {
