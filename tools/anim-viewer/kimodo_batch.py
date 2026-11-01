@@ -15,7 +15,8 @@ Examples:
   python3 kimodo_batch.py "A person swings both hands overhead and slams them down to the ground"
   python3 kimodo_batch.py --count 5 --duration 3 "A person swings a sword in a wide horizontal slash"
   python3 kimodo_batch.py --seeds 7 42 "A person thrusts a spear forward"
-  python3 kimodo_batch.py --prompts prompts.txt --count 10   # one prompt per line, seeds 1..10 each
+  python3 kimodo_batch.py --prompts prompts/orc.txt --count 3   # every orc clip from the spec, 3 takes each
+  python3 kimodo_batch.py --prompts prompts/orc.txt --only attack --dry-run   # preview just the orc attacks
   python3 kimodo_batch.py --space http://localhost:7860 --count 5 "A person ..."       # Kimodo running locally
   python3 kimodo_batch.py --backend hymotion --hy-repo ~/HY-Motion-1.0 --count 4 "A person ..."
 
@@ -116,12 +117,32 @@ def get_token(space):
     return token or None
 
 
+def read_prompt_file(path, default_duration):
+    """Lines: `prompt`, `clip.key | prompt` or `clip.key | seconds | prompt`; `#` starts a comment line.
+    Keyed lines are named <file-stem>.<clip.key>, so prompts/orc.txt gives orc.attack.sword.1_s1.bvh."""
+    rig = os.path.splitext(os.path.basename(path))[0]
+    jobs = []
+    for line in open(path, encoding='utf-8'):
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = [x.strip() for x in line.split('|')]
+        if len(parts) >= 3:
+            key, sec, prompt = parts[0], parts[1], '|'.join(parts[2:]).strip()
+            jobs.append({'base': f'{rig}.{key}', 'key': key, 'prompt': prompt, 'duration': float(sec)})
+        elif len(parts) == 2:
+            jobs.append({'base': f'{rig}.{parts[0]}', 'key': parts[0], 'prompt': parts[1], 'duration': default_duration})
+        else:
+            jobs.append({'base': slug(line), 'key': None, 'prompt': line, 'duration': default_duration})
+    return jobs
+
+
 def save_sidecar(out, name, info):
     with open(os.path.join(out, name + '.json'), 'w', encoding='utf-8') as f:
         json.dump(info, f, indent=1)
 
 
-def run_hymotion(args, prompts):
+def run_hymotion(args, jobs):
     """One local_infer.py run for the whole batch; convert each .npz to BVH in args.out as soon as it is complete."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from hymotion_to_bvh import convert, load_template
@@ -134,15 +155,15 @@ def run_hymotion(args, prompts):
     template = load_template(hy)
     if args.seeds:
         print('Note: HY-Motion chooses its own seeds; --seeds is ignored, using --count samples per prompt.')
-    frames = max(10, round(args.duration * 30))
     with tempfile.TemporaryDirectory() as tmp:
         inp, outd = os.path.join(tmp, 'in'), os.path.join(tmp, 'out')
         os.makedirs(inp)
         ids = {}
         with open(os.path.join(inp, 'prompts.txt'), 'w', encoding='utf-8') as f:
-            for i, p in enumerate(prompts, 1):
-                f.write(f'{p.replace("#", " ")}#{frames}#{i}\n')   # line format: prompt#frames#id
-                ids[f'{i:08d}'] = p
+            for i, j in enumerate(jobs, 1):
+                frames = max(10, round(j['duration'] * 30))
+                f.write(f"{j['prompt'].replace('#', ' ')}#{frames}#{i}\n")   # line format: prompt#frames#id
+                ids[f'{i:08d}'] = j
         cmd = [args.hy_python, 'local_infer.py', '--model_path', model, '--input_text_dir', inp, '--output_dir', outd,
                '--disable_duration_est', '--disable_rewrite', '--num_seeds', str(args.count), '--cfg_scale', str(args.hy_cfg)]
         print('Running HY-Motion:', ' '.join(cmd))
@@ -161,15 +182,16 @@ def run_hymotion(args, prompts):
                         continue
                     done.add(path)
                     idx, _, sample = fn[:-4].rpartition('_')
-                    prompt = ids.get(idx, idx)
-                    name = f'{slug(prompt)}_hy{int(sample) + 1 if sample.isdigit() else sample}'
+                    job = ids.get(idx) or {'base': slug(idx), 'key': None, 'prompt': idx, 'duration': 0}
+                    name = f"{job['base']}_hy{int(sample) + 1 if sample.isdigit() else sample}"
                     try:
                         n = convert(path, template, os.path.join(args.out, name + '.bvh'))
                     except Exception as e:
                         print(f'{fn}: conversion failed: {e}')
                         continue
-                    save_sidecar(args.out, name, {'source': 'hymotion', 'model': args.hy_model, 'prompt': prompt,
-                                                  'sample': sample, 'duration': args.duration, 'cfg_scale': args.hy_cfg})
+                    save_sidecar(args.out, name, {'source': 'hymotion', 'model': args.hy_model, 'clip': job['key'],
+                                                  'prompt': job['prompt'], 'sample': sample, 'duration': job['duration'],
+                                                  'cfg_scale': args.hy_cfg})
                     saved += 1
                     print(f'saved {name}.bvh ({n} frames)')
             if not alive:
@@ -183,11 +205,13 @@ def run_hymotion(args, prompts):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('prompt', nargs='*', help='motion prompt(s); start with "A person ..."')
-    ap.add_argument('--prompts', help='text file with one prompt per line')
+    ap.add_argument('--prompts', help='prompt file: one prompt, or `clip.key | seconds | prompt`, per line (see prompts/)')
+    ap.add_argument('--only', nargs='+', help='with --prompts: only clip keys starting with these, e.g. attack move.walk')
+    ap.add_argument('--dry-run', action='store_true', help='list what would be generated, then stop')
     ap.add_argument('--out', default=DEFAULT_OUT, help=f'folder to write .bvh files into (default {DEFAULT_OUT}, what `view` watches)')
     ap.add_argument('--seeds', nargs='+', type=int, help='exact seeds to generate')
     ap.add_argument('--count', type=int, default=1, help='takes per prompt, seeds 1..COUNT (ignored with --seeds)')
-    ap.add_argument('--duration', type=float, default=3.0, help='seconds per clip (max 10)')
+    ap.add_argument('--duration', type=float, default=3.0, help='seconds per clip (max 10); prompt-file lines can set their own')
     ap.add_argument('--steps', type=int, default=100, help='diffusion steps')
     ap.add_argument('--text-cfg', type=float, default=2.0, help='text guidance weight')
     ap.add_argument('--no-postprocess', action='store_true', help='skip Kimodo foot-skate cleanup')
@@ -200,12 +224,21 @@ def main():
     ap.add_argument('--hy-python', default=sys.executable, help='HY-Motion: python of the environment HY-Motion is installed in')
     args = ap.parse_args()
 
-    prompts = list(args.prompt)
+    jobs = [{'base': slug(p), 'key': None, 'prompt': p, 'duration': args.duration} for p in args.prompt]
     if args.prompts:
-        prompts += [line.strip() for line in open(args.prompts, encoding='utf-8') if line.strip() and not line.startswith('#')]
-    if not prompts:
-        ap.error('give at least one prompt or --prompts FILE')
+        jobs += read_prompt_file(args.prompts, args.duration)
+    if args.only:
+        jobs = [j for j in jobs if j['key'] and any(j['key'].startswith(o) for o in args.only)]
+    if not jobs:
+        ap.error('give at least one prompt or --prompts FILE (and check --only)')
     seeds = args.seeds or list(range(1, args.count + 1))
+    if args.dry_run:
+        for j in jobs:
+            tags = ', '.join(f'_s{s}' for s in seeds) if args.backend == 'kimodo' else f'_hy1.._hy{args.count}'
+            print(f"{j['base']} ({j['duration']} s) [{tags}]: {j['prompt']}")
+        n = len(jobs) * (len(seeds) if args.backend == 'kimodo' else args.count)
+        print(f'{len(jobs)} prompt(s), {n} take(s). Nothing generated (--dry-run).')
+        return
 
     os.makedirs(args.out, exist_ok=True)
     ignore = os.path.join(args.out, '.gitignore')
@@ -213,7 +246,7 @@ def main():
         with open(ignore, 'w') as f:
             f.write('*\n')   # keeps generated clips out of git
     if args.backend == 'hymotion':
-        run_hymotion(args, prompts)
+        run_hymotion(args, jobs)
         return
 
     Client = ensure_gradio_client()
@@ -226,12 +259,12 @@ def main():
     endpoint, params = find_endpoint(client)
     print(f'Endpoint {endpoint}, parameters: {", ".join(params)}')
 
-    total, done = len(prompts) * len(seeds), 0
-    for prompt in prompts:
+    total, done = len(jobs) * len(seeds), 0
+    for job in jobs:
         for seed in seeds:
             done += 1
-            name = f'{slug(prompt)}_s{seed}'
-            settings = {'prompt': prompt, 'seed': seed, 'duration': args.duration, 'diffusion_steps': args.steps,
+            name = f"{job['base']}_s{seed}"
+            settings = {'prompt': job['prompt'], 'seed': seed, 'duration': job['duration'], 'diffusion_steps': args.steps,
                         'text_cfg': args.text_cfg, 'postprocess': not args.no_postprocess, 'post_process': not args.no_postprocess}
             kwargs = {k: v for k, v in settings.items() if k in params}
             t0 = time.time()
@@ -248,7 +281,7 @@ def main():
             dst = os.path.join(args.out, name + '.bvh')
             shutil.copyfile(src, dst + '.part')
             os.replace(dst + '.part', dst)
-            save_sidecar(args.out, name, {'source': 'kimodo', 'space': args.space, 'endpoint': endpoint, **kwargs})
+            save_sidecar(args.out, name, {'source': 'kimodo', 'clip': job['key'], 'space': args.space, 'endpoint': endpoint, **kwargs})
             print(f'saved in {time.time() - t0:.0f} s')
     print(f'Done. Files are in {os.path.abspath(args.out)}')
 

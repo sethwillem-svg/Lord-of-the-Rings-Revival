@@ -7,10 +7,11 @@
 #   view setup                (re)add the `view` and `gen` commands to your shell
 #
 # First run from the repo (./tools/anim-viewer/view.sh) offers to add the `view` and `gen` commands for you.
-# Port: VIEW_PORT (default 8000). Browser: VIEW_BROWSER (default: your default browser via xdg-open or open).
+# Port: VIEW_PORT (default 8000). VIEW_BIND=0.0.0.0 serves other machines too (cloud GPU). Browser: VIEW_BROWSER (default: your default browser via xdg-open or open).
 set -euo pipefail
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
 PORT="${VIEW_PORT:-8000}"
+BIND="${VIEW_BIND:-127.0.0.1}"   # 0.0.0.0 to reach the viewer from another machine (cloud GPU)
 
 RC="$HOME/.bashrc"; [ "${SHELL##*/}" = "zsh" ] && RC="$HOME/.zshrc"
 MARK="$HOME/.config/lotr-anim-viewer/no-commands"
@@ -29,7 +30,7 @@ if [ "${1:-}" = "setup" ]; then setup_commands force; exit 0; fi
 setup_commands
 
 if [ "${1:-}" = "stop" ]; then
-  pids=$(pgrep -f "http.server $PORT --bind 127.0.0.1 --directory $REPO" || true)
+  pids=$(pgrep -f "http.server $PORT --bind .* --directory $REPO" || true)
   [ -n "$pids" ] && kill $pids && echo "Viewer server stopped." || echo "No viewer server running on port $PORT."
   exit 0
 fi
@@ -46,12 +47,13 @@ mkdir -p "$REPO/clips"
 [ -f "$REPO/clips/.gitignore" ] || printf '*\n' > "$REPO/clips/.gitignore"   # keeps generated clips out of git
 
 if ! (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
-  nohup python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$REPO" >/dev/null 2>&1 &
+  nohup python3 -m http.server "$PORT" --bind "$BIND" --directory "$REPO" >/dev/null 2>&1 &
   for _ in 1 2 3 4 5 6 7 8 9 10; do (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && break; sleep 0.3; done
 fi
 
 URL="http://localhost:$PORT/tools/anim-viewer/?watch=/clips/&model=/$MODEL"
 echo "Viewer: $URL"
+[ -n "${RUNPOD_POD_ID:-}" ] && echo "From your own browser: https://$RUNPOD_POD_ID-$PORT.proxy.runpod.net/tools/anim-viewer/?watch=/clips/&model=/$MODEL"
 echo "Clips folder: $REPO/clips   (generate with: gen \"A person ...\")"
 OPEN="${VIEW_BROWSER:-$(command -v xdg-open || command -v open || true)}"
 if [ -n "$OPEN" ]; then "$OPEN" "$URL" >/dev/null 2>&1 & else echo "Open that address in your browser."; fi

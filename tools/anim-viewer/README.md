@@ -46,6 +46,28 @@ The script finds the Space's generate endpoint itself (default `hugging-apps/kim
 
 Clip labels turn red while the weapon tip or the right hand is more than half a pixel below the floor. The clip list shows each clip's lowest hand, weapon tip and foot height in model pixels (16 px = 1 block).
 
+## Clip lists per race
+
+`prompts/<rig>.txt` holds every clip the spec's minimum sets need for that rig (`specs/core/rendering-animation.md` section 5c): 165 clips over man, elf, dwarf, hobbit, orc, olog, half_troll and troll, with a race movement style in each prompt. `prompts/CLIPS.md` is the readable list. Lines are `clip.key | seconds | prompt`, and takes are named after the spec clip (`orc.attack.sword.1_s2.bvh`).
+
+```sh
+gen --prompts tools/anim-viewer/prompts/orc.txt --count 3              # every orc clip, 3 takes each
+gen --prompts tools/anim-viewer/prompts/orc.txt --only attack --dry-run # preview just the attacks
+```
+
+Edit the tables in `prompts/build_prompts.py` and run it to regenerate the files. Loop clips (idle, walk, run, march, holds, work) still need trimming to a seamless loop: neither model makes loops.
+
+## Rented GPU (RunPod, Vast.ai)
+
+On a fresh Ubuntu + CUDA + PyTorch machine (RunPod: expose HTTP port 8000):
+
+```sh
+git clone -b core/anim-viewer https://github.com/sethwillem-svg/Lord-of-the-Rings-Revival.git
+cd Lord-of-the-Rings-Revival && bash tools/anim-viewer/cloud_setup.sh     # or: cloud_setup.sh kimodo | hymotion
+```
+
+It installs Kimodo (the `hugging-apps/kimodo-motion` app) and HY-Motion in separate Python environments, downloads the weights, adds `kimodo-up`, `kimodo-down` and `gen-hy`, and starts the viewer on all interfaces, printing the link to open from your own browser. Everything runs on the rented machine, so nothing has to be copied back; export good takes from the viewer. On a 32 GB card run one model at a time (`kimodo-down` before `gen-hy`); a 48 GB card fits both. Needs a Hugging Face token whose account has accepted the Meta Llama 3 licence (Kimodo's text encoder), and about 60 GB of disk. Tested here with stand-ins for the installs and downloads only.
+
 ## Local models: Kimodo and HY-Motion
 
 `gen` (`kimodo_batch.py`) has two backends; both write BVH into `clips/`, so the viewer shows their takes side by side. Each clip's `.json` records its `source` (`kimodo` or `hymotion`), model and prompt. They do not fit on one 32 GB GPU together, so run one at a time.
