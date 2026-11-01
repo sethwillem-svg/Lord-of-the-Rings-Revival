@@ -93,7 +93,7 @@ Each animation take becomes `library/local/orc.<take>.bvh` (Y up, joints renamed
 
 ## Gear: generated weapons and armour
 
-The **Gear** panel merges weapons and armour from `src/main/art/blockbench/gear/` (built by `node tools/model-gen/build.mjs gear`, listed in `gear/index.json`) onto the loaded model with `gear.js`: **Weapon** goes on `right_item` (grip at the bone), **Off hand** (shields, bows) on `left_item`, **Armour** puts each faction set's pieces on the anchor bones (boot armour on the shin, so greaves bend with the knee). Retargeting, weapon IK, blade angles and edge-first then use the real weapon. Needs the viewer served from the repo (`animview`). The model picker also lists the faction men in `man/<faction>/`.
+The **Gear** panel merges weapons and armour from `src/main/art/blockbench/gear/` (built by `node tools/model-gen/build.mjs gear`, listed in `gear/index.json`) onto the loaded model with `gear.js`: **Weapon** goes on `right_item` (grip at the bone), **Off hand** (shields, bows) on `left_item`, **Armour** puts each faction set's pieces on the anchor bones (boot armour on the shin, forearm armour on the forearm, so they bend at the joints). Sets marked fitted (Gondor) load the copy built for the open model (`gear/armour/<set>/<model>.bbmodel`) and fall back to the generic size; the panel says which. Retargeting, weapon IK, blade angles and edge-first then use the real weapon. Needs the viewer served from the repo (`animview`). The model picker also lists the faction men in `man/<faction>/`.
 
 ## Generate straight into the viewer
 

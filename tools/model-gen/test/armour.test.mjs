@@ -39,8 +39,8 @@ test('armour sets pass the hidden-cube check and rebuild byte-identically', () =
 
 // At rest, no main body cube pokes through the armour that covers it: for every half-pixel height the body cube
 // and the armour share, one armour box must contain the body cube's x and z extents with a margin.
-function poking(man, armour, faction) {
-  const out = [], P = man.body.pivots, ref = largestBody(MAN).pivots;
+function poking(man, armour, faction, ref = largestBody(MAN).pivots) {
+  const out = [], P = man.body.pivots;
   for (const [group, covered] of Object.entries(coversFor(faction))) {
     const target = ATTACH[group] || group;
     const shift = P[target].map((v, a) => v - ref[target][a]);
@@ -91,4 +91,29 @@ test('Gondor plate: shells with lames, vambraces on the forearms, knee cops, cre
   assert.equal(ATTACH.right_forearm_armor, 'right_forearm');
   const v = buildArmour('gondor').model.cubes.find((c) => c.name === 'vambrace_r');
   assert.equal(v.bone, 'right_forearm_armor');
+});
+
+// Fitted armour: built from the cubes of one man, so it sits half a pixel outside them.
+test('fitted Gondor armour never pokes through, for 60 men and unusual hair and beards', () => {
+  const men = [];
+  for (let s = 1; s <= 60; s++) men.push(buildModel('man', s, { palette: 'gondor' }));
+  for (const o of [{ hair: 'tied', beard: 'long' }, { hair: 'bald', beard: 'none', ears: 'large' }, { hair: 'shoulder', head: 'broad' },
+    { hair: 'side_part', head: 'long', nose: 'hooked' }]) men.push(buildModel('man', 7, { palette: 'gondor', overrides: o }));
+  for (const man of men) {
+    const armour = buildArmour('gondor', man);
+    assert.ok(armour.qa.ok, `${man.model.name}: ${armour.qa.problems.join('; ')}`);
+    assert.deepEqual(poking(man, armour, 'gondor', man.body.pivots), [], man.model.name);
+  }
+});
+
+test('the fitted helm sits half a pixel outside the head, hair and ears (1 px above)', () => {
+  for (const [s, o] of [[13, {}], [22, {}], [7, { hair: 'bald' }], [8, { hair: 'shoulder', head: 'broad', ears: 'large' }]]) {
+    const man = buildModel('man', s, { palette: 'gondor', overrides: o });
+    const head = man.model.cubes.filter((c) => c.bone === 'head' && /^(skull|hair_(cap|back|side_r|side_l|fringe)|ear_[rl])$/.test(c.name));
+    const lo = [0, 1, 2].map((a) => Math.min(...head.map((c) => c.from[a]))), hi = [0, 1, 2].map((a) => Math.max(...head.map((c) => c.to[a])));
+    const crown = buildArmour('gondor', man).model.cubes.find((c) => c.name === 'helm');
+    assert.deepEqual([crown.from[0], crown.to[0]], [lo[0] - 0.5, hi[0] + 0.5], `${s} width`);
+    assert.deepEqual([crown.from[2], crown.to[2]], [lo[2] - 0.5, hi[2] + 0.5], `${s} depth`);
+    assert.equal(crown.to[1], hi[1] + 1, `${s} top`);   // heights are whole pixels: 1 px above the head
+  }
 });

@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { WEAPONS, buildWeapon, weaponIndex } from '../gear/weapons.mjs';
 import { ARMOUR, ATTACH, buildArmour, armourIndex } from '../gear/armour.mjs';
-import { buildModel } from './build.mjs';
+import { buildModel, showcaseSeeds, PALETTES } from './build.mjs';
 import { dress } from './dress.mjs';
 import { serializeLegacy } from './bbmodel.mjs';
 import { contactSheet, Canvas } from '../vendor/bbmt/dist/index.js';
@@ -27,17 +27,28 @@ export function writeGear(out) {
     problems.push(...qa.problems.map((p) => `armour ${id}: ${p}`));
     writeFileSync(path.join(out, 'armour', `${id}.bbmodel`), serializeLegacy(model));
   }
+  // fitted sets: one file per committed man (showcase seeds in every palette), named after the man's model
+  const fittedSets = Object.keys(ARMOUR).filter((id) => ARMOUR[id].fitted);
+  for (const id of fittedSets) {
+    mkdirSync(path.join(out, 'armour', id), { recursive: true });
+    for (const palette of PALETTES) for (const seed of showcaseSeeds('man')) {
+      const man = buildModel('man', seed, { palette });
+      const { model, qa } = buildArmour(id, man);
+      problems.push(...qa.problems.map((p) => `armour ${id} for ${man.model.name}: ${p}`));
+      writeFileSync(path.join(out, 'armour', id, `${man.model.name}.bbmodel`), serializeLegacy(model));
+    }
+  }
   const index = {
     convention: 'specs/core/model-generator.md, Gear: weapon pivot at the grip (origin), +Y to the striking end, -Z edge; armour groups are anchor bones pivoted at the largest man\'s anchors',
     weapons: weaponIndex().map((w) => ({ ...w, file: `weapons/${w.id}.bbmodel` })),
-    armour: armourIndex().map((a) => ({ ...a, file: `armour/${a.id}.bbmodel` })),
+    armour: armourIndex().map((a) => ({ ...a, file: `armour/${a.id}.bbmodel`, ...(ARMOUR[a.id].fitted ? { fitted: `armour/${a.id}/` } : {}) })),
   };
   writeFileSync(path.join(out, 'index.json'), JSON.stringify(index, null, 2) + '\n');
-  const tiles = Object.entries(PREVIEW_KIT).map(([f, [main, off]]) => contactSheet(dress(buildModel('man', 13, { palette: f }), [
-    { model: buildArmour(f).model, attach: ATTACH },
+  const tiles = Object.entries(PREVIEW_KIT).map(([f, [main, off]]) => { const man = buildModel('man', 13, { palette: f }); return contactSheet(dress(man, [
+    ARMOUR[f].fitted ? { model: buildArmour(f, man).model, attach: ATTACH, fitted: true } : { model: buildArmour(f).model, attach: ATTACH },
     { model: buildWeapon(main).model, hand: WEAPONS[main].hand },
     { model: buildWeapon(off).model, hand: WEAPONS[off].hand },
-  ]), { views: ['back', 'iso-back'], width: 150, height: 260 }));
+  ]), { views: ['back', 'iso-back'], width: 150, height: 260 }); });
   const sheet = new Canvas(tiles.reduce((s, t) => s + t.width, 0), tiles[0].height, [40, 36, 32, 255]);
   let x = 0;
   for (const t of tiles) { sheet.blit(t, x, 0); x += t.width; }

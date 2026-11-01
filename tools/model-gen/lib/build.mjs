@@ -45,14 +45,16 @@ export function showcaseSeeds(race) {
   return [...RACES[race].table.showcase];
 }
 
-export function buildModel(race, seed, { lod = false, palette = 'base', overrides = {} } = {}) {
+export function buildModel(race, seed, { lod = false, palette = 'base', overrides = {}, body: fixedBody = null } = {}) {
   const r = RACES[race];
   if (!r) throw new Error(`unknown race "${race}" (known: ${Object.keys(RACES).join(', ')})`);
   const pal = typeof palette === 'string' ? loadPalette(palette) : { id: 'custom', grime: 0, ...palette };
   // a palette's colour choices replace the race's; the picks use the same random draws, so geometry is unchanged
   const table = { ...r.table, ...Object.fromEntries(['skin', 'hair', 'eye'].filter((k) => pal[k]).map((k) => [k, pal[k]])) };
   const rng = makeRng(seed);
-  const body = solveBody(table, rng.fork('body'));
+  // fixedBody (sizes and pivots from layoutBody) replaces the seeded sizes; colours still come from the seed
+  const body = fixedBody ? { ...solveBody(table, rng.fork('body')), ...fixedBody, colours: solveBody(table, rng.fork('body')).colours }
+    : solveBody(table, rng.fork('body'));
   const asm = new Assembly(body);
   const styles = r.parts(asm, body, rng, overrides, pal.outfit || {});
   const cubes = lod ? lodCubes(asm.cubes.map((c) => ({ ...c, from: [...c.from], to: [...c.to] }))) : asm.cubes;

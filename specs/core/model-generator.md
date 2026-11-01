@@ -82,6 +82,12 @@ should probably move `*_boot_armor` under `*_shin`. Forearm armour (vambraces) h
 use `*_forearm_armor` groups that the viewer attaches to `*_forearm`. A `*_forearm_armor` anchor under `*_forearm`
 would make that official.
 
+**Fitted armour** (Gondor first): a fitted set is built on one man, every piece measured from the cubes it covers
+(helm: skull, hair, ears; breastplate: tunic; plates: sleeves, forearms, thighs, skirt halves, shins, boots) and
+placed half a pixel outside them in width and depth (heights 1 px, as heights are whole pixels). `build.mjs gear`
+writes one fitted file per committed man (`gear/armour/gondor/<man model>.bbmodel`); the viewer uses it when it
+exists and falls back to the generic set built on the largest man.
+
 **Armour style** (Gondor first, 2026-11-01): shells that follow the body (helm crown, sides and back around an open
 face; breastplate; limb plates) instead of loose boxes; layered lames; `plate` shading lit from the top-left with
 dark bottom and right edges and rivets; `rings` for mail; black lames rimmed in silver; a gold accent belt. Detail

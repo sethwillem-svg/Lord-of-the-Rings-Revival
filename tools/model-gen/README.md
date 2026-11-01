@@ -73,7 +73,8 @@ is lightly lived-in, the Dunedain travel-worn and Dunland dirty. Add a faction b
 **Gear:** `node tools/model-gen/build.mjs gear` writes 16 weapons (`gear/weapons.mjs`), six faction armour sets
 (`gear/armour.mjs`), `gear/index.json` and `gear/preview.png` into `src/main/art/blockbench/gear/`. Weapons follow
 the spec's convention: root bone `weapon` pivoted at the grip, +Y to the striking end, -Z the edge, real-world
-scale. Armour groups are the anchor bones, sized to the largest man; a test checks that no main body cube of 60
+scale. Armour groups are the anchor bones. Gondor's set is fitted: built on each man from the cubes it covers, with
+one file per committed man; the other sets are sized to the largest man; a test checks that no main body cube of 60
 men pokes through at rest. The viewer's Gear panel shows them on any man.
 
 **Later:** elves and dwarves are new race tables; faction clothing parts (different cuts per faction) come

@@ -578,7 +578,14 @@ async function chooseGear() {
     const a = $('gearArmour').value && find(gearIndex.armour, $('gearArmour').value);
     gearSel.main = await w($('gearMain').value);
     gearSel.off = await w($('gearOff').value);
-    gearSel.armour = a ? { bb: await gearJson(a.file), attach: a.attach } : null;
+    gearSel.armour = null;
+    if (a) {   // a set fitted to this man when there is one (armour/<set>/<model file>), else the generic set
+      const man = bareModel ? bareModel.name : '';
+      let bb = null, fitted = false;
+      if (a.fitted && man) { try { bb = await gearJson(a.fitted + man); fitted = true; } catch (e) { gearCache.delete(a.fitted + man); } }
+      gearSel.armour = { bb: bb || await gearJson(a.file), attach: a.attach, entry: a, for: man };
+      $('gearInfo').textContent = `${a.name}: ${fitted ? 'fitted to ' + man : a.fitted ? 'generic size (no fitted set for this model)' : 'generic size'}.`;
+    }
     if (bareModel) { setModel(bareModel.bb, bareModel.name); rebuild(); }
   } catch (e) { showErr('Gear: ' + e.message); }
 }
@@ -587,6 +594,8 @@ if (location.protocol.startsWith('http')) loadGearIndex();
 
 function setModel(bb, name) {
   bareModel = { bb, name };
+  // a fitted armour set belongs to one man: pick it again for a newly loaded model
+  if (gearSel.armour && gearSel.armour.entry.fitted && gearSel.armour.for !== name) setTimeout(chooseGear, 0);
   bb = withGear(bb);
   if (!bb.outliner || !bb.elements) throw new Error(name + ' is not a Blockbench project (.bbmodel).');
   model = prepareModel(bb, name);

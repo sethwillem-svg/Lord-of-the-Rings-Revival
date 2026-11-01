@@ -20,12 +20,13 @@ export function dress(man, items) {
   for (const c of base.cubes) copy(c, c.bone, [0, 0, 0], 0, 0);
   const ref = largestBody(MAN).pivots, P = body.pivots;
   const slots = [[128, 0], [0, 128], [128, 128], [192, 0], [192, 64]];
-  items.forEach(({ model, attach = {}, hand }, i) => {
+  items.forEach(({ model, attach = {}, hand }, i) => {   // fitted: true for armour built on this man
     const [ox, oy] = slots[i];
     place(model.textures[0], ox, oy);
     for (const c of model.cubes) {
       let bone, shift;
       if (hand) { bone = hand; shift = P[hand]; }
+      else if (items[i].fitted) { bone = attach[c.bone] || c.bone; shift = [0, 0, 0]; }   // built on this man already
       else { bone = attach[c.bone] || c.bone; shift = P[bone].map((v, a) => v - ref[bone][a]); }
       copy({ ...c, name: `${model.name}:${c.name}` }, bone, shift, ox, oy);
     }

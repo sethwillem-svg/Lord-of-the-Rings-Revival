@@ -104,4 +104,9 @@ test('gear builds weapons, armour sets, an index and a preview', () => {
   assert.ok(existsSync(path.join(out, 'preview.png')));
   assert.equal(idx.weapons.find((w) => w.id === 'longsword').file, 'weapons/longsword.bbmodel');
   assert.equal(idx.armour.find((a) => a.id === 'gondor').file, 'armour/gondor.bbmodel');
+  // fitted Gondor armour for every committed man: base and faction men, showcase seeds
+  const g = idx.armour.find((a) => a.id === 'gondor');
+  assert.equal(g.fitted, 'armour/gondor/');
+  for (const name of ['man_base_13', 'man_gondor_13', 'man_rohan_37']) assert.ok(existsSync(path.join(out, 'armour/gondor', `${name}.bbmodel`)), name);
+  assert.equal(idx.armour.find((a) => a.id === 'rohan').fitted, undefined);
 });
