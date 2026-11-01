@@ -54,7 +54,7 @@ function paintFace(canvas, rect, face, ramp, style) {
     if (SIDES.includes(face)) {
       if (y === 0 && h >= 2) k = 0;
       else if (y === h - 1 && h >= 3) k = 2;
-      else if (style === 'cloth' && y % 2 === 1 && (x + (y >> 1)) % 2 === 0) k = 2;
+      else if (style === 'cloth' && w >= 3 && x % 3 === 2 && y % 4 !== 0) k = 2;   // fabric folds
       else if (style === 'leather' && y === 1 && h >= 4 && x % 2 === 0) k = 3;
       else if (style === 'hair' && x % 2 === 1) k = 2;
     } else if (face === 'up' && style === 'hair' && x % 2 === 1) k = 1;
