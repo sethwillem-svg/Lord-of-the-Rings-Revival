@@ -538,6 +538,7 @@ function showErr(m) { $('err').textContent = m; }
 function setModel(bb, name) {
   if (!bb.outliner || !bb.elements) throw new Error(name + ' is not a Blockbench project (.bbmodel).');
   model = prepareModel(bb, name);
+  model.file = name.split('/').pop();
   const auto = A.detectMap(model.rig, RIG_MAPS);
   $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}${auto && auto.id === m.id ? ' (auto)' : ''}</option>`).join('');
   if (auto) $('rigMap').value = auto.id;
@@ -632,7 +633,8 @@ async function scanWatch() {
     for (const e of await watch.src.list()) {
       if (!/\.(bvh|bbmodel)$/i.test(e.name) || watch.seen.has(e.key)) continue;   // skips partial .part files
       watch.seen.add(e.key);
-      if (/\.bbmodel$/i.test(e.name) && model) continue;   // keep the model you already have
+      // keep the model you already have, unless this is a new version of it (same file name: a model-gen --watch rebuild)
+      if (/\.bbmodel$/i.test(e.name) && model && e.name !== model.file) continue;
       fresh.push(await e.get());
     }
     if (fresh.length) {

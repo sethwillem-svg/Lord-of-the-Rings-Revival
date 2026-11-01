@@ -24,8 +24,8 @@ node tools/model-gen/build.mjs man --seeds 1-8 --watch    # rebuilds into clips/
 cd tools/model-gen && npm test                            # all checks
 ```
 
-With `--watch`, open the viewer on a generated man (`animview man_base_1`, or the watch folder): every save
-under `lib/`, `parts/`, `races/` or `palettes/` rebuilds the models in `clips/` and the viewer reloads them.
+With `--watch`, open the viewer on a generated man (`animview man_base_7` opens a committed man and watches `clips/`): every save
+under `lib/`, `parts/`, `races/` or `palettes/` rebuilds the models in `clips/`, and the viewer reloads the open model when its rebuilt file (same name) appears there.
 
 The report (`tools/model-gen/out/man_report.txt`) lists each seed's height, build, part styles and cube counts.
 `showcase` in `races/man.mjs` lists the seeds committed to the repo, chosen from the report to cover the range.

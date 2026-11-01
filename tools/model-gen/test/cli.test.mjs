@@ -60,3 +60,10 @@ test('without --seeds it builds the showcase seeds', () => {
   const built = files(out).filter((f) => !f.includes('/') && f.endsWith('.bbmodel')).length;
   assert.equal(built, 8);
 });
+
+test('output does not depend on the system locale', () => {
+  const [a, b] = [tmp(), tmp()];
+  run(['man', '--seeds', '7', '--out', a], { env: { ...process.env, LC_ALL: 'C', LANG: 'C' } });
+  run(['man', '--seeds', '7', '--out', b], { env: { ...process.env, LC_ALL: 'cs_CZ.UTF-8', LANG: 'cs_CZ.UTF-8' } });
+  assert.ok(readFileSync(path.join(a, 'man_base_7.bbmodel')).equals(readFileSync(path.join(b, 'man_base_7.bbmodel'))));
+});

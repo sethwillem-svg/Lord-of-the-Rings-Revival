@@ -30,12 +30,13 @@ export function packUv(model, atlas) {
   const sizeOf = (c) => c.to.map((v, i) => v - c.from[i]);
   const order = [...model.cubes].sort((a, b) => {
     const [ax, ay, az] = sizeOf(a), [bx, by, bz] = sizeOf(b);
-    return (by + bz) - (ay + az) || a.name.localeCompare(b.name);
+    return (by + bz) - (ay + az) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);   // not localeCompare: locale-independent
   });
   for (const cube of order) {
     const [sx, sy, sz] = sizeOf(cube);
     try {
-      const [x, y] = atlas.alloc(cube.name, 2 * (sx + sz), sy + sz);
+      // boxUv: sides span 2(sx+sz); up and down sit side by side from sz to sz+3sx, wider when sx > sz
+      const [x, y] = atlas.alloc(cube.name, Math.max(2 * (sx + sz), sz + 3 * sx), sy + sz);
       cube.faces = boxUv(cube, [x, y]);
     } catch (e) {
       throw new Error(`${model.name}: texture sheet full at cube "${cube.name}" (${e.message})`);

@@ -70,3 +70,15 @@ test('qa catches a cube on an anchor bone', () => {
 test('an unknown race is refused', () => {
   assert.throws(() => buildModel('ent', 1), /race/);
 });
+
+test('uv faces never overlap and stay on the sheet for seeds 1..200', () => {
+  for (let s = 1; s <= 200; s++) {
+    const { model } = buildModel('man', s);
+    const rects = model.cubes.flatMap((c) => Object.entries(c.faces).map(([f, r]) => [`${c.name}.${f}`, r]));
+    for (const [n, r] of rects) assert.ok(r.every((v) => v >= 0 && v <= 128), `seed ${s}: ${n} ${r} is off the sheet`);
+    for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+      const [a, b] = [rects[i][1], rects[j][1]];
+      assert.ok(!(a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]), `seed ${s}: ${rects[i][0]} overlaps ${rects[j][0]}`);
+    }
+  }
+});
