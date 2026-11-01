@@ -349,7 +349,8 @@
     let o = (v) => [dot(v, L0), v[1], -dot(v, F0)];
     if (opts.mirror) { const o0 = o; o = (v) => { const r = o0(v); return [-r[0], r[1], r[2]]; }; }
     let floor = Infinity;
-    for (let f = 0; f < F; f++) for (const n of ['LeftFoot', 'RightFoot', 'LeftToeBase', 'RightToeBase']) floor = Math.min(floor, g(f, n)[1]);
+    const feet = ['LeftFoot', 'RightFoot', 'LeftToeBase', 'RightToeBase'].filter(has);   // toes are optional (Mixamo exports may lack them)
+    for (let f = 0; f < F; f++) for (const n of feet) floor = Math.min(floor, g(f, n)[1]);
     const hipH = g(0, 'Hips')[1] - floor;
     const legRoot = rig.bones[B(map.legs.right[0])];
     const s = legRoot.origin[1] / hipH;
