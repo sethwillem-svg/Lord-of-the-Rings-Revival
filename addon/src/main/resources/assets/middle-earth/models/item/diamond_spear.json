@@ -1,0 +1,6 @@
+{
+  "parent": "middle-earth:item/spear",
+  "textures": {
+    "layer0": "middle-earth:item/diamond_spear_inventory"
+  }
+}
