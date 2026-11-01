@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mocap Rig Viewer</title>
+<style>
+:root{--bg:#15130f;--panel:#1f1b16;--line:#3a332a;--fg:#ece4d6;--muted:#a59a88;--accent:#e0893a;--accent-ink:#1b120a;--bad:#e5534b;--ok:#6fbf73;
+ --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--body:system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.4 var(--body);padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+h1{font-size:1.2rem;margin:0}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.85rem}
+.wrap{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;min-height:0}
+.stage{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#2b251d 0%,var(--bg) 75%);min-height:360px}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.labels{position:absolute;inset:0;pointer-events:none}
+.tag{position:absolute;transform:translate(-50%,-100%);font:11px var(--mono);background:#000a;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.tag.bad{color:#fff;background:var(--bad)}
+.drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#e0893a33;border:2px dashed var(--accent);font-size:1.1rem}
+.stage.dragging .drop{display:flex}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:24px}
+aside{display:flex;flex-direction:column;gap:12px;overflow:auto;min-width:0}
+.group{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--panel)}
+.label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row label{flex:1;min-width:0}
+input[type=range]{flex:1;accent-color:var(--accent)}
+button,select,input[type=text]{font:inherit;color:var(--fg);background:#2a241d;border:1px solid var(--line);border-radius:4px;padding:5px 9px}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.val{font:12px var(--mono);color:var(--muted);min-width:44px;text-align:right}
+.clip{border-top:1px solid var(--line);padding-top:6px;display:flex;flex-direction:column;gap:4px}
+.clip:first-child{border-top:0;padding-top:0}
+.clip .name{font:12px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qa{font:11px var(--mono);color:var(--muted)}
+.qa .bad{color:var(--bad)}.qa .ok{color:var(--ok)}
+.note{font-size:.8rem;color:var(--muted);margin:0}
+.timeline{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--panel)}
+.timeline input[type=range]{flex:1}
+.time{font:12px var(--mono);min-width:110px}
+.err{color:var(--bad);font-size:.85rem;white-space:pre-wrap}
+@media (max-width:820px){.wrap{grid-template-columns:1fr}.stage{height:55vh}}
+</style>
+</head>
+<body>
+<header>
+ <h1>Mocap Rig Viewer</h1>
+ <p class="sub">Drop a Blockbench <code>.bbmodel</code> and any number of BVH files. Each clip is retargeted live onto its own copy of the model, on one shared timeline.</p>
+</header>
+<div class="wrap">
+ <div class="stage" id="stage">
+  <canvas id="cv" aria-label="3D preview"></canvas>
+  <div class="labels" id="labels"></div>
+  <div class="empty" id="empty">Drop a .bbmodel and BVH files here, or use the buttons on the right.</div>
+  <div class="drop">Drop .bbmodel or .bvh files</div>
+ </div>
+ <aside>
+  <div class="group">
+   <span class="label">Files</span>
+   <div class="row">
+    <button id="pickModel">Load model</button><input id="modelFile" type="file" accept=".bbmodel,.json" hidden>
+    <button id="pickBvh">Add BVH clips</button><input id="bvhFile" type="file" accept=".bvh" multiple hidden>
+    <button id="watchBtn">Watch folder</button>
+   </div>
+   <div class="row" id="modelPickRow" hidden><label for="modelPick">Model</label><select id="modelPick"><option value="">loading...</option></select></div>
+   <div class="note" id="modelInfo">No model loaded.</div>
+   <div class="note" id="watchInfo">Watch folder: new .bvh files (and a .bbmodel) in the folder load automatically. Chrome or Edge.</div>
+   <div class="row"><label for="rigMap">Rig map</label><select id="rigMap"></select></div>
+   <div class="row"><button id="clearClips">Clear clips</button><button id="reloadFolder" title="Load every clip in the watched folder again">Reload folder</button></div>
+   <div class="err" id="err"></div>
+  </div>
+  <div class="group">
+   <span class="label">Clip library</span>
+   <div class="row"><label for="libRace">Race</label><select id="libRace"></select></div>
+   <div class="row"><label title="Untick to load every clip for the race: required, extras and its unique CMU takes"><input id="libRequired" type="checkbox" checked> Spec minimum set only</label><button id="libLoad" class="primary">Load race set</button></div>
+   <div class="row"><button id="libUnique" title="The race's CMU takes that no other race uses">Load uniques</button><button id="libLocal" title="Every clip in library/local for this race">Load local</button></div>
+   <div class="row"><select id="libClip" aria-label="Library clip" style="flex:1;min-width:0"></select><button id="libAdd">Add</button></div>
+   <div class="note" id="libInfo"></div>
+  </div>
+  <div class="group">
+   <span class="label">Gear (generated weapons and armour)</span>
+   <div class="row"><label for="gearMain">Weapon</label><select id="gearMain" style="flex:1;min-width:0"><option value="">none</option></select></div>
+   <div class="row"><label for="gearOff">Off hand</label><select id="gearOff" style="flex:1;min-width:0"><option value="">none</option></select></div>
+   <div class="row"><label for="gearArmour">Armour</label><select id="gearArmour" style="flex:1;min-width:0"><option value="">none</option></select></div>
+   <div class="note" id="gearInfo">Gear needs the viewer served from the repo (animview).</div>
+  </div>
+  <div class="group">
+   <span class="label">Retarget settings (applied to every clip)</span>
+   <div class="row"><label for="tilt">Torso tilt cap</label><input id="tilt" type="range" min="10" max="90" step="1" value="90"><span class="val" id="tiltV">off</span></div>
+   <div class="row"><label for="drop">Root drop</label><input id="drop" type="range" min="0" max="1" step="0.05" value="1"><span class="val" id="dropV">100%</span></div>
+   <div class="row"><label for="rotOrder">BVH rotation order</label><select id="rotOrder"><option value="auto">auto-detect</option><option value="listed">as written</option><option value="reversed">reversed</option></select></div>
+   <div class="row"><label for="smooth">Smoothing</label><input id="smooth" type="range" min="0" max="4" step="0.25" value="0"><span class="val" id="smoothV">off</span></div>
+   <div class="row"><label><input id="mirror" type="checkbox"> Mirror (left-handed take)</label></div>
+   <div class="row"><label><input id="inPlace" type="checkbox"> In place (strip forward and sideways travel)</label></div>
+   <div class="row"><label><input id="jointLimits" type="checkbox" checked> Cube joint limits (elbows/knees, arms out of the torso, feet apart)</label></div>
+   <div class="row"><label><input id="footLock" type="checkbox" checked> Foot lock (no sliding while a foot is planted)</label></div>
+   <div class="row"><label for="stance">Stance width</label><input id="stance" type="range" min="0.7" max="1.5" step="0.05" value="1"><span class="val" id="stanceV">100%</span></div>
+   <div class="row"><label><input id="footLift" type="checkbox" checked> Plant feet (match the mocap's foot height every frame)</label></div>
+  </div>
+  <div class="group">
+   <span class="label">Weapon</span>
+   <div class="row"><label for="weapon">Grip</label><select id="weapon"><option value="forearm">along forearm</option><option value="rest">rig rest grip</option></select></div>
+   <div class="row"><label for="wPitch">Tilt fwd/back</label><input id="wPitch" type="range" min="-180" max="180" step="5" value="0"><span class="val" id="wPitchV">0°</span></div>
+   <div class="row"><label for="wYaw">Swing left/right</label><input id="wYaw" type="range" min="-180" max="180" step="5" value="0"><span class="val" id="wYawV">0°</span></div>
+   <div class="row"><label for="wRoll">Twist</label><input id="wRoll" type="range" min="-180" max="180" step="5" value="0"><span class="val" id="wRollV">0°</span></div>
+   <div class="row"><button id="wReset">Reset angle</button></div>
+   <div class="row"><label><input id="wristMocap" type="checkbox" checked> Wrist follows the mocap (needs finger joints)</label></div>
+   <div class="row"><label><input id="edgeFirst" type="checkbox" checked> Edge first (blade edge leads the swing)</label></div>
+   <p class="note">Angles rotate the weapon in the hand. Weapon IK uses the adjusted blade, so the tip still lands on the target.</p>
+  </div>
+  <div class="group">
+   <span class="label">View</span>
+   <div class="row"><button data-cam="front">Front</button><button data-cam="side">Side</button><button data-cam="back">Back</button><button data-cam="three">3/4</button></div>
+   <div class="row"><label><input id="showTargets" type="checkbox" checked> IK targets</label><label><input id="showGrid" type="checkbox" checked> Floor grid</label></div>
+  </div>
+  <div class="group">
+   <span class="label">Weapon IK</span>
+   <div class="row"><label><input id="ik" type="checkbox" checked> Pull the weapon tip onto a target at the hit</label></div>
+   <div class="row"><label for="ikY">Strike height</label><input id="ikY" type="range" min="0" max="28" step="1" value="0"><span class="val" id="ikYV">ground</span></div>
+   <div class="row"><label for="torsoShare">Torso share</label><input id="torsoShare" type="range" min="0" max="0.8" step="0.05" value="0.4"><span class="val" id="torsoShareV">40%</span></div>
+   <div class="row"><label for="ikReach">Reach</label><input id="ikReach" type="range" min="0.6" max="0.98" step="0.01" value="0.85"><span class="val" id="ikReachV">85%</span></div>
+   <p class="note">The target (red cube) sits in front of the character at the strike height, at the chosen share of arm plus weapon length. The tip rises onto it from the windup, holds it while the mocap stays down, and lets go as the arms rise.</p>
+  </div>
+  <div class="group">
+   <span class="label">Clips</span>
+   <div id="clips"><p class="note">No clips yet.</p></div>
+   <div class="row"><label for="rigName">Export rig name</label><input id="rigName" type="text" value="orc" size="10"></div>
+   <div class="row"><button id="exportAll">Export all (viewer JSON)</button></div>
+  </div>
+  <p class="note">Floor contact: a clip's label turns red while its weapon tip or hand is below the floor.</p>
+ </aside>
+</div>
+<div class="timeline">
+ <button id="play" class="primary" aria-label="Play or pause">Pause</button>
+ <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" aria-label="Time">
+ <span class="time" id="time">0.00 / 0.00 s</span>
+ <label><input id="align" type="checkbox"> Align hits</label>
+ <label><input id="loop" type="checkbox" checked> Loop</label>
+ <select id="speed" aria-label="Speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="retarget.js"></script>
+<script src="rigs.js"></script>
+<script src="library.js"></script>
+<script src="gear.js"></script>
+<script>
+'use strict';
+const A = window.AnimRetarget, $ = (id) => document.getElementById(id);
+const D = Math.PI / 180, SPACING = 46;
+
+// ---------- three.js scene ----------
+const cv = $('cv'), stage = $('stage');
+const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
+R.setClearColor(0x000000, 0); R.outputEncoding = THREE.sRGBEncoding; R.setPixelRatio(Math.min(2, devicePixelRatio));
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xfff1dc, 0x2a2018, 0.75));
+const key = new THREE.DirectionalLight(0xffe2bf, 0.95); key.position.set(-30, 60, -50); scene.add(key);
+const rim = new THREE.DirectionalLight(0xff9a4a, 0.45); rim.position.set(40, 30, 60); scene.add(rim);
+const grid = new THREE.GridHelper(400, 25, 0x5a4a38, 0x3a3027); scene.add(grid);
+const cam = new THREE.PerspectiveCamera(35, 1, 0.5, 3000);
+let yaw = Math.PI + 0.55, pitch = 0.18, dist = 110; const target = new THREE.Vector3(0, 16, 0);
+function placeCam() {
+  cam.position.set(target.x + dist * Math.cos(pitch) * Math.sin(yaw), target.y + dist * Math.sin(pitch), target.z + dist * Math.cos(pitch) * Math.cos(yaw));
+  cam.lookAt(target);
+}
+
+// ---------- model building (Blockbench cubes, same face layout as the Orc Muster Viewer) ----------
+function faceQuad(c, k) {
+  const f = c.inflate || 0, o = c.origin || [0, 0, 0];
+  const [X1, Y1, Z1] = [c.from[0] - o[0] - f, c.from[1] - o[1] - f, c.from[2] - o[2] - f];
+  const [X2, Y2, Z2] = [c.to[0] - o[0] + f, c.to[1] - o[1] + f, c.to[2] - o[2] + f];
+  return { north: [[X2, Y2, Z1], [X1, Y2, Z1], [X1, Y1, Z1], [X2, Y1, Z1]], south: [[X1, Y2, Z2], [X2, Y2, Z2], [X2, Y1, Z2], [X1, Y1, Z2]],
+    east: [[X2, Y2, Z2], [X2, Y2, Z1], [X2, Y1, Z1], [X2, Y1, Z2]], west: [[X1, Y2, Z1], [X1, Y2, Z2], [X1, Y1, Z2], [X1, Y1, Z1]],
+    up: [[X1, Y2, Z1], [X2, Y2, Z1], [X2, Y2, Z2], [X1, Y2, Z2]], down: [[X1, Y1, Z2], [X2, Y1, Z2], [X2, Y1, Z1], [X1, Y1, Z1]] }[k];
+}
+let model = null;   // {rig, map, mats, geos: Map(uuid -> [{geo, tex}])}
+function prepareModel(bb, fileName) {
+  const rig = A.parseRig(bb);
+  const res = bb.resolution || { width: 16, height: 16 };
+  const mats = (bb.textures || []).map((t) => {
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, alphaTest: 0.5, side: THREE.DoubleSide });
+    if (t.source) {
+      const img = new Image(), tex = new THREE.Texture(img);
+      tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.encoding = THREE.sRGBEncoding;
+      img.onload = () => { tex.needsUpdate = true; mat.map = tex; mat.needsUpdate = true; };
+      img.src = t.source;
+    } else mat.color.set(0x8a7f70);
+    return { mat, w: t.uv_width || res.width, h: t.uv_height || res.height };
+  });
+  const fallback = { mat: new THREE.MeshLambertMaterial({ color: 0x8a7f70, side: THREE.DoubleSide }), w: res.width, h: res.height };
+  const geos = new Map();
+  let faces = 0;
+  for (const b of rig.bones) for (const c of b.cubes) {
+    const byTex = new Map();
+    for (const k in c.faces || {}) {
+      const fc = c.faces[k];
+      if (fc.texture === null || fc.texture === undefined || !fc.uv) continue;
+      const t = mats[fc.texture] || fallback;
+      if (!byTex.has(t)) byTex.set(t, { pos: [], uv: [], idx: [], n: 0 });
+      const g = byTex.get(t), P = faceQuad(c, k), [u1, v1, u2, v2] = fc.uv;
+      const U = [[u1, v1], [u2, v1], [u2, v2], [u1, v2]];
+      for (let i = 0; i < 4; i++) { g.pos.push(...P[i]); g.uv.push(U[i][0] / t.w, 1 - U[i][1] / t.h); }
+      g.idx.push(g.n, g.n + 2, g.n + 1, g.n, g.n + 3, g.n + 2); g.n += 4; faces++;
+    }
+    const list = [];
+    for (const [t, g] of byTex) {
+      let geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(g.uv, 2));
+      geo.setIndex(g.idx); geo = geo.toNonIndexed(); geo.computeVertexNormals();
+      list.push({ geo, mat: t.mat });
+    }
+    geos.set(c.uuid, list);
+  }
+  const cubes = rig.bones.reduce((a, b) => a + b.cubes.length, 0);
+  return { rig, mats, geos, fileName, cubes, faces };
+}
+function buildInstance() {
+  const { rig, geos } = model, root = new THREE.Group(), groups = [];
+  rig.bones.forEach((b, i) => {
+    const g = new THREE.Group(), po = b.parent < 0 ? [0, 0, 0] : rig.bones[b.parent].origin;
+    g.position.set(b.origin[0] - po[0], b.origin[1] - po[1], b.origin[2] - po[2]);
+    g.userData.base = g.position.clone();
+    g.quaternion.copy(matQuat(b.restMat));
+    for (const c of b.cubes) {
+      const cg = new THREE.Group(), co = c.origin || [0, 0, 0], r = c.rotation || [0, 0, 0];
+      cg.position.set(co[0] - b.origin[0], co[1] - b.origin[1], co[2] - b.origin[2]);
+      cg.rotation.order = 'ZYX'; cg.rotation.set(r[0] * D, r[1] * D, r[2] * D);
+      for (const { geo, mat } of geos.get(c.uuid) || []) cg.add(new THREE.Mesh(geo, mat));
+      g.add(cg);
+    }
+    (b.parent < 0 ? root : groups[b.parent]).add(g);
+    groups.push(g);
+  });
+  return { root, groups };
+}
+const _m4 = new THREE.Matrix4();
+function matQuat(m) {
+  _m4.set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1);
+  return new THREE.Quaternion().setFromRotationMatrix(_m4);
+}
+
+// ---------- clips ----------
+const clips = [];   // {name, bvh, clip, quats[bone][frame], inst, tag, error}
+const targetMat = new THREE.MeshBasicMaterial({ color: 0xe5534b });
+let restClip = null, maxLen = 1, maxHit = 0;
+let built = [], framedFor = -1;   // every model instance in the scene; clip count the camera was framed for
+function settings() {
+  return { torsoTiltCap: +$('tilt').value, rootDrop: +$('drop').value, weapon: $('weapon').value,
+           mirror: $('mirror').checked, footLift: true, footPlant: $('footLift').checked, inPlace: $('inPlace').checked,
+           ik: $('ik').checked, ikTargetY: +$('ikY').value, ikReach: +$('ikReach').value,
+           rotOrder: $('rotOrder').value, jointLimits: $('jointLimits').checked, footLock: $('footLock').checked, stance: +$('stance').value,
+           wrist: $('wristMocap').checked ? 'auto' : 'rest', edgeFirst: $('edgeFirst').checked, ikTorsoShare: +$('torsoShare').value,
+           weaponPitch: +$('wPitch').value, weaponYaw: +$('wYaw').value, weaponRoll: +$('wRoll').value, smooth: +$('smooth').value };
+}
+function currentMap() {
+  const id = $('rigMap').value;
+  return RIG_MAPS.find((m) => m.id === id) || null;
+}
+function runClip(c) {
+  c.error = null; c.clip = null;
+  try {
+    const map = currentMap();
+    if (!map) throw new Error('No rig map fits this model. Add one to rigs.js.');
+    c.clip = A.retarget(c.bvh, model.rig, map, Object.assign(settings(), c.opts || {}));
+    c.quats = model.rig.bones.map((_, i) => c.clip.frames.map((fr) => matQuat(fr.locals[i])));
+  } catch (e) { c.error = e.message; }
+}
+function rebuild() {
+  $('err').textContent = '';
+  // remove everything built last time, including clips that were removed or cleared since
+  for (const b of built) {
+    scene.remove(b.inst.root);
+    b.inst.root.traverse((o) => { if (o.userData.target) o.geometry.dispose(); });
+    b.tag.remove();
+    b.owner.inst = null; b.owner.tag = null;
+  }
+  built = [];
+  $('empty').style.display = model && clips.length ? 'none' : 'flex';
+  if (!model) { renderList(); return; }
+  const shown = clips.length ? clips : [{ name: '(rest pose)', rest: true }];
+  shown.forEach((c, k) => {
+    if (!c.rest) runClip(c);
+    const inst = buildInstance();
+    const row = Math.floor(k / 5), colN = Math.min(shown.length, 5);
+    inst.root.position.set(-((k % 5) - (colN - 1) / 2) * SPACING, 0, row * SPACING);   // list order reads left to right from the front
+    scene.add(inst.root);
+    if (c.clip && c.clip.ik) {
+      const t = c.clip.ik.target, mk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), targetMat);
+      mk.position.set(t[0], t[1] + 0.6, t[2]);
+      mk.visible = $('showTargets').checked; mk.userData.target = true;
+      inst.root.add(mk);
+    }
+    c.inst = inst;
+    const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = c.name;
+    $('labels').appendChild(tag); c.tag = tag;
+    if (c.rest) c.restOnly = true;
+    built.push({ inst, tag, owner: c });
+  });
+  restClip = clips.length ? null : shown[0];
+  if (shown.length !== framedFor) {   // re-frame only when the number of models changes, not on every slider move
+    const n = Math.min(shown.length, 5), rows = Math.ceil(shown.length / 5);
+    target.set(0, 14, (rows - 1) * SPACING / 2);
+    dist = Math.max(80, n * SPACING * 1.25 + 30);
+    framedFor = shown.length;
+  }
+  maxLen = Math.max(0.01, ...clips.filter((c) => c.clip).map((c) => c.clip.length));
+  maxHit = Math.max(0, ...clips.filter((c) => c.clip).map((c) => c.clip.hitTime));
+  renderList();
+}
+const fmt = (v) => (v === null || v === undefined || !isFinite(v) ? 'n/a' : v.toFixed(1));
+function renderList() {
+  const L = $('clips');
+  L.innerHTML = '';
+  if (!clips.length) { L.innerHTML = '<p class="note">No clips yet.</p>'; return; }
+  clips.forEach((c, k) => {
+    const d = document.createElement('div'); d.className = 'clip';
+    const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = `${k + 1}. ${c.name}`; nm.title = c.name;
+    d.appendChild(nm);
+    const qa = document.createElement('div'); qa.className = 'qa';
+    if (c.error) { qa.innerHTML = ''; const e = document.createElement('span'); e.className = 'bad'; e.textContent = c.error; qa.appendChild(e); }
+    else if (c.clip) {
+      const q = c.clip.qa, cls = (v) => (v !== null && v < -0.5 ? 'bad' : 'ok');
+      qa.innerHTML = `${c.clip.length.toFixed(2)} s, hit ${c.clip.hitTime.toFixed(2)} s, rotations ${c.clip.rotOrder}<br>` +
+        `hand min <span class="${cls(q.handMin)}">${fmt(q.handMin)}</span> px, tip min <span class="${cls(q.tipMin)}">${fmt(q.tipMin)}</span> px, ` +
+        `foot min <span class="${cls(q.footMin)}">${fmt(q.footMin)}</span> px<br>` +
+        `max elbow/knee bend ${q.maxBend.toFixed(0)}°, closest feet ${fmt(q.minFootGap)} px, ` +
+        `foot slide ${c.clip.locks.length ? q.footSlide.toFixed(2) + ' px over ' + c.clip.locks.length + ' plant(s)' : 'no plants found'}, wrist ${q.wrist}` +
+        (c.clip.ik ? `<br>IK: tip ${c.clip.ik.errorAtHit.toFixed(2)} px from target at hit, contact held to ${(c.clip.ik.C * c.clip.dt).toFixed(2)} s` +
+          (c.clip.ik.raised ? `<br><span class="bad">Strike height out of reach: target raised ${c.clip.ik.raised.toFixed(1)} px (lower the torso tilt cap or raise the strike height)</span>` : '') : '');
+    }
+    d.appendChild(qa);
+    if (c.lib) {
+      const n = document.createElement('div'); n.className = 'qa';
+      const o = Object.entries(c.opts || {}).map(([k, v]) => `${k} ${v}`).join(', ');
+      n.textContent = `from ${c.lib.src}` + (c.lib.note ? ` (${c.lib.note})` : '') + (o ? `. Fixed: ${o}` : '');
+      d.appendChild(n);
+    }
+    const row = document.createElement('div'); row.className = 'row';
+    const mk = (txt, fn, label) => { const b = document.createElement('button'); b.textContent = txt; b.onclick = fn; if (label) b.setAttribute('aria-label', label); row.appendChild(b); };
+    mk('Hit', () => { setTime(($('align').checked ? maxHit : c.clip ? c.clip.hitTime : 0)); playing = false; syncPlay(); }, 'Jump to hit of ' + c.name);
+    mk('Viewer JSON', () => exportClip(c, 'viewer'));
+    mk('PulseLib JSON', () => exportClip(c, 'pulselib'));
+    mk('Remove', () => { clips.splice(k, 1); rebuild(); }, 'Remove ' + c.name);
+    d.appendChild(row);
+    L.appendChild(d);
+  });
+}
+function baseName(n) { return n.replace(/\.[^.]+$/, '').replace(/[^a-z0-9_]+/gi, '_').toLowerCase(); }
+function download(name, obj) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function exportClip(c, kind) {
+  if (!c.clip) return;
+  const rigName = ($('rigName').value || 'rig').trim(), b = c.key || baseName(c.name);
+  if (kind === 'viewer') download(`${b}.viewer.json`, A.toViewerClip(c.clip, model.rig));
+  else download(`${b}.animation.json`, A.toPulseLibAnimation(c.clip, model.rig, `animation.${rigName}.${b}`));
+}
+$('exportAll').onclick = () => {
+  const out = {};
+  for (const c of clips) if (c.clip) out[c.key || baseName(c.name)] = A.toViewerClip(c.clip, model.rig);
+  if (Object.keys(out).length) download(`${($('rigName').value || 'rig').trim()}_clips.viewer.json`, out);
+};
+
+// ---------- posing ----------
+const _q = new THREE.Quaternion();
+function poseClip(c, t) {
+  const inst = c.inst, rig = model.rig;
+  if (!c.clip) { rig.bones.forEach((b, i) => { inst.groups[i].quaternion.copy(matQuat(b.restMat)); inst.groups[i].position.copy(inst.groups[i].userData.base); }); return false; }
+  const cl = c.clip, F = cl.frames.length;
+  let tt = t - ($('align').checked ? maxHit - cl.hitTime : 0);
+  tt = Math.max(0, Math.min(cl.length, tt));
+  const x = tt / cl.dt, i0 = Math.min(F - 1, Math.floor(x)), i1 = Math.min(F - 1, i0 + 1), a = x - i0;
+  rig.bones.forEach((b, i) => {
+    const g = inst.groups[i];
+    g.quaternion.copy(c.quats[i][i0]).slerp(c.quats[i][i1], a);
+    g.position.copy(g.userData.base);
+  });
+  const p0 = cl.frames[i0].rootPos, p1 = cl.frames[i1].rootPos, rg = inst.groups[cl.rootBone];
+  rg.position.set(rg.userData.base.x + p0[0] + (p1[0] - p0[0]) * a, rg.userData.base.y + p0[1] + (p1[1] - p0[1]) * a,
+                  rg.userData.base.z + p0[2] + (p1[2] - p0[2]) * a);
+  // live floor check on the nearest frame
+  const fr = cl.frames[a < 0.5 ? i0 : i1];
+  const fk = A.rigFK(rig, fr.locals, fr.rootPos);
+  const hand = fk.pos[rig.idx[currentMap().arms.right[2] || currentMap().arms.right[1]]];
+  return (fr.tip && fr.tip[1] < -0.5) || (hand && hand[1] < -0.5);
+}
+
+// ---------- timeline ----------
+let playing = true, clock = 0, last = performance.now();
+function syncPlay() { $('play').textContent = playing ? 'Pause' : 'Play'; }
+function setTime(t) { clock = t; }
+$('play').onclick = () => { playing = !playing; syncPlay(); };
+$('scrub').oninput = (e) => { playing = false; syncPlay(); clock = +e.target.value * totalLen(); };
+function totalLen() { return $('align').checked ? maxHit + Math.max(0, ...clips.filter((c) => c.clip).map((c) => c.clip.length - c.clip.hitTime)) : maxLen; }
+const _v = new THREE.Vector3();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (playing) {
+    clock += dt * +$('speed').value;
+    const L = totalLen() + 0.5;
+    if (clock > L) clock = $('loop').checked ? 0 : L;
+  }
+  const L = totalLen();
+  $('scrub').value = L > 0 ? Math.min(1, clock / L) : 0;
+  $('time').textContent = `${Math.min(clock, L).toFixed(2)} / ${L.toFixed(2)} s`;
+  const rect = cv.getBoundingClientRect();
+  for (const c of [...clips, restClip].filter(Boolean)) {
+    if (!c.inst) continue;
+    const bad = c.restOnly ? false : poseClip(c, clock);
+    if (c.tag) {
+      c.tag.classList.toggle('bad', !!bad);
+      _v.set(c.inst.root.position.x, 36, c.inst.root.position.z).project(cam);
+      c.tag.style.left = ((_v.x + 1) / 2 * rect.width) + 'px';
+      c.tag.style.top = ((1 - _v.y) / 2 * rect.height) + 'px';
+      c.tag.style.display = _v.z < 1 ? '' : 'none';
+    }
+  }
+  placeCam(); R.render(scene, cam); requestAnimationFrame(frame);
+}
+
+// ---------- clip library (library.js: spec clip key -> UAL / CMU / local clip, per race) ----------
+const LIB = window.ANIM_LIBRARY, libText = new Map(), libRequired = new Map();
+let libLocalFiles = null;   // file names in library/local (git-ignored), read from the server's folder listing
+/** Local clips for a race: <race>.<key>.bvh files belong to that race, other names show for every race. */
+async function localEntries(race) {
+  if (libLocalFiles === null) {
+    try {
+      const res = await fetch(LIB.sources.local.dir, { cache: 'no-store' });
+      libLocalFiles = res.ok ? [...(await res.text()).matchAll(/href="([^"?#]+)"/g)].map((m) => decodeURIComponent(m[1]))
+        .filter((n) => !n.includes('/') && /\.bvh$/i.test(n)) : [];
+    } catch (e) { libLocalFiles = []; }
+  }
+  const out = {}, races = Object.keys(LIB.races);
+  for (const f of libLocalFiles) {
+    const base = f.replace(/\.bvh$/i, ''), dot = base.indexOf('.'), r = dot > 0 ? base.slice(0, dot) : '';
+    if (races.includes(r) && r !== race) continue;
+    out[r === race ? base.slice(dot + 1) : 'local.' + base] = { from: 'local', src: base, note: 'local clip (not in git)' };
+  }
+  return out;
+}
+async function libEntry(race, key) {
+  const r = LIB.races[race];
+  return r.clips[key] || (r.unique || {})[key] || (await localEntries(race))[key];
+}
+async function libFetch(rel) {
+  if (!libText.has(rel)) {
+    libText.set(rel, fetch(rel, { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(`${rel} returned ${r.status}`); return r.text(); }));
+  }
+  try { return await libText.get(rel); } catch (e) { libText.delete(rel); throw e; }
+}
+/** Required clip keys for a race, from prompts/<race>.txt (the spec's minimum set). */
+async function requiredKeys(race) {
+  if (!libRequired.has(race)) {
+    try {
+      const txt = await libFetch(`prompts/${race}.txt`);
+      libRequired.set(race, txt.split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('#')).map((l) => l.split('|')[0].trim()));
+    } catch (e) { return null; }
+  }
+  return libRequired.get(race);
+}
+/** Join the entry's source clips, cut its range, apply its speed. */
+async function libBvh(entry) {
+  const parts = [];
+  const dir = (LIB.sources && LIB.sources[entry.from || 'ual'] || { dir: LIB.dir }).dir;
+  for (const s of [].concat(entry.src)) parts.push(A.parseBVH(await libFetch(dir + encodeURIComponent(s) + '.bvh')));
+  const b = parts[0];
+  for (const p of parts.slice(1)) {
+    if (p.names.join() !== b.names.join()) throw new Error(`${entry.src} do not share a skeleton`);
+    b.data = b.data.concat(p.data);
+  }
+  if (entry.range) b.data = b.data.slice(entry.range[0], entry.range[1] + 1);
+  b.frames = b.data.length;
+  if (entry.speed) b.dt /= entry.speed;
+  return b;
+}
+async function addLibClip(race, key) {
+  const entry = await libEntry(race, key);
+  if (!entry) throw new Error(`no library clip ${key} for ${race}`);
+  const label = entry.from && entry.from !== 'ual' ? LIB.sources[entry.from].label + ' ' : '';
+  const src = label + [].concat(entry.src).join(' + ') + (entry.range ? ` [${entry.range[0]}-${entry.range[1]}]` : '') + (entry.speed ? ` x${entry.speed}` : '');
+  const clip = { name: `${race}.${key}`, key, bvh: await libBvh(entry), lib: { src, note: entry.note },
+                 opts: Object.assign({}, LIB.defaults, entry.mirror ? { mirror: true } : {}, entry.opts || {}) };
+  const k = clips.findIndex((c) => c.name === clip.name);
+  if (k >= 0) clips[k] = clip; else clips.push(clip);
+}
+function applyRaceSettings(race) {
+  const s = LIB.races[race].settings || {};
+  $('rigName').value = race;
+  $('stance').value = s.stance || 1;
+  $('tilt').value = s.torsoTiltCap || 90;
+  sliderLabels(); saveSettings();
+}
+async function fillLibClips() {
+  const race = $('libRace').value, r = LIB.races[race], req = (await requiredKeys(race)) || [];
+  const mapped = Object.keys(r.clips), extras = mapped.filter((k) => !req.includes(k));
+  const uniq = r.unique || {}, local = await localEntries(race);
+  const opt = (set) => (k) => `<option value="${k}">${k} (${[].concat(set[k].src).join(' + ')}${set[k].note && set[k].from === 'cmu' ? ': ' + set[k].note : ''})</option>`;
+  $('libClip').innerHTML = `<optgroup label="Spec minimum set">${req.filter((k) => r.clips[k]).map(opt(r.clips)).join('')}</optgroup>` +
+    `<optgroup label="Extras">${extras.map(opt(r.clips)).join('')}</optgroup>` +
+    `<optgroup label="Unique to ${r.label} (CMU)">${Object.keys(uniq).map(opt(uniq)).join('')}</optgroup>` +
+    (Object.keys(local).length ? `<optgroup label="Local (library/local)">${Object.keys(local).map(opt(local)).join('')}</optgroup>` : '');
+  const gaps = req.filter((k) => !r.clips[k]);
+  $('libInfo').textContent = `${LIB.credit}. ${r.label}: ${req.length - gaps.length} of ${req.length} required clips, ${extras.length} extras, ` +
+    `${Object.keys(uniq).length} unique, ${Object.keys(local).length} local.` +
+    (gaps.length ? ` Not in the packs (generate with animgen): ${gaps.join(', ')}.` : '') +
+    (req.length ? '' : ' Serve the repo over http (animview) to read the spec set.');
+}
+if (LIB) {
+  $('libRace').innerHTML = Object.entries(LIB.races).map(([k, r]) => `<option value="${k}">${r.label}</option>`).join('');
+  $('libRace').onchange = fillLibClips;
+  fillLibClips();
+  const guard = async (fn) => {
+    if (!location.protocol.startsWith('http')) { showErr('The clip library needs the viewer served over http: run animview (or python3 -m http.server in the repo root).'); return; }
+    try { await fn(); } catch (e) { showErr('Library: ' + e.message); }
+    rebuild();
+  };
+  $('libLoad').onclick = () => guard(async () => {
+    const race = $('libRace').value, r = LIB.races[race], req = await requiredKeys(race);
+    // ticked: the spec minimum set; unticked: everything for the race (required, extras and its unique CMU takes)
+    const keys = $('libRequired').checked && req ? req.filter((k) => r.clips[k])
+      : [...(req || []).filter((k) => r.clips[k]), ...Object.keys(r.clips).filter((k) => !(req || []).includes(k)), ...Object.keys(r.unique || {})];
+    applyRaceSettings(race);
+    clips.length = 0;
+    for (const k of keys) await addLibClip(race, k);
+  });
+  $('libAdd').onclick = () => guard(() => addLibClip($('libRace').value, $('libClip').value));
+  const loadSet = (keysOf) => () => guard(async () => {
+    const race = $('libRace').value, keys = await keysOf(race);
+    if (!keys.length) throw new Error('nothing to load for ' + LIB.races[race].label);
+    applyRaceSettings(race);
+    clips.length = 0;
+    for (const k of keys) await addLibClip(race, k);
+  });
+  $('libUnique').onclick = loadSet(async (race) => Object.keys(LIB.races[race].unique || {}));
+  $('libLocal').onclick = loadSet(async (race) => { libLocalFiles = null; return Object.keys(await localEntries(race)); });
+} else $('libInfo').textContent = 'library.js did not load.';
+
+// ---------- input ----------
+function showErr(m) { $('err').textContent = m; }
+// ---------- gear (gear.js: generated weapons and armour merged onto the model) ----------
+const gearRoot = new URL('../../src/main/art/blockbench/gear/', location.href);
+const gearCache = new Map(), gearSel = { main: null, off: null, armour: null };
+let gearIndex = null, bareModel = null;   // bareModel: the model as loaded, before gear
+const gearJson = (file) => {
+  if (!gearCache.has(file)) gearCache.set(file, fetch(new URL(file, gearRoot), { cache: 'no-store' }).then((r) => {
+    if (!r.ok) throw new Error(`${file} returned ${r.status}`); return r.json(); }));
+  return gearCache.get(file);
+};
+function withGear(bb) {
+  const items = [];
+  if (gearSel.main) items.push({ bb: gearSel.main, hand: 'right_item' });
+  if (gearSel.off) items.push({ bb: gearSel.off, hand: 'left_item' });
+  if (gearSel.armour) items.push({ bb: gearSel.armour.bb, attach: gearSel.armour.attach });
+  return items.length ? AnimGear.attachGear(bb, items) : bb;
+}
+async function loadGearIndex() {
+  try {
+    gearIndex = await (await fetch(new URL('index.json', gearRoot), { cache: 'no-store' })).json();
+  } catch (e) { return; }
+  const opt = (e) => `<option value="${e.id}">${e.name} (${(e.factions || [e.faction]).join(', ')})</option>`;
+  $('gearMain').innerHTML = '<option value="">none</option>' + gearIndex.weapons.filter((w) => w.hand === 'right_item').map(opt).join('');
+  $('gearOff').innerHTML = '<option value="">none</option>' + gearIndex.weapons.filter((w) => w.hand === 'left_item').map(opt).join('');
+  $('gearArmour').innerHTML = '<option value="">none</option>' + gearIndex.armour.map(opt).join('');
+  $('gearInfo').textContent = `${gearIndex.weapons.length} weapons, ${gearIndex.armour.length} armour sets. Weapon IK and blade angles use the chosen weapon.`;
+}
+async function chooseGear() {
+  try {
+    const find = (list, id) => list.find((e) => e.id === id);
+    const w = (id) => (id ? gearJson(find(gearIndex.weapons, id).file) : null);
+    const a = $('gearArmour').value && find(gearIndex.armour, $('gearArmour').value);
+    gearSel.main = await w($('gearMain').value);
+    gearSel.off = await w($('gearOff').value);
+    gearSel.armour = null;
+    if (a) {   // a set fitted to this man when there is one (armour/<set>/<model file>), else the generic set
+      const man = bareModel ? bareModel.name : '';
+      let bb = null, fitted = false;
+      if (a.fitted && man) { try { bb = await gearJson(a.fitted + man); fitted = true; } catch (e) { gearCache.delete(a.fitted + man); } }
+      gearSel.armour = { bb: bb || await gearJson(a.file), attach: a.attach, entry: a, for: man };
+      $('gearInfo').textContent = `${a.name}: ${fitted ? 'fitted to ' + man : a.fitted ? 'generic size (no fitted set for this model)' : 'generic size'}.`;
+    }
+    if (bareModel) { setModel(bareModel.bb, bareModel.name); rebuild(); }
+  } catch (e) { showErr('Gear: ' + e.message); }
+}
+for (const id of ['gearMain', 'gearOff', 'gearArmour']) $(id).onchange = chooseGear;
+if (location.protocol.startsWith('http')) loadGearIndex();
+
+function setModel(bb, name) {
+  bareModel = { bb, name };
+  // a fitted armour set belongs to one man: pick it again for a newly loaded model
+  if (gearSel.armour && gearSel.armour.entry.fitted && gearSel.armour.for !== name) setTimeout(chooseGear, 0);
+  bb = withGear(bb);
+  if (!bb.outliner || !bb.elements) throw new Error(name + ' is not a Blockbench project (.bbmodel).');
+  model = prepareModel(bb, name);
+  model.file = name.split('/').pop();
+  const auto = A.detectMap(model.rig, RIG_MAPS);
+  $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}${auto && auto.id === m.id ? ' (auto)' : ''}</option>`).join('');
+  if (auto) $('rigMap').value = auto.id;
+  if (window.ANIM_LIBRARY) { $('libRace').value = ANIM_LIBRARY.raceForModel(name); fillLibClips(); }
+  $('modelInfo').textContent = `${name}: ${model.rig.bones.length} bones, ${model.cubes} cubes, ${model.faces} faces` + (auto ? '' : '. No rig map matches its bone names.');
+}
+async function loadModelUrl(url) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${url} returned ${res.status}`);
+    setModel(await res.json(), decodeURIComponent(url.split('/').pop()));
+    rebuild();
+  } catch (e) { showErr('Model: ' + e.message); }
+}
+/** Served from the repo: list every faction model under src/main/art/blockbench (LOD copies left out). */
+async function fillModelPicker(current) {
+  const root = new URL('../../src/main/art/blockbench/', location.href);
+  const links = async (u) => [...(await (await fetch(u, { cache: 'no-store' })).text()).matchAll(/href="([^"?#]+)"/g)].map((m) => decodeURIComponent(m[1]));
+  try {
+    const opts = [];
+    const isDir = (n) => n.endsWith('/') && !n.startsWith('.') && n !== 'lod/';
+    const add = async (dir) => {
+      const names = await links(new URL(dir, root));
+      for (const f of names.filter((n) => n.endsWith('.bbmodel')))
+        opts.push({ label: `${dir.slice(0, -1).split('/').join(' / ')} / ${f.replace('.bbmodel', '')}`, url: new URL(dir + f, root).pathname });
+      return names.filter(isDir);
+    };
+    for (const d of (await links(root)).filter((n) => isDir(n) && n !== 'gear/')) {
+      for (const sub of await add(d)) await add(d + sub);   // faction folders such as man/rohan/
+    }
+    if (!opts.length) return;
+    $('modelPick').innerHTML = '<option value="">choose a model...</option>' + opts.map((o) => `<option value="${o.url}">${o.label}</option>`).join('');
+    if (current) $('modelPick').value = current;
+    $('modelPickRow').hidden = false;
+  } catch (e) { /* not served from the repo */ }
+}
+$('modelPick').onchange = () => { if ($('modelPick').value) loadModelUrl($('modelPick').value); };
+
+async function handleFiles(files) {
+  const list = [...files];
+  for (const f of list.filter((f) => /\.(bbmodel|json)$/i.test(f.name))) {
+    try {
+      setModel(JSON.parse(await f.text()), f.name);
+    } catch (e) { showErr(e.message); }
+  }
+  for (const f of list.filter((f) => /\.bvh$/i.test(f.name))) {
+    try {
+      const clip = { name: f.name, bvh: A.parseBVH(await f.text()) };
+      const k = clips.findIndex((c) => c.name === f.name);   // a re-generated file replaces its old clip
+      if (k >= 0) clips[k] = clip; else clips.push(clip);
+    }
+    catch (e) { showErr(f.name + ': ' + e.message); }
+  }
+  rebuild();
+}
+$('pickModel').onclick = () => $('modelFile').click();
+$('pickBvh').onclick = () => $('bvhFile').click();
+
+// ---------- watch folder: kimodo_batch.py writes .bvh files there; new ones load automatically ----------
+// Two sources: a local folder picked in Chrome/Edge, or a folder served over HTTP (any browser, including Firefox:
+// run `python3 -m http.server` in the repo root and open .../tools/anim-viewer/?watch=/clips/).
+let watch = null;
+function dirSource(dir) {
+  return { label: dir.name, async list() {
+    const out = [];
+    for await (const [name, h] of dir.entries()) {
+      if (h.kind !== 'file') continue;
+      const f = await h.getFile();
+      out.push({ name, key: `${name}:${f.lastModified}:${f.size}`, get: async () => f });
+    }
+    return out;
+  } };
+}
+function httpSource(path) {
+  const base = new URL(path, location.href);
+  if (!base.pathname.endsWith('/')) base.pathname += '/';
+  return { label: base.pathname, async list() {
+    const res = await fetch(base, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${base.pathname} returned ${res.status}`);
+    const names = [...(await res.text()).matchAll(/href="([^"?#]+)"/g)].map((m) => decodeURIComponent(m[1])).filter((n) => !n.includes('/'));
+    const out = [];
+    for (const name of names) {
+      if (!/\.(bvh|bbmodel)$/i.test(name)) continue;
+      const u = new URL(encodeURIComponent(name), base), h = await fetch(u, { method: 'HEAD', cache: 'no-store' });
+      if (!h.ok) continue;
+      const lm = h.headers.get('last-modified');
+      out.push({ name, key: `${name}:${lm}:${h.headers.get('content-length')}`,
+        get: async () => new File([await (await fetch(u, { cache: 'no-store' })).blob()], name, { lastModified: Date.parse(lm) || Date.now() }) });
+    }
+    return out;
+  } };
+}
+async function scanWatch() {
+  if (!watch || watch.busy) return;
+  watch.busy = true;
+  try {
+    const fresh = [];
+    for (const e of await watch.src.list()) {
+      if (!/\.(bvh|bbmodel)$/i.test(e.name) || watch.seen.has(e.key)) continue;   // skips partial .part files
+      watch.seen.add(e.key);
+      // keep the model you already have, unless this is a new version of it (same file name: a model-gen --watch rebuild)
+      if (/\.bbmodel$/i.test(e.name) && model && e.name !== model.file) continue;
+      fresh.push(await e.get());
+    }
+    if (fresh.length) {
+      fresh.sort((a, b) => (/\.bbmodel$/i.test(a.name) ? -1 : 0) - (/\.bbmodel$/i.test(b.name) ? -1 : 0) || a.lastModified - b.lastModified);
+      await handleFiles(fresh);
+      $('watchInfo').textContent = `Watching ${watch.src.label}: ${clips.length} clip(s), last added ${fresh[fresh.length - 1].name}`;
+    }
+  } catch (e) { showErr('Watch folder: ' + e.message); }
+  watch.busy = false;
+}
+async function startWatch(src) {
+  if (watch) clearInterval(watch.timer);
+  watch = { src, seen: new Set(), busy: false, timer: null };
+  $('watchInfo').textContent = `Watching ${src.label} for new .bvh files...`;
+  await scanWatch();
+  watch.timer = setInterval(scanWatch, 2000);
+}
+$('watchBtn').onclick = async () => {
+  if (window.showDirectoryPicker) {
+    try { await startWatch(dirSource(await window.showDirectoryPicker())); } catch (e) { /* picker cancelled */ }
+  } else if (location.protocol.startsWith('http')) {
+    const path = prompt('Folder to watch, relative to the web server root:', '/clips/');
+    if (path) await startWatch(httpSource(path));
+  } else {
+    showErr('This browser cannot open folders from a file:// page. In the repo root run: python3 -m http.server 8000, ' +
+            'then open http://localhost:8000/tools/anim-viewer/?watch=/clips/');
+  }
+};
+$('modelFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
+$('bvhFile').onchange = (e) => { handleFiles(e.target.files); e.target.value = ''; };
+['dragenter', 'dragover'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.add('dragging'); }));
+['dragleave', 'drop'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.remove('dragging'); }));
+stage.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+function sliderLabels() {
+  $('tiltV').textContent = +$('tilt').value >= 90 ? 'off' : $('tilt').value + '°';
+  $('dropV').textContent = Math.round(+$('drop').value * 100) + '%';
+  $('ikYV').textContent = +$('ikY').value === 0 ? 'ground' : $('ikY').value + ' px';
+  $('ikReachV').textContent = Math.round(+$('ikReach').value * 100) + '%';
+  $('smoothV').textContent = +$('smooth').value === 0 ? 'off' : $('smooth').value + ' fr';
+  for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id + 'V').textContent = $(id).value + '°';
+  $('stanceV').textContent = Math.round(+$('stance').value * 100) + '%';
+  $('torsoShareV').textContent = Math.round(+$('torsoShare').value * 100) + '%';
+}
+for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'inPlace', 'rotOrder', 'jointLimits', 'footLock', 'stance', 'wristMocap', 'edgeFirst', 'torsoShare', 'rigMap', 'ik', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll'])
+  $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
+for (const id of ['tilt', 'drop', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll', 'stance', 'torsoShare']) $(id).addEventListener('input', sliderLabels);
+$('wReset').onclick = () => { for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id).value = 0; sliderLabels(); rebuild(); };
+$('clearClips').onclick = () => { clips.length = 0; rebuild(); };   // files already seen stay hidden; new takes still load
+$('reloadFolder').onclick = () => {
+  if (!watch) { showErr('No folder is being watched.'); return; }
+  watch.seen.clear(); scanWatch();
+};
+const CAMS = { front: [Math.PI, 0.12], side: [-Math.PI / 2, 0.12], back: [0, 0.12], three: [Math.PI + 0.55, 0.18] };
+document.querySelectorAll('[data-cam]').forEach((b) => { b.onclick = () => { [yaw, pitch] = CAMS[b.dataset.cam]; }; });
+$('showTargets').onchange = () => scene.traverse((o) => { if (o.userData.target) o.visible = $('showTargets').checked; });
+$('showGrid').onchange = () => { grid.visible = $('showGrid').checked; };
+$('align').addEventListener('change', () => { clock = 0; });
+
+let drag = null;
+cv.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; });
+cv.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * 0.01; pitch = Math.max(-0.2, Math.min(1.3, pitch + (e.clientY - drag[1]) * 0.01)); drag = [e.clientX, e.clientY];
+});
+cv.addEventListener('pointerup', () => { drag = null; cv.style.cursor = 'grab'; });
+cv.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.max(30, Math.min(900, dist * (1 + e.deltaY * 0.001))); }, { passive: false });
+function resize() { const r = cv.parentElement.getBoundingClientRect(); R.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(cv.parentElement);
+$('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}</option>`).join('');
+resize(); requestAnimationFrame(frame);
+// remember the sidebar settings between visits (per browser; ignored if storage is blocked)
+const SAVED = ['tilt', 'drop', 'rotOrder', 'jointLimits', 'footLock', 'stance', 'wristMocap', 'edgeFirst', 'torsoShare', 'smooth', 'mirror', 'footLift', 'inPlace', 'weapon', 'wPitch', 'wYaw', 'wRoll', 'ik', 'ikY', 'ikReach',
+               'showTargets', 'showGrid', 'align', 'loop', 'speed', 'rigName'];
+try {
+  const saved = JSON.parse(localStorage.getItem('animviewer.settings') || '{}');
+  for (const id of SAVED) if (id in saved) { const el = $(id); if (el.type === 'checkbox') el.checked = saved[id]; else el.value = saved[id]; }
+  grid.visible = $('showGrid').checked;
+} catch (e) { /* storage unavailable */ }
+function saveSettings() {
+  try { localStorage.setItem('animviewer.settings', JSON.stringify(Object.fromEntries(SAVED.map((id) => [id, $(id).type === 'checkbox' ? $(id).checked : $(id).value])))); }
+  catch (e) { /* storage unavailable */ }
+}
+for (const id of SAVED) $(id).addEventListener('change', saveSettings);
+sliderLabels();
+(async () => {
+  const q = new URLSearchParams(location.search), m = q.get('model'), w = q.get('watch');
+  if (location.protocol.startsWith('http')) await fillModelPicker(m);
+  if (m) await loadModelUrl(m);
+  if (w) startWatch(httpSource(w));
+})();
+</script>
+</body>
+</html>

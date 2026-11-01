@@ -1,8 +1,0 @@
-{
-  "type": "minecraft:cache_2d",
-  "argument": {
-    "type": "minecraft:add",
-    "argument1": "lotrrevival:middle_earth/base",
-    "argument2": "lotrrevival:middle_earth/detail"
-  }
-}

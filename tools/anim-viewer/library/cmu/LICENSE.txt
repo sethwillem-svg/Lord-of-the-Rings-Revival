@@ -1,0 +1,12 @@
+CMU Graphics Lab Motion Capture Database
+http://mocap.cs.cmu.edu
+
+"The data used in this project was obtained from mocap.cs.cmu.edu.
+The database was created with funding from NSF EIA-0196217."
+
+CMU places no restrictions on the use of the original dataset. These files come from the BVH conversion by
+Bruce Hahne (cgspeed), who places no additional restrictions on it, via the mirror at
+https://github.com/Shriinivas/cmubvh.
+
+Each .bvh here is one take, named by its CMU id (subject_trial), cut to a short window and resampled from
+120 to 30 fps by tools/anim-viewer/cmu_import.py, which lists the window of every take.

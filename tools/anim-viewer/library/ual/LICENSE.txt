@@ -1,0 +1,9 @@
+Universal Animation Library and Universal Animation Library 2 by Quaternius
+https://quaternius.com  (Animation Viewer: https://quaternius.com/animviewer.html)
+
+License: CC0 1.0 Universal (Public Domain Dedication)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+These .bvh files were converted from the packs' "Unreal-Godot" UAL1_Standard.glb and UAL2_Standard.glb
+(no root motion) with tools/anim-viewer/ual_to_bvh.js: joint positions only, 30 fps, Mixamo joint names.
+The packs' A_TPose reference clip is left out.

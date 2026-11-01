@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:rohan/kill_fangorn"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.kill_fangorn"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:eriador/kill_blue_mountains"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.kill_blue_mountains"
-  }
-}

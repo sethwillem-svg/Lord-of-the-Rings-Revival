@@ -1,6 +1,0 @@
-{
-  "parent": "lotrrevival:item/handheld_wide",
-  "textures": {
-    "layer0": "lotrrevival:item/mordor_pike"
-  }
-}

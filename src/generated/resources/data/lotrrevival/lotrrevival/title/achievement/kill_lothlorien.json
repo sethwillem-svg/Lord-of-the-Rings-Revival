@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:lothlorien/kill_lothlorien"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.kill_lothlorien"
-  }
-}

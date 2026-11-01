@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:rohan/kill_rohan"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.kill_rohan"
-  }
-}

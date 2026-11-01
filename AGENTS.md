@@ -1,5 +1,11 @@
 # AGENTS.md
 
+> **Regrouping (2026-11-01).** The from-scratch mod, pods and ticket workflow below are paused: the repo was cleared
+> down to the animation tools, the orc models and a few specs, to build an add-on for the Middle-earth mod (Jukoz,
+> NeoForge 1.21.1 backport). Sections 2-7 describe the old setup and will be rewritten when we regroup; section 1
+> (clean-room) still applies, and now also covers the Middle-earth mod: it is All Rights Reserved, so never copy its
+> code, textures, models or lang files here. An add-on depends on its jar; it does not contain it.
+
 Rules for every AI agent (and human) working in this repo. Read this before touching anything.
 
 ## 1. Clean-room rule (non-negotiable)

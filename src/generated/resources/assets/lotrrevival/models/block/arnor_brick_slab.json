@@ -1,8 +1,0 @@
-{
-  "parent": "minecraft:block/slab",
-  "textures": {
-    "bottom": "lotrrevival:block/arnor_brick",
-    "side": "lotrrevival:block/arnor_brick",
-    "top": "lotrrevival:block/arnor_brick"
-  }
-}

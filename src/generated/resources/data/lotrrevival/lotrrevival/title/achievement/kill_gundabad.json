@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:misty_mountains/kill_gundabad"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.kill_gundabad"
-  }
-}

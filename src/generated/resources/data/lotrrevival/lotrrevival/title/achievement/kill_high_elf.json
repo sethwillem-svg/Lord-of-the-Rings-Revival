@@ -1,9 +1,0 @@
-{
-  "source": {
-    "type": "achievement",
-    "achievement": "lotrrevival:eriador/kill_high_elf"
-  },
-  "text": {
-    "translate": "title.lotrrevival.achievement.kill_high_elf"
-  }
-}

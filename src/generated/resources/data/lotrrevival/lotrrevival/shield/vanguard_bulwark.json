@@ -1,8 +1,0 @@
-{
-  "sort": 2,
-  "texture": "lotrrevival:textures/entity/shield/vanguard_bulwark.png",
-  "unlock": {
-    "type": "achievement_count",
-    "min": 100
-  }
-}
