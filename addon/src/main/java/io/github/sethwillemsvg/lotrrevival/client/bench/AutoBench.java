@@ -43,7 +43,14 @@ public final class AutoBench {
     /** Reused between runs (bench.sh opens it straight from launch with --quickPlaySingleplayer). */
     public static final String WORLD = "lotr_bench";
 
-    private enum Stage { MENU, SETUP, WAIT_NPCS, WAIT_WORLD, RUN, DONE }
+    private enum Stage { MENU, SETUP, WAIT_NPCS, WAIT_WORLD, RUN, PROFILE, DONE }
+
+    /** After the measured rounds, profile these renderers with Spark's client profiler (bench.sh passes -Pprofile). */
+    private static final boolean PROFILE = Boolean.getBoolean("lotr_revival.profile");
+    private static final Mode[] PROFILED = {Mode.PULSE, Mode.VANILLA};
+    private static final long PROFILE_SETTLE_NS = 4_000_000_000L, PROFILE_NS = 12_000_000_000L, PROFILE_UPLOAD_NS = 15_000_000_000L;
+    private static int profilePhase = -1;
+    private static long profileStart;
 
     private static Stage stage = Stage.MENU;
     private static boolean worldRequested;
@@ -101,6 +108,7 @@ public final class AutoBench {
                 }
             }
             case RUN -> run(mc, now);
+            case PROFILE -> profile(mc, now);
             default -> { }
         }
     }
@@ -131,7 +139,8 @@ public final class AutoBench {
             if (phase >= 0) record();
             phase++;
             if (phase >= ORDER.length) {
-                finish(mc);
+                if (PROFILE && net.neoforged.fml.ModList.get().isLoaded("spark")) next(Stage.PROFILE, now);
+                else finish(mc);
                 return;
             }
             SwitchingNpcRenderer.mode = ORDER[phase];
@@ -143,6 +152,26 @@ public final class AutoBench {
             FrameStats.reset();
             measuring = true;
             if (phase < ROUND) Screenshot.grab(mc.gameDirectory, "bench_" + ORDER[phase].id() + ".png", mc.getMainRenderTarget(), c -> { });
+        }
+    }
+
+    /** One Spark client profile per renderer: settle, profile (Spark stops and uploads by itself), wait for the upload. */
+    private static void profile(Minecraft mc, long now) {
+        if (profilePhase < 0 || now - profileStart >= PROFILE_SETTLE_NS + PROFILE_NS + PROFILE_UPLOAD_NS) {
+            profilePhase++;
+            if (profilePhase >= PROFILED.length) {
+                finish(mc);
+                return;
+            }
+            SwitchingNpcRenderer.mode = PROFILED[profilePhase];
+            profileStart = now;
+            measuring = false;
+            return;
+        }
+        if (!measuring && now - profileStart >= PROFILE_SETTLE_NS) {
+            measuring = true;
+            LOG.info("[lotr_revival bench] spark profile of {} starting", PROFILED[profilePhase].id());
+            net.neoforged.neoforge.client.ClientCommandHandler.runCommand("sparkc profiler start --timeout " + PROFILE_NS / 1_000_000_000L);
         }
     }
 
