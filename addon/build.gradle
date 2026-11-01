@@ -14,6 +14,8 @@ neoForge {
         client {
             client()
             gameDirectory = project.file('run')
+            // ./gradlew runClient -Pautotest=100: unattended renderer benchmark (client.bench.AutoBench)
+            if (project.hasProperty('autotest')) systemProperty 'lotr_revival.autotest', project.property('autotest').toString()
         }
     }
     mods {
@@ -21,10 +23,20 @@ neoForge {
     }
 }
 
+repositories {
+    maven { url = 'https://arcanc.github.io/Maven/'; content { includeGroup 'com.arcanc.pulselib' } }
+}
+
 dependencies {
-    // The Middle-earth mod is All Rights Reserved: it is never compiled against or bundled. The add-on only needs it at runtime.
+    implementation "com.arcanc.pulselib:pulselib-neoforge:${pulselib_version}"
+
+    // The Middle-earth mod is All Rights Reserved: compiled against and run from your local build, never bundled or committed.
     def me = providers.gradleProperty('meJar').getOrElse('')
-    if (me) runtimeOnly files(me)
+    if (!me || !file(me).exists()) {
+        throw new GradleException("Set -PmeJar=/path/to/middle-earth.jar (build it from Jukoz/middle-earth, branch neoforge-fixes)")
+    }
+    compileOnly files(me)
+    runtimeOnly files(me)
 }
 
 tasks.named('processResources', ProcessResources) {
