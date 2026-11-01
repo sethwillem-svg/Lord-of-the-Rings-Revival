@@ -87,7 +87,17 @@ test('painting is deterministic', () => {
 
 test("Gondor's armour pieces use materials", () => {
   const cubes = buildArmour('gondor').model.cubes.map((c) => c.name);
-  assert.ok(cubes.length > 20);
+  assert.ok(cubes.length >= 10);
   const { materialOf } = buildArmour('gondor');
-  for (const n of ['helm', 'breastplate', 'fauld_1', 'belt', 'rerebrace_r', 'greave_l']) assert.ok(materialOf[n], n);
+  for (const n of ['helmet', 'chest', 'arm_r', 'vambrace_l', 'tasset_r', 'greave_l']) assert.ok(materialOf[n], n);
+});
+
+test('steel is made of small clusters of close greys, never lone pixels', () => {
+  const at = paint({ kind: 'steel', colour: 'metal' }, 10, 10);
+  const seen = new Set();
+  for (let y = 1; y < 9; y++) for (let x = 1; x < 9; x++) {
+    const c = at(x, y).join(); seen.add(c);
+    assert.ok([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => at(x + dx, y + dy).join() === c), `lone pixel at ${x},${y}`);
+  }
+  assert.ok(seen.size >= 3, 'at least three greys');
 });

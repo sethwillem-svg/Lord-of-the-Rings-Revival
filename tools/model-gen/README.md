@@ -91,7 +91,10 @@ Minecraft texturing guides (Blockbench Minecraft style guide, Faithful 32x guide
   brighter than the back and left side, bottom darkest.
 - Banding (`bands`), all-round bevels (pillow/pancake shading) and random scratches (noise) were removed.
 
-Fields: `kind` (metal, mail, leather, cloth), `colour` (palette slot such as metal, cloth, trim, accent, leather,
+Kinds: `steel` (irregular 1-3 px clusters of close greys, the vanilla armour look; Gondor uses it with drawn face
+grids on top) and `metal` (polished reflections).
+
+Fields: `kind` (steel, metal, mail, leather, cloth), `colour` (palette slot such as metal, cloth, trim, accent, leather,
 or a hex colour), `polish` (0-1: x of the streak and glint, or null), `rim` (bottom edge colour), `border` (raised
 band one pixel in), `rivets` (`{ "spacing": 2-6, "rows": "top" | "both" }`, silver on rimmed or bordered pieces),
 `engrave` (scroll, filigree, fluting; one tone deep), `lames` (a soft seam every N rows; 4+ avoids stripes), `note`.
@@ -105,7 +108,9 @@ node tools/model-gen/build.mjs gear                 # repaint the armour with th
 
 The sheet shows every recipe on a large plate and a thin lame (front and turned), four per row in file-name order,
 then the Gondor armour on a man. A recipe with a problem fails with the field named. An armour piece picks its
-recipe with `material` in `gear/armour.mjs`.
+recipe with `material` in `gear/armour.mjs`. Pieces can also carry `stamps`: a pixel grid per face (`{ grid, legend }`,
+legend chars map to `[slot, tone]` or `'clear'` for see-through pixels, like the helmet's face window). Armour cubes
+are inflated by 0.25 px so they never share a face plane with the body.
 
 **Later:** elves and dwarves are new race tables; faction clothing parts (different cuts per faction) come
 with the gear parts.

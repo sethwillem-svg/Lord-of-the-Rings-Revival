@@ -82,13 +82,21 @@ should probably move `*_boot_armor` under `*_shin`. Forearm armour (vambraces) h
 use `*_forearm_armor` groups that the viewer attaches to `*_forearm`. A `*_forearm_armor` anchor under `*_forearm`
 would make that official.
 
-**Fitted armour** (Gondor first): a fitted set is built on one man, every piece measured from the cubes it covers
+**Fitted armour** (Gondor first; no longer needed since every man has the standard body, the machinery stays for
+races that vary): a fitted set is built on one man, every piece measured from the cubes it covers
 (helm: skull, hair, ears; breastplate: tunic; plates: sleeves, forearms, thighs, skirt halves, shins, boots) and
 placed half a pixel outside them in width and depth (heights 1 px, as heights are whole pixels). `build.mjs gear`
 writes one fitted file per committed man (`gear/armour/gondor/<man model>.bbmodel`); the viewer uses it when it
 exists and falls back to the generic set built on the largest man.
 
-**Armour style** (Gondor first, 2026-11-01): shells that follow the body (helm crown, sides and back around an open
+**Armour style v3** (Gondor, 2026-11-01, after maintainer review): Minecraft style, few big pieces drawn pixel by
+pixel. One box per body part (helmet 12x13x12 with a see-through face window and gorget, chest, upper arm, forearm,
+tasset, cuisse, greave) plus crest, nasal guard and wings: 16 cubes. Every face is drawn as a pixel grid (possible
+because every man has the standard body) over a `steel` base of irregular 1-3 px clusters of close greys. Armour
+cubes are inflated by 0.25 px like vanilla armour layers, so no armour face lies on a body face (test). The earlier
+shell-of-many-plates design below was replaced.
+
+**Armour style** (Gondor first, 2026-11-01, replaced by v3): shells that follow the body (helm crown, sides and back around an open
 face; breastplate; limb plates) instead of loose boxes; layered lames; `plate` shading lit from the top-left with
 dark bottom and right edges and rivets; `rings` for mail; black lames rimmed in silver; a gold accent belt. Detail
 comes from the texture, shape from the cubes. Armour is painted from material recipes (`tools/model-gen/materials/*.json`),

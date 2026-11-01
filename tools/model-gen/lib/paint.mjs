@@ -104,6 +104,7 @@ function stamp(canvas, box, s, palette) {
   s.grid.forEach((row, y) => [...row].forEach((ch, x) => {
     const use = s.legend[ch];
     if (!use || u1 + x >= u2 || v1 + y >= v2) return;
+    if (use === 'clear') { canvas.set(u1 + x, v1 + y, [0, 0, 0, 0]); return; }   // see-through (a helmet's face window)
     const c = palette[use[0]][use[1]];
     canvas.set(u1 + x, v1 + y, [c[0], c[1], c[2], 255]);
   }));
@@ -145,7 +146,9 @@ export function paintModel(model, atlas, partCubes, palette, { grime = 0, materi
       if (material) {   // armour: a material recipe (lib/surface.mjs), colours from the palette's slots or hex
         const box = [Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.max(rect[0], rect[2]), Math.max(rect[1], rect[3])];
         paintSurface(atlas.canvas, box, face, material, (c) => tones(palette[c] ? palette[c][1] : c), cube.name);
-        if (part.stamps && part.stamps[face]) stamp(atlas.canvas, box, part.stamps[face], palette);
+        // drawings on armour use the same six tones as the material (0 specular .. 5 deep)
+        const six = new Proxy({}, { get: (_, slot) => tones(palette[slot] ? palette[slot][1] : slot) });
+        if (part.stamps && part.stamps[face]) stamp(atlas.canvas, box, part.stamps[face], six);
         continue;
       }
       const box = paintFace(atlas.canvas, rect, face, palette[part.slot], part.style, part.pattern, palette.tunic_alt,

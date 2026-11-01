@@ -51,7 +51,7 @@ export class GearAssembly {
 export function buildGear(name, asm, palette, resolution = 64, { materials } = {}) {
   const model = new Model({ name, resolution: [resolution, resolution], identifier: `geometry.${name}` });
   for (const [bone, parent, pivot] of asm.bones) model.bone(bone, [...pivot], parent);
-  for (const c of asm.cubes) model.cube({ name: c.name, bone: c.bone, from: c.from, to: c.to });
+  for (const c of asm.cubes) model.cube({ name: c.name, bone: c.bone, from: c.from, to: c.to, inflate: c.inflate || 0 });
   const atlas = new Atlas(resolution, resolution);
   packUv(model, atlas);
   paintModel(model, atlas, asm.cubes, palette.ramps, { grime: palette.grime, ...(materials ? { materials } : {}) });

@@ -5,6 +5,7 @@ import { buildModel } from '../lib/build.mjs';
 import { largestBody, ANCHORS } from '../lib/body.mjs';
 import { MAN } from '../races/man.mjs';
 import { serializeLegacy } from '../lib/bbmodel.mjs';
+import { Canvas } from '../vendor/bbmt/dist/index.js';
 
 const FACTIONS = ['rohan', 'gondor', 'harad', 'dunland', 'dale', 'dunedain'];
 
@@ -44,8 +45,8 @@ function poking(man, armour, faction, ref = largestBody(MAN).pivots) {
   for (const [group, covered] of Object.entries(coversFor(faction))) {
     const target = ATTACH[group] || group;
     const shift = P[target].map((v, a) => v - ref[target][a]);
-    const boxes = armour.model.cubes.filter((c) => c.bone === group)
-      .map((c) => ({ lo: c.from.map((v, a) => v + shift[a]), hi: c.to.map((v, a) => v + shift[a]) }));
+    const boxes = armour.model.cubes.filter((c) => c.bone === group)   // as rendered: inflate included
+      .map((c) => ({ lo: c.from.map((v, a) => v + shift[a] - (c.inflate || 0)), hi: c.to.map((v, a) => v + shift[a] + (c.inflate || 0)) }));
     if (!boxes.length) continue;
     const gy = [Math.min(...boxes.map((b) => b.lo[1])), Math.max(...boxes.map((b) => b.hi[1]))];
     for (const { name, clipX, clipY } of covered) {
@@ -84,17 +85,15 @@ test('the index lists every set with its pieces', () => {
   for (const e of idx) assert.ok(e.pieces.includes('head_armor') && e.pieces.includes('chest_armor'), e.id);
 });
 
-test('Gondor plate: shells with lames, vambraces on the forearms, knee cops, crest and wings', () => {
+test('Gondor v3 pieces: helmet, crest, nasal, wings, chest, arms, vambraces, tassets, cuisses, greaves', () => {
   const names = buildArmour('gondor').model.cubes.map((c) => c.name);
-  for (const n of ['crest', 'wing_r', 'wing_l', 'breastplate', 'fauld_1', 'pauldron_r', 'pauldron_lame_r', 'vambrace_r', 'vambrace_l',
-    'tasset_r', 'cuisse_r', 'knee_cop_r', 'greave_r']) assert.ok(names.includes(n), n);
-  assert.equal(ATTACH.right_forearm_armor, 'right_forearm');
-  const v = buildArmour('gondor').model.cubes.find((c) => c.name === 'vambrace_r');
-  assert.equal(v.bone, 'right_forearm_armor');
+  for (const n of ['helmet', 'crest', 'nasal', 'wing_r', 'wing_l', 'chest', 'arm_r', 'arm_l', 'vambrace_r', 'vambrace_l',
+    'tasset_r', 'tasset_l', 'cuisse_r', 'cuisse_l', 'greave_r', 'greave_l']) assert.ok(names.includes(n), n);
+  assert.equal(buildArmour('gondor').model.cubes.find((c) => c.name === 'vambrace_r').bone, 'right_forearm_armor');
 });
 
 // Fitted armour: built from the cubes of one man, so it sits half a pixel outside them.
-test('fitted Gondor armour never pokes through, for 60 men and unusual hair and beards', () => {
+test('Gondor armour never pokes through, for 60 men and unusual hair and beards', () => {
   const men = [];
   for (let s = 1; s <= 60; s++) men.push(buildModel('man', s, { palette: 'gondor' }));
   for (const o of [{ hair: 'tied', beard: 'long' }, { hair: 'bald', beard: 'none', ears: 'large' }, { hair: 'shoulder', head: 'broad' },
@@ -106,14 +105,45 @@ test('fitted Gondor armour never pokes through, for 60 men and unusual hair and 
   }
 });
 
-test('the fitted helm sits half a pixel outside the head, hair and ears (1 px above)', () => {
-  for (const [s, o] of [[13, {}], [22, {}], [7, { hair: 'bald' }], [8, { hair: 'shoulder', head: 'broad', ears: 'large' }]]) {
-    const man = buildModel('man', s, { palette: 'gondor', overrides: o });
-    const head = man.model.cubes.filter((c) => c.bone === 'head' && /^(skull|hair_(cap|back|side_r|side_l|fringe)|ear_[rl])$/.test(c.name));
-    const lo = [0, 1, 2].map((a) => Math.min(...head.map((c) => c.from[a]))), hi = [0, 1, 2].map((a) => Math.max(...head.map((c) => c.to[a])));
-    const crown = buildArmour('gondor', man).model.cubes.find((c) => c.name === 'helm');
-    assert.deepEqual([crown.from[0], crown.to[0]], [lo[0] - 0.5, hi[0] + 0.5], `${s} width`);
-    assert.deepEqual([crown.from[2], crown.to[2]], [lo[2] - 0.5, hi[2] + 0.5], `${s} depth`);
-    assert.equal(crown.to[1], hi[1] + 1, `${s} top`);   // heights are whole pixels: 1 px above the head
+// Coplanar overlapping faces flicker and blend in the renderer ("armour sinking into the skin").
+function coplanar(man, armour) {
+  const out = [], body = man.model.cubes;
+  for (const a0 of armour.model.cubes) for (const b of body) {
+    const i = a0.inflate || 0, a = { name: a0.name, from: a0.from.map((v) => v - i), to: a0.to.map((v) => v + i) };   // as rendered
+    for (let ax = 0; ax < 3; ax++) for (const side of ['from', 'to']) {
+      if (a[side][ax] !== b[side][ax]) continue;
+      if (ax === 0 && a[side][ax] === 0) continue;   // the centre line between the legs, where both legs meet
+      const o = [0, 1, 2].filter((k) => k !== ax);
+      const overlap = o.every((k) => Math.min(a.to[k], b.to[k]) - Math.max(a.from[k], b.from[k]) > 0);
+      if (overlap) out.push(`${a.name} and ${b.name} share a face (axis ${ax} ${side})`);
+    }
   }
+  return out;
+}
+
+test('Gondor armour never shares a face plane with the body', () => {
+  for (const [s, o] of [[13, {}], [7, {}], [22, { hair: 'shoulder', beard: 'full' }], [24, { hair: 'bald', ears: 'large' }]]) {
+    const man = buildModel('man', s, { palette: 'gondor', overrides: o });
+    assert.deepEqual(coplanar(man, buildArmour('gondor', man)), [], `${s} ${JSON.stringify(o)}`);
+  }
+});
+
+test('Gondor v3 is a few big pieces (Minecraft style): at most 18 cubes', () => {
+  assert.ok(buildArmour('gondor').model.cubes.length <= 18, `${buildArmour('gondor').model.cubes.length} cubes`);
+});
+
+test('the helmet is one box with a transparent face window over the eyes', () => {
+  const man = buildModel('man', 13, { palette: 'gondor' });
+  const { model } = buildArmour('gondor', man);
+  const helm = model.cubes.find((c) => c.name === 'helmet');
+  const skull = man.model.findCube('skull');
+  for (let a = 0; a < 3; a++) assert.ok(helm.from[a] < skull.from[a] && helm.to[a] > skull.to[a], `helmet encloses the head on axis ${a}`);
+  const tex = Canvas.fromPng(model.textures[0].data);
+  const [u1, v1, u2, v2] = helm.faces.north;
+  const g = man.asm.meta.head, eyeY = g.rowY(g.eye)[0];
+  const v = v1 + (helm.to[1] - eyeY - 1);            // texture row of the eye line
+  const clear = [];
+  for (let u = u1; u < u2; u++) if (tex.get(u, v)[3] === 0) clear.push(u);
+  assert.ok(clear.length >= 4, `eye row has ${clear.length} clear pixels`);
+  assert.equal(tex.get(u1, v)[3], 255, 'the cheek guard at the edge is solid');
 });

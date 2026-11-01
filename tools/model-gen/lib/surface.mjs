@@ -10,7 +10,8 @@
  * Tones from one colour: 0 specular, 1 highlight, 2 base, 3 shade, 4 shadow, 5 deep.
  *
  * Recipe fields (kind and colour required):
- *   kind     metal | mail | leather | cloth
+ *   kind     steel | metal | mail | leather | cloth (steel: irregular 1-3 px clusters of close greys, the vanilla
+ *            armour look; metal: polished reflections)
  *   colour   palette slot (metal, cloth, trim, accent, leather...) or a hex colour
  *   polish   0-1: x position of the polish streak and its glint (metal), or null for none
  *   rim      colour of the bottom edge (silver rims on black lames)
@@ -23,10 +24,15 @@
  */
 import { readdirSync, readFileSync } from 'node:fs';
 
-const KINDS = ['metal', 'mail', 'leather', 'cloth'];
+const KINDS = ['steel', 'metal', 'mail', 'leather', 'cloth'];
 const ENGRAVE = ['scroll', 'filigree', 'fluting'];
 const FIELDS = ['kind', 'colour', 'polish', 'rim', 'border', 'rivets', 'engrave', 'lames', 'note'];
 const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const hash01 = (text) => {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) / 4294967296;
+};
 
 function rgbHsv([r, g, b]) {
   r /= 255; g /= 255; b /= 255;
@@ -95,6 +101,30 @@ const FACING = { up: -1, north: 0, west: 0, east: 1, south: 1, down: 2 };
 const FILIGREE = ['.xx...', 'x..x..', 'x.....', '.xx...', '...x..', 'x..x..'];
 const SCROLL = ['x...', '.x..', '..xx', '....'];
 
+/**
+ * Steel as in vanilla armour: blocks of 1-3 px of three close greys (no lone pixels), a lit top row and a darker
+ * bottom row on side faces. Deterministic per cube and face.
+ */
+function steelClusters(face, w, h, name) {
+  const t = new Int8Array(w * h).fill(-1), side = !['up', 'down'].includes(face);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (t[y * w + x] >= 0) continue;
+    const r = hash01(`${name}|${face}|${x}|${y}`), r2 = hash01(`${name}|${face}|${y}|${x}|t`);
+    let bw = 1 + Math.floor(r * 3), bh = 1 + (Math.floor(r * 7) % 2);
+    if (bw * bh < 2) bw = 2;
+    bw = Math.min(bw, w - x); bh = Math.min(bh, h - y);
+    while (bw > 1 && t[y * w + x + bw - 1] >= 0) bw--;
+    const tone = r2 < 0.32 ? 1 : r2 < 0.46 ? 3 : 2;   // close greys: mostly base and light, a little shade
+    if (bw * bh < 2) {   // a single leftover pixel joins its left or upper neighbour's cluster
+      t[y * w + x] = x > 0 ? t[y * w + x - 1] : y > 0 ? t[(y - 1) * w + x] : tone;
+      continue;
+    }
+    for (let yy = y; yy < y + bh; yy++) for (let xx = x; xx < x + bw; xx++) if (t[yy * w + xx] < 0) t[yy * w + xx] = tone;
+  }
+  if (side) for (let x = 0; x < w; x++) { t[x] = Math.min(t[x], 1); t[(h - 1) * w + x] = Math.max(t[(h - 1) * w + x], 3); }
+  return t;
+}
+
 /** Base tone of a metal face: reflection zones (sky, horizon, ground) and the polish streak with its glint. */
 function metalTone(face, x, y, w, h, px) {
   const streak = px >= 0 && (x === px || (w >= 6 && x === px + 1));
@@ -132,10 +162,13 @@ export function paintSurface(canvas, box, face, m, lookup, name = '') {
     if (rivetX.length && rivetX[rivetX.length - 1] !== w - 3 && w - 3 > 2) rivetX.push(w - 3);
   }
   const rivetRows = m.rivets ? (m.rivets.rows === 'both' && h >= 7 ? [1, h - 3] : [1]) : [];
+  const steel = m.kind === 'steel' ? steelClusters(face, w, h, name) : null;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const inner = x > 0 && y > 0 && x < w - 1 && y < h - 1;
     let colour = T, tone;
-    if (m.kind === 'mail') {
+    if (m.kind === 'steel') {
+      tone = steel[y * w + x];
+    } else if (m.kind === 'mail') {
       // rows of 2 px links over dark gaps, each row offset (not a checkerboard), darker towards the bottom
       const row = y % 2, link = (x + (row ? 2 : 0)) % 3 !== 2;
       tone = !side ? (face === 'up' ? 1 : 4) : link ? 1 + row + (y >= (2 * h) / 3 ? 1 : 0) : 4 + (y >= (2 * h) / 3 ? 1 : 0);

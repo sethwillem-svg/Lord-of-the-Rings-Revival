@@ -389,8 +389,7 @@
         "right_forearm_armor": "right_forearm",
         "left_forearm_armor": "left_forearm"
       },
-      "file": "armour/gondor.bbmodel",
-      "fitted": "armour/gondor/"
+      "file": "armour/gondor.bbmodel"
     },
     {
       "id": "harad",

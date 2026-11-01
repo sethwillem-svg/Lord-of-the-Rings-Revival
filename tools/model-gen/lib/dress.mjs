@@ -15,7 +15,7 @@ export function dress(man, items) {
   const sheet = new Canvas(256, 256, [0, 0, 0, 0]);
   const place = (tex, ox, oy) => { sheet.blit(Canvas.fromPng(tex.data), ox, oy); };
   place(base.textures[0], 0, 0);
-  const copy = (c, bone, shift, ox, oy) => out.cube({ name: c.name, bone, from: c.from.map((v, a) => v + shift[a]), to: c.to.map((v, a) => v + shift[a]),
+  const copy = (c, bone, shift, ox, oy) => out.cube({ name: c.name, bone, inflate: c.inflate || 0, from: c.from.map((v, a) => v + shift[a]), to: c.to.map((v, a) => v + shift[a]),
     faces: Object.fromEntries(Object.entries(c.faces).map(([f, r]) => [f, [r[0] + ox, r[1] + oy, r[2] + ox, r[3] + oy]])) });
   for (const c of base.cubes) copy(c, c.bone, [0, 0, 0], 0, 0);
   const ref = largestBody(MAN).pivots, P = body.pivots;
