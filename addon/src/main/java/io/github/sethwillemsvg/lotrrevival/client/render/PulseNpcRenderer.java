@@ -264,6 +264,12 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     private List<ArmourPiece> recordArmour(ArmorRenderer own, NpcEntity entity, ItemStack stack, EquipmentSlot slot, boolean inner) {
         PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
         HumanoidArmorModel<NpcEntity> rest = inner ? innerRest : outerRest;
+        // a model's state normally comes from the entity it is drawn for; this one is never drawn for one, and Minecraft models
+        // start as "young" (baby scale and offset), which Middle-earth's renderers copy onto their armour models
+        rest.young = false;
+        rest.riding = false;
+        rest.crouching = false;
+        rest.attackTime = 0f;
         PartCapture.begin();
         try {
             own.render(new PoseStack(), buffers, stack, entity, slot, 0xF000F0, (HumanoidModel<LivingEntity>) (HumanoidModel<?>) rest);
