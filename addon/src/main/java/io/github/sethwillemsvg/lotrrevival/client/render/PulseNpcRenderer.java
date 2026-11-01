@@ -62,7 +62,8 @@ import java.util.WeakHashMap;
  *    renderers (most of it: helmet variants, hoods, capes, custom pieces) still goes through those renderers and Minecraft's
  *    buffers, as in their mod.
  *  - Held items: what Minecraft's item renderer draws for an item in hand, recorded once per item look, attached to the posed
- *    hand. Not drawn: glint; items whose look changes every frame (compass, clock) keep their first look.
+ *    hand. Not drawn: glint; items whose look changes every frame (compass, clock) keep their first look. Items with their own
+ *    renderer (banners, banner shields) are drawn the normal way: their pattern layers share one surface and need draw order.
  */
 public class PulseNpcRenderer extends VanillaNpcRenderer {
     private static final Logger LOG = LogUtils.getLogger();
@@ -129,7 +130,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                 skin(entity, atlas, at, light, overlay);
                 if (showEquipment(entity)) {
                     armour(entity, at, light, poseStack, buffers);
-                    items(entity, model, poseStack, light);
+                    items(entity, model, poseStack, buffers, light);
                 }
             }
         };
@@ -228,15 +229,16 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     }
 
     // ---- held items ----
-    private void items(NpcEntity entity, NpcBipedModel model, PoseStack poseStack, int light) {
+    private void items(NpcEntity entity, NpcBipedModel model, PoseStack poseStack, MultiBufferSource buffers, int light) {
         boolean rightHanded = entity.getMainArm() == HumanoidArm.RIGHT;
         ItemStack left = rightHanded ? entity.getOffhandItem() : entity.getMainHandItem();
         ItemStack right = rightHanded ? entity.getMainHandItem() : entity.getOffhandItem();
-        item(entity, model, poseStack, right, HumanoidArm.RIGHT, light);
-        item(entity, model, poseStack, left, HumanoidArm.LEFT, light);
+        item(entity, model, poseStack, buffers, right, HumanoidArm.RIGHT, light);
+        item(entity, model, poseStack, buffers, left, HumanoidArm.LEFT, light);
     }
 
-    private void item(NpcEntity entity, NpcBipedModel model, PoseStack poseStack, ItemStack stack, HumanoidArm arm, int light) {
+    private void item(NpcEntity entity, NpcBipedModel model, PoseStack poseStack, MultiBufferSource buffers, ItemStack stack,
+                      HumanoidArm arm, int light) {
         if (stack.isEmpty()) return;
         boolean left = arm == HumanoidArm.LEFT;
         ItemDisplayContext context = left ? ItemDisplayContext.THIRD_PERSON_LEFT_HAND : ItemDisplayContext.THIRD_PERSON_RIGHT_HAND;
@@ -246,6 +248,13 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         poseStack.mulPose(Axis.XP.rotationDegrees(-90f));
         poseStack.mulPose(Axis.YP.rotationDegrees(180f));
         poseStack.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);
+        // Items with their own renderer (banners, banner shields, ...) paint several layers onto one surface, which only
+        // works in draw order: draw those the normal way. Ordinary item models go to PulseLib.
+        if (Minecraft.getInstance().getItemRenderer().getModel(stack, entity.level(), entity, entity.getId()).isCustomRenderer()) {
+            itemInHand.renderItem(entity, stack, context, left, poseStack, buffers, light);
+            poseStack.popPose();
+            return;
+        }
         Matrix4f m = new Matrix4f(poseStack.last().pose());
         poseStack.popPose();
         List<Piece> pieces = itemPieces.computeIfAbsent(new ItemKey(ItemStack.hashItemAndComponents(stack), context, left),
