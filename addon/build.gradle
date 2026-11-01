@@ -16,6 +16,7 @@ neoForge {
             gameDirectory = project.file('run')
             // ./gradlew runClient -Pautotest=100: unattended renderer benchmark (client.bench.AutoBench)
             if (project.hasProperty('autotest')) systemProperty 'lotr_revival.autotest', project.property('autotest').toString()
+            if (project.hasProperty('profile')) systemProperty 'lotr_revival.profile', 'true'
             // -PquickPlay=<world>: open that saved world straight from launch (bench.sh uses it once the bench world exists)
             if (project.hasProperty('quickPlay')) programArguments.addAll('--quickPlaySingleplayer', project.property('quickPlay').toString())
         }
@@ -27,10 +28,13 @@ neoForge {
 
 repositories {
     maven { url = 'https://arcanc.github.io/Maven/'; content { includeGroup 'com.arcanc.pulselib' } }
+    maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
 }
 
 dependencies {
     implementation "com.arcanc.pulselib:pulselib-neoforge:${pulselib_version}"
+    // Spark profiler in dev runs only (bench.sh profiles the renderers with it); not a dependency of the add-on
+    runtimeOnly "maven.modrinth:spark:${spark_version}"
 
     // The Middle-earth mod is All Rights Reserved: compiled against and run from your local build, never bundled or committed.
     def me = providers.gradleProperty('meJar').getOrElse('')
