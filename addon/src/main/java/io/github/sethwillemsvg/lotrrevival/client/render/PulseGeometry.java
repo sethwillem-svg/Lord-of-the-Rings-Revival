@@ -124,11 +124,10 @@ final class PulseGeometry {
 
     /**
      * Packs faces as one static mesh. sprite != null maps the faces' 0..1 UVs into that atlas sprite (and drops faces that are
-     * fully transparent in it); grow pushes every face out along its normal (stacked layers at the same place would otherwise
-     * show in random order, since PulseLib batches draws). Null when no face is left.
+     * fully transparent in it). Null when no face is left.
      */
     @Nullable
-    static PGeometryData pack(List<Quad> quads, @Nullable TextureAtlasSprite sprite, float grow) {
+    static PGeometryData pack(List<Quad> quads, @Nullable TextureAtlasSprite sprite) {
         List<Quad> faces = quads;
         if (sprite != null) {
             SpriteContents c = sprite.contents();
@@ -140,10 +139,9 @@ final class PulseGeometry {
         ByteBuffer ib = ByteBuffer.allocateDirect(faces.size() * 6 * 4).order(ByteOrder.nativeOrder());
         int base = 0;
         for (Quad q : faces) {
-            float gx = q.normal.x * grow, gy = q.normal.y * grow, gz = q.normal.z * grow;
             for (int k = 0; k < 4; k++) {
                 Vector3f p = q.pos[k];
-                vb.putFloat(p.x + gx).putFloat(p.y + gy).putFloat(p.z + gz);
+                vb.putFloat(p.x).putFloat(p.y).putFloat(p.z);
                 vb.putFloat(sprite != null ? sprite.getU(q.u[k]) : q.u[k]).putFloat(sprite != null ? sprite.getV(q.v[k]) : q.v[k]);
                 vb.put(normalByte(q.normal.x)).put(normalByte(q.normal.y)).put(normalByte(q.normal.z)).put((byte) 0);
             }

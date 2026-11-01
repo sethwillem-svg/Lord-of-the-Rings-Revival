@@ -69,12 +69,7 @@ import java.util.WeakHashMap;
  */
 public class PulseNpcRenderer extends VanillaNpcRenderer {
     private static final Logger LOG = LogUtils.getLogger();
-    /** Stacked layers are pushed out a little each (PulseLib batches draws, so draw order can't layer them). Kept tiny: much of
-     *  Middle-earth's armour sits only 0-0.3 px off the body, and must stay outside the outermost skin layer. */
-    private static final float LAYER_GROW = 0.0006f;   // blocks per layer (0.01 px)
     private static final int MAX_LAYERS = 16;
-    /** Armour starts outside every skin layer (Minecraft draws it after the skin, so it wins ties there). */
-    private static final float ARMOUR_GROW = (MAX_LAYERS + 1) * LAYER_GROW;   // 0.16 px
     private static final int HEAD = 0, HAT = 1, BODY = 2, RIGHT_ARM = 3, LEFT_ARM = 4, RIGHT_LEG = 5, LEFT_LEG = 6;
     private static final EquipmentSlot[] ARMOUR_SLOTS = {EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.HEAD};
 
@@ -175,7 +170,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     private PGeometryData skinMesh(TextureAtlasSprite sprite, int part, int layer) {
         PGeometryData[][] byPart = skinMeshes.computeIfAbsent(sprite, s -> new PGeometryData[bodyQuads.size()][MAX_LAYERS]);
         if (byPart[part][layer] == null)
-            byPart[part][layer] = Objects.requireNonNullElse(PulseGeometry.pack(bodyQuads.get(part), sprite, layer * LAYER_GROW), NONE);
+            byPart[part][layer] = Objects.requireNonNullElse(PulseGeometry.pack(bodyQuads.get(part), sprite), NONE);
         return byPart[part][layer] == NONE ? null : byPart[part][layer];
     }
 
@@ -248,7 +243,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         PGeometryData mesh = meshes.get(key);
         if (mesh == null) {
             List<Quad> quads = armourQuads.computeIfAbsent(part, PulseGeometry::capture);
-            mesh = Objects.requireNonNullElse(PulseGeometry.pack(quads, sprite, ARMOUR_GROW + layer * LAYER_GROW), NONE);
+            mesh = Objects.requireNonNullElse(PulseGeometry.pack(quads, sprite), NONE);
             meshes.put(key, mesh);
         }
         return mesh == NONE ? null : mesh;
@@ -293,7 +288,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             for (Quad q : rec.quads)
                 groups.computeIfAbsent(List.of(q.part() < 0 ? BODY : q.part(), q.color(), Math.max(0, q.draw())), g -> new ArrayList<>()).add(q);
             groups.forEach((g, quads) -> {
-                PGeometryData mesh = PulseGeometry.pack(quads, null, ARMOUR_GROW + g.get(2) * LAYER_GROW);
+                PGeometryData mesh = PulseGeometry.pack(quads, null);
                 if (mesh != null) pieces.add(new ArmourPiece(g.get(0), type, mesh, g.get(1)));
             });
         });
@@ -372,7 +367,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             Map<Integer, List<Quad>> byColor = new LinkedHashMap<>();
             for (Quad q : rec.quads) byColor.computeIfAbsent(q.color(), c -> new ArrayList<>()).add(q);
             byColor.forEach((color, quads) -> {
-                PGeometryData mesh = PulseGeometry.pack(quads, null, 0f);
+                PGeometryData mesh = PulseGeometry.pack(quads, null);
                 if (mesh != null) pieces.add(new Piece(type, mesh, color));
             });
         });
