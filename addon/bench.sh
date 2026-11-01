@@ -9,8 +9,8 @@
 # Results: addon/run/bench_results.txt   Screenshots: addon/run/screenshots/bench_*.png
 # The test world (addon/run/saves/lotr_bench) is kept and reopened directly next time; delete it to start fresh.
 # Uses the NVIDIA GPU when the laptop has one (GPU=intel to force the Intel one).
-# After measuring, it profiles pulse and vanilla with Spark and prints the profile links (PROFILE_RUN=0 to skip).
-# Don't touch the game window while it runs (about 3-4 minutes after the game has loaded).
+# Before measuring, it waits 90 s, profiles vanilla then pulse with Spark (a minute each) and prints the links (PROFILE_RUN=0 to skip).
+# Don't touch the game window while it runs (about 6 minutes after the game has loaded).
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 COUNT="${1:-200}"
@@ -54,7 +54,11 @@ if [ -f run/bench_results.txt ]; then
   # Spark profiles (uploaded by Spark): which renderer each link belongs to
   if grep -q "spark profile of" run/logs/latest.log 2>/dev/null; then
     echo; echo "Spark profiles (open in a browser; send these links to Claude):"
-    awk '/spark profile of/ {m=$NF; sub(/.*spark profile of /,""); mode=$1} /spark\.lucko\.me\// && mode {match($0,/https:\/\/spark\.lucko\.me\/[A-Za-z0-9]+/); if (RSTART) {print "  " mode ": " substr($0,RSTART,RLENGTH); mode=""}}' run/logs/latest.log
+    LINKS=$(awk '/spark profile of .* start / {sub(/.*spark profile of /,""); m[++nm]=$1} match($0,/https?:\/\/spark\.lucko\.me\/[A-Za-z0-9]+/) {l[++nl]=substr($0,RSTART,RLENGTH)} END {for (i=1;i<=nl;i++) print "  " (i<=nm ? m[i] : "profile " i) ": " l[i]}' run/logs/latest.log)
+    if [ -n "$LINKS" ]; then echo "$LINKS"; else
+      echo "  (no links found; what Spark said:)"
+      grep -i "spark profile of\|\[⚡\]\|spark\.lucko\|sparkc\|bytebin" run/logs/latest.log | grep -v "Loading\|spark 1.10" | tail -n 20 | cut -c1-250
+    fi
   fi
   # how each Middle-earth armour piece was recorded for PulseLib (for debugging the pulse renderer)
   grep -A6 "lotr_revival: recorded\|lotr_revival: could not record\|is not a HumanoidModel" run/logs/latest.log > run/armour_debug.txt 2>/dev/null || true

@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Unattended renderer benchmark for development (-Dlotr_revival.autotest=COUNT; run it with addon/bench.sh). Creates a flat
+ * Unattended renderer benchmark for development (with -Dlotr_revival.profile: first a minute's wait, then a Spark profile of vanilla and of pulse) (-Dlotr_revival.autotest=COUNT; run it with addon/bench.sh). Creates a flat
  * creative world at render distance 12, spawns COUNT NPCs, waits until they exist and the world has finished building, then
  * measures the renderers in the order theirs, vanilla, pulse, then the same reversed (the mirrored order cancels slow drift),
  * each 4 s settle + 8 s measured by the clock. Writes run/bench_results.txt and a screenshot per renderer, then quits.
@@ -45,12 +45,15 @@ public final class AutoBench {
 
     private enum Stage { MENU, SETUP, WAIT_NPCS, WAIT_WORLD, RUN, PROFILE, DONE }
 
-    /** After the measured rounds, profile these renderers with Spark's client profiler (bench.sh passes -Pprofile). */
+    /** Before the measured rounds (bench.sh passes -Pprofile): wait 90 s for the world to settle, Spark-profile vanilla for a
+     *  minute, stop, switch to pulse, Spark-profile pulse for a minute, stop. Spark uploads each and prints the link. */
     private static final boolean PROFILE = Boolean.getBoolean("lotr_revival.profile");
-    private static final Mode[] PROFILED = {Mode.PULSE, Mode.VANILLA};
-    private static final long PROFILE_SETTLE_NS = 4_000_000_000L, PROFILE_NS = 12_000_000_000L, PROFILE_UPLOAD_NS = 15_000_000_000L;
+    private static final Mode[] PROFILED = {Mode.VANILLA, Mode.PULSE};
+    private static final long PROFILE_WAIT_NS = 90_000_000_000L, PROFILE_NS = 60_000_000_000L, PROFILE_GAP_NS = 3_000_000_000L,
+            PROFILE_UPLOAD_NS = 15_000_000_000L;
     private static int profilePhase = -1;
     private static long profileStart;
+    private static boolean profiling, stopped;
 
     private static Stage stage = Stage.MENU;
     private static boolean worldRequested;
@@ -104,7 +107,9 @@ public final class AutoBench {
                 if (built && now - stageStart > 2_000_000_000L || now - stageStart > CHUNK_TIMEOUT_NS) {
                     if (!built) waitNote += "world still building after 120 s; ";
                     LOG.info("[lotr_revival bench] world ready after {} s, starting", (now - stageStart) / 1_000_000_000L);
-                    next(Stage.RUN, now);
+                    boolean spark = PROFILE && net.neoforged.fml.ModList.get().isLoaded("spark");
+                    if (PROFILE && !spark) LOG.info("[lotr_revival bench] spark is not loaded, no profiles");
+                    next(spark ? Stage.PROFILE : Stage.RUN, now);
                 }
             }
             case RUN -> run(mc, now);
@@ -139,8 +144,7 @@ public final class AutoBench {
             if (phase >= 0) record();
             phase++;
             if (phase >= ORDER.length) {
-                if (PROFILE && net.neoforged.fml.ModList.get().isLoaded("spark")) next(Stage.PROFILE, now);
-                else finish(mc);
+                finish(mc);
                 return;
             }
             SwitchingNpcRenderer.mode = ORDER[phase];
@@ -155,24 +159,40 @@ public final class AutoBench {
         }
     }
 
-    /** One Spark client profile per renderer: settle, profile (Spark stops and uploads by itself), wait for the upload. */
+    /** 90 s wait, then per renderer: start Spark, stop it after a minute, switch to the next renderer and start again a few
+     *  seconds later (Spark is uploading the previous profile). After the last one, wait for its upload, then measure. */
     private static void profile(Minecraft mc, long now) {
-        if (profilePhase < 0 || now - profileStart >= PROFILE_SETTLE_NS + PROFILE_NS + PROFILE_UPLOAD_NS) {
-            profilePhase++;
-            if (profilePhase >= PROFILED.length) {
-                finish(mc);
-                return;
-            }
-            SwitchingNpcRenderer.mode = PROFILED[profilePhase];
-            profileStart = now;
-            measuring = false;
+        if (profilePhase < 0) {
+            if (now - stageStart < PROFILE_WAIT_NS) return;
+            startProfilePhase(0, now);
             return;
         }
-        if (!measuring && now - profileStart >= PROFILE_SETTLE_NS) {
-            measuring = true;
-            LOG.info("[lotr_revival bench] spark profile of {} starting", PROFILED[profilePhase].id());
-            net.neoforged.neoforge.client.ClientCommandHandler.runCommand("sparkc profiler start --timeout " + PROFILE_NS / 1_000_000_000L);
+        long t = now - profileStart;
+        if (!profiling && t >= (profilePhase == 0 ? 0 : PROFILE_GAP_NS)) {
+            profiling = true;
+            profileStart = now;
+            spark("start", "sparkc profiler start");
+        } else if (profiling && !stopped && t >= PROFILE_NS) {
+            stopped = true;
+            spark("stop", "sparkc profiler stop");
+            if (profilePhase + 1 < PROFILED.length) startProfilePhase(profilePhase + 1, now);
+            else profileStart = now;
+        } else if (stopped && profilePhase == PROFILED.length - 1 && t >= PROFILE_UPLOAD_NS) {
+            next(Stage.RUN, now);
         }
+    }
+
+    private static void startProfilePhase(int i, long now) {
+        profilePhase = i;
+        SwitchingNpcRenderer.mode = PROFILED[i];
+        profileStart = now;
+        profiling = false;
+        stopped = false;
+    }
+
+    private static void spark(String what, String command) {
+        boolean ok = net.neoforged.neoforge.client.ClientCommandHandler.runCommand(command);
+        LOG.info("[lotr_revival bench] spark profile of {} {} ({}: {})", PROFILED[profilePhase].id(), what, command, ok ? "accepted" : "NOT accepted");
     }
 
     private static void record() {
