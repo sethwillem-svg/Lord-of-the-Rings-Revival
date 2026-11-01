@@ -70,7 +70,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="note" id="modelInfo">No model loaded.</div>
    <div class="note" id="watchInfo">Watch folder: new .bvh files (and a .bbmodel) in the folder load automatically. Chrome or Edge.</div>
    <div class="row"><label for="rigMap">Rig map</label><select id="rigMap"></select></div>
-   <div class="row"><button id="clearClips">Clear clips</button></div>
+   <div class="row"><button id="clearClips">Clear clips</button><button id="reloadFolder" title="Load every clip in the watched folder again">Reload folder</button></div>
    <div class="err" id="err"></div>
   </div>
   <div class="group">
@@ -225,6 +225,7 @@ function matQuat(m) {
 const clips = [];   // {name, bvh, clip, quats[bone][frame], inst, tag, error}
 const targetMat = new THREE.MeshBasicMaterial({ color: 0xe5534b });
 let restClip = null, maxLen = 1, maxHit = 0;
+let built = [], framedFor = -1;   // every model instance in the scene; clip count the camera was framed for
 function settings() {
   return { torsoTiltCap: +$('tilt').value, rootDrop: +$('drop').value, weapon: $('weapon').value,
            mirror: $('mirror').checked, footLift: $('footLift').checked, inPlace: $('inPlace').checked,
@@ -246,7 +247,14 @@ function runClip(c) {
 }
 function rebuild() {
   $('err').textContent = '';
-  for (const c of [...clips, restClip].filter(Boolean)) { if (c.inst) scene.remove(c.inst.root); if (c.tag) c.tag.remove(); c.inst = null; c.tag = null; }
+  // remove everything built last time, including clips that were removed or cleared since
+  for (const b of built) {
+    scene.remove(b.inst.root);
+    b.inst.root.traverse((o) => { if (o.userData.target) o.geometry.dispose(); });
+    b.tag.remove();
+    b.owner.inst = null; b.owner.tag = null;
+  }
+  built = [];
   $('empty').style.display = model && clips.length ? 'none' : 'flex';
   if (!model) { renderList(); return; }
   const shown = clips.length ? clips : [{ name: '(rest pose)', rest: true }];
@@ -265,12 +273,16 @@ function rebuild() {
     c.inst = inst;
     const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = c.name;
     $('labels').appendChild(tag); c.tag = tag;
-    if (c.rest) { c.inst.restOnly = true; }
+    if (c.rest) c.restOnly = true;
+    built.push({ inst, tag, owner: c });
   });
   restClip = clips.length ? null : shown[0];
-  const n = Math.min(shown.length, 5), rows = Math.ceil(shown.length / 5);
-  target.set(0, 14, (rows - 1) * SPACING / 2);
-  dist = Math.max(80, n * SPACING * 1.25 + 30);
+  if (shown.length !== framedFor) {   // re-frame only when the number of models changes, not on every slider move
+    const n = Math.min(shown.length, 5), rows = Math.ceil(shown.length / 5);
+    target.set(0, 14, (rows - 1) * SPACING / 2);
+    dist = Math.max(80, n * SPACING * 1.25 + 30);
+    framedFor = shown.length;
+  }
   maxLen = Math.max(0.01, ...clips.filter((c) => c.clip).map((c) => c.clip.length));
   maxHit = Math.max(0, ...clips.filter((c) => c.clip).map((c) => c.clip.hitTime));
   renderList();
@@ -524,7 +536,11 @@ for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'inPlace', 'ri
   $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
 for (const id of ['tilt', 'drop', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll']) $(id).addEventListener('input', sliderLabels);
 $('wReset').onclick = () => { for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id).value = 0; sliderLabels(); rebuild(); };
-$('clearClips').onclick = () => { clips.length = 0; rebuild(); };
+$('clearClips').onclick = () => { clips.length = 0; rebuild(); };   // files already seen stay hidden; new takes still load
+$('reloadFolder').onclick = () => {
+  if (!watch) { showErr('No folder is being watched.'); return; }
+  watch.seen.clear(); scanWatch();
+};
 const CAMS = { front: [Math.PI, 0.12], side: [-Math.PI / 2, 0.12], back: [0, 0.12], three: [Math.PI + 0.55, 0.18] };
 document.querySelectorAll('[data-cam]').forEach((b) => { b.onclick = () => { [yaw, pitch] = CAMS[b.dataset.cam]; }; });
 $('showTargets').onchange = () => scene.traverse((o) => { if (o.userData.target) o.visible = $('showTargets').checked; });
@@ -543,6 +559,19 @@ function resize() { const r = cv.parentElement.getBoundingClientRect(); R.setSiz
 new ResizeObserver(resize).observe(cv.parentElement);
 $('rigMap').innerHTML = RIG_MAPS.map((m) => `<option value="${m.id}">${m.id}</option>`).join('');
 resize(); requestAnimationFrame(frame);
+// remember the sidebar settings between visits (per browser; ignored if storage is blocked)
+const SAVED = ['tilt', 'drop', 'smooth', 'mirror', 'footLift', 'inPlace', 'weapon', 'wPitch', 'wYaw', 'wRoll', 'ik', 'ikY', 'ikReach',
+               'showTargets', 'showGrid', 'align', 'loop', 'speed', 'rigName'];
+try {
+  const saved = JSON.parse(localStorage.getItem('animviewer.settings') || '{}');
+  for (const id of SAVED) if (id in saved) { const el = $(id); if (el.type === 'checkbox') el.checked = saved[id]; else el.value = saved[id]; }
+  grid.visible = $('showGrid').checked;
+} catch (e) { /* storage unavailable */ }
+function saveSettings() {
+  try { localStorage.setItem('animviewer.settings', JSON.stringify(Object.fromEntries(SAVED.map((id) => [id, $(id).type === 'checkbox' ? $(id).checked : $(id).value])))); }
+  catch (e) { /* storage unavailable */ }
+}
+for (const id of SAVED) $(id).addEventListener('change', saveSettings);
 sliderLabels();
 (async () => {
   const q = new URLSearchParams(location.search), m = q.get('model'), w = q.get('watch');

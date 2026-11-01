@@ -25,7 +25,7 @@ It asks once whether to add the `animview` and `animgen` commands to your shell 
 - `animgen "A person ..." --count 5` generates into `<repo>/clips`, and each take appears in the viewer as it lands.
 - The **Model** menu in the sidebar lists every unit in `src/main/art/blockbench/`.
 
-Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** grip plus tilt, swing and twist angles (weapon IK follows the adjusted blade), camera presets, toggles for IK targets and the floor grid, and **Clear clips**. If the strike height is out of reach the target is raised to the lowest reachable point and the clip list says so.
+Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** grip plus tilt, swing and twist angles (weapon IK follows the adjusted blade), camera presets, toggles for IK targets and the floor grid, **Clear clips** (hides what is in the watched folder now; new takes still appear) and **Reload folder** (brings them back). Sidebar settings are remembered in the browser between visits. If the strike height is out of reach the target is raised to the lowest reachable point and the clip list says so.
 
 ## Generate straight into the viewer
 
