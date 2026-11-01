@@ -1,6 +1,8 @@
 /** Men: body ranges in whole pixels (16 px = 1 block) and colour choices. The reference biped. */
 export const MAN = {
   id: 'man',
+  /** Seeds committed to src/main/art/blockbench/man/: chosen to cover the range of bodies, hair and beards. */
+  showcase: [7, 8, 13, 22, 24, 26, 29, 37],
   legs: [11, 13],
   torso: [11, 12],
   head: [8, 9],     // includes the 1 px gap the collar fills under the skull

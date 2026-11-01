@@ -52,3 +52,11 @@ test('bad arguments explain themselves', () => {
   assert.notEqual(r2.status, 0);
   assert.match(r2.stderr, /seeds/);
 });
+
+test('without --seeds it builds the showcase seeds', () => {
+  const out = tmp();
+  const r = run(['man', '--out', out]);
+  assert.equal(r.status, 0, r.stderr);
+  const built = files(out).filter((f) => !f.includes('/') && f.endsWith('.bbmodel')).length;
+  assert.equal(built, 8);
+});

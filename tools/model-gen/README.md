@@ -17,7 +17,8 @@ Node 20 or newer. The only package is `pngjs`; the model toolkit is vendored in 
 ## Commands
 
 ```sh
-node tools/model-gen/build.mjs man --seeds 1-8            # src/main/art/blockbench/man/ (+ lod/, preview.png)
+node tools/model-gen/build.mjs man                        # the 8 showcase men into src/main/art/blockbench/man/ (+ lod/, preview.png)
+node tools/model-gen/build.mjs man --seeds 1-40 --out /tmp/men   # browse more
 node tools/model-gen/build.mjs man --seeds 4,9 --out /tmp/men
 node tools/model-gen/build.mjs man --seeds 1-8 --watch    # rebuilds into clips/ on every save
 cd tools/model-gen && npm test                            # all checks
@@ -27,7 +28,7 @@ With `--watch`, open the viewer on a generated man (`animview man_base_1`, or th
 under `lib/`, `parts/`, `races/` or `palettes/` rebuilds the models in `clips/` and the viewer reloads them.
 
 The report (`tools/model-gen/out/man_report.txt`) lists each seed's height, build, part styles and cube counts.
-`races/man.showcase.json` (optional) fixes part styles for given seeds, for the committed set.
+`showcase` in `races/man.mjs` lists the seeds committed to the repo, chosen from the report to cover the range.
 
 ## How it fits together
 

@@ -2,14 +2,15 @@
 /**
  * Build generated NPC models.
  *
- *   node tools/model-gen/build.mjs man --seeds 1-8          models into src/main/art/blockbench/man/
+ *   node tools/model-gen/build.mjs man                      the race's showcase seeds into src/main/art/blockbench/man/
+ *   node tools/model-gen/build.mjs man --seeds 1-8
  *   node tools/model-gen/build.mjs man --seeds 4,9 --out DIR
  *   node tools/model-gen/build.mjs man --seeds 1-8 --watch  rebuild into <repo>/clips/ on every save (viewer watches it)
  *
  * Writes <out>/<race>_base_<seed>.bbmodel, <out>/lod/<race>_base_<seed>_lod.bbmodel, <out>/preview.png and
  * tools/model-gen/out/<race>_report.txt (the preview uses the toolkit's 'back' views: our models face -Z). Exits 1 if any model fails its checks (nothing is written for it).
  */
-import { mkdirSync, writeFileSync, existsSync, readFileSync, watch } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, watch } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -27,12 +28,13 @@ function parseArgs(argv) {
     else fail(`unknown argument ${argv[i]}`);
   }
   if (!args.race || args.race.startsWith('-')) fail('usage: build.mjs <race> --seeds A-B|A,B,C [--out DIR] [--watch]');
-  const s = args.seeds || '1-8';
+  const s = args.seeds || 'showcase';
   let seeds;
-  if (/^\d+-\d+$/.test(s)) { const [a, b] = s.split('-').map(Number); seeds = Array.from({ length: Math.max(0, b - a + 1) }, (_, k) => a + k); }
+  if (s === 'showcase') seeds = null;
+  else if (/^\d+-\d+$/.test(s)) { const [a, b] = s.split('-').map(Number); seeds = Array.from({ length: Math.max(0, b - a + 1) }, (_, k) => a + k); }
   else if (/^\d+(,\d+)*$/.test(s)) seeds = s.split(',').map(Number);
   else fail(`bad --seeds "${s}": use a range like 1-8 or a list like 4,9`);
-  if (!seeds.length) fail(`--seeds "${s}" is empty`);
+  if (seeds && !seeds.length) fail(`--seeds "${s}" is empty`);
   args.seedList = seeds;
   return args;
 }
@@ -50,16 +52,14 @@ async function build(args) {
     throw e;
   }
   const out = path.resolve(args.out || path.join(REPO, 'src/main/art/blockbench', args.race));
-  const showcaseFile = path.join(HERE, 'races', `${args.race}.showcase.json`);
-  const showcase = existsSync(showcaseFile) ? JSON.parse(readFileSync(showcaseFile, 'utf8')) : {};
+  if (!args.seedList) args.seedList = lib.showcaseSeeds(args.race);
   const report = [], tiles = [];
   let failed = 0;
   for (const seed of args.seedList) {
     let full, lod;
     try {
-      const overrides = showcase[seed] || {};
-      full = lib.buildModel(args.race, seed, { overrides });
-      lod = lib.buildModel(args.race, seed, { overrides, lod: true });
+      full = lib.buildModel(args.race, seed);
+      lod = lib.buildModel(args.race, seed, { lod: true });
     } catch (e) { fail(e.message); }
     const problems = [...full.qa.problems, ...lod.qa.problems.map((p) => `lod: ${p}`)];
     const st = full.styles;
@@ -92,7 +92,7 @@ if (!args.watch) {
   const clips = path.join(REPO, 'clips');
   mkdirSync(clips, { recursive: true });
   if (!existsSync(path.join(clips, '.gitignore'))) writeFileSync(path.join(clips, '.gitignore'), '*\n');
-  const child = ['--seeds', args.seedList.join(','), '--out', args.out || clips];
+  const child = ['--seeds', args.seeds || 'showcase', '--out', args.out || clips];
   const rebuild = () => {
     const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), args.race, ...child], { encoding: 'utf8' });
     const last = (r.stdout || '').trim().split('\n').pop();

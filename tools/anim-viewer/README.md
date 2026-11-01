@@ -148,7 +148,7 @@ It installs Kimodo (the `hugging-apps/kimodo-motion` app) and HY-Motion in separ
 ## Input
 
 - **BVH**: the clip library's UAL clips (`ual_to_bvh.js` output), CMU clips (`LowerBack`/`Spine`/`Spine1` read as the spine, `Head_End` as the head top), FBX conversions from `fbx_to_bvh.py`, Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), HY-Motion output converted by `hymotion_to_bvh.py`, or a Mixamo-style skeleton (`mixamorig:` prefixes are ignored; `LeftUpLeg` is the thigh, and without eye joints the head takes its side axis from the shoulders), for example the BVH export of the [HY-Motion Mixamo Space](https://huggingface.co/spaces/Yosun/hy-motion-mixamo). Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
-- **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Embedded textures are used; models with external textures render grey.
+- **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Generated base men from `tools/model-gen` (`src/main/art/blockbench/man/`) use the `spec-biped` map and load directly (`animview man_base_7`). Embedded textures are used; models with external textures render grey.
 
 ## Rig maps (`rigs.js`)
 

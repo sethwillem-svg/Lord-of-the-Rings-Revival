@@ -28,6 +28,11 @@ function lodCubes(cubes) {
   return out;
 }
 
+export function showcaseSeeds(race) {
+  if (!RACES[race]) throw new Error(`unknown race "${race}" (known: ${Object.keys(RACES).join(', ')})`);
+  return [...RACES[race].table.showcase];
+}
+
 export function buildModel(race, seed, { lod = false, palette = BASE_PALETTE, overrides = {} } = {}) {
   const r = RACES[race];
   if (!r) throw new Error(`unknown race "${race}" (known: ${Object.keys(RACES).join(', ')})`);
