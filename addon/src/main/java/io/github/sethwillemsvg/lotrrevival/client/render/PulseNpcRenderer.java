@@ -369,9 +369,9 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             if (name.contains("glint")) return;
             ResourceLocation texture = PulseGeometry.texture(rt).orElse(null);
             if (texture == null) return;
-            RenderType type = name.contains("translucent")
-                    ? PRenderTypes.RenderTypeProvider.trianglesTranslucent(texture)
-                    : PRenderTypes.RenderTypeProvider.trianglesCutout(texture);
+            // cutout even where Minecraft says "translucent": held items use item_entity_translucent_cull although almost all
+            // are opaque, and PulseLib's translucent path (weighted OIT, four layers) cost about 7-10% of the frame in Spark
+            RenderType type = PRenderTypes.RenderTypeProvider.trianglesCutout(texture);
             Map<Integer, List<Quad>> byColor = new LinkedHashMap<>();
             for (Quad q : rec.quads) byColor.computeIfAbsent(q.color(), c -> new ArrayList<>()).add(q);
             byColor.forEach((color, quads) -> {
