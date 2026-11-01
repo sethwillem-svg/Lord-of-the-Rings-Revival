@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.sevenstars.middleearth.client.ModTexturedRenderLayers;
 import net.sevenstars.middleearth.config.ModClientConfigs;
+import net.sevenstars.middleearth.entity.EntityAttributesME;
 import net.sevenstars.middleearth.entity.npcs.NpcEntity;
 import net.sevenstars.middleearth.entity.npcs.renderer.NpcEntityRenderer;
 import org.jetbrains.annotations.Nullable;
@@ -80,7 +81,9 @@ public class VanillaNpcRenderer extends MobRenderer<NpcEntity, NpcBipedModel> {
 
     @Override
     protected void scale(NpcEntity entity, PoseStack poseStack, float partialTick) {
-        float w = entity.getWidthScale();
+        // NpcEntity.getWidthScale throws and catches an exception when the attribute is missing (as it is client side): check first
+        float w = entity.getAttributes().hasAttribute(EntityAttributesME.WIDTH_SCALE)
+                ? (float) entity.getAttributeValue(EntityAttributesME.WIDTH_SCALE) : 1f;
         poseStack.scale(w, 1f, w);
     }
 

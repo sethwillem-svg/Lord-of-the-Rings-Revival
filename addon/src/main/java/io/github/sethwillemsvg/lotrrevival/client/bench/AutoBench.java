@@ -43,7 +43,7 @@ public final class AutoBench {
     /** Reused between runs (bench.sh opens it straight from launch with --quickPlaySingleplayer). */
     public static final String WORLD = "lotr_bench";
 
-    private enum Stage { MENU, SETUP, WAIT_NPCS, WAIT_WORLD, RUN, PROFILE, DONE }
+    private enum Stage { MENU, BASELINE, SETUP, WAIT_NPCS, WAIT_WORLD, RUN, PROFILE, DONE }
 
     /** Profile run (bench.sh's default, -Pprofile): instead of the measured rounds, a 30 s break, then a minute of vanilla and a
      *  minute of pulse, each under Spark's client profiler (Java sampler, stopped and uploaded by Spark after 60 s), with the
@@ -89,8 +89,9 @@ public final class AutoBench {
                 mc.player.connection.sendCommand("gamerule doWeatherCycle false");
                 mc.player.connection.sendCommand("time set noon");
                 mc.player.connection.sendCommand("tp @s 0 ~ 0 0 20");
-                next(Stage.SETUP, now);
+                next(Stage.BASELINE, now);
             }
+            case BASELINE -> baseline(mc, now);
             case SETUP -> {
                 if (now - stageStart < 1_000_000_000L) return;
                 mc.player.connection.sendCommand("lotrbench clear");   // NPCs left from an earlier run of this world
@@ -193,6 +194,29 @@ public final class AutoBench {
                 m.id(), s[0], s[1], s[2], (int) s[3], FrameStats.npcs(), FrameStats.npcsInView());
         RESULTS.add(line);
         LOG.info("[lotr_revival bench] {}", line);
+    }
+
+    /** The empty world (no NPCs yet): wait until it is built, settle 3 s, measure 10 s. Shows what the machine does without
+     *  the crowd, so the NPC cost is the difference. */
+    private static boolean baselineMeasuring;
+
+    private static void baseline(Minecraft mc, long now) {
+        long t = now - stageStart;
+        if (!baselineMeasuring) {
+            boolean built = mc.levelRenderer.hasRenderedAllSections() && mc.levelRenderer.getSectionRenderDispatcher().isQueueEmpty();
+            if ((built && t > 3_000_000_000L) || t > CHUNK_TIMEOUT_NS) {
+                FrameStats.reset();
+                baselineMeasuring = true;
+                stageStart = now;
+            }
+            return;
+        }
+        if (t < 10_000_000_000L) return;
+        double[] s = FrameStats.window(10_000_000_000L);
+        String line = String.format("%-12s %7.2f ms  %5.1f fps  1%% low %5.1f fps  (%d frames, no NPCs spawned yet)", "empty world", s[0], s[1], s[2], (int) s[3]);
+        RESULTS.add(0, line);
+        LOG.info("[lotr_revival bench] {}", line);
+        next(Stage.SETUP, now);
     }
 
     private static void startProfilePhase(int i, long now) {
