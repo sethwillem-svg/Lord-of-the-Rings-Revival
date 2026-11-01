@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import io.github.sethwillemsvg.lotrrevival.client.render.SwitchingNpcRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.Difficulty;
@@ -39,6 +40,12 @@ public final class AutoBench {
         if (!enabled()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
+            if (mc.screen instanceof AccessibilityOnboardingScreen) {   // first launch: skip straight to the title screen
+                mc.options.onboardAccessibility = false;
+                mc.options.save();
+                mc.setScreen(new TitleScreen());
+                return;
+            }
             if (!worldRequested && mc.screen instanceof TitleScreen) {
                 worldRequested = true;
                 LevelSettings settings = new LevelSettings("lotr_bench_" + System.currentTimeMillis(), GameType.CREATIVE, false,
