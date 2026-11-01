@@ -54,8 +54,10 @@ import java.util.WeakHashMap;
  * Middle-earth NPCs drawn through PulseLib's render backend: static meshes kept on the GPU (PulseLib's geometry arena), and per
  * NPC only one transform per piece. Posing is the same as the other renderers (NpcBipedModel + our clips).
  *
- *  - Skin: one mesh per (layer, body part), shared by every NPC with that layer, batched across NPCs; faces fully transparent in
- *    a layer are left out. All layers share Middle-earth's character atlas.
+ *  - Skin: per NPC look, one mesh per body part with all its skin layers in order (the GPU draws a mesh's triangles in order, so
+ *    layers at the same depth stack like Minecraft's draw order, with no spacing); faces fully transparent in a layer are left
+ *    out; head and hat have an eyes-closed variant for blinking. All layers share Middle-earth's character atlas. Note: PulseLib
+ *    keeps every mesh until the world is left or resources reload, so this adds up with the number of NPC looks seen.
  *  - Armour: each armour model's body parts (vanilla's or an item's custom NeoForge model) recorded once at rest, one mesh per
  *    (part, texture), moved with the NPC's posed body parts; layer tints per instance; trims from the trim atlas. Not drawn: the
  *    enchantment glint, and animations a custom armour model plays on its own sub-parts.
@@ -80,7 +82,8 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     private final Map<ArmourKey, List<ArmourPiece>> meArmour = new HashMap<>();
     private final ItemInHandRenderer itemInHand;
 
-    private final Map<TextureAtlasSprite, PGeometryData[][]> skinMeshes = new HashMap<>();
+    /** Per (body part, layers drawn): all of an NPC look's skin layers on that part, in order, in one mesh. */
+    private final Map<List<Object>, PGeometryData> skinMeshes = new HashMap<>();
     private final Map<ModelPart, List<Quad>> armourQuads = new WeakHashMap<>();
     private final Map<ModelPart, Map<Object, PGeometryData>> armourMeshes = new WeakHashMap<>();
     private final Map<ItemKey, List<Piece>> itemPieces = new HashMap<>();
@@ -156,22 +159,27 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         NpcSkin.Layers layers = NpcSkin.layers(entity, atlas);
         int n = Math.min(layers.sprites().size(), MAX_LAYERS);
         if (n == 0) return;
+        List<TextureAtlasSprite> all = layers.sprites().subList(0, n);
+        List<TextureAtlasSprite> blinking = null;   // the head without its eye layer, while blinking
+        if (layers.blinking() && layers.eye() >= 0 && layers.eye() < n) {
+            blinking = new ArrayList<>(all);
+            blinking.remove(layers.eye());
+        }
         RenderType type = PRenderTypes.RenderTypeProvider.trianglesCutout(atlas.location());
         for (int i = 0; i < at.length; i++) {
             if (at[i] == null) continue;
-            for (int k = 0; k < n; k++)
-                if (layers.drawn(k)) submit(type, skinMesh(layers.sprites().get(k), i, k), at[i], 0xFFFFFFFF, light, overlay);
+            List<TextureAtlasSprite> drawn = blinking != null && (i == HEAD || i == HAT) ? blinking : all;
+            submit(type, skinMesh(drawn, i), at[i], 0xFFFFFFFF, light, overlay);
         }
     }
 
     private static final PGeometryData NONE = new PGeometryData(java.nio.ByteBuffer.allocate(0), java.nio.ByteBuffer.allocate(0),
             PulseGeometry.STRIDE, 0, PGeometryData.IndexType.UNSIGNED_INT);
 
-    private PGeometryData skinMesh(TextureAtlasSprite sprite, int part, int layer) {
-        PGeometryData[][] byPart = skinMeshes.computeIfAbsent(sprite, s -> new PGeometryData[bodyQuads.size()][MAX_LAYERS]);
-        if (byPart[part][layer] == null)
-            byPart[part][layer] = Objects.requireNonNullElse(PulseGeometry.pack(bodyQuads.get(part), sprite), NONE);
-        return byPart[part][layer] == NONE ? null : byPart[part][layer];
+    private PGeometryData skinMesh(List<TextureAtlasSprite> drawn, int part) {
+        PGeometryData mesh = skinMeshes.computeIfAbsent(List.of(part, List.copyOf(drawn)),
+                k -> Objects.requireNonNullElse(PulseGeometry.packLayers(bodyQuads.get(part), drawn), NONE));
+        return mesh == NONE ? null : mesh;
     }
 
     // ---- armour ----
