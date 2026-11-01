@@ -66,7 +66,7 @@ public final class BenchCommands {
         int cols = Mth.ceil(Math.sqrt(count)), made = 0;
         for (int i = 0; i < count; i++) {
             int row = i / cols, col = i % cols;
-            Vec3 p = origin.add(fwd.scale(4 + row * 1.5)).add(right.scale((col - (cols - 1) / 2.0) * 1.5));
+            Vec3 p = origin.add(fwd.scale((count <= 3 ? 2.5 : 4) + row * 1.5)).add(right.scale((col - (cols - 1) / 2.0) * 1.5));
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(p.x), Mth.floor(p.z));
             ResourceLocation id = type != null ? type : all.get(level.random.nextInt(all.size()));
             // Middle-earth's own builder: sets the type, then prepares gear and skin textures

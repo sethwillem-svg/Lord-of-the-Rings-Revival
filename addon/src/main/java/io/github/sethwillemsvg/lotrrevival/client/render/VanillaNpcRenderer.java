@@ -5,7 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -17,9 +17,9 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Baseline for the benchmark: Minecraft's own model path (every vertex of every layer transformed on the CPU each frame),
- * drawing the same skin layers as {@link PulseNpcRenderer}.
+ * drawing the same skin layers as {@link PulseNpcRenderer}. A MobRenderer like Middle-earth's, so names only show when looked at.
  */
-public class VanillaNpcRenderer extends LivingEntityRenderer<NpcEntity, NpcBipedModel> {
+public class VanillaNpcRenderer extends MobRenderer<NpcEntity, NpcBipedModel> {
     public VanillaNpcRenderer(EntityRendererProvider.Context context) {
         super(context, new NpcBipedModel(), 0.5f);
         addLayer(skinLayer(this));
