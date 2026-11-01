@@ -61,7 +61,7 @@ None in game yet. The output is source models under `src/main/art/blockbench/` (
 
 - Elves, dwarves and the other races (later race tables on the same parts system).
 - Gear: helmets, armour, weapons, capes.
-- **Faction clothing parts for men** (maintainer wish): faction-specific cuts and pieces, so men differ in what they wear, not only in colour. Faction palettes are done: rohan, dale, dunedain, gondor, dunland, harad (2026-11-01; Rohan, Gondor and Harad kempt, Dunland dirty).
+- **Faction clothing parts for men** (maintainer wish): faction-specific cuts and pieces, so men differ in what they wear, not only in colour. Faction palettes are done: rohan, dale, dunedain, gondor, dunland, harad (2026-11-01; Rohan, Gondor and Harad kempt, Dunland dirty), with outfits that repaint (patterns, emblems, sleeves, tall boots, leg wraps, war paint) and weight the existing hair and beard styles, without growing past the base silhouette.
 - GeckoLib / PulseLib export (rendering-animation 5a export step).
 - Protecting hand edits from rebuilds.
 

@@ -18,7 +18,8 @@ export function shades(base) {
 
 export function resolvePalette(baseJson, colours) {
   const out = {};
-  const src = { ...baseJson, ...colours };
+  // optional slots fall back: second tunic colour (patterns) to the tunic, emblem to the trim, face paint to the trim
+  const src = { tunic_alt: baseJson.tunic, emblem: baseJson.tunic_trim, paint: baseJson.tunic_trim, ...baseJson, ...colours };
   for (const slot of SLOTS) {
     if (!src[slot]) throw new Error(`palette: no colour for slot "${slot}"`);
     out[slot] = shades(src[slot]);
@@ -46,7 +47,7 @@ export function packUv(model, atlas) {
 
 const SIDES = ['north', 'south', 'east', 'west'];
 
-function paintFace(canvas, rect, face, ramp, style) {
+function paintFace(canvas, rect, face, ramp, style, pattern, alt) {
   const [u1, v1, u2, v2] = [Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.max(rect[0], rect[2]), Math.max(rect[1], rect[3])];
   const w = u2 - u1, h = v2 - v1;
   const put = (x, y, c) => canvas.set(u1 + x, v1 + y, [c[0], c[1], c[2], 255]);
@@ -59,7 +60,9 @@ function paintFace(canvas, rect, face, ramp, style) {
       else if (style === 'leather' && y === 1 && h >= 4 && x % 2 === 0) k = 3;
       else if (style === 'hair' && x % 2 === 1) k = 2;
     } else if (face === 'up' && style === 'hair' && x % 2 === 1) k = 1;
-    put(x, y, ramp[k]);
+    const second = pattern === 'stripes' ? SIDES.includes(face) && y % 3 === 1 && y < h - 1
+      : pattern === 'plaid' ? ((x >> 1) + (y >> 1)) % 2 === 0 : false;
+    put(x, y, (second ? alt : ramp)[k]);
   }
   return [u1, v1, u2, v2];
 }
@@ -105,7 +108,7 @@ export function paintModel(model, atlas, partCubes, palette, { grime = 0 } = {})
     const part = byName.get(cube.name);
     if (!part) throw new Error(`paint: no part data for cube "${cube.name}"`);
     for (const [face, rect] of Object.entries(cube.faces)) {
-      const box = paintFace(atlas.canvas, rect, face, palette[part.slot], part.style);
+      const box = paintFace(atlas.canvas, rect, face, palette[part.slot], part.style, part.pattern, palette.tunic_alt);
       if (part.stamps && part.stamps[face]) stamp(atlas.canvas, box, part.stamps[face], palette);
       dirty(atlas.canvas, box, face, part.slot, cube.name, grime);
     }

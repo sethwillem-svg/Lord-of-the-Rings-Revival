@@ -21,6 +21,13 @@ export function makeRng(seed) {
     int,
     range: ([lo, hi]) => int(lo, hi),
     pick: (arr) => arr[Math.floor(next() * arr.length)],
+    /** Pick a key of { style: weight }; weight 0 never comes up. */
+    weighted: (weights) => {
+      const keys = Object.keys(weights).filter((k) => weights[k] > 0);
+      let r = next() * keys.reduce((s, k) => s + weights[k], 0);
+      for (const k of keys) { r -= weights[k]; if (r < 0) return k; }
+      return keys[keys.length - 1];
+    },
     /** An independent stream for one part, so adding a part never reshuffles the others. */
     fork: (label) => makeRng(`${key}/${label}`),
   };

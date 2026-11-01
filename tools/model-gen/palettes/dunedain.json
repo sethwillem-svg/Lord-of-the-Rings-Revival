@@ -23,5 +23,30 @@
     "#7a8a96",
     "#6a7a84",
     "#5a6a5a"
-  ]
+  ],
+  "emblem": "#c8ccd0",
+  "outfit": {
+    "pattern": "plain",
+    "emblem": "star",
+    "sleeves": "long",
+    "boots": "tall",
+    "legs": "trousers",
+    "face": "none",
+    "hair": {
+      "shoulder": 4,
+      "long": 3,
+      "short": 2,
+      "side_part": 1,
+      "tied": 1,
+      "bald": 0
+    },
+    "beard": {
+      "stubble": 4,
+      "short": 3,
+      "none": 1,
+      "moustache": 1,
+      "full": 1,
+      "long": 0
+    }
+  }
 }

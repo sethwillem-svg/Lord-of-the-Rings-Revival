@@ -51,8 +51,23 @@ with its own `rng.fork('x')` (so other parts keep their picks). Sizes must be wh
 half pixels. Mark small pieces `detail: true` so the low-detail copy drops them. Run `npm test`: the seal and
 hidden-cube checks tell you which cube to move.
 
-**Factions:** a palette only recolours. The same seed has the same body and parts in every faction, so a
-faction set is the showcase men in that faction's colours. Rohan, Gondor and Harad are kempt (grime 0); Dale
+**Factions:** a palette recolours and sets an `outfit`, which only repaints or picks among existing styles, so
+faction men never grow past the base silhouette armour is fitted to. The same seed keeps its body and clothes
+cubes in every faction; hair and beards follow the faction's style weights.
+
+| Outfit key | Values | Effect |
+| --- | --- | --- |
+| `pattern` | plain, stripes, plaid | tunic, skirt and sleeves painted with `tunic_alt` bands or checks |
+| `emblem` | none, horse, tree, star, serpent | chest emblem in the `emblem` colour (star: a brooch high on the chest) |
+| `sleeves` | short, long | forearms painted as skin or as sleeve |
+| `boots` | low, tall | shins painted as trousers or boot leather |
+| `legs` | trousers, wraps | criss-cross leg wraps on the shins |
+| `face` | none, warpaint | cheek stripes and a brow mark in the `paint` colour |
+| `hair`, `beard` | { style: weight } | how common each existing style is (0 = never) |
+
+Rohan: white horse on green, long sleeves, riding boots, long and braided hair. Dale: striped teal. Dunedain:
+silver star brooch, long hair, stubble. Gondor: White Tree on black, kempt short hair. Dunland: plaid, bare
+forearms, leg wraps, wild hair and long beards. Harad: black serpent on crimson, war paint, braided hair. Rohan, Gondor and Harad are kempt (grime 0); Dale
 is lightly lived-in, the Dunedain travel-worn and Dunland dirty. Add a faction by adding a palette file.
 
 **Later:** elves and dwarves are new race tables; faction clothing parts (different cuts per faction) come

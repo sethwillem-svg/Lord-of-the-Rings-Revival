@@ -26,5 +26,30 @@
     "#4a3a2a",
     "#3a4a3a",
     "#5a5048"
-  ]
+  ],
+  "tunic_alt": "#5e4a2e",
+  "outfit": {
+    "pattern": "plaid",
+    "emblem": "none",
+    "sleeves": "short",
+    "boots": "low",
+    "legs": "wraps",
+    "face": "none",
+    "hair": {
+      "long": 4,
+      "shoulder": 4,
+      "bald": 2,
+      "tied": 1,
+      "short": 1,
+      "side_part": 0
+    },
+    "beard": {
+      "long": 4,
+      "full": 4,
+      "stubble": 2,
+      "short": 1,
+      "moustache": 1,
+      "none": 0
+    }
+  }
 }

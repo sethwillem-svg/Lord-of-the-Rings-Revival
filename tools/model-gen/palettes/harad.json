@@ -23,5 +23,31 @@
   "eye": [
     "#2a2622",
     "#3a2a1e"
-  ]
+  ],
+  "emblem": "#1a1414",
+  "paint": "#b02a1e",
+  "outfit": {
+    "pattern": "plain",
+    "emblem": "serpent",
+    "sleeves": "short",
+    "boots": "low",
+    "legs": "trousers",
+    "face": "warpaint",
+    "hair": {
+      "tied": 5,
+      "long": 3,
+      "shoulder": 2,
+      "short": 1,
+      "side_part": 0,
+      "bald": 1
+    },
+    "beard": {
+      "full": 3,
+      "short": 3,
+      "moustache": 2,
+      "long": 1,
+      "stubble": 1,
+      "none": 1
+    }
+  }
 }

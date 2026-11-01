@@ -18,10 +18,10 @@ export function headGeometry(body, shape) {
   return { top, hw, hh, hd, sb, st, fz: -hd / 2, eye, mouth: hh - 2, rowY: (r) => [st - r - 1, st - r] };
 }
 
-const FACE = { w: ['skin', 0], e: ['eye', 1], b: ['hair', 2], m: ['skin', 3], s: ['skin', 2] };
+const FACE = { w: ['skin', 0], e: ['eye', 1], b: ['hair', 2], m: ['skin', 3], s: ['skin', 2], p: ['paint', 1] };
 
 /** Face grid for the skull's front: one string per row, '.' leaves the skin. */
-export function faceGrid(g, brow) {
+export function faceGrid(g, brow, paint = false) {
   const rows = Array.from({ length: g.hh }, () => Array(g.hw).fill('.'));
   const margin = g.hw >= 7 ? 1 : 0;
   const L = margin, R = g.hw - margin - 2;           // left eye columns L..L+1, right eye R..R+1
@@ -32,6 +32,10 @@ export function faceGrid(g, brow) {
   if (brow === 'heavy') { for (const x of [L - 1, L, L + 1, R, R + 1, R + 2]) if (x >= 0 && x < g.hw) b[x] = 'b'; }
   if (brow === 'arched') { b[L] = b[R + 1] = 'b'; rows[g.eye - 1][L + 1] = rows[g.eye - 1][R] = 'b';
     if (g.eye - 2 >= 2) { rows[g.eye - 2][L + 1] = rows[g.eye - 2][R] = 'b'; b[L + 1] = b[R] = '.'; } }
+  if (paint) {   // war paint: a stripe down each cheek under the eyes and a mark on the brow
+    for (const r of [g.eye + 1, g.eye + 2]) if (r < g.mouth) { rows[r][L] = 'p'; rows[r][R + 1] = 'p'; }
+    if (g.eye - 2 >= 2) rows[g.eye - 2][Math.floor(g.hw / 2)] = 'p';
+  }
   const mw = g.hw % 2 ? 3 : 2, m0 = (g.hw - mw) / 2;
   for (let x = m0; x < m0 + mw; x++) rows[g.mouth][x] = 'm';
   return { grid: rows.map((r) => r.join('')), legend: FACE };
@@ -46,7 +50,7 @@ export function addHead(asm, body, rng, choice = {}) {
   asm.meta.head = { ...g, shape, brow };
   const { hw, hd, sb, st, fz } = g;
   asm.add({ name: 'skull', bone: 'head', from: [-hw / 2, sb, -hd / 2], to: [hw / 2, st, hd / 2],
-    slot: 'skin', style: 'skin', stamps: { north: faceGrid(g, brow) } });
+    slot: 'skin', style: 'skin', stamps: { north: faceGrid(g, brow, (asm.meta.outfit || {}).face === 'warpaint') } });
 
   const [ny0] = g.rowY(g.eye + 1), [, ny1] = g.rowY(g.eye);
   const noses = {

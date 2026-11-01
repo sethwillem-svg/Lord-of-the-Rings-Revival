@@ -17,7 +17,11 @@ const PALETTE_DIR = new URL('../palettes/', import.meta.url);
 /** Palette ids: the file names in palettes/ ('base' plus one per faction). */
 export const PALETTES = readdirSync(PALETTE_DIR).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)).sort();
 
-/** A palette: clothes slot colours, optional skin/hair/eye choices that replace the race's, and grime 0..1. */
+/**
+ * A palette: clothes slot colours, optional skin/hair/eye choices that replace the race's, grime 0..1, and an
+ * outfit (pattern, emblem, sleeves, boots, legs, face, hair and beard weights) that only repaints or picks
+ * among existing styles, so faction men never grow past the base silhouette armour is fitted to.
+ */
 export function loadPalette(id) {
   if (!PALETTES.includes(id)) throw new Error(`unknown palette "${id}" (known: ${PALETTES.join(', ')})`);
   return { id, grime: 0, ...JSON.parse(readFileSync(new URL(`${id}.json`, PALETTE_DIR))) };
@@ -50,7 +54,7 @@ export function buildModel(race, seed, { lod = false, palette = 'base', override
   const rng = makeRng(seed);
   const body = solveBody(table, rng.fork('body'));
   const asm = new Assembly(body);
-  const styles = r.parts(asm, body, rng, overrides);
+  const styles = r.parts(asm, body, rng, overrides, pal.outfit || {});
   const cubes = lod ? lodCubes(asm.cubes.map((c) => ({ ...c, from: [...c.from], to: [...c.to] }))) : asm.cubes;
 
   const name = `${race}_${pal.id}_${seed}${lod ? '_lod' : ''}`;
@@ -61,5 +65,5 @@ export function buildModel(race, seed, { lod = false, palette = 'base', override
   packUv(model, atlas);
   paintModel(model, atlas, cubes, resolvePalette(pal, body.colours), { grime: pal.grime });
   model.addTexture(atlas.toTexture(`${name}.png`));
-  return { model, styles, body, qa: runQa(model, { lod }) };
+  return { model, asm, styles, body, qa: runQa(model, { lod }) };
 }
