@@ -128,17 +128,34 @@ final class PulseGeometry {
      */
     @Nullable
     static PGeometryData pack(List<Quad> quads, @Nullable TextureAtlasSprite sprite) {
-        List<Quad> faces = quads;
-        if (sprite != null) {
+        return sprite == null ? packFaces(quads, null) : packLayers(quads, List.of(sprite));
+    }
+
+    /**
+     * The same faces once per layer, bottom to top, in one mesh: the GPU draws a mesh's triangles in order, so each layer lands
+     * on top of the one below at the same depth (as Minecraft's own draw order does), with no spacing between them. Faces fully
+     * transparent in a layer are left out of it. Null when no face is left.
+     */
+    @Nullable
+    static PGeometryData packLayers(List<Quad> quads, List<TextureAtlasSprite> layers) {
+        List<Quad> faces = new ArrayList<>();
+        List<TextureAtlasSprite> spriteOf = new ArrayList<>();
+        for (TextureAtlasSprite sprite : layers) {
             SpriteContents c = sprite.contents();
-            faces = new ArrayList<>();
-            for (Quad q : quads) if (visible(q, c)) faces.add(q);
+            for (Quad q : quads) if (visible(q, c)) { faces.add(q); spriteOf.add(sprite); }
         }
+        return faces.isEmpty() ? null : packFaces(faces, spriteOf);
+    }
+
+    /** faces with their sprite (null list: UVs as recorded). */
+    private static PGeometryData packFaces(List<Quad> faces, @Nullable List<TextureAtlasSprite> spriteOf) {
         if (faces.isEmpty()) return null;
         ByteBuffer vb = ByteBuffer.allocateDirect(faces.size() * 4 * STRIDE).order(ByteOrder.nativeOrder());
         ByteBuffer ib = ByteBuffer.allocateDirect(faces.size() * 6 * 4).order(ByteOrder.nativeOrder());
         int base = 0;
-        for (Quad q : faces) {
+        for (int f = 0; f < faces.size(); f++) {
+            Quad q = faces.get(f);
+            TextureAtlasSprite sprite = spriteOf == null ? null : spriteOf.get(f);
             for (int k = 0; k < 4; k++) {
                 Vector3f p = q.pos[k];
                 vb.putFloat(p.x).putFloat(p.y).putFloat(p.z);
