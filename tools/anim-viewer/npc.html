@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NPC Clip Viewer</title>
+<style>
+:root{--bg:#16181d;--panel:#1f2229;--line:#2e323b;--text:#e6e6e6;--dim:#9aa0aa;--accent:#d9a441;--bad:#e5534b;--ok:#57ab5a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.4 system-ui,sans-serif;display:grid;grid-template-columns:300px 1fr;height:100vh;overflow:hidden}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:12px}
+h1{font-size:15px;margin:0 0 4px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin:14px 0 6px}
+.row{display:flex;gap:6px;align-items:center;margin:4px 0}
+.row label{color:var(--dim);min-width:58px}
+select,input,textarea,button{background:#14161a;color:var(--text);border:1px solid var(--line);border-radius:4px;font:inherit;padding:3px 6px}
+input[type=number]{width:64px}
+textarea{width:100%;min-height:44px;font:12px monospace}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+.clips{list-style:none;margin:0;padding:0}
+.clips li{padding:5px 6px;border-radius:4px;cursor:pointer;display:flex;justify-content:space-between;gap:6px}
+.clips li:hover{background:#262a32}
+.clips li.on{background:#2d3340;outline:1px solid var(--accent)}
+.badge{font-size:11px;padding:0 5px;border-radius:8px;background:#3a2422;color:#f0a39c;white-space:nowrap}
+.badge.ok{background:#1f3322;color:#9fd4a1}
+.badge.ed{background:#3a3220;color:#e8c77a}
+.note{color:var(--dim);font-size:12px}
+main{position:relative;display:flex;flex-direction:column;min-width:0}
+#stage{position:relative;flex:1;min-height:0}
+#view{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;top:8px;left:10px;color:var(--dim);font-size:12px;pointer-events:none}
+.bar{background:var(--panel);border-top:1px solid var(--line);padding:8px 12px}
+.bar .row{margin:0}
+#scrub{flex:1;accent-color:var(--accent)}
+#marks{width:100%;height:10px;display:block;margin-top:4px}
+#issues{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+#issues li{font-size:12px;padding:1px 6px;border-radius:8px;cursor:pointer;border:1px solid var(--line)}
+.err{color:var(--bad)}
+</style>
+</head>
+<body>
+<aside>
+  <h1>NPC clip viewer</h1>
+  <div class="note">What Middle-earth NPCs play in game: our clips baked onto the 6-part vanilla biped (<code>bake_vanilla.js</code>).
+    Left: the orc rig the clip was retargeted onto. Right: the vanilla biped.</div>
+
+  <h2>Clips</h2>
+  <div class="row"><label for="race">Race</label><select id="race"></select></div>
+  <div class="row"><label for="mode">Source</label>
+    <select id="mode"><option value="live">Live bake (current code + edits)</option><option value="baked">Baked files in the add-on</option></select></div>
+  <ul class="clips" id="clips"></ul>
+
+  <h2>Edit this clip</h2>
+  <div class="note" id="libnote"></div>
+  <div class="row"><label for="src">Source</label><select id="src" style="flex:1;min-width:0"></select></div>
+  <div class="row"><label for="r0">Frames</label><input id="r0" type="number" min="0" placeholder="first"> <input id="r1" type="number" min="0" placeholder="last"></div>
+  <div class="row"><label for="speed">Speed</label><input id="speed" type="number" step="0.05" min="0.1" placeholder="1"></div>
+  <div class="row"><label for="mirror">Mirror</label><input id="mirror" type="checkbox"> <span class="note">left-handed take</span></div>
+  <div class="row"><label for="opts">Options</label></div>
+  <textarea id="opts" placeholder='retarget options, e.g. {"torsoTiltCap": 40, "smooth": 1}'></textarea>
+  <div class="row"><button id="apply">Apply</button><button id="reset">Reset clip</button></div>
+
+  <h2>Save edits</h2>
+  <div class="note">Edits apply to the live bake only. To put them in the game: download, save as
+    <code>tools/anim-viewer/vanilla_overrides.json</code>, run <code>node tools/anim-viewer/bake_vanilla.js</code>, rebuild the add-on.</div>
+  <div class="row"><button id="download">Download overrides</button><button id="copy">Copy</button></div>
+  <div class="note err" id="msg"></div>
+</aside>
+<main>
+  <div id="stage"><canvas id="view"></canvas>
+  <div class="hud" id="hud">drag: orbit · wheel: zoom · space: play/pause · ←/→: frame</div></div>
+  <div class="bar">
+    <div class="row">
+      <button id="play" aria-label="Play or pause">⏸</button>
+      <input id="scrub" type="range" min="0" max="1" step="0.0001" value="0" aria-label="Time">
+      <span id="time" style="min-width:110px;text-align:right">0.00 s</span>
+      <select id="rate" aria-label="Playback speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select>
+      <label><input id="showRig" type="checkbox" checked> rig</label>
+      <label><input id="showSword" type="checkbox" checked> sword</label>
+    </div>
+    <canvas id="marks"></canvas>
+    <ul id="issues"></ul>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="retarget.js"></script>
+<script src="rigs.js"></script>
+<script src="library.js"></script>
+<script src="bake_vanilla.js"></script>
+<script>
+'use strict';
+const A = window.AnimRetarget, LIB = window.ANIM_LIBRARY, V = window.VanillaBake;
+const MAP = window.RIG_MAPS.find((m) => m.id === 'muster-pack');
+const BAKED_DIR = '../../addon/src/main/resources/assets/lotr_revival/clips/';
+const $ = (id) => document.getElementById(id);
+const COLORS = ['#e5534b', '#d9a441', '#57ab5a', '#539bf5', '#b083f0', '#e0823d', '#39c5cf', '#c96198'];
+
+let rig = null, overrides = {}, sources = [];
+const cache = new Map();          // `${mode}/${race}/${slot}` -> {data, clip?, issues, error?}
+const text = new Map();
+let cur = null, t = 0, playing = true, last = performance.now();
+
+// ---------------- loading ----------------
+const fetchText = (rel) => {
+  if (!text.has(rel)) text.set(rel, fetch(rel, { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(`${rel}: ${r.status}`); return r.text(); }));
+  return text.get(rel);
+};
+async function listSources() {
+  const out = [];
+  for (const from of ['ual', 'cmu']) {
+    try {
+      const html = await (await fetch(LIB.sources[from].dir, { cache: 'no-store' })).text();
+      for (const m of html.matchAll(/href="([^"?]+)\.bvh"/g)) out.push({ from, src: decodeURIComponent(m[1]) });
+    } catch (e) { /* no directory listing */ }
+  }
+  return out.sort((a, b) => (a.from + a.src).localeCompare(b.from + b.src));
+}
+
+async function liveClip(race, slot) {
+  const entry = V.resolveEntry(LIB, overrides, race, slot);
+  if (!entry) return null;
+  const dir = LIB.sources[entry.from || 'ual'].dir;
+  const files = {};
+  for (const s of [].concat(entry.src)) files[dir + s + '.bvh'] = await fetchText(dir + encodeURIComponent(s) + '.bvh');
+  const bvh = V.joinBvh(A, LIB, entry, (rel) => files[rel]);
+  const clip = A.retarget(bvh, rig, MAP, V.bakeOptions(A, LIB, race, entry));
+  return { data: V.clipData(A, rig, clip, slot), clip, entry };
+}
+async function bakedClip(race, slot) {
+  const r = await fetch(`${BAKED_DIR}${race}/${slot}.json`, { cache: 'no-store' });
+  if (!r.ok) return null;
+  return { data: await r.json(), entry: V.resolveEntry(LIB, {}, race, slot) };
+}
+async function getClip(race, slot) {
+  const mode = $('mode').value, key = `${mode}/${race}/${slot}`;
+  if (!cache.has(key)) {
+    let c;
+    try { c = mode === 'live' ? await liveClip(race, slot) : await bakedClip(race, slot); }
+    catch (e) { c = { error: e.message }; }
+    if (c && c.data) c.issues = V.qa(c.data, slot);
+    cache.set(key, c);
+  }
+  return cache.get(key);
+}
+
+// ---------------- scene ----------------
+const canvas = $('view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#16181d');
+const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 2000);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(30, 60, 50); scene.add(sun);
+const grid = new THREE.GridHelper(160, 10, 0x444a55, 0x2a2e36); scene.add(grid);   // 16 px = one block
+const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
+
+// vanilla biped: model space (y down, faces -z) shown the way the game draws it, facing the camera (+z)
+const npc = new THREE.Group();
+npc.position.set(14, 24, 0);
+npc.scale.set(1, -1, -1);
+scene.add(npc);
+const SKIN = '#c99a74', CLOTH = { head: SKIN, body: '#4a6a8a', right_arm: SKIN, left_arm: SKIN, right_leg: '#5a4632', left_leg: '#4b3b2a' };
+const partObj = {};
+for (const k of V.PARTS) {
+  const [a, b] = V.BOXES[k], o = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.BoxGeometry(b[0] - a[0], b[1] - a[1], b[2] - a[2]), mat(CLOTH[k]));
+  m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  o.add(m); npc.add(o); partObj[k] = o;
+}
+for (const x of [-2, 2]) {      // eyes on the face (-z) so the facing reads at a glance
+  const e = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 0.3), mat('#20242c'));
+  e.position.set(x, -4.5, -4.1); partObj.head.add(e);
+}
+const sleeve = new THREE.Mesh(new THREE.BoxGeometry(4.2, 5, 4.2), mat('#3d5a77')); sleeve.position.set(-1, 0.5, 0); partObj.right_arm.add(sleeve);
+const sleeveL = sleeve.clone(); sleeveL.position.set(1, 0.5, 0); partObj.left_arm.add(sleeveL);
+// held sword: vanilla items point forward (-z) out of the fist
+const sword = new THREE.Group();
+const blade = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 13), mat('#c9ced6')); blade.position.set(0, 0, -8.5);
+const guard = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4, 1), mat('#8a6a2a')); guard.position.set(0, 0, -1.6);
+sword.add(blade, guard); sword.position.set(-1, 9.5, 0); partObj.right_arm.add(sword);
+
+// orc rig as a stick figure, mapped the same way (rig: y up, faces -z -> shown facing +z)
+const rigGroup = new THREE.Group();
+rigGroup.position.set(-14, 0, 0);
+rigGroup.scale.set(1, 1, -1);
+scene.add(rigGroup);
+let rigLines = null, rigJoints = [];
+function buildRig() {
+  const n = rig.bones.length, geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 6), 3));
+  rigLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xd9a441 }));
+  rigGroup.add(rigLines);
+  const jg = new THREE.BoxGeometry(1, 1, 1), jm = mat('#d9a441');
+  rigJoints = rig.bones.map(() => { const j = new THREE.Mesh(jg, jm); rigGroup.add(j); return j; });
+}
+
+// orbit camera
+let yaw = 0.3, pitch = 0.2, dist = 95;
+const target = new THREE.Vector3(0, 16, 0);
+function placeCamera() {
+  camera.position.set(target.x + dist * Math.sin(yaw) * Math.cos(pitch), target.y + dist * Math.sin(pitch), target.z + dist * Math.cos(yaw) * Math.cos(pitch));
+  camera.lookAt(target);
+}
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag.x) * 0.008; pitch = Math.max(-0.2, Math.min(1.4, pitch + (e.clientY - drag.y) * 0.008));
+  drag = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.max(25, Math.min(300, dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
+function resize() {
+  const r = $('stage').getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe($('stage'));
+
+// ---------------- pose ----------------
+const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+function nFrames(d) { return d.parts.head.q.length / 4; }
+function length(d) { return (nFrames(d) - 1) * d.dt; }
+function pose(c, time) {
+  const d = c.data, n = nFrames(d), f = Math.max(0, Math.min(time / d.dt, n - 1)), f0 = Math.floor(f), f1 = Math.min(f0 + 1, n - 1), a = f - f0;
+  for (const k of V.PARTS) {
+    const q = d.parts[k].q, p = d.parts[k].p, o = partObj[k];
+    qa.set(q[f0 * 4], q[f0 * 4 + 1], q[f0 * 4 + 2], q[f0 * 4 + 3]);
+    qb.set(q[f1 * 4], q[f1 * 4 + 1], q[f1 * 4 + 2], q[f1 * 4 + 3]);
+    o.quaternion.copy(qa).slerp(qb, a);
+    o.position.set(p[f0 * 3] + (p[f1 * 3] - p[f0 * 3]) * a, p[f0 * 3 + 1] + (p[f1 * 3 + 1] - p[f0 * 3 + 1]) * a, p[f0 * 3 + 2] + (p[f1 * 3 + 2] - p[f0 * 3 + 2]) * a);
+  }
+  rigGroup.visible = !!(c.clip && $('showRig').checked);
+  if (rigGroup.visible) {
+    const fr = c.clip.frames[Math.round(f)], fk = A.rigFK(rig, fr.locals, fr.rootPos);
+    const arr = rigLines.geometry.attributes.position.array;
+    rig.bones.forEach((b, i) => {
+      // no lines from the root bone (it sits on the floor between the feet); legs and body start at their own pivots
+      const pp = b.parent > 0 || (b.parent === 0 && rig.bones[0].parent >= 0) ? fk.pos[b.parent] : fk.pos[i];
+      arr.set([...pp, ...fk.pos[i]], i * 6);
+      rigJoints[i].position.set(...fk.pos[i]);
+    });
+    rigLines.geometry.attributes.position.needsUpdate = true;
+  }
+  sword.visible = $('showSword').checked;
+  return f;
+}
+
+// ---------------- UI ----------------
+function race() { return $('race').value; }
+async function fillClips() {
+  const list = $('clips'); list.innerHTML = '';
+  const slots = Object.keys(V.SLOTS);
+  for (const slot of slots) {
+    const li = document.createElement('li');
+    li.dataset.slot = slot;
+    li.innerHTML = `<span>${slot.replace(/_/g, ' ')}</span><span class="badge ok">…</span>`;
+    li.onclick = () => select(slot);
+    list.appendChild(li);
+  }
+  for (const li of list.children) {   // fill badges as each clip bakes
+    const c = await getClip(race(), li.dataset.slot), badge = li.lastChild;
+    const edited = overrides[race()] && overrides[race()][li.dataset.slot];
+    if (!c) { badge.textContent = 'none'; badge.className = 'badge'; continue; }
+    if (c.error) { badge.textContent = 'error'; badge.className = 'badge'; continue; }
+    const bad = c.issues.filter((i) => i.share >= 0.05);
+    badge.textContent = (edited ? 'edited · ' : '') + (bad.length ? `${bad.length} issue${bad.length > 1 ? 's' : ''}` : 'ok');
+    badge.className = 'badge' + (bad.length ? '' : edited ? ' ed' : ' ok');
+  }
+}
+async function select(slot) {
+  for (const li of $('clips').children) li.classList.toggle('on', li.dataset.slot === slot);
+  const c = await getClip(race(), slot);
+  cur = c && c.data ? Object.assign({ slot }, c) : null;
+  $('msg').textContent = c && c.error ? c.error : c ? '' : 'No clip for this slot.';
+  t = 0; drawMarks(); fillEditor(slot, c && c.entry);
+}
+function fillEditor(slot, entry) {
+  const base = V.resolveEntry(LIB, {}, race(), slot);
+  $('libnote').textContent = base ? `Library: ${[].concat(base.src).join(' + ')}${base.note ? ' — ' + base.note : ''}` : 'No library clip for this slot.';
+  const e = entry || base || {};
+  const cur0 = `${e.from || 'ual'}/${[].concat(e.src || [])[0] || ''}`;
+  const sel = $('src'); sel.innerHTML = '';
+  const opts = sources.slice();
+  if (e.src && !opts.some((s) => `${s.from}/${s.src}` === cur0)) opts.unshift({ from: e.from || 'ual', src: [].concat(e.src)[0] });
+  for (const s of opts) {
+    const o = document.createElement('option'); o.value = `${s.from}/${s.src}`; o.textContent = `${s.from.toUpperCase()} ${s.src}`; sel.appendChild(o);
+  }
+  sel.value = cur0;
+  if ([].concat(e.src || []).length > 1) {   // joined clips (attack + recovery): keep the list unless the source is changed
+    const o = document.createElement('option'); o.value = '*joined'; o.textContent = [].concat(e.src).join(' + '); sel.prepend(o); sel.value = '*joined';
+  }
+  $('r0').value = e.range ? e.range[0] : ''; $('r1').value = e.range ? e.range[1] : '';
+  $('speed').value = e.speed || ''; $('mirror').checked = !!e.mirror;
+  $('opts').value = e.opts && Object.keys(e.opts).length ? JSON.stringify(e.opts) : '';
+}
+function drawMarks() {
+  const cv = $('marks'), w = cv.clientWidth, h = cv.clientHeight, g = cv.getContext('2d');
+  cv.width = w * devicePixelRatio; cv.height = h * devicePixelRatio; g.scale(devicePixelRatio, devicePixelRatio);
+  g.clearRect(0, 0, w, h);
+  const ul = $('issues'); ul.innerHTML = '';
+  if (!cur) return;
+  const n = nFrames(cur.data);
+  cur.issues.forEach((iss, k) => {
+    g.fillStyle = COLORS[k % COLORS.length];
+    for (const f of iss.frames) g.fillRect((f / Math.max(1, n - 1)) * (w - 2), 0, 2, h);
+    const li = document.createElement('li');
+    li.style.borderColor = COLORS[k % COLORS.length];
+    li.textContent = `${iss.label} (${Math.round(iss.share * 100)}%)`;
+    li.title = 'Jump to the first frame';
+    li.onclick = () => { playing = false; $('play').textContent = '▶'; t = iss.frames[0] * cur.data.dt; };
+    ul.appendChild(li);
+  });
+  if (!cur.issues.length) { const li = document.createElement('li'); li.textContent = 'no issues found'; li.style.borderColor = '#57ab5a'; ul.appendChild(li); }
+}
+
+$('race').onchange = async () => { await fillClips(); select(cur ? cur.slot : 'idle'); };
+$('mode').onchange = async () => { cache.clear(); await fillClips(); select(cur ? cur.slot : 'idle'); };
+$('play').onclick = () => { playing = !playing; $('play').textContent = playing ? '⏸' : '▶'; };
+$('scrub').oninput = () => { if (cur) { t = +$('scrub').value * length(cur.data); playing = false; $('play').textContent = '▶'; } };
+window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
+  if (cur && (e.code === 'ArrowRight' || e.code === 'ArrowLeft')) {
+    playing = false; $('play').textContent = '▶';
+    t = Math.max(0, Math.min(length(cur.data), (Math.round(t / cur.data.dt) + (e.code === 'ArrowRight' ? 1 : -1)) * cur.data.dt));
+  }
+});
+$('apply').onclick = async () => {
+  if (!cur) return;
+  const slot = cur.slot;
+  let opts = {};
+  try { opts = $('opts').value.trim() ? JSON.parse($('opts').value) : {}; } catch (e) { $('msg').textContent = 'Options are not valid JSON.'; return; }
+  const base = V.resolveEntry(LIB, {}, race(), slot) || {};
+  const o = {};
+  if ($('src').value !== '*joined') { const [from, ...rest] = $('src').value.split('/'); o.from = from; o.src = rest.join('/'); }
+  else { o.src = base.src; o.from = base.from || 'ual'; }
+  if ($('r0').value !== '' && $('r1').value !== '') o.range = [+$('r0').value, +$('r1').value];
+  if ($('speed').value) o.speed = +$('speed').value;
+  if ($('mirror').checked) o.mirror = true;
+  if (Object.keys(opts).length) o.opts = opts;
+  (overrides[race()] = overrides[race()] || {})[slot] = o;
+  cache.delete(`live/${race()}/${slot}`);
+  if ($('mode').value !== 'live') { $('mode').value = 'live'; cache.clear(); }
+  await fillClips(); select(slot);
+};
+$('reset').onclick = async () => {
+  if (!cur || !overrides[race()]) return;
+  delete overrides[race()][cur.slot];
+  if (!Object.keys(overrides[race()]).length) delete overrides[race()];
+  cache.delete(`live/${race()}/${cur.slot}`);
+  await fillClips(); select(cur.slot);
+};
+const overridesJson = () => JSON.stringify(overrides, null, 2) + '\n';
+$('download').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([overridesJson()], { type: 'application/json' }));
+  a.download = 'vanilla_overrides.json'; a.click();
+};
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(overridesJson()); $('msg').textContent = 'Copied.'; } catch (e) { $('msg').textContent = 'Clipboard blocked: use Download.'; }
+};
+
+// ---------------- loop ----------------
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (cur) {
+    const L = length(cur.data);
+    if (playing) {
+      t += dt * +$('rate').value;
+      if (cur.data.loop) t %= Math.max(L, 1e-3);
+      else if (t > L + 0.6) t = 0;            // one-shots hold their last frame briefly, then repeat
+    }
+    const f = pose(cur, Math.min(t, L));
+    $('scrub').value = L > 0 ? Math.min(t, L) / L : 0;
+    $('time').textContent = `${Math.min(t, L).toFixed(2)} / ${L.toFixed(2)} s · f${Math.round(f)}`;
+  }
+  placeCamera();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+(async function init() {
+  for (const r of V.RACES) { const o = document.createElement('option'); o.value = r; o.textContent = LIB.races[r].label; $('race').appendChild(o); }
+  const params = new URLSearchParams(location.search);
+  if (params.get('race')) $('race').value = params.get('race');
+  resize();
+  try {
+    rig = A.parseRig(JSON.parse(await fetchText('../../' + V.RIG_PATH)));
+    buildRig();
+  } catch (e) { $('msg').textContent = 'Could not load the orc rig: ' + e.message + ' (serve the repo root, e.g. ./tools/anim-viewer/view.sh npc)'; }
+  try { const r = await fetch('vanilla_overrides.json', { cache: 'no-store' }); if (r.ok) overrides = await r.json(); } catch (e) { /* none yet */ }
+  sources = await listSources();
+  requestAnimationFrame(frame);
+  await fillClips();
+  select(params.get('clip') || 'idle');
+})();
+</script>
+</body>
+</html>
