@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * The skin layers a Middle-earth NPC is drawn with, bottom to top, as sprites of their character atlas: skin, eyes (unless
  * blinking), eyebrows, scar, beard, clothing, hair. Both of our renderers draw exactly these, so they can be compared.
- * Not drawn by either (yet): 3D hair/ears/nose/feet, armour, held items, emissive eyes.
+ * Not drawn by either (yet): 3D hair/ears/nose/feet, emissive eyes. Armour and held items are Minecraft layers in both.
  */
 public final class NpcSkin {
     private NpcSkin() {}

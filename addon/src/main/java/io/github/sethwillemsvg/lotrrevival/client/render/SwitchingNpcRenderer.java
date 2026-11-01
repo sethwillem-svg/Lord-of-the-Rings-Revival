@@ -17,9 +17,9 @@ public class SwitchingNpcRenderer extends EntityRenderer<NpcEntity> {
     public enum Mode {
         /** Middle-earth's own renderer: skin layers plus 3D hair, ears, nose, feet, armour and held items. */
         THEIRS,
-        /** Our skin layers through Minecraft's CPU model path. */
+        /** Our skin layers through Minecraft's CPU model path, plus armour and held items. */
         VANILLA,
-        /** The same skin layers through PulseLib's instanced GPU path. */
+        /** The same skin layers through PulseLib's instanced GPU path; armour and held items as in VANILLA. */
         PULSE;
 
         public String id() { return name().toLowerCase(Locale.ROOT); }

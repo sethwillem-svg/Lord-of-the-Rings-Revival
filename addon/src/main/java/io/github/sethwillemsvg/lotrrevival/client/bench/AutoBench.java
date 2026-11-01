@@ -169,8 +169,8 @@ public final class AutoBench {
         out.addAll(RESULTS);
         out.add("");
         out.add("theirs  = Middle-earth's renderer (skin + 3D hair/ears/nose/feet + armour + held items)");
-        out.add("vanilla = our skin layers on Minecraft's CPU model path");
-        out.add("pulse   = the same skin layers on PulseLib's instanced GPU path");
+        out.add("vanilla = our skin layers on Minecraft's CPU model path + armour + held items (no 3D hair/ears/nose/feet yet)");
+        out.add("pulse   = the same, with the skin layers on PulseLib's instanced GPU path (armour and items still Minecraft's)");
         try {
             Files.write(mc.gameDirectory.toPath().resolve("bench_results.txt"), out);
         } catch (IOException e) {
