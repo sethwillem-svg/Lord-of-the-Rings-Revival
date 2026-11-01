@@ -1,0 +1,9 @@
+{
+  "name": "lotr-model-gen",
+  "private": true,
+  "type": "module",
+  "description": "Generates NPC Blockbench models from race tables and parts (specs/core/model-generator.md)",
+  "engines": { "node": ">=20" },
+  "dependencies": { "pngjs": "7.0.0" },
+  "scripts": { "test": "node --test test/*.test.mjs" }
+}
