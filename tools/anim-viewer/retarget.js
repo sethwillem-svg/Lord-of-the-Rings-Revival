@@ -179,6 +179,7 @@
     weaponYaw: 0,        //   swing it left/right
     weaponRoll: 0,       //   twist it about the grip
     smooth: 0,           // Gaussian smoothing of the retargeted pose over time, sigma in frames (0 = off)
+    inPlace: false,      // drop horizontal root travel (attacks played on the spot; the game moves the entity)
   };
 
   function matToQuat(m) {
@@ -418,7 +419,7 @@
         worldRot.push(mul(pw, L));
       });
       const hp = scl(o(sub(g(f, 'Hips'), hips0)), s);
-      const rootPos = [hp[0], hp[1] * opts.rootDrop, hp[2]];
+      const rootPos = opts.inPlace ? [0, hp[1] * opts.rootDrop, 0] : [hp[0], hp[1] * opts.rootDrop, hp[2]];
       frames.push({ locals, rootPos });
     }
 

@@ -79,6 +79,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="row"><label for="drop">Root drop</label><input id="drop" type="range" min="0" max="1" step="0.05" value="1"><span class="val" id="dropV">100%</span></div>
    <div class="row"><label for="smooth">Smoothing</label><input id="smooth" type="range" min="0" max="4" step="0.25" value="0"><span class="val" id="smoothV">off</span></div>
    <div class="row"><label><input id="mirror" type="checkbox"> Mirror (left-handed take)</label></div>
+   <div class="row"><label><input id="inPlace" type="checkbox"> In place (strip forward and sideways travel)</label></div>
    <div class="row"><label><input id="footLift" type="checkbox" checked> Keep feet above floor</label></div>
   </div>
   <div class="group">
@@ -226,7 +227,7 @@ const targetMat = new THREE.MeshBasicMaterial({ color: 0xe5534b });
 let restClip = null, maxLen = 1, maxHit = 0;
 function settings() {
   return { torsoTiltCap: +$('tilt').value, rootDrop: +$('drop').value, weapon: $('weapon').value,
-           mirror: $('mirror').checked, footLift: $('footLift').checked,
+           mirror: $('mirror').checked, footLift: $('footLift').checked, inPlace: $('inPlace').checked,
            ik: $('ik').checked, ikTargetY: +$('ikY').value, ikReach: +$('ikReach').value,
            weaponPitch: +$('wPitch').value, weaponYaw: +$('wYaw').value, weaponRoll: +$('wRoll').value, smooth: +$('smooth').value };
 }
@@ -519,7 +520,7 @@ function sliderLabels() {
   $('smoothV').textContent = +$('smooth').value === 0 ? 'off' : $('smooth').value + ' fr';
   for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id + 'V').textContent = $(id).value + '°';
 }
-for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'rigMap', 'ik', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll'])
+for (const id of ['tilt', 'drop', 'weapon', 'mirror', 'footLift', 'inPlace', 'rigMap', 'ik', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll'])
   $(id).addEventListener('change', () => { sliderLabels(); rebuild(); });
 for (const id of ['tilt', 'drop', 'ikY', 'ikReach', 'smooth', 'wPitch', 'wYaw', 'wRoll']) $(id).addEventListener('input', sliderLabels);
 $('wReset').onclick = () => { for (const id of ['wPitch', 'wYaw', 'wRoll']) $(id).value = 0; sliderLabels(); rebuild(); };
