@@ -82,7 +82,7 @@ public final class BenchCommands {
             made++;
         }
         int n = made;
-        src.sendSuccess(() -> Component.literal("Spawned " + n + " NPCs. Switch renderer with /lotrrender theirs|vanilla|pulse"), true);
+        src.sendSuccess(() -> Component.literal("Spawned " + n + " NPCs. Switch renderer with /lotrrender theirs|vanilla|pulse_layers|pulse"), true);
         return made;
     }
 

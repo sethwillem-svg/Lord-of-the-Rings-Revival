@@ -29,16 +29,20 @@ import java.util.Map;
 /**
  * Unattended renderer benchmark for development (-Dlotr_revival.autotest=COUNT; run it with addon/bench.sh). Creates a flat
  * creative world at render distance 12, spawns COUNT NPCs, waits until they exist and the world has finished building, then
- * measures the renderers in the order theirs, vanilla, pulse, pulse, vanilla, theirs (the mirrored order cancels slow drift),
+ * measures the renderers in the order theirs, vanilla, pulse_layers, pulse, then the same reversed (the mirrored order cancels slow drift),
  * each 4 s settle + 8 s measured by the clock. Writes run/bench_results.txt and a screenshot per renderer, then quits.
  */
 public final class AutoBench {
     private static final Logger LOG = LogUtils.getLogger();
     private static final int COUNT = Integer.getInteger("lotr_revival.autotest", 0);
-    private static final Mode[] ORDER = {Mode.THEIRS, Mode.VANILLA, Mode.PULSE, Mode.PULSE, Mode.VANILLA, Mode.THEIRS};
+    private static final Mode[] ORDER = {Mode.THEIRS, Mode.VANILLA, Mode.PULSE_LAYERS, Mode.PULSE,
+            Mode.PULSE, Mode.PULSE_LAYERS, Mode.VANILLA, Mode.THEIRS};
+    private static final int ROUND = ORDER.length / 2;
     private static final long SETTLE_NS = 4_000_000_000L, MEASURE_NS = 8_000_000_000L;
     private static final long SPAWN_TIMEOUT_NS = 60_000_000_000L, CHUNK_TIMEOUT_NS = 120_000_000_000L;
     private static final int RENDER_DISTANCE = 12;
+    /** Reused between runs (bench.sh opens it straight from launch with --quickPlaySingleplayer). */
+    public static final String WORLD = "lotr_bench";
 
     private enum Stage { MENU, SETUP, WAIT_NPCS, WAIT_WORLD, RUN, DONE }
 
@@ -68,7 +72,7 @@ public final class AutoBench {
         if (mc.screen != null) mc.setScreen(null);   // close onboarding and other screens
         switch (stage) {
             case MENU -> {
-                if (++inWorldTicks < 40) return;    // let the player settle in
+                if (++inWorldTicks < 20) return;    // let the player settle in
                 if (originalDistance < 0) originalDistance = mc.options.renderDistance().get();
                 mc.options.renderDistance().set(RENDER_DISTANCE);
                 mc.player.connection.sendCommand("gamerule doDaylightCycle false");
@@ -78,7 +82,8 @@ public final class AutoBench {
                 next(Stage.SETUP, now);
             }
             case SETUP -> {
-                if (now - stageStart < 2_000_000_000L) return;
+                if (now - stageStart < 1_000_000_000L) return;
+                mc.player.connection.sendCommand("lotrbench clear");   // NPCs left from an earlier run of this world
                 mc.player.connection.sendCommand("lotrbench spawn " + COUNT);
                 next(Stage.WAIT_NPCS, now);
             }
@@ -90,7 +95,7 @@ public final class AutoBench {
             }
             case WAIT_WORLD -> {
                 boolean built = mc.levelRenderer.hasRenderedAllSections() && mc.levelRenderer.getSectionRenderDispatcher().isQueueEmpty();
-                if (built && now - stageStart > 3_000_000_000L || now - stageStart > CHUNK_TIMEOUT_NS) {
+                if (built && now - stageStart > 2_000_000_000L || now - stageStart > CHUNK_TIMEOUT_NS) {
                     if (!built) waitNote += "world still building after 120 s; ";
                     LOG.info("[lotr_revival bench] world ready after {} s, starting", (now - stageStart) / 1_000_000_000L);
                     next(Stage.RUN, now);
@@ -110,9 +115,13 @@ public final class AutoBench {
         }
         if (!worldRequested && mc.screen instanceof TitleScreen) {
             worldRequested = true;
-            LevelSettings settings = new LevelSettings("lotr_bench_" + System.currentTimeMillis(), GameType.CREATIVE, false,
+            if (mc.getLevelSource().levelExists(WORLD)) {   // reuse the world from an earlier run: no world generation
+                mc.createWorldOpenFlows().openWorld(WORLD, () -> mc.setScreen(new TitleScreen()));
+                return;
+            }
+            LevelSettings settings = new LevelSettings(WORLD, GameType.CREATIVE, false,
                     Difficulty.PEACEFUL, true, new GameRules(), WorldDataConfiguration.DEFAULT);
-            mc.createWorldOpenFlows().createFreshLevel(settings.levelName(), settings, new WorldOptions(1234L, false, false),
+            mc.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(1234L, false, false),
                     reg -> reg.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions(),
                     mc.screen);
         }
@@ -134,7 +143,7 @@ public final class AutoBench {
         if (!measuring && now - phaseStart >= SETTLE_NS) {
             FrameStats.reset();
             measuring = true;
-            if (phase < 3) Screenshot.grab(mc.gameDirectory, "bench_" + ORDER[phase].id() + ".png", mc.getMainRenderTarget(), c -> { });
+            if (phase < ROUND) Screenshot.grab(mc.gameDirectory, "bench_" + ORDER[phase].id() + ".png", mc.getMainRenderTarget(), c -> { });
         }
     }
 
@@ -142,8 +151,8 @@ public final class AutoBench {
         double[] s = FrameStats.window(MEASURE_NS);   // {avg ms, fps, 1% low fps, frames}
         Mode m = ORDER[phase];
         BY_MODE.computeIfAbsent(m, k -> new ArrayList<>()).add(s);
-        String line = String.format("round %d  %-8s %7.2f ms  %5.1f fps  1%% low %5.1f fps  (%d frames, %d NPCs, %d in view)",
-                phase < 3 ? 1 : 2, m.id(), s[0], s[1], s[2], (int) s[3], FrameStats.npcs(), FrameStats.npcsInView());
+        String line = String.format("round %d  %-12s %7.2f ms  %5.1f fps  1%% low %5.1f fps  (%d frames, %d NPCs, %d in view)",
+                phase < ROUND ? 1 : 2, m.id(), s[0], s[1], s[2], (int) s[3], FrameStats.npcs(), FrameStats.npcsInView());
         RESULTS.add(line);
         LOG.info("[lotr_revival bench] {}", line);
     }
@@ -155,22 +164,24 @@ public final class AutoBench {
         out.add("GPU: " + GlUtil.getRenderer() + " (" + GlUtil.getVendor() + ")");
         out.add("CPU: " + GlUtil.getCpuInfo() + ", " + Runtime.getRuntime().availableProcessors() + " threads");
         out.add("Window: " + mc.getWindow().getWidth() + "x" + mc.getWindow().getHeight() + ", render distance " + RENDER_DISTANCE);
-        out.add("NPCs requested: " + COUNT + ". Each renderer: 4 s settle, 8 s measured; order theirs, vanilla, pulse, pulse, vanilla, theirs.");
+        out.add("NPCs requested: " + COUNT + ". Each renderer: 4 s settle, 8 s measured; order theirs, vanilla, pulse_layers, pulse, then reversed.");
         if (!waitNote.isEmpty()) out.add("Note: " + waitNote);
         out.add("");
         out.add("Average of both rounds:");
-        for (Mode m : new Mode[] {Mode.THEIRS, Mode.VANILLA, Mode.PULSE}) {
+        for (Mode m : Mode.values()) {
             List<double[]> r = BY_MODE.getOrDefault(m, List.of());
             if (r.isEmpty()) continue;
             double ms = r.stream().mapToDouble(a -> a[0]).average().orElse(0), low = r.stream().mapToDouble(a -> a[2]).average().orElse(0);
-            out.add(String.format("  %-8s %7.2f ms  %5.1f fps  1%% low %5.1f fps", m.id(), ms, ms > 0 ? 1000 / ms : 0, low));
+            out.add(String.format("  %-12s %7.2f ms  %5.1f fps  1%% low %5.1f fps", m.id(), ms, ms > 0 ? 1000 / ms : 0, low));
         }
         out.add("");
         out.addAll(RESULTS);
         out.add("");
-        out.add("theirs  = Middle-earth's renderer (skin + 3D hair/ears/nose/feet + armour + held items)");
-        out.add("vanilla = our skin layers on Minecraft's CPU model path + armour + held items (no 3D hair/ears/nose/feet yet)");
-        out.add("pulse   = the same, with the skin layers on PulseLib's instanced GPU path (armour and items still Minecraft's)");
+        out.add("theirs       = Middle-earth's renderer (skin + 3D hair/ears/nose/feet + armour + held items)");
+        out.add("vanilla      = our skin layers on Minecraft's CPU model path + armour + held items (no 3D hair/ears/nose/feet yet)");
+        out.add("pulse_layers = the same, skin layers on PulseLib: one mesh per layer and body part, batched across NPCs");
+        out.add("pulse        = the same, skin layers on PulseLib: each NPC's layers merged into one mesh per body part");
+        out.add("(armour and held items are Minecraft's own layers in vanilla and both pulse modes)");
         try {
             Files.write(mc.gameDirectory.toPath().resolve("bench_results.txt"), out);
         } catch (IOException e) {

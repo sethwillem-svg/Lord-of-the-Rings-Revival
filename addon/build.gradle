@@ -16,6 +16,8 @@ neoForge {
             gameDirectory = project.file('run')
             // ./gradlew runClient -Pautotest=100: unattended renderer benchmark (client.bench.AutoBench)
             if (project.hasProperty('autotest')) systemProperty 'lotr_revival.autotest', project.property('autotest').toString()
+            // -PquickPlay=<world>: open that saved world straight from launch (bench.sh uses it once the bench world exists)
+            if (project.hasProperty('quickPlay')) programArguments.addAll('--quickPlaySingleplayer', project.property('quickPlay').toString())
         }
     }
     mods {

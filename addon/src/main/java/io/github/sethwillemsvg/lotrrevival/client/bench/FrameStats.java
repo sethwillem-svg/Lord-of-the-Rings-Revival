@@ -21,7 +21,7 @@ public final class FrameStats {
 
     private static final long[] frames = new long[CAP];   // frame durations, ring buffer
     private static int head, size;
-    private static long last;
+    private static long last, frameIndex;
     private static int npcs, npcsInView;
     private static long lastCount;
 
@@ -29,6 +29,7 @@ public final class FrameStats {
 
     /** Call once per frame (RenderFrameEvent.Pre). */
     public static void frame() {
+        frameIndex++;
         long now = System.nanoTime();
         if (last != 0) {
             frames[head] = now - last;
@@ -60,6 +61,9 @@ public final class FrameStats {
     }
 
     public static int npcs() { return npcs; }
+
+    /** Counts rendered frames (renderers use it for per-frame budgets). */
+    public static long frameIndex() { return frameIndex; }
 
     public static int npcsInView() { return npcsInView; }
 
