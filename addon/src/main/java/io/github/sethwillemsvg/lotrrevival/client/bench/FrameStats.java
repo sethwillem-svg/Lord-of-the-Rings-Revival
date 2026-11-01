@@ -59,26 +59,36 @@ public final class FrameStats {
         }
     }
 
-    /** Frame stats over the window, e.g. "frame 8.31 ms   120 fps   1% low 85 fps   (5.0 s)". */
-    public static String summary() {
+    public static int npcs() { return npcs; }
+
+    public static int npcsInView() { return npcsInView; }
+
+    /** {average ms, fps, 1% low fps, frame count} over the newest frames up to windowNs. */
+    public static double[] window(long windowNs) {
         long total = 0;
         int n = 0;
         long[] in = new long[size];
-        for (int i = 0; i < size && total < WINDOW_NS; i++) {   // newest first
+        for (int i = 0; i < size && total < windowNs; i++) {   // newest first
             long d = frames[(head - 1 - i + CAP) % CAP];
             in[n++] = d;
             total += d;
         }
-        if (n < 10) return "measuring...";
+        if (n == 0) return new double[] {0, 0, 0, 0};
         double avgMs = total / 1e6 / n;
         long[] sorted = Arrays.copyOf(in, n);
         Arrays.sort(sorted);
         int k = Math.max(1, n / 100);
         long worst = 0;
         for (int i = n - k; i < n; i++) worst += sorted[i];
-        double lowFps = 1e9 / (worst / (double) k);
-        return String.format("frame %.2f ms   %.0f fps   1%% low %.0f fps   (%.1f s, %d NPCs, %d in view)", avgMs, 1000 / avgMs, lowFps,
-                total / 1e9, npcs, npcsInView);
+        return new double[] {avgMs, 1000 / avgMs, 1e9 / (worst / (double) k), n};
+    }
+
+    /** Frame stats over the last 5 s, e.g. "frame 8.31 ms   120 fps   1% low 85 fps   (5.0 s)". */
+    public static String summary() {
+        double[] w = window(WINDOW_NS);
+        if (w[3] < 3) return "measuring...";
+        return String.format("frame %.2f ms   %.0f fps   1%% low %.0f fps   (%d frames, %d NPCs, %d in view)", w[0], w[1], w[2], (int) w[3],
+                npcs, npcsInView);
     }
 
     public static void draw(GuiGraphics g, DeltaTracker delta) {
