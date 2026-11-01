@@ -31,7 +31,7 @@ import java.util.List;
  * /lotrbench clear                          remove the NPCs it spawned
  */
 public final class BenchCommands {
-    private static final String TAG = "lotr_revival_bench";
+    public static final String TAG = "lotr_revival_bench";
 
     private BenchCommands() {}
 
