@@ -32,7 +32,14 @@ fi
 echo "Benchmark with $COUNT NPCs. The game will open, run the test by itself and close."
 chmod +x gradlew
 rm -f run/bench_results.txt run/screenshots/bench_*.png
-mkdir -p run
+mkdir -p run/config
+# NeoForge's early loading window can fail to hand over to Minecraft on hybrid Intel/NVIDIA laptops ("trouble handing off
+# the window"): use Minecraft's own window from the start
+if [ -f run/config/fml.toml ] && grep -q '^earlyWindowControl' run/config/fml.toml; then
+  sed -i 's/^earlyWindowControl.*/earlyWindowControl = false/' run/config/fml.toml
+else
+  echo 'earlyWindowControl = false' >> run/config/fml.toml
+fi
 echo "Running... (first launch downloads Minecraft and takes a few minutes; full output in addon/run/bench_output.log)"
 QUICK=()
 [ -d run/saves/lotr_bench ] && QUICK=(-PquickPlay=lotr_bench)   # skip the menus and world generation after the first run
