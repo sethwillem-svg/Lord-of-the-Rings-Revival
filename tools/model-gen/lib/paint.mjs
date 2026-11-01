@@ -47,10 +47,38 @@ export function packUv(model, atlas) {
 
 const SIDES = ['north', 'south', 'east', 'west'];
 
-function paintFace(canvas, rect, face, ramp, style, pattern, alt) {
+/**
+ * Plate and ring-mail shading for armour: light from the top-left (lit top and left edges, dark bottom and right
+ * edges, not concentric "pillow" outlines), rivets near the top corners of larger plates, and an optional rim colour
+ * on the bottom row (silver rims on black lames). Returns [ramp index, is a rim pixel].
+ */
+function plateShade(style, face, x, y, w, h) {
+  const edgeLit = x === 0 || y === 0, edgeDark = x === w - 1 || y === h - 1;
+  if (face === 'up') return [edgeDark ? 1 : 0, false];
+  if (face === 'down') return [edgeDark ? 3 : 2, false];
+  if (y === h - 1) return [3, true];   // bottom row: dark, or the rim colour where the part has an edge colour
+  if (edgeDark) return [3, false];
+  if (edgeLit) return [0, false];
+  if (style === 'plate') {
+    const rivetX = w >= 6 && (x === 2 || x === w - 3);
+    if (rivetX && (y === 1 || (h >= 7 && y === h - 3))) return [0, false];
+    if (rivetX && (y === 2 || (h >= 7 && y === h - 2))) return [2, false];
+    return [1, false];
+  }
+  return [((x + (y >> 1)) % 2 === 0) === (y % 2 === 0) ? 0 : 2, false];   // rings: offset rows of lit and shaded links
+}
+
+function paintFace(canvas, rect, face, ramp, style, pattern, alt, edgeRamp) {
   const [u1, v1, u2, v2] = [Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.max(rect[0], rect[2]), Math.max(rect[1], rect[3])];
   const w = u2 - u1, h = v2 - v1;
   const put = (x, y, c) => canvas.set(u1 + x, v1 + y, [c[0], c[1], c[2], 255]);
+  if (style === 'plate' || style === 'rings') {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const [k, rim] = plateShade(style, face, x, y, w, h);
+      put(x, y, rim && edgeRamp ? edgeRamp[1] : ramp[k]);
+    }
+    return [u1, v1, u2, v2];
+  }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     let k = face === 'up' ? 0 : face === 'down' ? 2 : 1;
     if (SIDES.includes(face)) {
@@ -111,7 +139,8 @@ export function paintModel(model, atlas, partCubes, palette, { grime = 0 } = {})
     const part = byName.get(cube.name);
     if (!part) throw new Error(`paint: no part data for cube "${cube.name}"`);
     for (const [face, rect] of Object.entries(cube.faces)) {
-      const box = paintFace(atlas.canvas, rect, face, palette[part.slot], part.style, part.pattern, palette.tunic_alt);
+      const box = paintFace(atlas.canvas, rect, face, palette[part.slot], part.style, part.pattern, palette.tunic_alt,
+        part.edge ? palette[part.edge] : null);
       if (part.stamps && part.stamps[face]) stamp(atlas.canvas, box, part.stamps[face], palette);
       dirty(atlas.canvas, box, face, part.slot, cube.name, grime);
     }

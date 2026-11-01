@@ -6,7 +6,7 @@ import { Model, Atlas, findBuriedFaces } from '../vendor/bbmt/dist/index.js';
 import { packUv, shades, paintModel } from './paint.mjs';
 import { loadPalette } from './build.mjs';
 
-export const GEAR_SLOTS = ['metal', 'metal_dark', 'wood', 'leather', 'cloth', 'trim', 'emblem', 'string', 'hair', 'paint'];
+export const GEAR_SLOTS = ['metal', 'metal_dark', 'wood', 'leather', 'cloth', 'trim', 'emblem', 'string', 'hair', 'paint', 'accent'];
 const isHalf = (v) => Number.isInteger(v * 2);
 
 /** Gear colours from a faction palette: its leather, cloth, trim and emblem, plus shared steel, wood and string. */
@@ -16,6 +16,7 @@ export function gearPalette(faction = 'base') {
     // blades are steel in every faction; gold or silver fittings use trim
     metal: '#b3b6b9', metal_dark: '#4a4a48', wood: '#6b4a2b', leather: p.belt, cloth: p.tunic,
     trim: p.tunic_trim, emblem: p.emblem || p.tunic_trim, string: '#d8cfb8', hair: '#ece4d2', paint: p.paint || '#a82a1e',
+    accent: p.accent || p.tunic_trim,
   };
   return { ramps: Object.fromEntries(GEAR_SLOTS.map((s) => [s, shades(src[s])])), grime: p.grime || 0 };
 }

@@ -79,3 +79,38 @@ test('an unknown slot is rejected', () => {
   const asm = new Assembly(solveBody(MAN, makeRng(1)));
   assert.throws(() => asm.add({ name: 'z', bone: 'torso', from: [0, 0, 0], to: [1, 1, 1], slot: 'gold' }), /slot/);
 });
+
+test('plate style lights the top-left edges and darkens the bottom-right edges of a face', () => {
+  const body = solveBody(MAN, makeRng(1));
+  const asm = new Assembly(body);
+  asm.add({ name: 'plate', bone: 'torso', from: [-4, 12, -2], to: [4, 22, 2], slot: 'metal', style: 'plate' });
+  const model = new Model({ name: 'p', resolution: [128, 128] });
+  for (const [n, parent] of BONES) model.bone(n, body.pivots[n], parent);
+  model.cube({ name: 'plate', bone: 'torso', from: [-4, 12, -2], to: [4, 22, 2] });
+  const atlas = new Atlas(128, 128);
+  packUv(model, atlas);
+  const pal = resolvePalette(BASE, body.colours);
+  paintModel(model, atlas, asm.cubes, pal);
+  const [u1, v1, u2, v2] = model.findCube('plate').faces.north;
+  const at = (x, y) => atlas.canvas.get(x, y).slice(0, 3);
+  assert.deepEqual(at(u1, v1 + 3), pal.metal[0], 'left edge lit');
+  assert.deepEqual(at(u2 - 1, v1 + 3), pal.metal[3], 'right edge dark');
+  assert.deepEqual(at(u1 + 3, v2 - 1), pal.metal[3], 'bottom edge dark');
+  assert.deepEqual(at(u1 + 3, v1 + 4), pal.metal[1], 'inside is the base colour');
+});
+
+test('an edge colour rims only the bottom row, so short lames stay their own colour', () => {
+  const body = solveBody(MAN, makeRng(1));
+  const asm = new Assembly(body);
+  asm.add({ name: 'lame', bone: 'torso', from: [-4, 12, -2], to: [4, 14, 2], slot: 'tunic', style: 'plate', edge: 'tunic_trim' });
+  const model = new Model({ name: 'l', resolution: [128, 128] });
+  for (const [n, parent] of BONES) model.bone(n, body.pivots[n], parent);
+  model.cube({ name: 'lame', bone: 'torso', from: [-4, 12, -2], to: [4, 14, 2] });
+  const atlas = new Atlas(128, 128);
+  packUv(model, atlas);
+  const pal = resolvePalette(BASE, body.colours);
+  paintModel(model, atlas, asm.cubes, pal);
+  const [u1, v1] = model.findCube('lame').faces.north;
+  assert.deepEqual(atlas.canvas.get(u1 + 3, v1).slice(0, 3), pal.tunic[0], 'top row is the lame colour, lit');
+  assert.deepEqual(atlas.canvas.get(u1 + 3, v1 + 1).slice(0, 3), pal.tunic_trim[1], 'bottom row is the rim colour');
+});

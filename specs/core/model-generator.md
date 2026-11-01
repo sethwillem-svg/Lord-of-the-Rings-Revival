@@ -78,7 +78,14 @@ is moved onto the anchor bone, then an offset, rotation and scale from data are 
 
 **Open question for the maintainer:** rendering-animation 5b puts `*_boot_armor` under `*_leg` (the thigh), so
 greaves on it would not bend with the knee. The viewer attaches boot armour to `*_shin` for now; the rig spec
-should probably move `*_boot_armor` under `*_shin`.
+should probably move `*_boot_armor` under `*_shin`. Forearm armour (vambraces) has no anchor in 5b; generated sets
+use `*_forearm_armor` groups that the viewer attaches to `*_forearm`. A `*_forearm_armor` anchor under `*_forearm`
+would make that official.
+
+**Armour style** (Gondor first, 2026-11-01): shells that follow the body (helm crown, sides and back around an open
+face; breastplate; limb plates) instead of loose boxes; layered lames; `plate` shading lit from the top-left with
+dark bottom and right edges and rivets; `rings` for mail; black lames rimmed in silver; a gold accent belt. Detail
+comes from the texture, shape from the cubes.
 
 **Armour convention:** one `.bbmodel` per faction in `gear/armour/`, groups named after the anchor bones
 (`head_armor`, `chest_armor`, `*_arm_armor`, `*_leg_armor`, `*_boot_armor`, `cape`); each group's pivot is that

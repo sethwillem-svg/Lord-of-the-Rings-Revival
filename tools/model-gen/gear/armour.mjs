@@ -8,7 +8,9 @@ import { largestBody } from '../lib/body.mjs';
 import { MAN } from '../races/man.mjs';
 
 /** Where a group attaches on the man when it is not the same-named bone. */
-export const ATTACH = { right_boot_armor: 'right_shin', left_boot_armor: 'left_shin' };
+export const ATTACH = { right_boot_armor: 'right_shin', left_boot_armor: 'left_shin',
+  // not anchors in rendering-animation 5b: forearm armour rides the forearm so it bends at the elbow
+  right_forearm_armor: 'right_forearm', left_forearm_armor: 'left_forearm' };
 
 /** Main body cubes each group must enclose at rest (tests). clipX absolute, clipY relative to the anchor. */
 export const COVERS = {
@@ -18,6 +20,7 @@ export const COVERS = {
   right_leg_armor: [{ name: 'tunic_skirt', clipX: [-99, 0] }, { name: 'thigh_r', clipX: [-99, 0], clipY: [-99, -3] }],
   left_leg_armor: [{ name: 'tunic_skirt', clipX: [0, 99] }, { name: 'thigh_l', clipX: [0, 99], clipY: [-99, -3] }],
   right_boot_armor: [{ name: 'shin_r' }, { name: 'boot_r' }], left_boot_armor: [{ name: 'shin_l' }, { name: 'boot_l' }],
+  right_forearm_armor: [{ name: 'forearm_r' }], left_forearm_armor: [{ name: 'forearm_l' }],
 };
 
 const TREE = ['x.x.x', '.xxx.', '..x..', '..x..', '.xxx.'];
@@ -36,9 +39,9 @@ class Kit {
     this.used = new Set();
     this.cubes = [];
   }
-  /** box relative to the group's anchor pivot */
+  /** box relative to the group's anchor pivot (or the bone ATTACH names for it) */
   box(group, name, [x0, x1], [y0, y1], [z0, z1], slot, style, extra = {}) {
-    const p = this.ref[group];
+    const p = this.ref[ATTACH[group] || group];
     this.used.add(group);
     this.cubes.push({ name, bone: group, from: [x0 + p[0], y0 + p[1], z0 + p[2]], to: [x1 + p[0], y1 + p[1], z1 + p[2]], slot, style, ...extra });
   }
@@ -73,16 +76,40 @@ export const ARMOUR = {
     k.arms('metal', 'mail'); k.pauldrons('leather', 'leather');
     k.tassets('metal', 'mail'); k.thighGuards('leather', 'leather'); k.greaves('leather', 'leather');
   } },
-  gondor: { name: 'Gondor citadel', build: (k) => {
-    k.bowl([6, 12], 'metal', 'metal');
-    k.box('head_armor', 'ridge', [-0.5, 0.5], [12, 13], [-4, 4], 'trim', 'metal');
-    k.pair('head_armor', 'cheek', [-6.5, -5.5], [2, 7], [-4, 1], 'metal', 'metal');
-    k.pair('head_armor', 'wing', [-7.5, -6.5], [7, 11], [0, 3], 'hair', 'hair');
-    k.body('metal', 'mail');
-    k.box('chest_armor', 'surcoat', [-5, 5], [2, 11], [-4.5, 3.5], 'cloth', 'cloth',
-      { stamps: { north: { grid: art(10, 9, TREE), legend: { x: ['emblem', 1] } } } });
-    k.arms('metal', 'mail'); k.pauldrons('metal', 'metal');
-    k.tassets('metal', 'mail'); k.thighGuards('metal', 'metal'); k.greaves('metal', 'metal');
+  // Gondor: steel plate over black, shells that follow the body, lames with silver edges, rivets, a gold accent belt,
+  // tall crest and white wings. Every box is relative to its anchor on the largest man.
+  gondor: { name: 'Gondor citadel',
+    // the helm is a shell (crown, sides, back, open face): one box spans the hair only from the crown up
+    covers: { head_armor: [{ name: 'hair_cap', clipY: [8, 99] }, { name: 'hair_back', clipY: [8, 99] }] },
+    build: (k) => {
+    const steel = ['metal', 'plate'], black = ['cloth', 'plate', { edge: 'trim' }];
+    // helm: crown, back and side shells around the head with an open face, brow band, crest, wings
+    k.box('head_armor', 'helm', [-6, 6], [8, 11], [-6, 6], ...steel);
+    k.pair('head_armor', 'helm_side', [-6, -5], [2, 8], [-5, 6], ...steel);
+    k.box('head_armor', 'helm_back', [-5, 5], [2, 8], [5, 6], ...steel);
+    k.box('head_armor', 'brow_band', [-5, 5], [7, 8], [-6, -5], 'cloth', 'plate', { edge: 'trim' });
+    k.box('head_armor', 'crest', [-0.5, 0.5], [11, 14], [-3, 4], ...steel);
+    k.pair('head_armor', 'wing', [-7, -6], [6, 12], [0, 2], 'hair', 'hair');
+    k.pair('head_armor', 'wing_tip', [-7, -6], [12, 15], [1, 2], 'hair', 'hair', { detail: true });
+    // body: breastplate, black faulds with silver edges, gold belt, White Tree on the chest
+    k.box('chest_armor', 'breastplate', [-4.5, 4.5], [5, 12], [-4, 3], 'metal', 'plate',
+      { stamps: { north: { grid: art(9, 7, TREE, [2, 1]), legend: { x: ['cloth', 1] } } } });
+    k.box('chest_armor', 'fauld_1', [-4.5, 4.5], [3, 5], [-4, 3], ...black);
+    k.box('chest_armor', 'fauld_2', [-4.5, 4.5], [1, 3], [-4, 3], ...black);
+    k.box('chest_armor', 'belt', [-5, 5], [4.5, 5.5], [-4.5, 3.5], 'accent', 'plate');
+    // arms: pauldron, black lame, mail upper arm; vambraces ride the forearms
+    k.both('arm_armor', 'pauldron', [-3, 3], [1, 3], [-3, 3], ...steel);
+    k.both('arm_armor', 'pauldron_lame', [-3.5, 2.5], [-1, 1], [-3.5, 3.5], ...black);
+    k.both('arm_armor', 'rerebrace', [-2.5, 2.5], [-5, -1], [-2.5, 2.5], 'metal', 'rings');
+    k.both('forearm_armor', 'vambrace', [-2, 2], [-3, 1], [-2, 2], ...steel);
+    // legs: two black tasset lames over the skirt, steel cuisses, knee cops and greaves riding the shins
+    k.box('right_leg_armor', 'tasset_r', [-3.5, 1.5], [-1.5, 1.5], [-3.5, 3.5], ...black);
+    k.box('left_leg_armor', 'tasset_l', [-1.5, 3.5], [-1.5, 1.5], [-3.5, 3.5], ...black);
+    k.box('right_leg_armor', 'tasset_low_r', [-3.5, 1.5], [-3.5, -1.5], [-3.5, 3.5], ...black);
+    k.box('left_leg_armor', 'tasset_low_l', [-1.5, 3.5], [-3.5, -1.5], [-3.5, 3.5], ...black);
+    k.both('leg_armor', 'cuisse', [-2, 2], [-7.5, -3.5], [-2, 2], ...steel);
+    k.both('boot_armor', 'knee_cop', [-2.5, 2.5], [-1, 2], [-3, 2], ...steel);
+    k.both('boot_armor', 'greave', [-2, 2], [-5, -1], [-3, 2], ...steel);
   } },
   harad: { name: 'Haradrim scale', build: (k) => {
     k.bowl([6, 11], 'trim', 'metal');
@@ -116,13 +143,18 @@ export const ARMOUR = {
   } },
 };
 
+/** What each group of a set must enclose: the shared COVERS, with the set's own overrides. */
+export function coversFor(faction) {
+  return { ...COVERS, ...((ARMOUR[faction] || {}).covers || {}) };
+}
+
 export function buildArmour(faction) {
   const set = ARMOUR[faction];
   if (!set) throw new Error(`unknown armour set "${faction}" (known: ${Object.keys(ARMOUR).join(', ')})`);
   const k = new Kit();
   set.build(k);
   const groups = [...k.used].sort();
-  const g = new GearAssembly(groups.map((n) => [n, null, k.ref[n]]));
+  const g = new GearAssembly(groups.map((n) => [n, null, k.ref[ATTACH[n] || n]]));
   for (const c of k.cubes) g.add(c);
   return buildGear(`armour_${faction}`, g, gearPalette(faction), 128);
 }

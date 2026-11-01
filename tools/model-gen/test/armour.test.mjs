@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ARMOUR, buildArmour, armourIndex, COVERS, ATTACH } from '../gear/armour.mjs';
+import { ARMOUR, buildArmour, armourIndex, coversFor, ATTACH } from '../gear/armour.mjs';
 import { buildModel } from '../lib/build.mjs';
 import { largestBody, ANCHORS } from '../lib/body.mjs';
 import { MAN } from '../races/man.mjs';
@@ -22,9 +22,9 @@ test("armour groups are anchor bones pivoted where the largest man's anchors are
   for (const f of FACTIONS) {
     const { model } = buildArmour(f);
     for (const b of model.rig.all()) {
-      if (b.name === 'armour') continue;
-      assert.ok(ANCHORS.has(b.name), `${f}: ${b.name} is not an anchor`);
-      assert.deepEqual(b.pivot, ref[b.name], `${f}: ${b.name} pivot`);
+      // anchor bones, or extra groups the viewer attaches to another bone (forearm armour -> forearm)
+      assert.ok(ANCHORS.has(b.name) || ATTACH[b.name], `${f}: ${b.name} is not an anchor`);
+      assert.deepEqual(b.pivot, ref[ATTACH[b.name] || b.name], `${f}: ${b.name} pivot`);
     }
   }
 });
@@ -39,9 +39,9 @@ test('armour sets pass the hidden-cube check and rebuild byte-identically', () =
 
 // At rest, no main body cube pokes through the armour that covers it: for every half-pixel height the body cube
 // and the armour share, one armour box must contain the body cube's x and z extents with a margin.
-function poking(man, armour) {
+function poking(man, armour, faction) {
   const out = [], P = man.body.pivots, ref = largestBody(MAN).pivots;
-  for (const [group, covered] of Object.entries(COVERS)) {
+  for (const [group, covered] of Object.entries(coversFor(faction))) {
     const target = ATTACH[group] || group;
     const shift = P[target].map((v, a) => v - ref[target][a]);
     const boxes = armour.model.cubes.filter((c) => c.bone === group)
@@ -72,7 +72,7 @@ test('no main body cube pokes through the armour at rest, for men of every size'
   for (let s = 1; s <= 60; s++) {
     for (const f of FACTIONS) {
       const man = buildModel('man', s, { palette: f });
-      const bad = poking(man, sets[f]);
+      const bad = poking(man, sets[f], f);
       assert.deepEqual(bad, [], `seed ${s} ${f}`);
     }
   }
@@ -82,4 +82,13 @@ test('the index lists every set with its pieces', () => {
   const idx = armourIndex();
   assert.deepEqual(idx.map((e) => e.id).sort(), [...FACTIONS].sort());
   for (const e of idx) assert.ok(e.pieces.includes('head_armor') && e.pieces.includes('chest_armor'), e.id);
+});
+
+test('Gondor plate: shells with lames, vambraces on the forearms, knee cops, crest and wings', () => {
+  const names = buildArmour('gondor').model.cubes.map((c) => c.name);
+  for (const n of ['crest', 'wing_r', 'wing_l', 'breastplate', 'fauld_1', 'pauldron_r', 'pauldron_lame_r', 'vambrace_r', 'vambrace_l',
+    'tasset_r', 'cuisse_r', 'knee_cop_r', 'greave_r']) assert.ok(names.includes(n), n);
+  assert.equal(ATTACH.right_forearm_armor, 'right_forearm');
+  const v = buildArmour('gondor').model.cubes.find((c) => c.name === 'vambrace_r');
+  assert.equal(v.bone, 'right_forearm_armor');
 });
