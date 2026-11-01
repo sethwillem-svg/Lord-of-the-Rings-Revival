@@ -28,6 +28,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
@@ -36,6 +37,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.armortrim.ArmorTrim;
 import net.neoforged.neoforge.client.ClientHooks;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.sevenstars.middleearth.client.renderer.armor.ArmorRenderer;
 import net.sevenstars.middleearth.entity.npcs.NpcEntity;
 import org.joml.Matrix4f;
 import org.slf4j.Logger;
@@ -56,7 +58,9 @@ import java.util.WeakHashMap;
  *    a layer are left out. All layers share Middle-earth's character atlas.
  *  - Armour: each armour model's body parts (vanilla's or an item's custom NeoForge model) recorded once at rest, one mesh per
  *    (part, texture), moved with the NPC's posed body parts; layer tints per instance; trims from the trim atlas. Not drawn: the
- *    enchantment glint, and animations a custom armour model plays on its own sub-parts.
+ *    enchantment glint, and animations a custom armour model plays on its own sub-parts. Armour Middle-earth draws with its own
+ *    renderers (most of it: helmet variants, hoods, capes, custom pieces) still goes through those renderers and Minecraft's
+ *    buffers, as in their mod.
  *  - Held items: what Minecraft's item renderer draws for an item in hand, recorded once per item look, attached to the posed
  *    hand. Not drawn: glint; items whose look changes every frame (compass, clock) keep their first look.
  */
@@ -124,7 +128,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                 int overlay = getOverlayCoords(entity, 0f);
                 skin(entity, atlas, at, light, overlay);
                 if (showEquipment(entity)) {
-                    armour(entity, at, light);
+                    armour(entity, at, light, poseStack, buffers);
                     items(entity, model, poseStack, light);
                 }
             }
@@ -159,11 +163,21 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     }
 
     // ---- armour ----
-    private void armour(NpcEntity entity, Matrix4f[] at, int light) {
+    @SuppressWarnings("unchecked")
+    private void armour(NpcEntity entity, Matrix4f[] at, int light, PoseStack poseStack, MultiBufferSource buffers) {
         for (EquipmentSlot slot : ARMOUR_SLOTS) {
             ItemStack stack = entity.getItemBySlot(slot);
             if (!(stack.getItem() instanceof ArmorItem item) || item.getEquipmentSlot() != slot) continue;
             boolean inner = slot == EquipmentSlot.LEGS;
+            // Middle-earth draws most of its armour (helmet variants, hoods, capes, custom chest/legs/boots) with its own
+            // renderers: use them as their mod does (Minecraft's buffers, not PulseLib) until those pieces are ported.
+            ArmorRenderer own = ArmorRenderer.get(stack.getItem());
+            if (own != null) {
+                HumanoidArmorModel<NpcEntity> context = inner ? innerArmour : outerArmour;
+                getModel().copyPropertiesTo(context);
+                own.render(poseStack, buffers, stack, entity, slot, light, (HumanoidModel<LivingEntity>) (HumanoidModel<?>) context);
+                continue;
+            }
             Model model = ClientHooks.getArmorModel(entity, stack, slot, inner ? innerArmour : outerArmour);
             if (!(model instanceof HumanoidModel<?> armour)) {
                 if (warned.add(model.getClass())) LOG.warn("lotr_revival: armour model {} is not a HumanoidModel, not drawn with PulseLib", model.getClass().getName());
