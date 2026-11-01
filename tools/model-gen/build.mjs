@@ -8,6 +8,7 @@
  *   node tools/model-gen/build.mjs man --palette rohan       faction colours into src/main/art/blockbench/man/rohan/
  *   node tools/model-gen/build.mjs man --palette all         every faction palette, one folder each
  *   node tools/model-gen/build.mjs gear                      weapons, armour sets and gear/index.json into src/main/art/blockbench/gear/
+ *   node tools/model-gen/build.mjs materials [--watch]       armour texturing: swatches of materials/*.json -> out/materials.png
  *   node tools/model-gen/build.mjs man --seeds 1-8 --watch  rebuild into <repo>/clips/ on every save (viewer watches it)
  *
  * Writes <out>/<race>_base_<seed>.bbmodel, <out>/lod/<race>_base_<seed>_lod.bbmodel, <out>/preview.png and
@@ -23,12 +24,13 @@ const REPO = path.resolve(HERE, '../..');
 const fail = (msg) => { process.stderr.write(msg + '\n'); process.exit(1); };
 
 function parseArgs(argv) {
-  const args = { race: argv[0], seeds: null, out: null, watch: false, palette: 'base' };
+  const args = { race: argv[0], seeds: null, out: null, watch: false, palette: 'base', materials: null };
   for (let i = 1; i < argv.length; i++) {
     if (argv[i] === '--seeds') args.seeds = argv[++i];
     else if (argv[i] === '--out') args.out = argv[++i];
     else if (argv[i] === '--watch') args.watch = true;
     else if (argv[i] === '--palette') args.palette = argv[++i];
+    else if (argv[i] === '--materials') args.materials = argv[++i];
     else fail(`unknown argument ${argv[i]}`);
   }
   if (!args.race || args.race.startsWith('-')) fail('usage: build.mjs <race> --seeds A-B|A,B,C [--out DIR] [--watch]');
@@ -109,7 +111,30 @@ async function buildSet(lib, args, palette, out) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (args.race === 'gear') {
+if (args.race === 'materials') {
+  await loadLib();   // exits with the npm install hint if pngjs is missing
+  const { writeMaterialSheet } = await import('./lib/materialsheet.mjs');
+  const { loadMaterials, MATERIALS } = await import('./lib/surface.mjs');
+  const out = path.resolve(args.out || path.join(HERE, 'out', 'materials.png'));
+  const once = () => {
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'materials', '--out', out, ...(args.materials ? ['--materials', args.materials] : [])], { encoding: 'utf8' });
+    process.stdout.write(`[${new Date().toLocaleTimeString()}] ${r.status === 0 ? r.stdout.trim() : 'FAILED\n' + (r.stderr || r.stdout)}\n`);
+  };
+  if (args.watch) {
+    once();
+    let timer = null;
+    for (const dir of [args.materials || path.join(HERE, 'materials'), path.join(HERE, 'lib'), path.join(HERE, 'gear')]) {
+      watch(dir, { recursive: true }, () => { clearTimeout(timer); timer = setTimeout(once, 200); });
+    }
+    process.stdout.write(`watching the material recipes; open ${out} (Ctrl+C to stop)\n`);
+  } else {
+    const mats = args.materials ? loadMaterials(path.resolve(args.materials)) : MATERIALS;
+    const { problems, ids } = writeMaterialSheet(out, mats);
+    if (problems.length) fail(`material recipes have problems:\n  ${problems.join('\n  ')}`);
+    process.stdout.write(`${ids.length} materials (${ids.join(', ')}) rendered to ${out}\n`);
+    process.exit(0);
+  }
+} else if (args.race === 'gear') {
   await loadLib();   // exits with the npm install hint if pngjs is missing
   const { writeGear } = await import('./lib/gearset.mjs');
   const out = path.resolve(args.out || path.join(REPO, 'src/main/art/blockbench/gear'));
@@ -117,8 +142,7 @@ if (args.race === 'gear') {
   if (problems.length) fail(`gear checks failed:\n  ${problems.join('\n  ')}`);
   process.stdout.write(`${index.weapons.length} weapons and ${index.armour.length} armour sets built into ${out}\n`);
   process.exit(0);
-}
-if (!args.watch) {
+} else if (!args.watch) {
   process.exit((await build(args)) ? 1 : 0);
 } else {
   const clips = path.join(REPO, 'clips');

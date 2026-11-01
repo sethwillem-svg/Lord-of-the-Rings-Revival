@@ -48,15 +48,16 @@ export class GearAssembly {
   }
 }
 
-export function buildGear(name, asm, palette, resolution = 64) {
+export function buildGear(name, asm, palette, resolution = 64, { materials } = {}) {
   const model = new Model({ name, resolution: [resolution, resolution], identifier: `geometry.${name}` });
   for (const [bone, parent, pivot] of asm.bones) model.bone(bone, [...pivot], parent);
   for (const c of asm.cubes) model.cube({ name: c.name, bone: c.bone, from: c.from, to: c.to });
   const atlas = new Atlas(resolution, resolution);
   packUv(model, atlas);
-  paintModel(model, atlas, asm.cubes, palette.ramps, { grime: palette.grime });
+  paintModel(model, atlas, asm.cubes, palette.ramps, { grime: palette.grime, ...(materials ? { materials } : {}) });
   model.addTexture(atlas.toTexture(`${name}.png`));
   const hidden = findBuriedFaces(model).hiddenCubes;
   const problems = hidden.map((h) => `hidden: ${h.cube} is inside ${h.blockedBy}`);
-  return { model, qa: { ok: problems.length === 0, problems } };
+  const materialOf = Object.fromEntries(asm.cubes.filter((c) => c.material).map((c) => [c.name, c.material]));
+  return { model, materialOf, qa: { ok: problems.length === 0, problems } };
 }

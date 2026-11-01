@@ -6,6 +6,7 @@
  */
 import { boxUv } from '../vendor/bbmt/dist/index.js';
 import { SLOTS } from './assembly.mjs';
+import { MATERIALS, paintSurface, tones } from './surface.mjs';
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const mix = (c, t, f) => c.map((v, i) => Math.round(v + (t[i] - v) * f));
@@ -133,12 +134,20 @@ function dirty(canvas, box, face, slot, name, grime) {
   }
 }
 
-export function paintModel(model, atlas, partCubes, palette, { grime = 0 } = {}) {
+export function paintModel(model, atlas, partCubes, palette, { grime = 0, materials = MATERIALS } = {}) {
   const byName = new Map(partCubes.map((c) => [c.name, c]));
   for (const cube of model.cubes) {
     const part = byName.get(cube.name);
     if (!part) throw new Error(`paint: no part data for cube "${cube.name}"`);
+    const material = part.material && materials[part.material];
+    if (part.material && !material) throw new Error(`paint: unknown material "${part.material}" on ${cube.name}`);
     for (const [face, rect] of Object.entries(cube.faces)) {
+      if (material) {   // armour: a material recipe (lib/surface.mjs), colours from the palette's slots or hex
+        const box = [Math.min(rect[0], rect[2]), Math.min(rect[1], rect[3]), Math.max(rect[0], rect[2]), Math.max(rect[1], rect[3])];
+        paintSurface(atlas.canvas, box, face, material, (c) => tones(palette[c] ? palette[c][1] : c), cube.name);
+        if (part.stamps && part.stamps[face]) stamp(atlas.canvas, box, part.stamps[face], palette);
+        continue;
+      }
       const box = paintFace(atlas.canvas, rect, face, palette[part.slot], part.style, part.pattern, palette.tunic_alt,
         part.edge ? palette[part.edge] : null);
       if (part.stamps && part.stamps[face]) stamp(atlas.canvas, box, part.stamps[face], palette);

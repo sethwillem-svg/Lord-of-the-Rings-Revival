@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
@@ -109,4 +109,29 @@ test('gear builds weapons, armour sets, an index and a preview', () => {
   assert.equal(g.fitted, 'armour/gondor/');
   for (const name of ['man_base_13', 'man_gondor_13', 'man_rohan_37']) assert.ok(existsSync(path.join(out, 'armour/gondor', `${name}.bbmodel`)), name);
   assert.equal(idx.armour.find((a) => a.id === 'rohan').fitted, undefined);
+});
+
+test('materials renders a swatch sheet of every recipe', () => {
+  const out = path.join(tmp(), 'materials.png');
+  const r = run(['materials', '--out', out]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(existsSync(out));
+  assert.match(r.stdout, /steel_plate/);
+});
+
+test('a broken material recipe fails with its problems', () => {
+  const dir = tmp();
+  writeFileSync(path.join(dir, 'broken.json'), JSON.stringify({ kind: 'glass', colour: 'metal' }));
+  const r = run(['materials', '--materials', dir, '--out', path.join(tmp(), 'm.png')]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /broken: kind must be/);
+});
+
+test('--materials renders another recipe set', () => {
+  const dir = tmp(), out = path.join(tmp(), 'alt.png');
+  writeFileSync(path.join(dir, 'blue_steel.json'), JSON.stringify({ kind: 'plate', colour: '#5a6a8a', bands: 3, polish: 0.4 }));
+  const r = run(['materials', '--materials', dir, '--out', out]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /blue_steel/);
+  assert.ok(existsSync(out));
 });

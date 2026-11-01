@@ -77,5 +77,26 @@ scale. Armour groups are the anchor bones. Gondor's set is fitted: built on each
 one file per committed man; the other sets are sized to the largest man; a test checks that no main body cube of 60
 men pokes through at rest. The viewer's Gear panel shows them on any man.
 
+## Armour texturing tool (materials)
+
+Armour pieces are painted from material recipes in `materials/*.json` (painter: `lib/surface.mjs`, light from the
+top-left, six tones from one colour). Fields: `kind` (plate, mail, leather, cloth), `colour` (palette slot such as
+metal, cloth, trim, accent, leather, or a hex colour), `bands` (1-4 tone steps down a face), `polish` (0-1, x of a
+bright streak, or null), `bevel`, `rim` (bottom edge colour), `border` (raised band one pixel in), `rivets`
+(`{ "spacing": 2-6, "rows": "top" | "both" }`, silver on rimmed or bordered pieces), `scratches` (0-0.3), `engrave`
+(scroll, filigree, fluting), `lames` (a seam every N rows), `note`.
+
+```sh
+node tools/model-gen/build.mjs materials            # swatch sheet -> tools/model-gen/out/materials.png
+node tools/model-gen/build.mjs materials --watch    # re-render on every save of a recipe
+node tools/model-gen/build.mjs materials --materials ~/my-recipes --out /tmp/try.png   # try another set
+node tools/model-gen/build.mjs gear                 # repaint the armour with the recipes
+```
+
+The sheet shows every recipe on a large plate and a thin lame (front and turned), four per row in file-name order,
+then the Gondor armour on a man. A recipe with a problem fails with the field named. An armour piece picks its
+recipe with `material` in `gear/armour.mjs` (Gondor: steel_plate, steel_engraved, steel_banded, black_lame,
+black_bordered, gold_trim, ring_mail).
+
 **Later:** elves and dwarves are new race tables; faction clothing parts (different cuts per faction) come
 with the gear parts.

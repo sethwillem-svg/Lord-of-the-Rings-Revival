@@ -115,7 +115,9 @@ export const ARMOUR = {
     // the helm is a shell (crown, sides, back, open face): one box spans the hair only above the brow
     covers: { head_armor: [{ name: 'hair_cap', clipY: [8, 99] }, { name: 'hair_back', clipY: [8, 99] }] },
     build: (k) => {
-      const steel = ['metal', 'plate'], black = ['cloth', 'plate', { edge: 'trim' }];
+      // materials/*.json recipes paint each piece (lib/surface.mjs)
+      const mat = (material, slot = 'metal') => [slot, 'plate', { material }];
+      const steel = mat('steel_plate'), banded = mat('steel_banded'), black = mat('black_lame', 'cloth'), bordered = mat('black_bordered', 'cloth');
       const m = 0.5;
       // helm
       const h = k.fit('head_armor'), g = k.man.asm.meta.head;
@@ -124,8 +126,8 @@ export const ARMOUR = {
       const neck = k.rel('head_armor', g.sb);
       k.box('head_armor', 'helm', X, [brow, top], Z, ...steel);
       k.pair('head_armor', 'helm_side', [X[0], X[0] + 1], [mouth, brow], Z, ...steel);
-      k.box('head_armor', 'helm_back', [X[0] + 1, X[1] - 1], [neck, brow], [Z[1] - 1, Z[1]], ...steel);
-      k.box('head_armor', 'brow_band', [X[0] + 1, X[1] - 1], [brow, brow + 1], [Z[0] - 1, Z[0]], 'cloth', 'plate', { edge: 'trim' });
+      k.box('head_armor', 'helm_back', [X[0] + 1, X[1] - 1], [neck, brow], [Z[1] - 1, Z[1]], ...banded);
+      k.box('head_armor', 'brow_band', [X[0] + 1, X[1] - 1], [brow, brow + 1], [Z[0] - 1, Z[0]], ...bordered);
       k.box('head_armor', 'crest', [-0.5, 0.5], [top, top + 3], [Z[0] + 2, Z[1] - 1], ...steel);
       const wz = Math.floor((Z[0] + Z[1]) / 2);
       k.pair('head_armor', 'wing', [X[0] - 1, X[0]], [brow, top + 1], [wz, wz + 2], 'hair', 'hair');
@@ -133,17 +135,17 @@ export const ARMOUR = {
       // body: breastplate above two faulds; the front clears the tunic lace
       const c = k.fit('chest_armor'), cx = [c.x[0] - m, c.x[1] + m], cz = [c.z[0] - 1.5, c.z[1] + m];
       k.box('chest_armor', 'breastplate', cx, [5, c.y[1] + 1], cz, 'metal', 'plate',
-        { stamps: { north: { grid: art(cx[1] - cx[0], 7, TREE, [Math.floor((cx[1] - cx[0] - 5) / 2), 1]), legend: { x: ['cloth', 1] } } } });
+        { material: 'steel_engraved', stamps: { north: { grid: art(cx[1] - cx[0], 7, TREE, [Math.floor((cx[1] - cx[0] - 5) / 2), 1]), legend: { x: ['cloth', 1] } } } });
       k.box('chest_armor', 'fauld_1', cx, [3, 5], cz, ...black);
       k.box('chest_armor', 'fauld_2', cx, [1, 3], cz, ...black);
-      k.box('chest_armor', 'belt', [cx[0] - 0.5, cx[1] + 0.5], [4.5, 5.5], [cz[0] - 0.5, cz[1] + 0.5], 'accent', 'plate');
+      k.box('chest_armor', 'belt', [cx[0] - 0.5, cx[1] + 0.5], [4.5, 5.5], [cz[0] - 0.5, cz[1] + 0.5], ...mat('gold_trim', 'accent'));
       // arms (right side measured; both() mirrors)
       const a = k.fit('right_arm_armor');
       k.both('arm_armor', 'pauldron', [a.x[0] - 1, a.x[1] + 1], [a.y[1] - 1, a.y[1] + 1], [a.z[0] - 1, a.z[1] + 1], ...steel);
-      k.both('arm_armor', 'pauldron_lame', [a.x[0] - 1.5, a.x[1] + 0.5], [a.y[1] - 3, a.y[1] - 1], [a.z[0] - 1.5, a.z[1] + 1.5], ...black);
-      k.both('arm_armor', 'rerebrace', [a.x[0] - m, a.x[1] + m], [a.y[0] - 1, a.y[1] - 3], [a.z[0] - m, a.z[1] + m], 'metal', 'rings');
+      k.both('arm_armor', 'pauldron_lame', [a.x[0] - 1.5, a.x[1] + 0.5], [a.y[1] - 3, a.y[1] - 1], [a.z[0] - 1.5, a.z[1] + 1.5], ...bordered);
+      k.both('arm_armor', 'rerebrace', [a.x[0] - m, a.x[1] + m], [a.y[0] - 1, a.y[1] - 3], [a.z[0] - m, a.z[1] + m], ...mat('ring_mail'));
       const f = k.fit('right_forearm_armor');
-      k.both('forearm_armor', 'vambrace', [f.x[0] - m, f.x[1] + m], [f.y[0] + 1, f.y[1]], [f.z[0] - m, f.z[1] + m], ...steel);
+      k.both('forearm_armor', 'vambrace', [f.x[0] - m, f.x[1] + m], [f.y[0] + 1, f.y[1]], [f.z[0] - m, f.z[1] + m], ...banded);
       // legs: tasset lames over the skirt half (cut at the centre seam), cuisses below
       const sk = k.fit('right_leg_armor', ['tunic_skirt'], [-99, 0]), l = k.fit('right_leg_armor');
       const tz = [sk.z[0] - m, sk.z[1] + m], mid = sk.y[1] + m - 3;
@@ -154,10 +156,10 @@ export const ARMOUR = {
         k.box(`${side}_leg_armor`, `tasset_${k2}`, tx, [mid, sk.y[1] + m], tz, ...black);
         k.box(`${side}_leg_armor`, `tasset_low_${k2}`, tx, [sk.y[0] - m, mid], tz, ...black);
       }
-      k.both('leg_armor', 'cuisse', [l.x[0] - m, l.x[1] + m], [l.y[0] - m, sk.y[0] - m], [l.z[0] - m, l.z[1] + m], ...steel);
+      k.both('leg_armor', 'cuisse', [l.x[0] - m, l.x[1] + m], [l.y[0] - m, sk.y[0] - m], [l.z[0] - m, l.z[1] + m], ...banded);
       // shins: greave from the boot top to below the knee, knee cop over the joint
       const b = k.fit('right_boot_armor'), bootTop = k.rel('right_boot_armor', k.man.model.findCube('boot_r').to[1]);
-      k.both('boot_armor', 'greave', [b.x[0] - m, b.x[1] + m], [bootTop - 1, -1], [b.z[0] - m, b.z[1] + m], ...steel);
+      k.both('boot_armor', 'greave', [b.x[0] - m, b.x[1] + m], [bootTop - 1, -1], [b.z[0] - m, b.z[1] + m], ...banded);
       k.both('boot_armor', 'knee_cop', [b.x[0] - 1, b.x[1] + 1], [-1, 2], [b.z[0] - 1, b.z[1] + 1], ...steel);
     } },
   harad: { name: 'Haradrim scale', build: (k) => {
