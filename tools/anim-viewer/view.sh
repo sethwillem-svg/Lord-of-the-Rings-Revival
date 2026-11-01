@@ -3,6 +3,7 @@
 #
 #   animview                      start (or reuse) the server and open the viewer with mordor_orc
 #   animview gundabad_olog_hai    same, with another unit from src/main/art/blockbench (name without .bbmodel)
+#   animview npc                  open the Middle-earth NPC clip viewer (npc.html)
 #   animview stop                 stop the server
 #   animview setup                (re)add the `animview` and `animgen` commands to your shell
 #
@@ -43,6 +44,8 @@ if [ "${1:-}" = "stop" ]; then
   exit 0
 fi
 
+NPC_VIEW=""
+if [ "${1:-}" = "npc" ]; then NPC_VIEW=1; set -- mordor_orc; fi   # animview npc: the Middle-earth NPC clip viewer
 UNIT="${1:-mordor_orc}"
 MODEL=$(cd "$REPO" && find src/main/art/blockbench -name "$UNIT.bbmodel" -not -path '*/lod/*' | head -1)
 if [ -z "$MODEL" ]; then
@@ -60,6 +63,7 @@ if ! (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
 fi
 
 URL="http://localhost:$PORT/tools/anim-viewer/?watch=/clips/&model=/$MODEL"
+[ -n "$NPC_VIEW" ] && URL="http://localhost:$PORT/tools/anim-viewer/npc.html"
 echo "Viewer: $URL"
 [ -n "${RUNPOD_POD_ID:-}" ] && echo "From your own browser: https://$RUNPOD_POD_ID-$PORT.proxy.runpod.net/tools/anim-viewer/?watch=/clips/&model=/$MODEL"
 echo "Clips folder: $REPO/clips   (generate with: animgen \"A person ...\")"
