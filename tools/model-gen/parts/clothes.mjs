@@ -4,6 +4,7 @@
  */
 export const STYLES = ['tunic'];
 
+// The lace is skipped under a full or long beard, which would hide it.
 const trimRows = (w, h, neck) => {
   const rows = Array.from({ length: h }, () => '.'.repeat(w));
   rows[h - 1] = 't'.repeat(w);
@@ -20,7 +21,7 @@ export function addClothes(asm, body, rng) {
   add('tunic', 'torso', [-S / 2, L, -D / 2], [S / 2, top, D / 2], 'tunic', 'cloth',
     { stamps: { north: trimRows(S, T, true), south: trimRows(S, T, false) } });
   add('collar', 'torso', [-2, top - 1, -D / 2 + 0.5], [2, top + 2, D / 2 - 0.5], 'tunic_trim', 'cloth');
-  add('tunic_lace', 'torso', [-0.5, top - 4, -D / 2 - 1], [0.5, top - 1, -D / 2], 'tunic_trim', 'flat', { detail: true });
+  if (!asm.get('beard_chin')) add('tunic_lace', 'torso', [-0.5, top - 4, -D / 2 - 1], [0.5, top - 1, -D / 2], 'tunic_trim', 'flat', { detail: true });
   const sw = S > 2 * lT ? S : 2 * lT + 1;
   add('tunic_skirt', 'body', [-sw / 2, L - 3, -(D + 1) / 2], [sw / 2, L + 1, (D + 1) / 2], 'tunic', 'cloth',
     { stamps: { north: trimRows(sw, 4, false), south: trimRows(sw, 4, false) } });
