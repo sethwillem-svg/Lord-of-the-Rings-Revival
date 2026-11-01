@@ -27,6 +27,7 @@ public final class NpcAnimator {
     static final Logger LOG = LogUtils.getLogger();
 
     private static final String NPC_MODEL = "net.sevenstars.middleearth.entity.npcs.renderer.NpcEntityModel";
+    private static final String OUR_MODEL = "io.github.sethwillemsvg.lotrrevival.client.render.NpcBipedModel";
     private static final String NPC_ENTITY = "net.sevenstars.middleearth.entity.npcs.NpcEntity";
 
     private static final float WALK_SPEED = 0.1f, RUN_SPEED = 0.7f;   // limbSwingAmount thresholds
@@ -59,8 +60,10 @@ public final class NpcAnimator {
         }
     }
 
+    /** Middle-earth's NPC model, or the biped our own renderers draw (client.render.NpcBipedModel). */
     public static boolean isNpcModel(Object model) {
-        return model.getClass().getName().equals(NPC_MODEL);
+        String n = model.getClass().getName();
+        return n.equals(NPC_MODEL) || n.equals(OUR_MODEL);
     }
 
     public static boolean isNpc(LivingEntity entity) {

@@ -23,16 +23,30 @@ What is kept:
 
 ## The add-on (`addon/`)
 
-NeoForge 1.21.1 add-on for the Middle-earth mod (branch `neoforge-fixes`). For now it only plays our mocap clips on
-Middle-earth's own NPC model: idle, walk, run, hurt, death and sword or unarmed attacks, chosen per race (man, elf, dwarf,
-hobbit, orc). It never compiles against or bundles the Middle-earth jar.
+NeoForge 1.21.1 add-on for the Middle-earth mod (branch `neoforge-fixes`), with [PulseLib](https://github.com/ArcAnc/PulseLib)
+1.21.1-1.2.0. It plays our mocap clips on Middle-earth's NPCs (idle, walk, run, hurt, death, sword and unarmed attacks, per race:
+man, elf, dwarf, hobbit, orc) and can draw them with PulseLib's instanced GPU renderer. It compiles against your local
+Middle-earth jar but never bundles or commits it.
 
 ```sh
-node tools/anim-viewer/bake_vanilla.js      # re-bake addon/src/main/resources/assets/lotr_revival/clips
-cd addon && ./gradlew build                 # -> addon/build/libs/lotr_revival-0.1.0.jar
+node tools/anim-viewer/bake_vanilla.js                # re-bake the clips (preview them: ./tools/anim-viewer/view.sh npc)
+cd addon && ./gradlew build -PmeJar=$HOME/middle-earth/middle-earth/build/libs/<jar>   # -> build/libs/lotr_revival-0.1.0.jar
+./gradlew runClient -PmeJar=...                       # or put both jars (and PulseLib) in a NeoForge 21.1 mods folder
 ```
 
-Put that jar in the same `mods` folder as the Middle-earth jar, or run `./gradlew runClient -PmeJar=/path/to/middle-earth.jar`.
+Renderer benchmark, in game:
+
+| Command | What it does |
+| --- | --- |
+| `/lotrbench spawn 200` | a grid of 200 random NPCs in front of you, AI off (`/lotrbench spawn 200 <type> true` for one type with AI) |
+| `/lotrrender theirs` | Middle-earth's renderer: skin layers + 3D hair, ears, nose, feet, armour, held items |
+| `/lotrrender vanilla` | our skin layers through Minecraft's CPU model path |
+| `/lotrrender pulse` | the same skin layers through PulseLib (default) |
+| `/lotrbench clear` | remove the spawned NPCs |
+
+The meter bottom-left shows the renderer, NPCs in view and frame time, FPS and 1% low over 5 s (`/lotrrender hud` hides it).
+`vanilla` vs `pulse` compares the engines on identical geometry; `theirs` shows what armour and 3D features add.
+`./gradlew runClient -PmeJar=... -Pautotest=100` runs the whole comparison unattended and logs the numbers.
 
 ## The animation viewer
 
