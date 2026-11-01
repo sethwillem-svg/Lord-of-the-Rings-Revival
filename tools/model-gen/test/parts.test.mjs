@@ -28,11 +28,11 @@ test('every style of every part builds', () => {
   }
 });
 
-test('cube count is 40..80 for seeds 1..200', () => {
+test('cube count is 36..80 for seeds 1..200', () => {
   for (let s = 1; s <= 200; s++) {
     const { body, asm, rng } = fresh(s);
     addMan(asm, body, rng);
-    assert.ok(asm.cubes.length >= 40 && asm.cubes.length <= 80, `seed ${s}: ${asm.cubes.length} cubes`);
+    assert.ok(asm.cubes.length >= 36 && asm.cubes.length <= 80, `seed ${s}: ${asm.cubes.length} cubes`);
   }
 });
 
@@ -40,7 +40,7 @@ test('cube count stays in range for the barest and the busiest man', () => {
   for (const o of [{ hair: 'bald', beard: 'none' }, { hair: 'shoulder', beard: 'long' }]) {
     const { body, asm, rng } = fresh(1);
     addMan(asm, body, rng, o);
-    assert.ok(asm.cubes.length >= 40 && asm.cubes.length <= 80, `${JSON.stringify(o)}: ${asm.cubes.length}`);
+    assert.ok(asm.cubes.length >= 36 && asm.cubes.length <= 80, `${JSON.stringify(o)}: ${asm.cubes.length}`);
   }
 });
 
@@ -109,4 +109,10 @@ test('the tunic is no wider than the hips plus two pixels and there are no shoul
     assert.ok(t.to[0] - t.from[0] <= 2 * body.legThick + 2, `seed ${s}: tunic ${t.to[0] - t.from[0]} px wide`);
     assert.ok(!asm.cubes.some((c) => c.name.startsWith('shoulder_')), `seed ${s}: shoulder pads`);
   }
+});
+
+test('hands have no separate finger cubes', () => {
+  const { body, asm, rng } = fresh(1);
+  addMan(asm, body, rng);
+  assert.ok(!asm.cubes.some((c) => c.name.startsWith('fingers_')));
 });

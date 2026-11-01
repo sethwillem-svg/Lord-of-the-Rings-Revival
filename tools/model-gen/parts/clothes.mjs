@@ -66,7 +66,6 @@ export function addClothes(asm, body, rng) {
     add(`wrist_wrap_${k}`, `${side}_forearm`, [ax[0], wrist + 1, -aT / 2], [ax[1], wrist + 2, aT / 2], 'tunic_trim', 'cloth', { detail: true });
     add(`hand_${k}`, `${side}_hand`, [ax[0], top - arm, -aT / 2], [ax[1], wrist + 1, aT / 2], 'skin', 'skin');
     const tx = s < 0 ? ax[1] - 1 : ax[0];
-    add(`fingers_${k}`, `${side}_hand`, [ax[0] + 0.5, top - arm, -aT / 2 - 1], [ax[1] - 0.5, top - arm + 1, -aT / 2], 'skin', 'skin', { detail: true });
     add(`thumb_${k}`, `${side}_hand`, [tx, wrist - 1, -aT / 2 - 1], [tx + 1, wrist + 1, -aT / 2], 'skin', 'skin', { detail: true });
 
     const lx = [s < 0 ? -lT : 0, s < 0 ? 0 : lT];

@@ -41,7 +41,7 @@ The report (`tools/model-gen/out/man_<palette>_report.txt`) lists each seed's he
 | `parts/*.mjs` | Head (shape, face stamp, nose, ears, chin), hair, beard, clothes; each adds cubes with a slot and style |
 | `lib/paint.mjs` | Box-UV packing (one texel per pixel) and painting from 4-shade slot ramps, patterns and stamps |
 | `lib/build.mjs` | One model: body, parts, low-detail copy, UVs, paint, checks |
-| `lib/qa.mjs` | Spec bones, empty anchors, sealed joints (1 px shared), no hidden cubes, 40-80 cubes |
+| `lib/qa.mjs` | Spec bones, empty anchors, sealed joints (1 px shared), no hidden cubes, 36-80 cubes |
 | `lib/bbmodel.mjs` | Writes the Blockbench 4.10 layout the viewer and orc packs use |
 | `palettes/*.json` | `base` plus one per faction (rohan, dale, dunedain, gondor, dunland, harad): clothes slot colours, optional skin/hair/eye choices that replace the race's, and `grime` (0 clean, 1 filthy: mud on boots and hems, smudges) |
 

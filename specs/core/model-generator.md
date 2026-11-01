@@ -29,7 +29,7 @@ None in game yet. The output is source models under `src/main/art/blockbench/` (
 | Hair | about 6 styles | Includes bald and long |
 | Beard | about 5 styles | Includes none |
 | Clothes | tunic (belted), trousers, boots | One shape each in the PoC; variety comes from proportions and colours |
-| Cubes per model | 40 to 80 | Orc-pack detail level |
+| Cubes per model | 36 to 80 | Orc-pack detail level; lowered from 40 (2026-11-01) when the shoulder pads and fingers were removed at the maintainer's request |
 | Texture | 128 x 128, one sheet per model, embedded | About one texel per model pixel; flat 3 to 4 shade ramps, light from above, pattern brushes for cloth, stitching, leather and soles; no noise or dithering, except a palette's grime (mud and smudges, deterministic per pixel) |
 | Colour slots | `skin`, `hair`, `eye`, `tunic`, `tunic_trim`, `trousers`, `boots`, `belt`, `metal` | Each slot is a shade ramp. Skin, hair and eye come from the race's ranges by seed; clothes from `palettes/base.json` |
 | Low-detail copy | about half the cubes | Drops cubes parts mark as detail (nose, ears, buckle, boot cuffs, beard strands), merges the beard into one block, same texture |
@@ -70,7 +70,7 @@ None in game yet. The output is source models under `src/main/art/blockbench/` (
 - [ ] `node tools/model-gen/build.mjs man --seeds 1-8` succeeds and writes 8 models, 8 low-detail copies, a contact sheet and a report.
 - [ ] Every model has exactly the 5b bone names; anchor bones have no cubes.
 - [ ] Seal and buried-face checks pass on every model and low-detail copy.
-- [ ] Every model has 40 to 80 cubes; every low-detail copy has at most 60% of its model's cubes.
+- [ ] Every model has 36 to 80 cubes; every low-detail copy has at most 60% of its model's cubes.
 - [ ] Two builds give byte-identical files.
 - [ ] Each model retargets the CMU walk (`82_09`) and punch (`02_05`) with every retarget feature on, with no error and feet no more than 1 px under the floor.
 - [ ] The 8 models load in the viewer with the Man race picked and its library playing (browser check).

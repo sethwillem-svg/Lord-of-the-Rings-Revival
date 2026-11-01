@@ -1,7 +1,7 @@
 /**
  * Checks that fail a build: spec bones exactly, no cubes on anchors, every limb joint sealed (shares at
  * least 1 px of material, so it does not open into a slit when it rotates), no cube hidden inside others,
- * and the cube budget for full models.
+ * and the cube budget for full models (36-80).
  */
 import { auditSeal, findBuriedFaces } from '../vendor/bbmt/dist/index.js';
 import { BONES, ANCHORS } from './body.mjs';
@@ -24,6 +24,6 @@ export function runQa(model, { lod = false } = {}) {
   for (const p of seal.open) problems.push(`seal: ${p.a} and ${p.b} share only ${p.depth.toFixed(2)} px`);
   const occlusion = findBuriedFaces(model);
   for (const h of occlusion.hiddenCubes) problems.push(`hidden: ${h.cube} is inside ${h.blockedBy}`);
-  if (!lod && (model.cubes.length < 40 || model.cubes.length > 80)) problems.push(`cube count ${model.cubes.length} is outside 40..80`);
+  if (!lod && (model.cubes.length < 36 || model.cubes.length > 80)) problems.push(`cube count ${model.cubes.length} is outside 36..80`);
   return { ok: problems.length === 0, problems, seal, occlusion, cubes: model.cubes.length };
 }
