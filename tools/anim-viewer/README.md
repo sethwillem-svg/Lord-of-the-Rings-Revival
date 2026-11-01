@@ -33,7 +33,7 @@ Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** g
 
 1. **Race** is picked from the model's file name (`*troll*` troll, `*olog*` olog, orc/uruk/goblin orc, else man); change it to preview another race's set on any model.
 2. **Load race set** replaces the clips with that race's spec minimum set (from `prompts/<race>.txt`), sets the export rig name and the race's stance and torso tilt cap. Untick **Spec minimum set only** to add the extras too (fidgets, more attack variants, work, swim, crossbow).
-3. **Load 10 uniques** replaces the clips with the race's 10 CMU mocap takes (below). No take is shared between races.
+3. **Load uniques** replaces the clips with the race's CMU mocap takes (below). No take is shared between races.
 4. **Load local** loads the race's clips from `library/local/` (your Unity Asset Store conversions, not in git).
 5. **Add** puts one clip from the list next to what is loaded, for example to compare a library clip with generated takes.
 
@@ -61,7 +61,7 @@ node tools/anim-viewer/ual_to_bvh.js "Universal Animation Library[Standard]/Unre
 
 ### Unique clips per race (CMU Motion Capture Database)
 
-`library/cmu/` holds 80 takes from the [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu) (BVH conversion by Bruce Hahne; no restrictions, see `library/cmu/LICENSE.txt`), 10 per race, each cut to its busiest 2 to 9 seconds at 30 fps. They are real actors, so they have weight and timing the UAL loops lack. Keys are spec-style names outside the minimum sets; heavy races play theirs slower (olog and half-troll 0.9, troll 0.8).
+`library/cmu/` holds 87 takes from the [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu) (BVH conversion by Bruce Hahne; no restrictions, see `library/cmu/LICENSE.txt`), 10 per race and 17 for men (extra attacks), each cut to its busiest 2 to 9 seconds at 30 fps. They are real actors, so they have weight and timing the UAL loops lack. Keys are spec-style names outside the minimum sets; heavy races play theirs slower (olog and half-troll 0.9, troll 0.8).
 
 | Race | Unique clips (CMU take) |
 | --- | --- |
@@ -69,7 +69,7 @@ node tools/anim-viewer/ual_to_bvh.js "Universal Animation Library[Standard]/Unre
 | troll | bear walk (54_02), dancing bear taunt (55_12), zombie lumber (104_41), bear charge (79_45), tiger swipes (79_63), heavy box lift (79_25), get up face down (140_01), limp (77_19), bent walk (136_01), panther prowl (80_59) |
 | olog | strong-man walk (137_42) and idle (137_41), flexing war cry (79_94), weight lifting (79_93), boxing (80_10), march (142_11), front kicks (144_05), zombie walk (120_22), arguing order (80_48), gorilla charge (80_49) |
 | half_troll | drunk walk (137_16), clumsy walk (142_02), wild-arms walk (132_54), zombie march (20_08), boxing (14_01), punches (143_23), get up from the side (140_03), duck-footed walk (132_14), dodge (77_09), arm blocks (144_07) |
-| man | marching (138_01), soldiers march (21_06), swordplay (02_07, 02_08), wave / direct traffic (13_26), confident walk (82_09), sad walk (82_10), ready stance (77_03), waiting (137_32), punch / strike (02_05) |
+| man | marching (138_01), soldiers march (21_06), swordplay (02_07, 02_08, 02_09), wave / direct traffic (13_26), confident walk (82_09), ready stance (77_03), waiting (137_32), punch / strike (02_05), two-handed heavy swing (124_07), low sweep (64_01), back off, feint and attack (76_02), back off and punch (76_01), spear lunges (144_11), javelin throw (111_33), overhead strike (22_20) |
 | elf | graceful walk (137_24), bow draw and shot (79_86), roundhouse kick (135_07), side kick (135_11), knife-hand block (135_10), lunge punch (135_09), low block (135_05), sneaking (139_29), wave (143_25), jumps, kicks and punches (86_01) |
 | dwarf | chopping wood (79_01, 80_71), hammering (62_07, 62_08), digging a hole (80_05), marching (132_37), sweeping (80_19), punch combo (144_13), arm blocks (144_26), cheering (79_69) |
 | hobbit | sneaking (139_31), quick little steps (136_31), planting (79_26), raking (79_87), crouched walk (136_09), creeping walk (77_29), scared (79_73), old walk (137_33), ducking (139_09), fishing (79_34) |

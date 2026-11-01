@@ -116,7 +116,7 @@
     }) },
   };
 
-  // 10 unique CMU takes per race (no take is used by two races). Keys are spec-style names outside the minimum sets;
+  // Unique CMU takes per race (no take is used by two races): 10 each, men 17 (extra attacks). Keys are spec-style names outside the minimum sets;
   // cmu_import.py holds the cut window of each take. Heavy races play them slower, like their UAL clips.
   const cmu = (src, note, extra) => Object.assign({ from: 'cmu', src, note }, extra || {});
   const UNIQUE = {
@@ -175,10 +175,17 @@
       'attack.sword.duel.2': cmu('02_08', 'swordplay'),
       'emote.wave.2': cmu('13_26', 'directs traffic, waves'),
       'move.walk.confident': cmu('82_09', 'confident walk'),
-      'move.walk.sad': cmu('82_10', 'sad walk'),
       'move.idle.ready': cmu('77_03', 'ready stance'),
       'move.idle.wait': cmu('137_32', 'old man waiting'),
       'attack.unarmed.strike': cmu('02_05', 'punch / strike'),
+      'attack.sword.duel.3': cmu('02_09', 'swordplay'),
+      'attack.swing.heavy': cmu('124_07', 'two-handed heavy swing (baseball swing): axes, great swords'),
+      'attack.swing.low': cmu('64_01', 'two-handed low sweep (golf swing)'),
+      'attack.feint': cmu('76_02', 'backs off, feints a few times, then attacks'),
+      'attack.unarmed.counter': cmu('76_01', 'backs off, then punches'),
+      'attack.lunge': cmu('144_11', 'lunges: spear-thrust footwork'),
+      'attack.throw.2': cmu('111_33', 'overarm throw: javelin or stone'),
+      'attack.overhead': cmu('22_20', 'raises a stool overhead and threatens to strike'),
     },
     elf: {
       'move.walk.graceful': cmu('137_24', 'graceful walk'),

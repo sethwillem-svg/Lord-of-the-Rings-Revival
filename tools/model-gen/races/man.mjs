@@ -10,7 +10,7 @@ export const MAN = {
   depth: [4, 5],
   arm: [11, 12],
   armThick: [3, 4],
-  legThick: [3, 4],
+  legThick: [3, 3],   // slim: armour adds the bulk later
   skin: ['#f1d2b6', '#e3b48f', '#c99068', '#a8714c', '#7d5236', '#5a3a26'],
   hair: ['#1c1a18', '#3b2a1e', '#5a3d27', '#7a5232', '#8e4a2a', '#b08a52', '#d2b47a', '#8c8a86'],
   eye: ['#3a5a7a', '#4a6a3a', '#5a3d27', '#2a2622'],

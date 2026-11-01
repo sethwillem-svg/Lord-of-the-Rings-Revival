@@ -85,3 +85,18 @@ test('a long beard groups its cubes for the low-detail copy', () => {
   const group = asm.cubes.filter((c) => c.lodGroup === 'beard').map((c) => c.name).sort();
   assert.deepEqual(group, ['beard_chin', 'beard_jaw', 'beard_tip']);
 });
+
+test('trousers stay slim: no leg cube is wider than its thigh, legs are 3 px', () => {
+  for (let s = 1; s <= 50; s++) {
+    const { body, asm, rng } = fresh(s);
+    addMan(asm, body, rng);
+    assert.equal(body.legThick, 3, `seed ${s}`);
+    for (const k of ['r', 'l']) {
+      const thigh = asm.get(`thigh_${k}`);
+      const side = k === 'r' ? 'right' : 'left';
+      for (const c of asm.cubes.filter((x) => x.bone === `${side}_leg` || x.bone === `${side}_shin`)) {
+        assert.ok(c.from[0] >= thigh.from[0] && c.to[0] <= thigh.to[0], `seed ${s}: ${c.name} is wider than the thigh`);
+      }
+    }
+  }
+});
