@@ -76,7 +76,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
   <div class="group">
    <span class="label">Clip library</span>
    <div class="row"><label for="libRace">Race</label><select id="libRace"></select></div>
-   <div class="row"><label><input id="libRequired" type="checkbox" checked> Spec minimum set only</label><button id="libLoad" class="primary">Load race set</button></div>
+   <div class="row"><label title="Untick to load every clip for the race: required, extras and its unique CMU takes"><input id="libRequired" type="checkbox" checked> Spec minimum set only</label><button id="libLoad" class="primary">Load race set</button></div>
    <div class="row"><button id="libUnique" title="The race's CMU takes that no other race uses">Load uniques</button><button id="libLocal" title="Every clip in library/local for this race">Load local</button></div>
    <div class="row"><select id="libClip" aria-label="Library clip" style="flex:1;min-width:0"></select><button id="libAdd">Add</button></div>
    <div class="note" id="libInfo"></div>
@@ -516,7 +516,9 @@ if (LIB) {
   };
   $('libLoad').onclick = () => guard(async () => {
     const race = $('libRace').value, r = LIB.races[race], req = await requiredKeys(race);
-    const keys = $('libRequired').checked && req ? req.filter((k) => r.clips[k]) : [...(req || []).filter((k) => r.clips[k]), ...Object.keys(r.clips).filter((k) => !(req || []).includes(k))];
+    // ticked: the spec minimum set; unticked: everything for the race (required, extras and its unique CMU takes)
+    const keys = $('libRequired').checked && req ? req.filter((k) => r.clips[k])
+      : [...(req || []).filter((k) => r.clips[k]), ...Object.keys(r.clips).filter((k) => !(req || []).includes(k)), ...Object.keys(r.unique || {})];
     applyRaceSettings(race);
     clips.length = 0;
     for (const k of keys) await addLibClip(race, k);

@@ -32,7 +32,7 @@ Sidebar extras: **Smoothing** (Gaussian over time, removes jitter), **Weapon** g
 `library/ual/` holds the 84 clips of Quaternius' Universal Animation Library 1 and 2 (CC0, see `library/ual/LICENSE.txt`) as BVH, and `library.js` says which clip plays each spec clip key for each race. In the sidebar's **Clip library**:
 
 1. **Race** is picked from the model's file name (`*troll*` troll, `*olog*` olog, orc/uruk/goblin orc, else man); change it to preview another race's set on any model.
-2. **Load race set** replaces the clips with that race's spec minimum set (from `prompts/<race>.txt`), sets the export rig name and the race's stance and torso tilt cap. Untick **Spec minimum set only** to add the extras too (fidgets, more attack variants, work, swim, crossbow).
+2. **Load race set** replaces the clips with that race's spec minimum set (from `prompts/<race>.txt`), sets the export rig name and the race's stance and torso tilt cap. Untick **Spec minimum set only** to load everything for the race: the extras (fidgets, more attack variants, work, swim, crossbow) and its unique CMU takes.
 3. **Load uniques** replaces the clips with the race's CMU mocap takes (below). No take is shared between races.
 4. **Load local** loads the race's clips from `library/local/` (your Unity Asset Store conversions, not in git).
 5. **Add** puts one clip from the list next to what is loaded, for example to compare a library clip with generated takes.
