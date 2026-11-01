@@ -82,6 +82,13 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
    <div class="note" id="libInfo"></div>
   </div>
   <div class="group">
+   <span class="label">Gear (generated weapons and armour)</span>
+   <div class="row"><label for="gearMain">Weapon</label><select id="gearMain" style="flex:1;min-width:0"><option value="">none</option></select></div>
+   <div class="row"><label for="gearOff">Off hand</label><select id="gearOff" style="flex:1;min-width:0"><option value="">none</option></select></div>
+   <div class="row"><label for="gearArmour">Armour</label><select id="gearArmour" style="flex:1;min-width:0"><option value="">none</option></select></div>
+   <div class="note" id="gearInfo">Gear needs the viewer served from the repo (animview).</div>
+  </div>
+  <div class="group">
    <span class="label">Retarget settings (applied to every clip)</span>
    <div class="row"><label for="tilt">Torso tilt cap</label><input id="tilt" type="range" min="10" max="90" step="1" value="90"><span class="val" id="tiltV">off</span></div>
    <div class="row"><label for="drop">Root drop</label><input id="drop" type="range" min="0" max="1" step="0.05" value="1"><span class="val" id="dropV">100%</span></div>
@@ -140,6 +147,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 <script src="retarget.js"></script>
 <script src="rigs.js"></script>
 <script src="library.js"></script>
+<script src="gear.js"></script>
 <script>
 'use strict';
 const A = window.AnimRetarget, $ = (id) => document.getElementById(id);
@@ -537,7 +545,49 @@ if (LIB) {
 
 // ---------- input ----------
 function showErr(m) { $('err').textContent = m; }
+// ---------- gear (gear.js: generated weapons and armour merged onto the model) ----------
+const gearRoot = new URL('../../src/main/art/blockbench/gear/', location.href);
+const gearCache = new Map(), gearSel = { main: null, off: null, armour: null };
+let gearIndex = null, bareModel = null;   // bareModel: the model as loaded, before gear
+const gearJson = (file) => {
+  if (!gearCache.has(file)) gearCache.set(file, fetch(new URL(file, gearRoot), { cache: 'no-store' }).then((r) => {
+    if (!r.ok) throw new Error(`${file} returned ${r.status}`); return r.json(); }));
+  return gearCache.get(file);
+};
+function withGear(bb) {
+  const items = [];
+  if (gearSel.main) items.push({ bb: gearSel.main, hand: 'right_item' });
+  if (gearSel.off) items.push({ bb: gearSel.off, hand: 'left_item' });
+  if (gearSel.armour) items.push({ bb: gearSel.armour.bb, attach: gearSel.armour.attach });
+  return items.length ? AnimGear.attachGear(bb, items) : bb;
+}
+async function loadGearIndex() {
+  try {
+    gearIndex = await (await fetch(new URL('index.json', gearRoot), { cache: 'no-store' })).json();
+  } catch (e) { return; }
+  const opt = (e) => `<option value="${e.id}">${e.name} (${(e.factions || [e.faction]).join(', ')})</option>`;
+  $('gearMain').innerHTML = '<option value="">none</option>' + gearIndex.weapons.filter((w) => w.hand === 'right_item').map(opt).join('');
+  $('gearOff').innerHTML = '<option value="">none</option>' + gearIndex.weapons.filter((w) => w.hand === 'left_item').map(opt).join('');
+  $('gearArmour').innerHTML = '<option value="">none</option>' + gearIndex.armour.map(opt).join('');
+  $('gearInfo').textContent = `${gearIndex.weapons.length} weapons, ${gearIndex.armour.length} armour sets. Weapon IK and blade angles use the chosen weapon.`;
+}
+async function chooseGear() {
+  try {
+    const find = (list, id) => list.find((e) => e.id === id);
+    const w = (id) => (id ? gearJson(find(gearIndex.weapons, id).file) : null);
+    const a = $('gearArmour').value && find(gearIndex.armour, $('gearArmour').value);
+    gearSel.main = await w($('gearMain').value);
+    gearSel.off = await w($('gearOff').value);
+    gearSel.armour = a ? { bb: await gearJson(a.file), attach: a.attach } : null;
+    if (bareModel) { setModel(bareModel.bb, bareModel.name); rebuild(); }
+  } catch (e) { showErr('Gear: ' + e.message); }
+}
+for (const id of ['gearMain', 'gearOff', 'gearArmour']) $(id).onchange = chooseGear;
+if (location.protocol.startsWith('http')) loadGearIndex();
+
 function setModel(bb, name) {
+  bareModel = { bb, name };
+  bb = withGear(bb);
   if (!bb.outliner || !bb.elements) throw new Error(name + ' is not a Blockbench project (.bbmodel).');
   model = prepareModel(bb, name);
   model.file = name.split('/').pop();
@@ -561,9 +611,15 @@ async function fillModelPicker(current) {
   const links = async (u) => [...(await (await fetch(u, { cache: 'no-store' })).text()).matchAll(/href="([^"?#]+)"/g)].map((m) => decodeURIComponent(m[1]));
   try {
     const opts = [];
-    for (const d of (await links(root)).filter((n) => n.endsWith('/') && !n.startsWith('.'))) {
-      for (const f of (await links(new URL(d, root))).filter((n) => n.endsWith('.bbmodel')))
-        opts.push({ label: `${d.slice(0, -1)} / ${f.replace('.bbmodel', '')}`, url: new URL(d + f, root).pathname });
+    const isDir = (n) => n.endsWith('/') && !n.startsWith('.') && n !== 'lod/';
+    const add = async (dir) => {
+      const names = await links(new URL(dir, root));
+      for (const f of names.filter((n) => n.endsWith('.bbmodel')))
+        opts.push({ label: `${dir.slice(0, -1).split('/').join(' / ')} / ${f.replace('.bbmodel', '')}`, url: new URL(dir + f, root).pathname });
+      return names.filter(isDir);
+    };
+    for (const d of (await links(root)).filter((n) => isDir(n) && n !== 'gear/')) {
+      for (const sub of await add(d)) await add(d + sub);   // faction folders such as man/rohan/
     }
     if (!opts.length) return;
     $('modelPick').innerHTML = '<option value="">choose a model...</option>' + opts.map((o) => `<option value="${o.url}">${o.label}</option>`).join('');

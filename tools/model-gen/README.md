@@ -70,5 +70,11 @@ silver star brooch, long hair, stubble. Gondor: White Tree on black, kempt short
 forearms, leg wraps, wild hair and long beards. Harad: black serpent on crimson, war paint, braided hair. Rohan, Gondor and Harad are kempt (grime 0); Dale
 is lightly lived-in, the Dunedain travel-worn and Dunland dirty. Add a faction by adding a palette file.
 
+**Gear:** `node tools/model-gen/build.mjs gear` writes 16 weapons (`gear/weapons.mjs`), six faction armour sets
+(`gear/armour.mjs`), `gear/index.json` and `gear/preview.png` into `src/main/art/blockbench/gear/`. Weapons follow
+the spec's convention: root bone `weapon` pivoted at the grip, +Y to the striking end, -Z the edge, real-world
+scale. Armour groups are the anchor bones, sized to the largest man; a test checks that no main body cube of 60
+men pokes through at rest. The viewer's Gear panel shows them on any man.
+
 **Later:** elves and dwarves are new race tables; faction clothing parts (different cuts per faction) come
 with the gear parts.

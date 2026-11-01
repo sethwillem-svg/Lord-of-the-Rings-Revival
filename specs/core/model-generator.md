@@ -76,6 +76,10 @@ is moved onto the anchor bone, then an offset, rotation and scale from data are 
 | Texture | own 64 x 64 sheet, colour slots from the faction palette (metal, dark metal, wood, leather, cloth, trim, emblem, string) |
 | Index | `gear/index.json` lists every item: id, name, hand, kind, factions, length, grip and tip points; the viewer reads it, and in-game display transforms will be derived from it |
 
+**Open question for the maintainer:** rendering-animation 5b puts `*_boot_armor` under `*_leg` (the thigh), so
+greaves on it would not bend with the knee. The viewer attaches boot armour to `*_shin` for now; the rig spec
+should probably move `*_boot_armor` under `*_shin`.
+
 **Armour convention:** one `.bbmodel` per faction in `gear/armour/`, groups named after the anchor bones
 (`head_armor`, `chest_armor`, `*_arm_armor`, `*_leg_armor`, `*_boot_armor`, `cape`); each group's pivot is that
 anchor's pivot on the race's largest body, and the viewer moves each group onto the loaded man's anchor.

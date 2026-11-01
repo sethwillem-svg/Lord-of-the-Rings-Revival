@@ -91,6 +91,10 @@ blender -b -P tools/anim-viewer/fbx_to_bvh.py -- ~/Downloads/SomePack --race orc
 
 Each animation take becomes `library/local/orc.<take>.bvh` (Y up, joints renamed to the Mixamo names the retargeter reads; Mixamo, Unity humanoid, 3ds Max Biped and Unreal naming are understood). Rename a file to `orc.<clip key>.bvh` to give it a spec key; files without a race prefix show for every race. BVH files can go through the same script to rename their joints. Check each pack's licence before baking its clips into the mod: whether animations retargeted into a shipped open-source mod count as redistribution is the pack author's call.
 
+## Gear: generated weapons and armour
+
+The **Gear** panel merges weapons and armour from `src/main/art/blockbench/gear/` (built by `node tools/model-gen/build.mjs gear`, listed in `gear/index.json`) onto the loaded model with `gear.js`: **Weapon** goes on `right_item` (grip at the bone), **Off hand** (shields, bows) on `left_item`, **Armour** puts each faction set's pieces on the anchor bones (boot armour on the shin, so greaves bend with the knee). Retargeting, weapon IK, blade angles and edge-first then use the real weapon. Needs the viewer served from the repo (`animview`). The model picker also lists the faction men in `man/<faction>/`.
+
 ## Generate straight into the viewer
 
 `kimodo_batch.py` generates clips on the Kimodo Hugging Face Space and saves the BVH files into a folder; the viewer's **Watch folder** picks each one up as it lands, so nothing has to be uploaded by hand.
