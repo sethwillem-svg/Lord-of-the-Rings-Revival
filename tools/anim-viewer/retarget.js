@@ -326,10 +326,18 @@
    */
   function retarget(bvh, rig, map, opts) {
     opts = Object.assign({}, DEFAULTS, opts || {});
+    // Source skeletons: Kimodo SOMA names, or Mixamo (prefix like "mixamorig:" ignored), where the thigh is
+    // LeftUpLeg and LeftLeg is the shin. Joints are looked up by SOMA role names below.
+    const byName = {};
+    bvh.names.forEach((n, i) => { const k = n.replace(/^[^:]*:/, ''); if (!(k in byName)) byName[k] = i; });
+    const ALIAS = 'LeftUpLeg' in byName
+      ? { LeftLeg: 'LeftUpLeg', RightLeg: 'RightUpLeg', LeftShin: 'LeftLeg', RightShin: 'RightLeg', HeadEnd: 'HeadTop_End', Neck1: 'Neck' }
+      : {};
+    const has = (n) => (ALIAS[n] || n) in byName;
     const P = bvhFK(bvh), F = bvh.frames, J = (n) => {
       if (opts.mirror) n = n.replace(/^Left/, '#').replace(/^Right/, 'Left').replace(/^#/, 'Right');
-      const j = bvh.idx[n];
-      if (j === undefined) throw new Error('BVH has no joint ' + n);
+      const j = byName[ALIAS[n] || n];
+      if (j === undefined) throw new Error('BVH has no joint ' + n + (ALIAS[n] ? ` (${ALIAS[n]})` : ''));
       return j;
     };
     const g = (f, n) => P[f][J(n)];
@@ -374,6 +382,7 @@
       if (pts.length) tipLocal = sub(pts.reduce((a, p) => (len(sub(p, o0)) > len(sub(a, o0)) ? p : a)), o0);
     }
 
+    const hasEyes = has('LeftEye') && has('RightEye'), hasHeadEnd = has('HeadEnd');
     const frames = [];
     const hips0 = g(0, 'Hips');
     for (let f = 0; f < F; f++) {
@@ -383,7 +392,11 @@
       upper = capTilt(upper, opts.torsoTiltCap);
       W[iUpper] = upper;
       if (iPelvis >= 0) W[iPelvis] = frameFrom(o(sub(g(f, 'LeftLeg'), g(f, 'RightLeg'))), o(sub(g(f, 'Spine2'), g(f, 'Hips'))));
-      if (iHead >= 0) W[iHead] = frameFrom(o(sub(g(f, 'LeftEye'), g(f, 'RightEye'))), o(sub(g(f, 'HeadEnd'), g(f, 'Head'))));
+      if (iHead >= 0) {   // eyes give the head's side axis; without them (Mixamo) use the shoulder line
+        const side = hasEyes ? sub(g(f, 'LeftEye'), g(f, 'RightEye')) : sub(g(f, 'LeftArm'), g(f, 'RightArm'));
+        const up = hasHeadEnd ? sub(g(f, 'HeadEnd'), g(f, 'Head')) : sub(g(f, 'Head'), g(f, 'Neck1'));
+        W[iHead] = frameFrom(o(side), o(up));
+      }
       for (const l of limbs) {
         const a = g(f, l.j[0]), b = g(f, l.j[1]), c = g(f, l.j[2]);
         const def = l.kind === 'arm' ? col(upper, 0) : (iPelvis >= 0 ? col(W[iPelvis], 0) : [1, 0, 0]);

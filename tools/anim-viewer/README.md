@@ -83,7 +83,7 @@ It installs Kimodo (the `hugging-apps/kimodo-motion` app) and HY-Motion in separ
 
 ## Input
 
-- **BVH**: Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces) or HY-Motion output converted by `hymotion_to_bvh.py`, Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
+- **BVH**: Kimodo SOMA skeleton (the 78-joint BVH from the Kimodo Hugging Face Spaces), HY-Motion output converted by `hymotion_to_bvh.py`, or a Mixamo-style skeleton (`mixamorig:` prefixes are ignored; `LeftUpLeg` is the thigh, and without eye joints the head takes its side axis from the shoulders), for example the BVH export of the [HY-Motion Mixamo Space](https://huggingface.co/spaces/Yosun/hy-motion-mixamo). Y up, centimetres. Joint names used: `Hips`, `Spine2`, `LeftArm`/`RightArm`, `LeftForeArm`, `LeftHand`, `LeftLeg`, `LeftShin`, `LeftFoot`, `LeftToeBase`, `Head`, `HeadEnd`, `LeftEye` and the right-side equivalents.
 - **Model**: any `.bbmodel` whose bones fit a rig map in `rigs.js`. Embedded textures are used; models with external textures render grey.
 
 ## Rig maps (`rigs.js`)
