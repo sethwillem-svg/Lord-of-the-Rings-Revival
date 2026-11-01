@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Unattended renderer benchmark for development (with -Dlotr_revival.profile: first a minute's wait, then a Spark profile of vanilla and of pulse) (-Dlotr_revival.autotest=COUNT; run it with addon/bench.sh). Creates a flat
+ * Unattended renderer benchmark for development (with -Dlotr_revival.profile: a 30 s break, then a minute each of vanilla and pulse under Spark, instead of the measured rounds) (-Dlotr_revival.autotest=COUNT; run it with addon/bench.sh). Creates a flat
  * creative world at render distance 12, spawns COUNT NPCs, waits until they exist and the world has finished building, then
  * measures the renderers in the order theirs, vanilla, pulse, then the same reversed (the mirrored order cancels slow drift),
  * each 4 s settle + 8 s measured by the clock. Writes run/bench_results.txt and a screenshot per renderer, then quits.
@@ -45,11 +45,12 @@ public final class AutoBench {
 
     private enum Stage { MENU, SETUP, WAIT_NPCS, WAIT_WORLD, RUN, PROFILE, DONE }
 
-    /** Before the measured rounds (bench.sh passes -Pprofile): wait 90 s for the world to settle, Spark-profile vanilla for a
-     *  minute, stop, switch to pulse, Spark-profile pulse for a minute, stop. Spark uploads each and prints the link. */
+    /** Profile run (bench.sh's default, -Pprofile): instead of the measured rounds, a 30 s break, then a minute of vanilla and a
+     *  minute of pulse, each under Spark's client profiler (Java sampler, stopped and uploaded by Spark after 60 s), with the
+     *  frame times of each minute written to bench_results.txt. */
     private static final boolean PROFILE = Boolean.getBoolean("lotr_revival.profile");
     private static final Mode[] PROFILED = {Mode.VANILLA, Mode.PULSE};
-    private static final long PROFILE_WAIT_NS = 90_000_000_000L, PROFILE_NS = 60_000_000_000L, PROFILE_GAP_NS = 3_000_000_000L,
+    private static final long PROFILE_WAIT_NS = 30_000_000_000L, PROFILE_SETTLE_NS = 3_000_000_000L, PROFILE_NS = 60_000_000_000L,
             PROFILE_UPLOAD_NS = 15_000_000_000L;
     private static int profilePhase = -1;
     private static long profileStart;
@@ -110,6 +111,7 @@ public final class AutoBench {
                     boolean spark = PROFILE && net.neoforged.fml.ModList.get().isLoaded("spark");
                     if (PROFILE && !spark) LOG.info("[lotr_revival bench] spark is not loaded, no profiles");
                     next(spark ? Stage.PROFILE : Stage.RUN, now);
+                    if (PROFILE && !spark) waitNote += "Spark is not loaded, so this was a measuring run; ";
                 }
             }
             case RUN -> run(mc, now);
@@ -159,8 +161,8 @@ public final class AutoBench {
         }
     }
 
-    /** 90 s wait, then per renderer: start Spark, stop it after a minute, switch to the next renderer and start again a few
-     *  seconds later (Spark is uploading the previous profile). After the last one, wait for its upload, then measure. */
+    /** 30 s break, then per renderer: settle 3 s, start Spark for 60 s (it stops and uploads by itself), record that minute's
+     *  frame times, give the upload 15 s. After the last renderer, write the results and quit. */
     private static void profile(Minecraft mc, long now) {
         if (profilePhase < 0) {
             if (now - stageStart < PROFILE_WAIT_NS) return;
@@ -168,18 +170,29 @@ public final class AutoBench {
             return;
         }
         long t = now - profileStart;
-        if (!profiling && t >= (profilePhase == 0 ? 0 : PROFILE_GAP_NS)) {
+        if (!profiling && t >= PROFILE_SETTLE_NS) {
             profiling = true;
-            profileStart = now;
-            spark("start", "sparkc profiler start");
-        } else if (profiling && !stopped && t >= PROFILE_NS) {
+            FrameStats.reset();
+            spark("start", "sparkc profiler start --timeout " + PROFILE_NS / 1_000_000_000L + " --force-java-sampler");
+            Screenshot.grab(mc.gameDirectory, "bench_" + PROFILED[profilePhase].id() + ".png", mc.getMainRenderTarget(), c -> { });
+        } else if (profiling && !stopped && t >= PROFILE_SETTLE_NS + PROFILE_NS) {
             stopped = true;
-            spark("stop", "sparkc profiler stop");
+            phase = profilePhase;   // record() reads ORDER[phase]; profile phases use their own order
+            recordProfiled();
+        } else if (stopped && t >= PROFILE_SETTLE_NS + PROFILE_NS + PROFILE_UPLOAD_NS) {
             if (profilePhase + 1 < PROFILED.length) startProfilePhase(profilePhase + 1, now);
-            else profileStart = now;
-        } else if (stopped && profilePhase == PROFILED.length - 1 && t >= PROFILE_UPLOAD_NS) {
-            next(Stage.RUN, now);
+            else finish(mc);
         }
+    }
+
+    private static void recordProfiled() {
+        double[] s = FrameStats.window(PROFILE_NS);
+        Mode m = PROFILED[profilePhase];
+        BY_MODE.computeIfAbsent(m, k -> new ArrayList<>()).add(s);
+        String line = String.format("%-12s %7.2f ms  %5.1f fps  1%% low %5.1f fps  (%d frames over a minute under Spark, %d NPCs, %d in view)",
+                m.id(), s[0], s[1], s[2], (int) s[3], FrameStats.npcs(), FrameStats.npcsInView());
+        RESULTS.add(line);
+        LOG.info("[lotr_revival bench] {}", line);
     }
 
     private static void startProfilePhase(int i, long now) {
@@ -212,10 +225,11 @@ public final class AutoBench {
         out.add("GPU: " + GlUtil.getRenderer() + " (" + GlUtil.getVendor() + ")");
         out.add("CPU: " + GlUtil.getCpuInfo() + ", " + Runtime.getRuntime().availableProcessors() + " threads");
         out.add("Window: " + mc.getWindow().getWidth() + "x" + mc.getWindow().getHeight() + ", render distance " + RENDER_DISTANCE);
-        out.add("NPCs requested: " + COUNT + ". Each renderer: 4 s settle, 8 s measured; order theirs, vanilla, pulse, then reversed.");
+        out.add(PROFILE ? "NPCs requested: " + COUNT + ". Profile run: 30 s break, then a minute each of vanilla and pulse under Spark (frame times include Spark's overhead)."
+                : "NPCs requested: " + COUNT + ". Each renderer: 4 s settle, 8 s measured; order theirs, vanilla, pulse, then reversed.");
         if (!waitNote.isEmpty()) out.add("Note: " + waitNote);
         out.add("");
-        out.add("Average of both rounds:");
+        out.add(PROFILE ? "Frame times:" : "Average of both rounds:");
         for (Mode m : Mode.values()) {
             List<double[]> r = BY_MODE.getOrDefault(m, List.of());
             if (r.isEmpty()) continue;

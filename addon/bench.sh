@@ -2,18 +2,19 @@
 # Renderer benchmark, unattended: builds the add-on, starts Minecraft with Middle-earth + PulseLib, creates a flat test
 # world, spawns NPCs, measures each renderer (theirs, vanilla, pulse), saves screenshots, quits and prints the results.
 #
-#   ./addon/bench.sh            200 NPCs
-#   ./addon/bench.sh 400        another count
+#   ./addon/bench.sh              200 NPCs: 30 s break, then a minute of vanilla and a minute of pulse under Spark (links printed)
+#   ./addon/bench.sh 400          another count
+#   ./addon/bench.sh 200 measure  the timed rounds instead (theirs, vanilla, pulse, then reversed; no Spark)
 #   ME_JAR=/path/to.jar ./addon/bench.sh   if your Middle-earth jar is not in ~/middle-earth
 #
 # Results: addon/run/bench_results.txt   Screenshots: addon/run/screenshots/bench_*.png
 # The test world (addon/run/saves/lotr_bench) is kept and reopened directly next time; delete it to start fresh.
 # Uses the NVIDIA GPU when the laptop has one (GPU=intel to force the Intel one).
-# Before measuring, it waits 90 s, profiles vanilla then pulse with Spark (a minute each) and prints the links (PROFILE_RUN=0 to skip).
-# Don't touch the game window while it runs (about 6 minutes after the game has loaded).
+# Don't touch the game window while it runs (about 3 minutes after the game has loaded).
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 COUNT="${1:-200}"
+RUN="${2:-profile}"   # profile (default): 30 s break, a minute of vanilla and a minute of pulse under Spark; measure: the timed rounds
 ME_JAR="${ME_JAR:-$(ls "$HOME"/middle-earth/middle-earth/build/libs/*.jar 2>/dev/null | grep -v -- '-sources' | head -1 || true)}"
 if [ -z "$ME_JAR" ] || [ ! -f "$ME_JAR" ]; then
   echo "No Middle-earth jar found. Build it first:"
@@ -44,7 +45,7 @@ echo "Running... (first launch downloads Minecraft and takes a few minutes; full
 QUICK=()
 [ -d run/saves/lotr_bench ] && QUICK=(-PquickPlay=lotr_bench)   # skip the menus and world generation after the first run
 PROFILE=(-Pprofile)
-[ "${PROFILE_RUN:-1}" = "0" ] && PROFILE=()   # PROFILE_RUN=0 ./addon/bench.sh skips the Spark profiles (saves about a minute)
+[ "$RUN" = "measure" ] && PROFILE=()
 ./gradlew runClient -PmeJar="$ME_JAR" -Pautotest="$COUNT" "${QUICK[@]}" "${PROFILE[@]}" --console=plain > run/bench_output.log 2>&1 || true
 echo
 if [ -f run/bench_results.txt ]; then
@@ -57,7 +58,7 @@ if [ -f run/bench_results.txt ]; then
     LINKS=$(awk '/spark profile of .* start / {sub(/.*spark profile of /,""); m[++nm]=$1} match($0,/https?:\/\/spark\.lucko\.me\/[A-Za-z0-9]+/) {l[++nl]=substr($0,RSTART,RLENGTH)} END {for (i=1;i<=nl;i++) print "  " (i<=nm ? m[i] : "profile " i) ": " l[i]}' run/logs/latest.log)
     if [ -n "$LINKS" ]; then echo "$LINKS"; else
       echo "  (no links found; what Spark said:)"
-      grep -i "spark profile of\|\[⚡\]\|spark\.lucko\|sparkc\|bytebin" run/logs/latest.log | grep -v "Loading\|spark 1.10" | tail -n 20 | cut -c1-250
+      grep -i "spark" run/logs/latest.log | grep -v "Loading\|spark 1.10\|Found mod\|mod file" | tail -n 25 | cut -c1-250
     fi
   fi
   # how each Middle-earth armour piece was recorded for PulseLib (for debugging the pulse renderer)
