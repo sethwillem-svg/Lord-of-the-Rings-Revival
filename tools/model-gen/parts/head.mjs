@@ -11,7 +11,7 @@ export const EARS = ['small', 'large'];
 export function headGeometry(body, shape) {
   const top = body.legs + body.torso;
   const hh = body.head - 1;
-  const hw = shape === 'long' ? body.head - 2 : shape === 'broad' ? body.head : body.head - 1;
+  const hw = body.head - 1;   // one skull size: the shape is painted (faceGrid), so helmets fit every man
   const hd = body.head - 1;
   const sb = top + 1, st = sb + hh;
   const eye = Math.floor(hh / 2);
@@ -21,7 +21,7 @@ export function headGeometry(body, shape) {
 const FACE = { w: ['skin', 0], e: ['eye', 1], b: ['hair', 2], m: ['skin', 3], s: ['skin', 2], p: ['paint', 1] };
 
 /** Face grid for the skull's front: one string per row, '.' leaves the skin. */
-export function faceGrid(g, brow, paint = false) {
+export function faceGrid(g, brow, paint = false, shape = 'square') {
   const rows = Array.from({ length: g.hh }, () => Array(g.hw).fill('.'));
   const margin = g.hw >= 7 ? 1 : 0;
   const L = margin, R = g.hw - margin - 2;           // left eye columns L..L+1, right eye R..R+1
@@ -35,6 +35,13 @@ export function faceGrid(g, brow, paint = false) {
   if (paint) {   // war paint: a stripe down each cheek under the eyes and a mark on the brow
     for (const r of [g.eye + 1, g.eye + 2]) if (r < g.mouth) { rows[r][L] = 'p'; rows[r][R + 1] = 'p'; }
     if (g.eye - 2 >= 2) rows[g.eye - 2][Math.floor(g.hw / 2)] = 'p';
+  }
+  if (shape === 'long') {   // hollow cheeks: shade down the sides of the face
+    for (let r = g.eye + 1; r < g.mouth; r++) { rows[r][0] = 's'; rows[r][g.hw - 1] = 's'; }
+  }
+  if (shape === 'broad') {   // heavy jaw: shade the jaw corners
+    for (const r of [g.mouth, g.hh - 1]) { rows[r][0] = 's'; rows[r][g.hw - 1] = 's'; }
+    rows[g.hh - 1][1] = 's'; rows[g.hh - 1][g.hw - 2] = 's';
   }
   const mw = g.hw % 2 ? 3 : 2, m0 = (g.hw - mw) / 2;
   for (let x = m0; x < m0 + mw; x++) rows[g.mouth][x] = 'm';
@@ -50,7 +57,7 @@ export function addHead(asm, body, rng, choice = {}) {
   asm.meta.head = { ...g, shape, brow };
   const { hw, hd, sb, st, fz } = g;
   asm.add({ name: 'skull', bone: 'head', from: [-hw / 2, sb, -hd / 2], to: [hw / 2, st, hd / 2],
-    slot: 'skin', style: 'skin', stamps: { north: faceGrid(g, brow, (asm.meta.outfit || {}).face === 'warpaint') } });
+    slot: 'skin', style: 'skin', stamps: { north: faceGrid(g, brow, (asm.meta.outfit || {}).face === 'warpaint', shape) } });
 
   const [ny0] = g.rowY(g.eye + 1), [, ny1] = g.rowY(g.eye);
   const noses = {

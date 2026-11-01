@@ -66,3 +66,13 @@ test('colours come from the race lists', () => {
   assert.ok(MAN.hair.includes(b.colours.hair));
   assert.ok(MAN.eye.includes(b.colours.eye));
 });
+
+test('every man has the standard body: 32 px, the same proportions for every seed', () => {
+  const ref = solveBody(MAN, makeRng(1));
+  assert.equal(ref.height, 32);
+  for (let s = 1; s <= 100; s++) {
+    const b = solveBody(MAN, makeRng(s));
+    for (const k of ['height', 'legs', 'torso', 'head', 'shoulders', 'depth', 'arm', 'armThick', 'legThick']) assert.equal(b[k], ref[k], `seed ${s} ${k}`);
+    assert.deepEqual(b.pivots, ref.pivots, `seed ${s} pivots`);
+  }
+});

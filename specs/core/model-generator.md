@@ -23,9 +23,9 @@ None in game yet. The output is source models under `src/main/art/blockbench/` (
 | --- | --- | --- |
 | Bones | Exactly the biped list in rendering-animation 5b | `root > body > torso > head > head_armor`, arms to `*_hand > *_item`, `*_arm_armor`, `chest_armor`, `cape`, legs with `*_shin`, `*_leg_armor`, `*_boot_armor` |
 | Anchor bones | No cubes | `*_armor`, `*_item`, `cape` (cape stays empty in the PoC) |
-| Height | 30 to 34 px | 16 px = 1 block; hitbox is 0.6 x 1.8 blocks (`specs/npc/npc-base.md`), 1.8 blocks = 28.8 px, so heads may top the hitbox slightly like the player model |
-| Build | slim to stocky | Seed picks shoulder width, hip width, limb thickness and head size within the race table's ranges |
-| Head parts | 3 head shapes, 4 noses, 3 brows, 2 ears | Faces (eyes, brows, mouth) are pixel stamps written as text grids in our code |
+| Height | 32 px, every man | Standard body since 2026-11-01 (maintainer): legs 12, torso 11, head 9 (8 px skull + 1 px collar gap), shoulders 8, depth 4, arms 12 long and 3 thick, legs 3 thick. Armour fits every man; variety comes from faces, hair, beards, colours and outfits |
+| Build | one standard build | The race table keeps [min, max] ranges so other races can vary; men use equal bounds |
+| Head parts | 3 head shapes (painted: plain, hollow cheeks, heavy jaw), 4 noses, 3 brows, 2 ears | Faces (eyes, brows, mouth) are pixel stamps written as text grids in our code; one skull size |
 | Hair | about 6 styles | Includes bald and long |
 | Beard | about 5 styles | Includes none |
 | Clothes | tunic (belted), trousers, boots | One shape each in the PoC; variety comes from proportions and colours |

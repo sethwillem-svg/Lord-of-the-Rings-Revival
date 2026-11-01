@@ -116,3 +116,14 @@ test('hands have no separate finger cubes', () => {
   addMan(asm, body, rng);
   assert.ok(!asm.cubes.some((c) => c.name.startsWith('fingers_')));
 });
+
+test('head shapes change the face painting, not the skull size', () => {
+  const skulls = head.STYLES.map((shape) => {
+    const { body, asm, rng } = fresh(3);
+    head.addHead(asm, body, rng.fork('head'), { head: shape });
+    const c = asm.get('skull');
+    return { size: c.to.map((v, a) => v - c.from[a]), face: c.stamps.north.grid.join('/') };
+  });
+  for (const s of skulls) assert.deepEqual(s.size, skulls[0].size);
+  assert.equal(new Set(skulls.map((s) => s.face)).size, head.STYLES.length, 'each shape paints the face differently');
+});
