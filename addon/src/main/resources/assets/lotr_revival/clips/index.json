@@ -12,6 +12,7 @@
   "attack_unarmed_2",
   "guard",
   "shield_brace",
+  "spear_brace",
   "march"
  ],
  "elf": [
@@ -27,6 +28,7 @@
   "attack_unarmed_2",
   "guard",
   "shield_brace",
+  "spear_brace",
   "march"
  ],
  "dwarf": [
@@ -42,6 +44,7 @@
   "attack_unarmed_2",
   "guard",
   "shield_brace",
+  "spear_brace",
   "march"
  ],
  "hobbit": [
@@ -57,6 +60,7 @@
   "attack_unarmed_2",
   "guard",
   "shield_brace",
+  "spear_brace",
   "march"
  ],
  "orc": [
@@ -73,6 +77,7 @@
   "attack_unarmed_2",
   "guard",
   "shield_brace",
+  "spear_brace",
   "march"
  ]
 }

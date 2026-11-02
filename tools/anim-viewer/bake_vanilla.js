@@ -21,9 +21,12 @@
     attack_sword_1: 'attack.sword.1', attack_sword_2: 'attack.sword.2', attack_sword_3: 'attack.sword.3', attack_sword_4: 'attack.sword.4',
     attack_unarmed_1: 'attack.unarmed.1', attack_unarmed_2: 'attack.unarmed.2',
     // formation stances (specs/addon/hiring-reputation.md)
-    guard: 'hold.sword', shield_brace: 'defend.brace.shield', march: 'move.march',
+    guard: 'hold.sword', shield_brace: 'defend.brace.shield', spear_brace: 'hold.sword', march: 'move.march',
   };
-  const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'march']);
+  const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'spear_brace', 'march']);
+  /** Slots that hold some parts still after baking: part -> vanilla rotation (radians, x y z). No library clip braces a spear,
+   *  so spear_brace is the guard stance with the spear arm pointed forward. */
+  const HOLD = { spear_brace: { right_arm: [-0.6, 0, 0] } };
   const PARTS = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'];
   /** Vanilla biped boxes in each part's own space (HumanoidModel.createMesh). */
   const BOXES = {
@@ -189,8 +192,18 @@
   }
 
   function clipData(A, rig, clip, slot) {
-    return { dt: +clip.dt.toFixed(6), length: +clip.length.toFixed(4), loop: LOOPS.has(slot), hit: +clip.hitTime.toFixed(4),
-             parts: bake(A, rig, clip) };
+    const parts = bake(A, rig, clip);
+    for (const [name, [x, y, z]] of Object.entries(HOLD[slot] || {})) {
+      const q = eulerQuat(x, y, z), P = parts[name];
+      for (let i = 0; i < P.q.length; i += 4) P.q.splice(i, 4, ...q);
+    }
+    return { dt: +clip.dt.toFixed(6), length: +clip.length.toFixed(4), loop: LOOPS.has(slot), hit: +clip.hitTime.toFixed(4), parts };
+  }
+
+  /** [x y z w] for a vanilla ModelPart rotation (applied z, then y, then x: the inverse of NpcAnimator.set). */
+  function eulerQuat(x, y, z) {
+    const cx = Math.cos(x / 2), sx = Math.sin(x / 2), cy = Math.cos(y / 2), sy = Math.sin(y / 2), cz = Math.cos(z / 2), sz = Math.sin(z / 2);
+    return [sx * cy * cz - cx * sy * sz, cx * sy * cz + sx * cy * sz, cx * cy * sz - sx * sy * cz, cx * cy * cz + sx * sy * sz].map((v) => +v.toFixed(6));
   }
 
   /** Pose of frame f: {part: {q, p, R}}. */
@@ -252,7 +265,7 @@
     return Object.entries(checks).filter(([, c]) => c.frames.length).map(([id, c]) => ({ id, label: c.label, frames: c.frames, share: c.frames.length / n }));
   }
 
-  const api = { RACES, SLOTS, LOOPS, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
+  const api = { RACES, SLOTS, LOOPS, HOLD, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.VanillaBake = api;
 
