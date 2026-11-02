@@ -1,22 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.client.render;
 
-import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.BowItem;
-import net.minecraft.world.item.CrossbowItem;
+import io.github.sethwillemsvg.lotrrevival.combat.WeaponClass;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ShieldItem;
-import net.minecraft.world.item.SwordItem;
-import net.minecraft.world.item.TridentItem;
-import net.sevenstars.middleearth.item.items.HeldBannerItem;
-import net.sevenstars.middleearth.item.items.weapons.CustomAxeWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.CustomDaggerWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.CustomLongswordWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.CustomSpearWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.CustomSwordWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.ReachWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.ranged.CustomBowWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.ranged.CustomCrossbowWeaponItem;
-import net.sevenstars.middleearth.item.items.weapons.ranged.CustomLongbowWeaponItem;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -40,25 +25,14 @@ public final class WeaponGrip {
     private static final Vector3f SPEAR_DIR = new Vector3f(0, -1.2f, -1).normalize();
     private static final Vector3f UP_FORWARD = new Vector3f(0, -1, -1);
 
-    /** The weapon class of a held item (dagger, sword, longsword, axe, spear, bow, longbow, crossbow, shield, banner), or null. */
+    /** The weapon class of a held item (combat.WeaponClass). */
     @Nullable
     public static String classOf(ItemStack stack) {
-        var item = stack.getItem();
-        if (item instanceof CustomDaggerWeaponItem) return "dagger";
-        if (item instanceof CustomLongswordWeaponItem) return "longsword";
-        if (item instanceof CustomSpearWeaponItem || item instanceof ReachWeaponItem || item instanceof TridentItem) return "spear";
-        if (item instanceof CustomAxeWeaponItem || item instanceof AxeItem) return "axe";
-        if (item instanceof CustomSwordWeaponItem || item instanceof SwordItem) return "sword";
-        if (item instanceof CustomLongbowWeaponItem) return "longbow";
-        if (item instanceof CustomCrossbowWeaponItem || item instanceof CrossbowItem) return "crossbow";
-        if (item instanceof CustomBowWeaponItem || item instanceof BowItem) return "bow";
-        if (item instanceof ShieldItem) return "shield";
-        if (item instanceof HeldBannerItem) return "banner";
-        return null;
+        return WeaponClass.of(stack);
     }
 
     private static Vector3f fist(boolean left) {
-        return new Vector3f(left ? 1 : -1, 10, -1);
+        return new Vector3f(left ? 1 : -1, 10, -2.5f);   // the front of the fist: grips sit there, not inside the arm
     }
 
     /** Scale to the class length with the grip in the fist; null for items without a length (shields, banners, others). */
@@ -93,7 +67,7 @@ public final class WeaponGrip {
         if (!spear && !shield) return null;
         Shape sh = shape(pts);
         if (spear) {
-            Vector3f a = new Vector3f(sh.axes[0]), at = new Vector3f(-1, 10, 0);
+            Vector3f a = new Vector3f(sh.axes[0]), at = new Vector3f(-4, 10, 0);   // along the outside of the forearm
             Vector3f pivot = new Vector3f(a).mul(new Vector3f(at).sub(sh.c).dot(a)).add(sh.c);   // the shaft's point nearest the fist
             if (a.dot(UP_FORWARD) < 0) a.negate();
             return place(between(a, new Vector3f(0, 1, 0)), pivot, at);
