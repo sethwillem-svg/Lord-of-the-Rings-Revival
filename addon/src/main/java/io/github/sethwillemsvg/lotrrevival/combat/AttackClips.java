@@ -10,27 +10,27 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The attack clips each race has per weapon class (attack_<class>_N in assets/lotr_revival/clips/index.json, written by
- * tools/anim-viewer/bake_vanilla.js) with their length and hit time, read from the mod jar on either side.
+ * The attack clips each race has per weapon class (attack_<class>_N) with their length and hit time, from
+ * assets/lotr_revival/geckolib/animations/entity/npc_biped_<race>.hits.json (written with the race's animation file by
+ * tools/anim-viewer/build_npc.js), read from the mod jar on either side, so server and client use one clip list and one hit.
  */
 public final class AttackClips {
     private static final Logger LOG = LogUtils.getLogger();
-    private static final String DIR = "/assets/lotr_revival/clips/";
+    private static final String DIR = "/assets/lotr_revival/geckolib/animations/entity/npc_biped_";
     /** A class without clips of its own swings like the next one in this list (then like a sword). */
     private static final Map<String, String> FALLBACK = Map.of("dagger", "sword", "longsword", "sword", "axe", "sword",
             "spear", "sword", "bow", "unarmed", "longbow", "unarmed", "crossbow", "unarmed", "shield", "unarmed", "banner", "sword");
 
     public record Clip(String slot, float length, float hit) {}
 
-    private static JsonObject index;
+    private static final Map<String, Map<String, Clip>> HITS = new ConcurrentHashMap<>();
     private static final Map<String, List<Clip>> BY_CLASS = new ConcurrentHashMap<>();
-    private static final Map<String, Optional<Clip>> CLIPS = new ConcurrentHashMap<>();
 
     private AttackClips() {}
 
@@ -38,44 +38,31 @@ public final class AttackClips {
     public static List<Clip> of(String race, @Nullable String weaponClass) {
         String cls = weaponClass == null ? "unarmed" : weaponClass;
         return BY_CLASS.computeIfAbsent(race + "/" + cls, k -> {
+            Map<String, Clip> hits = hits(race);
             for (String c = cls; c != null; c = FALLBACK.get(c)) {
                 List<Clip> found = new ArrayList<>();
-                for (int i = 1; ; i++) {
-                    Optional<Clip> clip = clip(race, "attack_" + c + "_" + i);
-                    if (clip.isEmpty()) break;
-                    found.add(clip.get());
-                }
-                if (!found.isEmpty()) return found;
+                for (int i = 1; hits.containsKey("attack_" + c + "_" + i); i++) found.add(hits.get("attack_" + c + "_" + i));
+                if (!found.isEmpty()) return List.copyOf(found);
                 if (c.equals("sword") || c.equals("unarmed")) break;
             }
             return List.of();
         });
     }
 
-    private static Optional<Clip> clip(String race, String slot) {
-        return CLIPS.computeIfAbsent(race + "/" + slot, key -> {
-            if (!listed(race, slot)) return Optional.empty();
-            try (InputStream in = AttackClips.class.getResourceAsStream(DIR + key + ".json")) {
-                if (in == null) return Optional.empty();
+    private static Map<String, Clip> hits(String race) {
+        return HITS.computeIfAbsent(race, r -> {
+            Map<String, Clip> out = new HashMap<>();
+            try (InputStream in = AttackClips.class.getResourceAsStream(DIR + r + ".hits.json")) {
+                if (in == null) return out;
                 JsonObject o = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
-                return Optional.of(new Clip(slot, o.get("length").getAsFloat(), o.has("hit") ? o.get("hit").getAsFloat() : 0f));
+                for (var e : o.entrySet()) {
+                    JsonObject c = e.getValue().getAsJsonObject();
+                    out.put(e.getKey(), new Clip(e.getKey(), c.get("length").getAsFloat(), c.get("hit").getAsFloat()));
+                }
             } catch (Exception e) {
-                LOG.warn("lotr_revival: could not read clip {}", key, e);
-                return Optional.empty();
+                LOG.warn("lotr_revival: could not read the {} hit times", r, e);
             }
+            return out;
         });
-    }
-
-    private static synchronized boolean listed(String race, String slot) {
-        if (index == null) {
-            try (InputStream in = AttackClips.class.getResourceAsStream(DIR + "index.json")) {
-                index = in == null ? new JsonObject() : JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
-            } catch (Exception e) {
-                index = new JsonObject();
-            }
-        }
-        if (!index.has(race)) return false;
-        for (var e : index.getAsJsonArray(race)) if (e.getAsString().equals(slot)) return true;
-        return false;
     }
 }
