@@ -39,7 +39,7 @@ if [ "${1:-}" = "setup" ]; then setup_commands force; exit 0; fi
 setup_commands
 
 if [ "${1:-}" = "stop" ]; then
-  pids=$(pgrep -f "http.server $PORT --bind .* --directory $REPO" || true)
+  pids=$(pgrep -f "(http.server|serve.py) $PORT --bind .* --directory $REPO" || true)
   [ -n "$pids" ] && kill $pids && echo "Viewer server stopped." || echo "No viewer server running on port $PORT."
   exit 0
 fi
@@ -57,8 +57,11 @@ fi
 mkdir -p "$REPO/clips"
 [ -f "$REPO/clips/.gitignore" ] || printf '*\n' > "$REPO/clips/.gitignore"   # keeps generated clips out of git
 
+# an older view.sh started a plain http.server, which lets the browser cache the viewer: replace it with serve.py (no cache)
+old=$(pgrep -f "http.server $PORT --bind .* --directory $REPO" || true)
+[ -n "$old" ] && kill $old && sleep 0.5
 if ! (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
-  nohup python3 -m http.server "$PORT" --bind "$BIND" --directory "$REPO" >/dev/null 2>&1 &
+  nohup python3 "$REPO/tools/anim-viewer/serve.py" "$PORT" --bind "$BIND" --directory "$REPO" >/dev/null 2>&1 &
   for _ in 1 2 3 4 5 6 7 8 9 10; do (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && break; sleep 0.3; done
 fi
 
