@@ -3,7 +3,7 @@
 - **Status:** draft for review (2026-11-02).
 - **Decisions (maintainer):**
   - Rebuild the NPC animation side the PulseLib way.
-  - Weapon-class clips come from real motion capture only (UAL and CMU), no stylised or generated clips.
+  - Clips may come from any licence-compatible source (CC0, CC-BY, MIT, Apache, LGPL; not GPL or All Rights Reserved), hand-animated or mocap (2026-11-02, replacing "real mocap only").
   - Weapon grips are tuned against real Middle-earth exports, which Claude runs in its own container.
 - **Replaces:** our own clip player (`client.anim.NpcAnimator`, baked `clips/*.json`) and the shape-guessed grips (`client.render.WeaponGrip`).
 - **Keeps:**
@@ -32,35 +32,30 @@ Weapons then sit where the animation puts them in every frame.
 - **Why Gecko:** both open and edit in Blockbench (with the GeckoLib plugin), so a clip that looks wrong can be fixed by hand, not only by code. They are plain JSON our tools write and the viewer reads. Gecko sound and particle keyframes carry over as PulseLib events.
 - **Source:** `src/main/art/blockbench/npc_biped/npc_biped.bbmodel`, exported to `.geo.json`. The loader is registered with `PModelCache.registerModelLoader(PGeckoModelLoader.INSTANCE)` in client setup.
 
-- **Bones:** a skeleton only, no mesh, at vanilla biped proportions (px, y down):
-  - `root`, `body` (chest), `waist`, `head`
-  - `right_arm` → `right_forearm` → `right_hand` → `weapon_r`
-  - `left_arm` → `left_forearm` → `left_hand` → `weapon_l`
-  - `right_leg` → `right_shin`, `left_leg` → `left_shin`
+- **Bones:** a skeleton only, no mesh, at vanilla biped proportions (px, y down), laid out like AnimationsPlus (section 2) so its clips map bone for bone:
+  - `root` → `upper` (chest and everything above the waist) and `lower` (hips)
+  - `upper` → `head`, `body`, `right_arm` → `right_elbow` → `weapon_r`, `left_arm` → `left_elbow` → `weapon_l`
+  - `lower` → `right_leg` → `right_knee`, `left_leg` → `left_knee`
 - **Pivots:** where Minecraft's parts pivot (shoulders at ±5, 2; hips at ±1.9, 12). Elbow and knee bones sit at the middle of the existing bend zones.
-- **Weapon bones:** `weapon_r` and `weapon_l` hold the grip point. A weapon's +y axis runs from the grip toward the tip, and +z is the blade's flat side.
+- **Weapon bones:** `weapon_r` and `weapon_l` sit where Minecraft's held-item layer puts the item in the fist; a clip's keyframes on them are small per-clip nudges (turn and lift), the way AnimationsPlus' item pivots and Serious Player Animations' `rightItem` work.
 - **One model per race** (`npc_biped_man` … `npc_biped_orc`): the same skeleton with that race's clips, so the race postures and preferences stay baked in.
 
-### 2. Clips: baked from real motion capture into Gecko animation JSON
+### 2. Clips: from licence-compatible animation sets, converted to Gecko animation JSON
 
-- **The exporter:** `tools/anim-viewer/bake_gecko.js` turns the existing retarget into Gecko animations (per-bone rotation and position keyframes) on those bones. It reuses bake_vanilla.js's arm hinge, waist, knee and posture logic, rotations only, plus root height.
-- **Bends:** elbow, knee and waist bends become rotations of the forearm, shin and waist bones. The renderer reads them back as deformer angles, so the bends stay smooth.
-- **Weapon tracks:** each clip gets a `weapon_r` / `weapon_l` track from the retarget's weapon orientation for its class:
-  - Sword: the blade continues the forearm, as the retarget already does.
-  - Spear: along the forearm, through the fist.
-  - Bow: vertical in the off hand.
-- **Clips per class**, real mocap only (UAL and CMU, all in our library). A class without enough takes falls back to the sword set and says so in the viewer.
+- **Converters:** `tools/anim-viewer/import_bbmodel.js` (Blockbench animations: AnimationsPlus), `import_emote.js` (Emotecraft / playerAnimator JSON, Mo' Bends clip JSON) and the existing mocap retarget (`bake_gecko.js`) all write Gecko animations on the rig's bones. Each source's licence and credit goes in `assets/lotr_revival/geckolib/animations/CREDITS.md`.
+- **Sources, verified:**
 
-  | Class | Clips |
-  | --- | --- |
-  | Sword | UAL sword set (current) |
-  | Longsword | CMU 124_07 two-handed heavy swing, CMU 64_01 low sweep, UAL Sword_Heavy_Combo cuts |
-  | Axe | CMU 62_10 hammer blow, UAL TreeChopping swing |
-  | Spear | CMU 144_11 / 144_17 lunges (footwork) with the spear held level (the weapon track does the thrust; the arms follow the lunge), CMU 124_08 level-shaft guard |
-  | Dagger | CMU 143_23 / 144_20 punches as stabs, UAL Punch_Jab |
-  | Bow | CMU 79_86 draw and release (already in the library) |
-  | Crossbow | CMU 79_96 / 80_03 shooting |
+  | Source | Licence | Used for |
+  | --- | --- | --- |
+  | AnimationsPlus (emart126, Blockbench, 142 clips on a biped with waist, elbows, knees, item pivots) | MIT | main set: sword swings 1-4, spear thrusts 1-3, bow draw and shoot, crossbow load and shoot, block, combat-ready, bash, uppercut, idles 1-3, walk, sprint, crouch, climb, swim, horse sitting and moving, taunts |
+  | Mo' Bends (forearm/foreleg clip JSON) | MIT | sword combo (slash down, inward, outward, up, whirl), riding, stances |
+  | Serious Player Animations | MIT | axe and tool swings, shield, bow idle, horse attack, running, idle |
+  | Emotecraft-emotes (KosmX) | CC0 | social clips: bow (greeting), sit, lean, look around, gestures; trademarked dance recreations excluded |
+  | Mesh2Motion | CC0 | bow pull, hold and release; taunts (insult, victory, angry) |
+  | UAL, CMU (already in the library) | CC0, CMU terms | fill-ins; 100STYLE (CC-BY 4.0) walk styles and ACCAD (CC-BY 3.0) later |
 
+- **Bends:** clips that bend elbows, knees and the waist (AnimationsPlus, Mo' Bends, mocap) drive the bend deformers through those bones; clips without bends keep straight limbs.
+- **Classes:** sword, axe (tool swings), spear (thrusts), bow, crossbow and shield from the table; dagger uses the quick sword swings and the assassin multi-hit; longsword uses the Mo' Bends combo and the warrior bash and uppercut. Left-handed play is the L clips (AnimationsPlus) or mirroring.
 - **Hit frames:** each attack's hit time is written as an `animation_parameter` event, `attack_hit`, in the model's animation-event sidecar (next to the Gecko animation file). The server reads the same file for `combat.AttackTiming`, so client and server use one number.
 
 ### 3. Runtime: a PulseLib animatable per NPC
@@ -80,12 +75,8 @@ Weapons then sit where the animation puts them in every frame.
 - **Pose:** `PulseNpcRenderer` gets the NPC's pose from `PBakedModel.evaluate(controllers, …)` and builds bone world matrices.
 - **Skin and armour:** draws Middle-earth's meshes (as now) on `head`, `body`, the arms and the legs.
 - **Bends:** the elbow, knee and waist deformer angles are the forearm, shin and waist bones' rotations.
-- **Held items:** drawn on `weapon_r` / `weapon_l`. Each class has a grip in `assets/lotr_revival/weapon_grips.json`:
-  - how far up the item the hand holds it (share of length);
-  - a roll about the grip;
-  - the class length (dagger 0.6, sword 1.0, longsword 1.4, axe 1.1, spear 2.5, bow 1.1, longbow 1.6, crossbow 0.9 blocks).
-
-  The item's own long axis is aligned with the bone, so no per-item numbers are needed.
+- **Held items:** drawn where Minecraft's held-item layer puts them (Middle-earth's models already seat the handle in the fist), then moved by the `weapon_r` / `weapon_l` bone's per-clip nudge. Each class is scaled to its length (dagger 0.6, sword 1.0, longsword 1.4, axe 1.1, spear 2.5, bow 1.1, longbow 1.6, crossbow 0.9 blocks) about the fist point, so the handle stays in the hand. No shape-guessed recentring. Per-class extras (a spear's level carry, the brace stances) live in `assets/lotr_revival/weapon_grips.json`.
+- **Bow aim:** the arms follow where the NPC looks (pitch), added on top of the bow clip, as Serious Player Animations does.
 - **Unchanged:** vanilla and Middle-earth's renderer stay stiff, as agreed.
 
 ### 5. Viewer
