@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.client;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.sethwillemsvg.lotrrevival.LotrRevival;
+import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimator;
 import io.github.sethwillemsvg.lotrrevival.client.bench.AutoBench;
 import io.github.sethwillemsvg.lotrrevival.client.bench.FrameStats;
 import io.github.sethwillemsvg.lotrrevival.client.render.SwitchingNpcRenderer;
@@ -21,6 +22,7 @@ import net.sevenstars.middleearth.entity.EntitiesME;
 
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Set;
 
 /** Client wiring: our NPC renderer replaces Middle-earth's (registered last), the benchmark HUD and /lotrrender. */
 public final class LotrRevivalClient {
@@ -55,6 +57,17 @@ public final class LotrRevivalClient {
         @SubscribeEvent
         public static void commands(RegisterClientCommandsEvent e) {
             e.getDispatcher().register(Commands.literal("lotrrender")
+                    // /lotrrender stance guard|shield_brace|spear_brace|march|off   every NPC plays that formation stance (test)
+                    .then(Commands.literal("stance").then(Commands.argument("stance", StringArgumentType.word()).executes(c -> {
+                        String st = StringArgumentType.getString(c, "stance");
+                        if (!Set.of("guard", "shield_brace", "spear_brace", "march", "off").contains(st)) {
+                            c.getSource().sendFailure(Component.literal("Use guard, shield_brace, spear_brace, march or off"));
+                            return 0;
+                        }
+                        NpcAnimator.testStance = st.equals("off") ? "" : st;
+                        c.getSource().sendSuccess(() -> Component.literal("NPC stance: " + st), false);
+                        return 1;
+                    })))
                     .then(Commands.literal("hud").executes(c -> {
                         FrameStats.visible = !FrameStats.visible;
                         return 1;
