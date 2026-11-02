@@ -1,5 +1,6 @@
 /* The NPC animation slots: animation name in the race files -> source clip (build_npc.js).
- * Entry: { source, clip, mirror?, loop?, hold? (seconds: a held pose of that frame), races?: { race: entry } }.
+ * Entry: { source, clip, mirror?, loop?, hold? (seconds: a held pose of that frame), strides? (keep one of this many strides,
+ * in phase with walk), races?: { race: entry } }. Every attack also gets a mirrored left-handed twin, <name>_l.
  * Sources: animationsplus (AP, MIT), mobends (MIT), seriousplayer (MIT), emotecraft (CC0); see geckolib/animations/CREDITS.md.
  * Names attack_<class>_N are the attack sets combat.AttackClips picks from (by weapon class). */
 (function (root) {
@@ -10,7 +11,7 @@
   const SLOTS = {
     // movement
     idle: ap('idle'), idle_2: ap('Idle_1', { loop: true }), idle_3: ap('Idle_2', { loop: true }), idle_4: ap('Idle_3', { loop: true }),
-    walk: ap('walk'), run: ap('sprint'), crouch_walk: ap('crouchwalk'), swim: ap('swim'), climb: ap('climb'),
+    walk: ap('walk'), run: ap('sprint', { strides: 3 }), crouch_walk: ap('crouchwalk'), swim: ap('swim'), climb: ap('climb'),
     // riding
     ride_idle: ap('sitHorse'), ride_move: ap('sitmoveHorse'),
     // attacks by weapon class

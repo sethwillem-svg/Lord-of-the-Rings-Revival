@@ -53,6 +53,7 @@ function clipFor(slot, entry, race, sources) {
   if (!src) throw new Error(`${slot}: no clip ${e.source}/${e.clip}`);
   let c = clone(e.mirror ? mirror(src) : src);
   if (e.hold !== undefined) c = holdAt(c, e.hold);
+  if (e.strides) c = oneStride(c, e.strides);
   if (e.loop !== undefined) c.loop = e.loop;
   if (LOOPED.has(slot)) c.loop = true;
   if (!c.length || c.length < 0.05) c.length = 0.05;
@@ -67,17 +68,53 @@ function addRotation(clip, bone, d) {
   for (const k of ch.rotation) k.v = k.v.map((x, i) => x + d[i]);
 }
 
+/** Overlays (attacks, hurt, ranged releases) play over the legs' locomotion: posture must not add bones they leave alone. */
+const isOverlay = (slot) => /^attack_/.test(slot) || ['hurt', 'bow_release', 'crossbow_shoot'].includes(slot);
+
+/** A clip channel's value at t (linear between keys; loops wrap). */
+function valueAt(keys, t, length, loop) {
+  if (loop && length > 0) t = ((t % length) + length) % length;
+  if (t <= keys[0].t) return keys[0].v;
+  for (let i = 1; i < keys.length; i++) if (t <= keys[i].t) {
+    const a = keys[i - 1], b = keys[i], f = b.t > a.t ? (t - a.t) / (b.t - a.t) : 1;
+    return a.v.map((x, j) => x + f * (b.v[j] - x));
+  }
+  return keys[keys.length - 1].v;
+}
+
+/**
+ * One stride of a looping clip that holds `count` strides, starting where the right thigh is furthest forward (as walk
+ * does), resampled at 30 fps — so walk and run blend in phase.
+ */
+function oneStride(clip, count) {
+  const period = clip.length / count, leg = clip.bones.right_leg && clip.bones.right_leg.rotation;
+  let start = 0;
+  if (leg) {
+    let lo = Infinity;
+    for (let t = 0; t < period; t += 1 / 240) { const x = valueAt(leg, t, clip.length, true)[0]; if (x < lo) { lo = x; start = t; } }
+  }
+  const n = Math.max(2, Math.round(period * 30)), bones = {};
+  for (const [bone, ch] of Object.entries(clip.bones)) {
+    bones[bone] = {};
+    for (const [kind, keys] of Object.entries(ch)) {
+      bones[bone][kind] = Array.from({ length: n + 1 }, (_, i) => ({ t: (i * period) / n, v: valueAt(keys, start + (i * period) / n, clip.length, true).slice(), lerp: 'linear' }));
+    }
+  }
+  return { length: period, loop: true, bones };
+}
+
 function applyStyle(clip, slot, style) {
+  const add = (bone, d) => { if (!isOverlay(slot) || clip.bones[bone]) addRotation(clip, bone, d); };
   if (style.stride && STRIDE.has(slot)) {
     for (const leg of ['right_leg', 'left_leg']) for (const k of (clip.bones[leg] && clip.bones[leg].rotation) || []) k.v[0] *= style.stride;
   }
-  addRotation(clip, 'upper', [style.hunch || 0, 0, 0]);
-  addRotation(clip, 'right_arm', [0, 0, style.armsOut || 0]);
-  addRotation(clip, 'left_arm', [0, 0, -(style.armsOut || 0)]);
+  add('upper', [style.hunch || 0, 0, 0]);
+  add('right_arm', [0, 0, style.armsOut || 0]);
+  add('left_arm', [0, 0, -(style.armsOut || 0)]);
   const knee = Math.max(0, style.kneeBend || 0);
   for (const side of ['right', 'left']) {
-    addRotation(clip, side + '_knee', [knee, 0, 0]);
-    addRotation(clip, side + '_leg', [-knee / 2, 0, 0]);
+    add(side + '_knee', [knee, 0, 0]);
+    add(side + '_leg', [-knee / 2, 0, 0]);
   }
 }
 
@@ -98,15 +135,20 @@ function hitTime(animation) {
 }
 
 function buildRace(race, sources, slots = SLOTS) {
-  const clips = {};
+  const clips = {}, style = STYLE[race] || {};
   for (const [slot, entry] of Object.entries(slots)) {
     const c = clipFor(slot, entry, race, sources);
-    applyStyle(c, slot, STYLE[race] || {});
+    if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
+      const l = mirror(c);
+      applyStyle(l, slot, style);
+      clips[slot + '_l'] = l;
+    }
+    applyStyle(c, slot, style);
     clips[slot] = c;
   }
   const animations = animationJson(clips);
   const hits = {};
-  for (const name of Object.keys(clips)) if (name.startsWith('attack_')) {
+  for (const name of Object.keys(clips)) if (name.startsWith('attack_') && !name.endsWith('_l')) {
     hits[name] = { length: animations.animations[name].animation_length, hit: hitTime(animations.animations[name]) };
   }
   return { geo: geoJson(RIG), animations, hits, clips };
@@ -114,11 +156,15 @@ function buildRace(race, sources, slots = SLOTS) {
 
 function main() {
   const sources = loadSources();
-  const write = (rel, data) => {
+  const write = (rel, data, text) => {
     const f = path.join(OUT, rel);
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, JSON.stringify(data) + '\n');
+    fs.writeFileSync(f, text !== undefined ? text : JSON.stringify(data) + '\n');
   };
+  // MIT asks for the copyright and permission notice to travel with the clips: ship each source's licence in the jar
+  for (const src of ['animationsplus', 'mobends', 'seriousplayer', 'emotecraft']) {
+    write(`animations/licenses/${src}.txt`, null, fs.readFileSync(path.join(LIB, src, 'LICENSE.txt'), 'utf8'));
+  }
   for (const race of RACES) {
     const r = buildRace(race, sources);
     write(`models/entity/npc_biped_${race}.geo.json`, r.geo);

@@ -15,7 +15,7 @@ for (const race of ['man', 'elf', 'dwarf', 'hobbit', 'orc']) test(race + ' has e
 test('a race override replaces only its slot; the rest come from the base table', () => {
   const r = buildRace('orc', sources, { ...SLOTS, walk: { ...SLOTS.walk, races: { orc: { source: 'animationsplus', clip: 'crouchwalk' } } } });
   assert.equal(r.clips.walk.length, sources.animationsplus.crouchwalk.length);
-  assert.equal(r.clips.run.length, sources.animationsplus.sprint.length);
+  assert.ok(Math.abs(r.clips.run.length - sources.animationsplus.sprint.length / 3) < 1e-6);   // run keeps one stride
 });
 
 test('every hit entry names an attack in the same file, hit inside the clip', () => {
@@ -51,4 +51,31 @@ test('spear brace holds the thrust\'s first frame', () => {
 
 test('hits land at the end of the fastest stretch, not at the edge of the search window', () => {
   for (const [name, h] of Object.entries(built.man.hits)) assert.ok(h.hit > 0.15 * h.length + 0.01, `${name} ${h.hit}/${h.length}`);
+});
+
+const LEGS = ['right_leg', 'left_leg', 'right_knee', 'left_knee'];
+test('posture never adds leg keys to overlays, so legs keep walking under an attack', () => {
+  for (const race of RACES) for (const [name, c] of Object.entries(built[race].clips)) {
+    if (!/^attack_|^bow_release$|^crossbow_shoot$/.test(name)) continue;
+    const base = buildRace('man', sources).clips[name];
+    for (const leg of LEGS) assert.equal(!!c.bones[leg], !!base.bones[leg], `${race} ${name} ${leg}`);
+  }
+});
+
+test('run is one stride starting on the same leg as walk, so the blend stays in phase', () => {
+  const legAt0 = (c) => c.bones.right_leg.rotation[0].v[0];
+  const minLeg = (c) => Math.min(...c.bones.right_leg.rotation.map((k) => k.v[0]));
+  const run = built.man.clips.run, walk = built.man.clips.walk;
+  assert.ok(Math.abs(run.length - sources.animationsplus.sprint.length / 3) < 1e-6, String(run.length));
+  assert.ok(Math.abs(legAt0(walk) - minLeg(walk)) < 1e-6);
+  assert.ok(Math.abs(legAt0(run) - minLeg(run)) < 1, `${legAt0(run)} vs ${minLeg(run)}`);
+});
+
+test('every attack has a left-handed twin on weapon_l, with no hit entry of its own', () => {
+  for (const name of Object.keys(built.man.hits)) {
+    const l = built.man.clips[name + '_l'];
+    assert.ok(l, name + '_l');
+    assert.ok(!built.man.hits[name + '_l']);
+    if (built.man.clips[name].bones.weapon_r) assert.ok(l.bones.weapon_l && !l.bones.weapon_r, name);
+  }
 });
