@@ -11,7 +11,7 @@
   - The GPU bend deformers.
   - Server hit timing (`combat.AttackTiming`).
   - Race posture and variants.
-- **References:** PulseLib docs: animatables and controllers, animation graphs, animation events, mesh deformers, model data.
+- **References:** PulseLib docs: animatables and controllers, animation graphs, animation events, mesh deformers, model data, model loaders (Gecko loader).
 
 ## Why
 
@@ -20,13 +20,17 @@ The hand-rolled player has hard switches between clips, no blending, a weapon pl
 - **Animation graphs:** blend spaces for idle, walk and run, with one-shot overlays for attacks.
 - **Random clip pools:** weighted, with no immediate repeats.
 - **Animation events:** a hit frame, sound or particle at a time in a clip.
-- **Skeleton evaluation:** of a GLB rig with weapon bones.
+- **Skeleton evaluation:** of a rig with weapon bones.
 
 Weapons then sit where the animation puts them in every frame.
 
 ## Design
 
-### 1. The rig: `assets/lotr_revival/glmodels/entity/npc_biped.glb` (our own asset)
+### 1. The rig: a Blockbench / GeckoLib model of our own
+
+- **Format:** Gecko (Blockbench's GeckoLib format), read by PulseLib's `PGeckoModelLoader`: `assets/lotr_revival/geckolib/models/entity/npc_biped_<race>.geo.json`, with the clips in `geckolib/animations/entity/npc_biped_<race>.animation.json`.
+- **Why Gecko:** both open and edit in Blockbench (with the GeckoLib plugin), so a clip that looks wrong can be fixed by hand, not only by code. They are plain JSON our tools write and the viewer reads. Gecko sound and particle keyframes carry over as PulseLib events.
+- **Source:** `src/main/art/blockbench/npc_biped/npc_biped.bbmodel`, exported to `.geo.json`. The loader is registered with `PModelCache.registerModelLoader(PGeckoModelLoader.INSTANCE)` in client setup.
 
 - **Bones:** a skeleton only, no mesh, at vanilla biped proportions (px, y down):
   - `root`, `body` (chest), `waist`, `head`
@@ -35,11 +39,11 @@ Weapons then sit where the animation puts them in every frame.
   - `right_leg` → `right_shin`, `left_leg` → `left_shin`
 - **Pivots:** where Minecraft's parts pivot (shoulders at ±5, 2; hips at ±1.9, 12). Elbow and knee bones sit at the middle of the existing bend zones.
 - **Weapon bones:** `weapon_r` and `weapon_l` hold the grip point. A weapon's +y axis runs from the grip toward the tip, and +z is the blade's flat side.
-- **One GLB per race** (`npc_biped_man.glb` … `npc_biped_orc.glb`): the same skeleton with that race's clips, so the race postures and preferences stay baked in.
+- **One model per race** (`npc_biped_man` … `npc_biped_orc`): the same skeleton with that race's clips, so the race postures and preferences stay baked in.
 
-### 2. Clips: baked from real motion capture into the GLB
+### 2. Clips: baked from real motion capture into Gecko animation JSON
 
-- **The exporter:** `tools/anim-viewer/bake_glb.js` turns the existing retarget into glTF animations on those bones. It reuses bake_vanilla.js's arm hinge, waist, knee and posture logic, rotations only, plus root height.
+- **The exporter:** `tools/anim-viewer/bake_gecko.js` turns the existing retarget into Gecko animations (per-bone rotation and position keyframes) on those bones. It reuses bake_vanilla.js's arm hinge, waist, knee and posture logic, rotations only, plus root height.
 - **Bends:** elbow, knee and waist bends become rotations of the forearm, shin and waist bones. The renderer reads them back as deformer angles, so the bends stay smooth.
 - **Weapon tracks:** each clip gets a `weapon_r` / `weapon_l` track from the retarget's weapon orientation for its class:
   - Sword: the blade continues the forearm, as the retarget already does.
@@ -57,7 +61,7 @@ Weapons then sit where the animation puts them in every frame.
   | Bow | CMU 79_86 draw and release (already in the library) |
   | Crossbow | CMU 79_96 / 80_03 shooting |
 
-- **Hit frames:** each attack's hit time is written as an `animation_parameter` event, `attack_hit`, in the GLB's sidecar `glmodels/entity/npc_biped_<race>.events.json`. The server reads the same sidecar for `combat.AttackTiming`, so client and server use one number.
+- **Hit frames:** each attack's hit time is written as an `animation_parameter` event, `attack_hit`, in the model's animation-event sidecar (next to the Gecko animation file). The server reads the same file for `combat.AttackTiming`, so client and server use one number.
 
 ### 3. Runtime: a PulseLib animatable per NPC
 
@@ -86,7 +90,7 @@ Weapons then sit where the animation puts them in every frame.
 
 ### 5. Viewer
 
-`tools/anim-viewer/npc.html` loads the same GLBs (three.js GLTFLoader) and plays them on the test figure or an exported Middle-earth NPC. Weapon grips are applied from `weapon_grips.json`, so what the viewer shows is what the game draws.
+`tools/anim-viewer/npc.html` loads the same Gecko animation JSON and plays it on the test figure or an exported Middle-earth NPC. Weapon grips are applied from `weapon_grips.json`, so what the viewer shows is what the game draws.
 
 ### 6. Tuning against real Middle-earth items
 
