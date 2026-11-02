@@ -57,9 +57,19 @@ fi
 mkdir -p "$REPO/clips"
 [ -f "$REPO/clips/.gitignore" ] || printf '*\n' > "$REPO/clips/.gitignore"   # keeps generated clips out of git
 
-# an older view.sh started a plain http.server, which lets the browser cache the viewer: replace it with serve.py (no cache)
-old=$(pgrep -f "http.server $PORT --bind .* --directory $REPO" || true)
-[ -n "$old" ] && kill $old && sleep 0.5
+# Something already on the port must be our no-cache server for this repo. An older view.sh started a plain http.server
+# (the browser caches it), possibly for another copy of the repo: then the viewer shows old files. Replace it.
+if (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
+  if ! curl -sf "http://127.0.0.1:$PORT/tools/anim-viewer/serve.py" 2>/dev/null | cmp -s - "$REPO/tools/anim-viewer/serve.py" \
+     || ! curl -sfI "http://127.0.0.1:$PORT/tools/anim-viewer/npc.html" 2>/dev/null | grep -qi '^cache-control: no-store'; then
+    old=$(pgrep -f "([h]ttp.server|[s]erve.py) $PORT" || true)   # [x]: never match this script
+    if [ -n "$old" ]; then
+      echo "Replacing an old viewer server on port $PORT."; kill $old; sleep 0.5
+    else
+      echo "Port $PORT is used by another program. Run with another port: VIEW_PORT=8010 $0 $*"; exit 1
+    fi
+  fi
+fi
 if ! (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
   nohup python3 "$REPO/tools/anim-viewer/serve.py" "$PORT" --bind "$BIND" --directory "$REPO" >/dev/null 2>&1 &
   for _ in 1 2 3 4 5 6 7 8 9 10; do (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && break; sleep 0.3; done
