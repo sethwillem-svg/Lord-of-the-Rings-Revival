@@ -18,8 +18,8 @@ import java.util.List;
 
 /**
  * Flexible elbows, knees and waist: PulseLib bend and twist deformers on the biped's meshes, run in PulseLib's vertex shader
- * with the joint angles of the pose (NpcAnimator.joints, NpcClip.JOINTS order). The zones are the ones the baker uses
- * (tools/anim-viewer/bake_vanilla.js JOINTS, in px there): each op works on [origin, origin + extent] along the part's +y; a
+ * with the joint angles of the pose (NpcAnimator.joints, NpcAnimator.JOINTS order, from the PulseLib rig's elbows and
+ * knees). Zones in px of the part's space: each op works on [origin, origin + extent] along the part's +y; a
  * bend curves that zone and turns everything below it rigidly by the angle, a twist turns the zone progressively.
  */
 final class NpcJoints {
@@ -27,7 +27,7 @@ final class NpcJoints {
 
     // part indices of NpcBipedModel.parts
     private static final int BODY = 2, RIGHT_ARM = 3, LEFT_ARM = 4, RIGHT_LEG = 5, LEFT_LEG = 6;
-    // NpcClip.JOINTS indices
+    // NpcAnimator.JOINTS indices
     private static final int R_ELBOW = 0, L_ELBOW = 1, R_KNEE = 2, L_KNEE = 3, YAW = 4, PITCH = 5, ROLL = 6;
 
     private static final float PX = 1f / 16f;

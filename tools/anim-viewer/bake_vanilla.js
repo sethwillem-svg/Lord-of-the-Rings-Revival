@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /* Bake library clips for vanilla 6-part biped models (head, body, two arms, two legs), e.g. the Middle-earth mod's NPCs.
  *
- *   node tools/anim-viewer/bake_vanilla.js [outDir]     bake every race and slot into the add-on (prints a QA report)
- *   npc.html                                            the same bake, live in the browser (window.VanillaBake)
+ *   node tools/anim-viewer/bake_vanilla.js <outDir>     bake every race and slot into outDir (prints a QA report)
+ * The add-on no longer plays these: its NPCs play the GeckoLib clip sets from build_npc.js on PulseLib. The mocap library,
+ * retarget and joint maths stay here for the mocap tools.
  *
  * Each clip is retargeted onto the orc muster rig (as in the viewer), then reduced to the six vanilla parts:
  *   body  rotates about the waist (vanilla rotates it about the neck, so its pivot is moved to compensate)
@@ -540,7 +541,8 @@
     const LIB = require('./library.js');
     const MAPS = require('./rigs.js');
     const HERE = __dirname, REPO = path.resolve(HERE, '../..');
-    const OUT = path.resolve(process.argv[2] || path.join(REPO, 'addon/src/main/resources/assets/lotr_revival/clips'));
+    if (!process.argv[2]) { console.error('usage: node tools/anim-viewer/bake_vanilla.js <outDir>   (the add-on uses build_npc.js)'); process.exit(2); }
+    const OUT = path.resolve(process.argv[2]);
     const rig = A.parseRig(JSON.parse(fs.readFileSync(path.join(REPO, RIG_PATH), 'utf8')));
     const map = MAPS.find((m) => m.id === 'muster-pack');
     const OVR = path.join(HERE, 'vanilla_overrides.json');
