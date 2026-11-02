@@ -2,11 +2,13 @@ package io.github.sethwillemsvg.lotrrevival.client;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.sethwillemsvg.lotrrevival.LotrRevival;
+import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimatable;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimator;
 import io.github.sethwillemsvg.lotrrevival.client.bench.AutoBench;
 import io.github.sethwillemsvg.lotrrevival.client.bench.ExportRun;
 import io.github.sethwillemsvg.lotrrevival.client.bench.FrameStats;
 import io.github.sethwillemsvg.lotrrevival.client.render.SwitchingNpcRenderer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
@@ -20,6 +22,7 @@ import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.sevenstars.middleearth.entity.EntitiesME;
+import net.sevenstars.middleearth.entity.npcs.NpcEntity;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -53,7 +56,20 @@ public final class LotrRevivalClient {
         public static void tick(ClientTickEvent.Post e) {
             AutoBench.tick();
             ExportRun.tick();
+            animate();
         }
+
+        /** NPCs within ANIMATE_RANGE of the camera advance their PulseLib animation (client.anim.NpcAnimatable). */
+        private static void animate() {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level == null || mc.isPaused()) return;
+            var camera = mc.gameRenderer.getMainCamera().getPosition();
+            for (var entity : mc.level.entitiesForRendering())
+                if (entity instanceof NpcEntity npc && npc.position().distanceToSqr(camera) < ANIMATE_RANGE * ANIMATE_RANGE)
+                    NpcAnimatable.of(npc).tick(npc);
+        }
+
+        private static final double ANIMATE_RANGE = 96;
 
         /** /lotrrender theirs|vanilla|pulse   switch the NPC renderer;   /lotrrender hud   toggle the frame-time meter */
         @SubscribeEvent
