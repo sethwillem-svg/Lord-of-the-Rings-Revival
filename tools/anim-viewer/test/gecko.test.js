@@ -8,6 +8,8 @@ test('rig has the 15 bones with AnimationsPlus pivots', () => {
   assert.equal(RIG.length, 15);
   assert.deepEqual(RIG.find((b) => b.name === 'right_elbow'), { name: 'right_elbow', parent: 'right_arm', pivot: [6, 18, 0] });
   assert.equal(RIG.find((b) => b.name === 'left_knee').parent, 'left_leg');
+  assert.equal(RIG.find((b) => b.name === 'right_arm').parent, 'body');   // AnimationsPlus twists body and the arms follow
+  assert.deepEqual(RIG.find((b) => b.name === 'root').pivot, [0, 16, 0]);
   assert.deepEqual(RIG.find((b) => b.name === 'weapon_l'), { name: 'weapon_l', parent: 'left_elbow', pivot: [-6, 12, -2] });
 });
 
