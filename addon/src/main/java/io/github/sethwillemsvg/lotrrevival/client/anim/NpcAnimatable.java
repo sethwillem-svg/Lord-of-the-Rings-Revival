@@ -146,6 +146,12 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         PAnimationController<NpcAnimatable> c = controller();
         if (c == null) return;
         serverAttackAt = entity.tickCount;
+        PBakedModel model = bound;
+        if (model != null && !model.animations().containsKey(animation)) {
+            // not in this race's file (a server with other clips): the class's first attack
+            String first = animation.replaceFirst("_\\d+$", "_1");
+            animation = model.animations().containsKey(first) ? first : "attack_sword_1";
+        }
         trigger(c, animation, speed);
     }
 
