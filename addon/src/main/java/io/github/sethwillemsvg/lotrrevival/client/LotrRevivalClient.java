@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.sethwillemsvg.lotrrevival.LotrRevival;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimator;
 import io.github.sethwillemsvg.lotrrevival.client.bench.AutoBench;
+import io.github.sethwillemsvg.lotrrevival.client.bench.ExportRun;
 import io.github.sethwillemsvg.lotrrevival.client.bench.FrameStats;
 import io.github.sethwillemsvg.lotrrevival.client.render.SwitchingNpcRenderer;
 import net.minecraft.commands.Commands;
@@ -51,6 +52,7 @@ public final class LotrRevivalClient {
         @SubscribeEvent
         public static void tick(ClientTickEvent.Post e) {
             AutoBench.tick();
+            ExportRun.tick();
         }
 
         /** /lotrrender theirs|vanilla|pulse   switch the NPC renderer;   /lotrrender hud   toggle the frame-time meter */

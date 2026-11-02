@@ -45,6 +45,8 @@ public final class NpcAnimator {
      *  The squad code supplies it per unit; until then /lotrrender stance sets testStance for every NPC. */
     public static Function<LivingEntity, String> stanceOf = e -> NpcAnimator.testStance;
     public static String testStance = "";
+    /** While true (the viewer export), NPC models are left in Minecraft's rest pose: every part unrotated. */
+    public static boolean restPose;
 
     private static final class State {
         String race;
@@ -86,6 +88,11 @@ public final class NpcAnimator {
     public static void apply(HumanoidModel<?> model, LivingEntity entity, float limbSwing, float limbSwingAmount,
                              float ageInTicks, float netHeadYaw, float headPitch) {
         if (!isNpcModel(model)) return;
+        if (restPose) {
+            for (ModelPart p : new ModelPart[] {model.head, model.hat, model.body, model.rightArm, model.leftArm, model.rightLeg, model.leftLeg})
+                p.setRotation(0f, 0f, 0f);
+            return;
+        }
         if (!keepsOurPose(model, entity)) {   // Minecraft's pose: straight limbs
             State s0 = STATES.get(entity);
             if (s0 != null) Arrays.fill(s0.lastJoints, 0f);
@@ -218,6 +225,12 @@ public final class NpcAnimator {
 
     // ---- race: from the NPC type's race id (synced NpcData), else from the NPC type id ----
     private static Method typeMethod, raceMethod, idMethod;
+
+    /** Which race's clips an NPC plays: man, elf, dwarf, hobbit or orc. */
+    public static String raceOf(LivingEntity entity) {
+        String r = race(entity);
+        return r == null ? "man" : r;
+    }
 
     private static String race(LivingEntity entity) {
         String key = null;

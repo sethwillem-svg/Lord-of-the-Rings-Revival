@@ -28,6 +28,7 @@ import java.util.List;
 /**
  * /lotrbench spawn <count> [npc type] [ai]   a grid of Middle-earth NPCs in front of you, facing you (AI off by default, so
  *                                           every renderer sees the same scene; random types when none is given)
+ * /lotrbench spawnall [per]                every NPC type, per of each, AI off (for the viewer export)
  * /lotrbench clear                          remove the NPCs it spawned
  */
 public final class BenchCommands {
@@ -45,6 +46,10 @@ public final class BenchCommands {
                                         .executes(c -> spawn(c, ResourceLocationArgument.getId(c, "type"), false))
                                         .then(Commands.argument("ai", BoolArgumentType.bool())
                                                 .executes(c -> spawn(c, ResourceLocationArgument.getId(c, "type"), BoolArgumentType.getBool(c, "ai")))))))
+                .then(Commands.literal("spawnall")
+                        .executes(c -> spawnAll(c, 1))
+                        .then(Commands.argument("per", IntegerArgumentType.integer(1, 5))
+                                .executes(c -> spawnAll(c, IntegerArgumentType.getInteger(c, "per")))))
                 .then(Commands.literal("clear").executes(BenchCommands::clear)));
     }
 
@@ -83,6 +88,37 @@ public final class BenchCommands {
         }
         int n = made;
         src.sendSuccess(() -> Component.literal("Spawned " + n + " NPCs. Switch renderer with /lotrrender theirs|vanilla|pulse"), true);
+        return made;
+    }
+
+    /** /lotrbench spawnall [per]: every Middle-earth NPC type, per of each, AI off, in rows in front of you (the viewer export). */
+    private static int spawnAll(CommandContext<CommandSourceStack> c, int per) {
+        CommandSourceStack src = c.getSource();
+        ServerLevel level = src.getLevel();
+        List<ResourceLocation> all = types(level);
+        all.sort(null);
+        Vec3 origin = src.getPosition();
+        float yaw = src.getRotation().y;
+        Vec3 fwd = Vec3.directionFromRotation(0, yaw), right = new Vec3(-fwd.z, 0, fwd.x);
+        int cols = 12, made = 0, i = 0;
+        for (ResourceLocation id : all) {
+            for (int k = 0; k < per; k++, i++) {
+                Vec3 p = origin.add(fwd.scale(4 + (i / cols) * 2.0)).add(right.scale((i % cols - (cols - 1) / 2.0) * 2.0));
+                int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(p.x), Mth.floor(p.z));
+                NpcEntity npc = new NpcEntityBuilder(level, BlockPos.containing(p.x, y, p.z)).withNpcType(id).build();
+                if (npc == null || npc.isRemoved()) continue;
+                npc.moveTo(p.x, y, p.z, yaw + 180, 0);
+                npc.setYHeadRot(yaw + 180);
+                npc.setYBodyRot(yaw + 180);
+                npc.setNoAi(true);
+                npc.setPersistenceRequired();
+                npc.addTag(TAG);
+                level.addFreshEntity(npc);
+                made++;
+            }
+        }
+        int n = made;
+        src.sendSuccess(() -> Component.literal("Spawned " + n + " NPCs (" + all.size() + " types)"), true);
         return made;
     }
 

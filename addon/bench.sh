@@ -5,6 +5,7 @@
 #   ./addon/bench.sh              200 NPCs: 30 s break, then a minute of vanilla and a minute of pulse under Spark (links printed)
 #   ./addon/bench.sh 400          another count
 #   ./addon/bench.sh 200 measure  the timed rounds instead (theirs, vanilla, pulse, then reversed; no Spark)
+#   ./addon/bench.sh export [N]   record every Middle-earth NPC type (N of each, default 1) for the NPC clip viewer, then quit
 #   ./addon/bench.sh play         just open the game (in the test world once it exists) and leave it to you: commands work
 #   ME_JAR=/path/to.jar ./addon/bench.sh   if your Middle-earth jar is not in ~/middle-earth
 #
@@ -31,7 +32,7 @@ if [ "${GPU:-auto}" != "intel" ] && command -v nvidia-smi >/dev/null 2>&1 && nvi
 elif [ "${GPU:-auto}" = "nvidia" ]; then
   echo "GPU=nvidia was asked for, but nvidia-smi does not work: is the NVIDIA driver installed?"; exit 1
 fi
-[ "$COUNT" = "play" ] || echo "Benchmark with $COUNT NPCs. The game will open, run the test by itself and close."
+[ "$COUNT" = "play" ] || [ "$COUNT" = "export" ] || echo "Benchmark with $COUNT NPCs. The game will open, run the test by itself and close."
 chmod +x gradlew
 rm -f run/bench_results.txt run/screenshots/bench_*.png
 mkdir -p run/config
@@ -45,6 +46,19 @@ fi
 echo "Running... (first launch downloads Minecraft and takes a few minutes; full output in addon/run/bench_output.log)"
 QUICK=()
 [ -d run/saves/lotr_bench ] && QUICK=(-PquickPlay=lotr_bench)   # skip the menus and world generation after the first run
+if [ "$COUNT" = "export" ]; then
+  PER="${2:-1}"
+  echo "Recording every Middle-earth NPC type ($PER of each) for the NPC viewer. The game opens, does it by itself and closes."
+  rm -rf run/viewer_export
+  ./gradlew runClient -PmeJar="$ME_JAR" -Pexport="$PER" "${QUICK[@]}" --console=plain > run/bench_output.log 2>&1 || true
+  if [ -f run/viewer_export/index.json ]; then
+    grep "lotr_revival export" run/logs/latest.log | tail -n 3 | sed 's/.*\[lotr_revival export\] /  /'
+    echo "Done. Open the viewer and pick an NPC under Model:  ./tools/anim-viewer/view.sh npc"
+  else
+    echo "The export did not finish. Last lines of the game log:"; tail -n 30 run/logs/latest.log 2>/dev/null || true
+  fi
+  exit 0
+fi
 if [ "$COUNT" = "play" ]; then
   echo "Opening the game for you (no benchmark). Try: /lotrbench spawn 20 middle-earth:gondor.soldier ai   /lotrrender stance shield_brace"
   ./gradlew runClient -PmeJar="$ME_JAR" "${QUICK[@]}" --console=plain > run/bench_output.log 2>&1 || true
