@@ -11,6 +11,22 @@ A browser page that retargets mocap clips (BVH) onto a Blockbench rig live and p
 5. Change the retarget settings; every clip is re-mapped immediately.
 6. Export a clip as **Viewer JSON** (the Orc Muster Viewer's animation format) or **PulseLib JSON** (Gecko-style animation file).
 
+## NPC clips for the add-on (`build_npc.js`, `npc.html`)
+
+The Middle-earth add-on's NPCs are animated by PulseLib on a GeckoLib rig of our own (`specs/addon/npc-animation-pulselib.md`).
+The clips come from licence-compatible sets in `library/` (AnimationsPlus, Mo' Bends, Serious Player Animations, Emotecraft;
+each with its `LICENSE.txt`), converted onto the rig per race:
+
+```sh
+node tools/anim-viewer/build_npc.js          # writes geckolib/models + animations (+ .hits.json) under addon/src/main/resources/assets/lotr_revival/
+node --test tools/anim-viewer/test/*.test.js # the converters, the race files and the hit times
+```
+
+- Which clip plays in which slot, and each race's posture, are in `npc_slots.js`.
+- `npc.html` plays those files on the test figure or on Middle-earth NPCs exported from the game (`./addon/bench.sh export`), with
+  held items scaled to their class length from `addon/src/main/resources/assets/lotr_revival/weapon_grips.json`. Serve the repo
+  root (`./tools/anim-viewer/view.sh npc`) and open it.
+
 ## Quick start: `animview` and `animgen`
 
 Needs Git, Python 3 and a browser. From the repo root, run once:
