@@ -35,6 +35,15 @@ public final class NpcPose {
     /** The pose of an NPC that has an animatable and a loaded model; null otherwise. */
     @Nullable
     public static NpcPose of(LivingEntity entity, float partialTick) {
+        return of(entity, partialTick, 0f);
+    }
+
+    /**
+     * As of(entity, partialTick), with both arms (and what they hold) turned about their shoulders by aimPitch (radians,
+     * Minecraft's head pitch: positive looks down), as Minecraft aims a bow with the head.
+     */
+    @Nullable
+    public static NpcPose of(LivingEntity entity, float partialTick, float aimPitch) {
         NpcAnimatable a = NpcAnimatable.get(entity);
         if (a == null) return null;
         PBakedModel model = a.model();
@@ -45,7 +54,25 @@ public final class NpcPose {
         Matrix4f[] posed = world(model, pose), bind = world(model, model.bindPose());
         Matrix4f[] rig = new Matrix4f[posed.length];
         for (int i = 0; i < posed.length; i++) rig[i] = new Matrix4f(posed[i]).mul(new Matrix4f(bind[i]).invert());
+        if (aimPitch != 0f) for (String side : new String[] {"right", "left"}) aim(model, rig, side, aimPitch);
         return new NpcPose(model, rig);
+    }
+
+    /** Turns an arm, its elbow and its weapon bone about the posed shoulder (rig space: Minecraft's +x pitch is -x here). */
+    private static void aim(PBakedModel model, Matrix4f[] rig, String side, float pitch) {
+        int arm = model.boneIndex(side + "_arm");
+        if (arm < 0) return;
+        Vector3f shoulder = rig[arm].transformPosition(shoulderRest(side));
+        Matrix4f turn = new Matrix4f().translation(shoulder).rotateX(-pitch).translate(-shoulder.x, -shoulder.y, -shoulder.z);
+        for (String bone : new String[] {side + "_arm", side + "_elbow", side.equals("right") ? "weapon_r" : "weapon_l"}) {
+            int i = model.boneIndex(bone);
+            if (i >= 0) rig[i] = new Matrix4f(turn).mul(rig[i]);
+        }
+    }
+
+    /** The shoulder in rig space at rest (blocks): AnimationsPlus' arm pivots (tools/anim-viewer/gecko/rig.js). */
+    private static Vector3f shoulderRest(String side) {
+        return new Vector3f(side.equals("right") ? 4.5f / 16f : -4.5f / 16f, 22.5f / 16f, 0f);
     }
 
     private static Matrix4f[] world(PBakedModel model, PPose pose) {
