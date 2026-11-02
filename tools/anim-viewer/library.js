@@ -97,6 +97,12 @@
 
   const pick = (from, keys) => Object.fromEntries(keys.filter((k) => from[k]).map((k) => [k, from[k]]));
   const slower = (e, speed) => Object.assign({}, e, { speed });
+  // weapon attacks by name, for the races' preferences below
+  const DAGGER_STAB = HUMANOID['attack.dagger.1'], DUAL_STAB = HUMANOID['attack.dagger.2'], DUAL_SLICE = HUMANOID['attack.dagger.3'];
+  const AXE_CHOP = HUMANOID['attack.axe.1'], AXE_DIAGONAL = HUMANOID['attack.axe.2'], AXE_FLAT = HUMANOID['attack.axe.3'];
+  const CMU_HAMMER = HUMANOID['attack.axe.4'];
+  const LONG_CHOP = HUMANOID['attack.longsword.1'], LONG_SLICE = HUMANOID['attack.longsword.2'], LONG_SPIN = HUMANOID['attack.longsword.3'];
+  const SPEAR_2H = HUMANOID['attack.spear.1'], SPEAR_1H = HUMANOID['attack.spear.2'];
 
   const ORC = Object.assign({}, HUMANOID, {
     'move.idle.1': { src: 'Zombie_Idle_Loop', note: 'fidget: slack, hunched sway' },
@@ -119,19 +125,34 @@
   });
 
   const RACES = {
-    man: { label: 'Man', settings: {}, clips: HUMANOID },
-    elf: { label: 'Elf', settings: {}, clips: Object.assign({}, HUMANOID, {
+    man: { label: 'Man', settings: {}, clips: HUMANOID },   // style: see bake_vanilla.js bake()
+    elf: { label: 'Elf', settings: { style: { hunch: -8, armsOut: -5, kneeBend: -6 } }, clips: Object.assign({}, HUMANOID, {
       'attack.unarmed.1': HUMANOID['attack.unarmed.2'],
       'attack.sword.2': HUMANOID['attack.sword.3'],
       'attack.sword.3': HUMANOID['attack.sword.2'],
+      // clean, flowing cuts: slices and the spin, a quick one-handed thrust
+      'attack.longsword.1': LONG_SLICE, 'attack.longsword.2': LONG_SPIN, 'attack.longsword.3': null,
+      'attack.dagger.1': DUAL_SLICE, 'attack.dagger.2': DAGGER_STAB, 'attack.dagger.3': null,
+      'attack.spear.1': SPEAR_1H, 'attack.spear.2': SPEAR_2H,
     }) },
-    dwarf: { label: 'Dwarf', settings: { stance: 1.2 }, clips: HUMANOID },
-    hobbit: { label: 'Hobbit', settings: {}, clips: Object.assign({}, HUMANOID, {
+    dwarf: { label: 'Dwarf', settings: { stance: 1.2, style: { hunch: 9, armsOut: 11, kneeBend: 15 } }, clips: Object.assign({}, HUMANOID, {
+      // heavy blows: the real hammer strike first, two-handed chops (no spin)
+      'attack.axe.1': CMU_HAMMER, 'attack.axe.2': AXE_CHOP, 'attack.axe.3': AXE_DIAGONAL, 'attack.axe.4': null,
+      'attack.longsword.1': LONG_CHOP, 'attack.longsword.2': LONG_SLICE, 'attack.longsword.3': null,
+    }) },
+    hobbit: { label: 'Hobbit', settings: { style: { stride: 0.65, kneeBend: 9 } }, clips: Object.assign({}, HUMANOID, {
       'attack.unarmed.1': HUMANOID['attack.unarmed.2'],
+      // small blades: quick stabs
+      'attack.dagger.1': DAGGER_STAB, 'attack.dagger.2': DUAL_STAB, 'attack.dagger.3': null,
       'work.farm': { src: 'Farm_PlantSeed', note: 'kneels to plant' },
       'work.farm.1': HUMANOID['work.farm'],
     }) },
-    orc: { label: 'Orc (orcs, goblins, Uruk-hai)', settings: {}, clips: ORC },
+    orc: { label: 'Orc (orcs, goblins, Uruk-hai)', settings: { stance: 1.15, style: { hunch: 24, armsOut: 15, kneeBend: 18 } }, clips: Object.assign({}, ORC, {
+      // savage: daggers two at a time, spears thrust two-handed, axes hacked flat
+      'attack.dagger.1': DUAL_STAB, 'attack.dagger.2': DUAL_SLICE, 'attack.dagger.3': kay('Dualwield_Melee_Attack_Chop', 'two-handed hack'),
+      'attack.spear.1': SPEAR_2H, 'attack.spear.2': null,
+      'attack.axe.1': AXE_CHOP, 'attack.axe.2': AXE_FLAT, 'attack.axe.3': CMU_HAMMER, 'attack.axe.4': null,
+    }) },
     olog: { label: 'Olog-hai', settings: { stance: 1.1 }, clips: Object.assign({}, ORC, {
       'move.walk': slower(ORC['move.walk'], 0.9), 'move.run': slower(ORC['move.run'], 0.9),
       'move.charge': slower(ORC['move.charge'], 0.9), 'attack.smash.1': SMASH,
@@ -254,6 +275,16 @@
     },
   };
   for (const r of Object.keys(RACES)) RACES[r].unique = UNIQUE[r];
+  // walk and idle variants (move.walk.2, idle_2 is move.idle.1): each NPC plays one, so crowds do not move in lockstep.
+  // Only steady gaits: hobbit 'quick little steps' stops and shuffles, orc 'angry walk' is irregular (feet would slide).
+  const VARIANTS = {
+    man: { 'move.walk.2': 'move.walk.confident' },
+    elf: { 'move.walk.2': 'move.walk.graceful' },
+    dwarf: { 'move.walk.2': 'move.march.2' },
+    orc: { 'move.walk.2': 'move.walk.heavy' },
+  };
+  for (const [r, map] of Object.entries(VARIANTS))
+    for (const [key, from] of Object.entries(map)) if (UNIQUE[r][from]) UNIQUE[r][key] = UNIQUE[r][from];
 
   /** Guess the race from a model file name (faction packs: <faction>_<unit>.bbmodel). */
   function raceForModel(name) {
