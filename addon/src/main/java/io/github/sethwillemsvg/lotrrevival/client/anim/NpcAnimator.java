@@ -44,8 +44,6 @@ public final class NpcAnimator {
      *  The squad code supplies it per unit; until then /lotrrender stance sets testStance for every NPC. */
     public static Function<LivingEntity, String> stanceOf = e -> NpcAnimator.testStance;
     public static String testStance = "";
-    /** Spear brace: the guard clip with the spear arm held forward (radians, applied after the clip). */
-    private static final float SPEAR_ARM_X = -0.6f;
 
     private static final class State {
         String race;
@@ -146,7 +144,6 @@ public final class NpcAnimator {
             s.lastPos[i].set(p);
             set(parts[i], q, p);
         }
-        if (slot.equals("guard") && "spear_brace".equals(stanceOf.apply(entity))) model.rightArm.setRotation(SPEAR_ARM_X, 0f, 0f);
         model.hat.copyFrom(model.head);
     }
 
@@ -155,8 +152,7 @@ public final class NpcAnimator {
         if (stance == null || stance.isEmpty()) return null;
         String slot = switch (loco) {
             case "idle" -> switch (stance) {
-                case "guard", "spear_brace" -> "guard";
-                case "shield_brace" -> "shield_brace";
+                case "guard", "shield_brace", "spear_brace" -> stance;
                 default -> null;
             };
             case "walk" -> stance.equals("march") ? "march" : null;
