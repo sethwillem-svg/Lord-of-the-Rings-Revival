@@ -66,6 +66,45 @@
     return { c, axes: axes.map((a) => a.v) };
   }
 
+  /**
+   * Held weapons by class (client.render.WeaponGrip holds the same numbers): every weapon of a class is scaled to its length
+   * (blocks) along its long axis, with its grip in the fist. Spears are gripped a third of the way up and carried leaning
+   * forward; other classes keep Middle-earth's angle.
+   */
+  const WEAPON_LENGTH = { dagger: 0.6, sword: 1.0, longsword: 1.4, axe: 1.1, spear: 2.5, bow: 1.1, longbow: 1.6, crossbow: 0.9 };
+  const FIST = { right_arm: [-1, 10, -1], left_arm: [1, 10, -1] };
+  const SPEAR_GRIP = 0.35, SPEAR_DIR = [0, -1.2 / Math.hypot(1.2, 1), -1 / Math.hypot(1.2, 1)];
+
+  /** A weapon's grip: scale to its class length, grip in the fist (row-major 4x4, arm space px), or null for other items. */
+  function weaponGrip(cls, part, pos) {
+    const len = WEAPON_LENGTH[cls];
+    if (!len || pos.length < 9) return null;
+    const { c, axes } = shape(pos);
+    let a = axes[0];
+    if (dot(a, [0, -1, -1]) < 0) a = scl(a, -1);              // tip end: held items point forward and up out of the fist
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < pos.length; i += 3) { const t = dot(sub([pos[i], pos[i + 1], pos[i + 2]], c), a); lo = Math.min(lo, t); hi = Math.max(hi, t); }
+    if (hi - lo < 1e-3) return null;
+    const fist = FIST[part];
+    const tg = cls === 'spear' ? lo + SPEAR_GRIP * (hi - lo) : Math.max(lo, Math.min(hi, dot(sub(fist, c), a)));
+    const grip = add(c, scl(a, tg)), s = len * 16 / (hi - lo);
+    const R = cls === 'spear' ? between(a, SPEAR_DIR) : [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const M = R.map((v) => v * s), t = sub(fist, apply(M, grip));   // p' = fist + s R (p - grip)
+    return [M[0], M[1], M[2], t[0], M[3], M[4], M[5], t[1], M[6], M[7], M[8], t[2], 0, 0, 0, 1];
+  }
+
+  /** Points through a row-major 4x4. */
+  function transformPoints(m, pos) {
+    const out = new Array(pos.length);
+    for (let i = 0; i < pos.length; i += 3) {
+      const x = pos[i], y = pos[i + 1], z = pos[i + 2];
+      out[i] = m[0] * x + m[1] * y + m[2] * z + m[3];
+      out[i + 1] = m[4] * x + m[5] * y + m[6] * z + m[7];
+      out[i + 2] = m[8] * x + m[9] * y + m[10] * z + m[11];
+    }
+    return out;
+  }
+
   /** The stance's re-seating of a held item (points pos, arm space px) as a row-major 4x4 matrix, or null. */
   function itemHold(slot, part, pos) {
     const h = ITEM_HOLD[slot];
@@ -394,7 +433,7 @@
     return Object.entries(checks).filter(([, c]) => c.frames.length).map(([id, c]) => ({ id, label: c.label, frames: c.frames, share: c.frames.length / n }));
   }
 
-  const api = { RACES, SLOTS, LOOPS, HOLD, ITEM_HOLD, itemHold, JOINTS, JOINT_NAMES, deform, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
+  const api = { RACES, SLOTS, LOOPS, HOLD, ITEM_HOLD, itemHold, WEAPON_LENGTH, weaponGrip, transformPoints, JOINTS, JOINT_NAMES, deform, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.VanillaBake = api;
 

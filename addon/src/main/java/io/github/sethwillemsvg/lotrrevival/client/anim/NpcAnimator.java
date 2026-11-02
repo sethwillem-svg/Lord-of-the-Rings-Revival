@@ -164,6 +164,12 @@ public final class NpcAnimator {
         model.hat.copyFrom(model.head);
     }
 
+    /** The clip slot this NPC is playing (idle, walk, attack_sword_1, spear_brace, ...), or null. */
+    public static String slot(LivingEntity entity) {
+        State s = STATES.get(entity);
+        return s == null ? null : s.slot;
+    }
+
     /** The joint angles of the pose last applied to this NPC (NpcClip.JOINTS order), or null if it has none. Read by the
      *  PulseLib renderer, which bends the limbs and waist with them. */
     public static float[] joints(LivingEntity entity) {
