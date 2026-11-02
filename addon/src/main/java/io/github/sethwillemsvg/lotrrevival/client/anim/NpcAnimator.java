@@ -11,6 +11,7 @@ import org.joml.Vector3f;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -58,6 +59,8 @@ public final class NpcAnimator {
         final Vector3f[] fromPos = new Vector3f[6];
         final Quaternionf[] lastRot = new Quaternionf[6];
         final Vector3f[] lastPos = new Vector3f[6];
+        final float[] fromJoints = new float[NpcClip.JOINTS.length];
+        final float[] lastJoints = new float[NpcClip.JOINTS.length];
         State() {
             for (int i = 0; i < 6; i++) {
                 fromRot[i] = new Quaternionf(); fromPos[i] = new Vector3f();
@@ -82,7 +85,12 @@ public final class NpcAnimator {
     /** Called at the end of HumanoidModel.setupAnim (see HumanoidModelMixin). */
     public static void apply(HumanoidModel<?> model, LivingEntity entity, float limbSwing, float limbSwingAmount,
                              float ageInTicks, float netHeadYaw, float headPitch) {
-        if (!isNpcModel(model) || !keepsOurPose(model, entity)) return;
+        if (!isNpcModel(model)) return;
+        if (!keepsOurPose(model, entity)) {   // Minecraft's pose: straight limbs
+            State s0 = STATES.get(entity);
+            if (s0 != null) Arrays.fill(s0.lastJoints, 0f);
+            return;
+        }
         State s = STATES.computeIfAbsent(entity, e -> new State());
         if (s.race == null && s.raceRetry-- <= 0) { s.race = race(entity); s.raceRetry = 20; }
         String race = s.race == null ? "man" : s.race;
@@ -144,7 +152,16 @@ public final class NpcAnimator {
             s.lastPos[i].set(p);
             set(parts[i], q, p);
         }
+        clip.sampleJoints(t, s.lastJoints);
+        if (w < 1f) for (int i = 0; i < s.lastJoints.length; i++) s.lastJoints[i] = Mth.lerp(w, s.fromJoints[i], s.lastJoints[i]);
         model.hat.copyFrom(model.head);
+    }
+
+    /** The joint angles of the pose last applied to this NPC (NpcClip.JOINTS order), or null if it has none. Read by the
+     *  PulseLib renderer, which bends the limbs and waist with them. */
+    public static float[] joints(LivingEntity entity) {
+        State s = STATES.get(entity);
+        return s == null ? null : s.lastJoints;
     }
 
     /** The stance clip replacing a locomotion clip, or null to keep it: standing plays the stance, walking in column marches. */
@@ -182,6 +199,7 @@ public final class NpcAnimator {
     private static void start(State s, String slot, float age) {
         if (slot.equals(s.slot) && !isAttack(slot) && !slot.equals("hurt")) return;
         for (int i = 0; i < 6; i++) { s.fromRot[i].set(s.lastRot[i]); s.fromPos[i].set(s.lastPos[i]); }
+        System.arraycopy(s.lastJoints, 0, s.fromJoints, 0, s.lastJoints.length);
         s.blendStart = s.slot == null ? -1e9f : age;   // first clip: no blend from the zero pose
         s.slot = slot;
         s.slotStart = age;

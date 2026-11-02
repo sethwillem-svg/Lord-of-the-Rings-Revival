@@ -1,5 +1,6 @@
 package io.github.sethwillemsvg.lotrrevival.client.render;
 
+import com.arcanc.pulselib.content.model.deformer.gpu.PGpuDeformerBuffers;
 import com.arcanc.pulselib.content.renderer.PRenderQueue;
 import com.arcanc.pulselib.content.renderer.plan.PGeometryData;
 import com.arcanc.pulselib.content.renderer.plan.PInstanceHeader;
@@ -7,6 +8,7 @@ import com.arcanc.pulselib.util.PRenderTypes;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.logging.LogUtils;
 import com.mojang.math.Axis;
+import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimator;
 import io.github.sethwillemsvg.lotrrevival.client.render.PulseGeometry.Quad;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidArmorModel;
@@ -102,7 +104,8 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
 
     public PulseNpcRenderer(EntityRendererProvider.Context context) {
         super(context);
-        for (ModelPart part : new NpcBipedModel().parts) bodyQuads.add(PulseGeometry.capture(part));
+        ModelPart[] biped = new NpcBipedModel().parts;
+        for (int i = 0; i < biped.length; i++) bodyQuads.add(PulseGeometry.slice(PulseGeometry.capture(biped[i]), NpcJoints.cuts(i)));
         innerArmour = new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
         innerRest = new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
         outerRest = new HumanoidArmorModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR));
@@ -141,21 +144,34 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                     poseStack.popPose();
                 }
                 int overlay = getOverlayCoords(entity, 0f);
-                skin(entity, atlas, at, light, overlay);
+                // elbows, knees and waist bend on the GPU: one upload of each part's joint angles, shared by its meshes
+                float[] joints = NpcAnimator.joints(entity);
+                PGpuDeformerBuffers.Submission[] bends = new PGpuDeformerBuffers.Submission[at.length];
+                for (int i = 0; i < at.length; i++) bends[i] = at[i] == null ? PGpuDeformerBuffers.NONE : NpcJoints.submit(i, joints);
+                skin(entity, atlas, at, bends, light, overlay);
                 if (showEquipment(entity)) {
-                    armour(entity, at, light, poseStack, buffers);
-                    items(entity, model, poseStack, buffers, light);
+                    armour(entity, at, bends, light, poseStack, buffers);
+                    items(entity, model, joints, poseStack, buffers, light);
                 }
             }
         };
     }
 
     private static void submit(RenderType type, PGeometryData mesh, Matrix4f m, int color, int light, int overlay) {
-        if (mesh != null) PRenderQueue.submitEntityMesh(type, mesh, new PInstanceHeader(m, color, light, overlay));
+        submit(type, mesh, m, color, light, overlay, PGpuDeformerBuffers.NONE);
+    }
+
+    private static void submit(RenderType type, PGeometryData mesh, Matrix4f m, int color, int light, int overlay,
+                               PGpuDeformerBuffers.Submission bend) {
+        if (mesh == null) return;
+        PInstanceHeader header = bend.enabled()
+                ? new PInstanceHeader(m, color, light, overlay, bend.operationOffset(), bend.valueOffset(), bend.operationCount())
+                : new PInstanceHeader(m, color, light, overlay);
+        PRenderQueue.submitEntityMesh(type, mesh, header);
     }
 
     // ---- skin ----
-    private void skin(NpcEntity entity, TextureAtlas atlas, Matrix4f[] at, int light, int overlay) {
+    private void skin(NpcEntity entity, TextureAtlas atlas, Matrix4f[] at, PGpuDeformerBuffers.Submission[] bends, int light, int overlay) {
         NpcSkin.Layers layers = NpcSkin.layers(entity, atlas);
         int n = Math.min(layers.sprites().size(), MAX_LAYERS);
         if (n == 0) return;
@@ -169,7 +185,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         for (int i = 0; i < at.length; i++) {
             if (at[i] == null) continue;
             List<TextureAtlasSprite> drawn = blinking != null && (i == HEAD || i == HAT) ? blinking : all;
-            submit(type, skinMesh(drawn, i), at[i], 0xFFFFFFFF, light, overlay);
+            submit(type, skinMesh(drawn, i), at[i], 0xFFFFFFFF, light, overlay, bends[i]);
         }
     }
 
@@ -184,7 +200,8 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
 
     // ---- armour ----
     @SuppressWarnings("unchecked")
-    private void armour(NpcEntity entity, Matrix4f[] at, int light, PoseStack poseStack, MultiBufferSource buffers) {
+    private void armour(NpcEntity entity, Matrix4f[] at, PGpuDeformerBuffers.Submission[] bends, int light, PoseStack poseStack,
+                        MultiBufferSource buffers) {
         for (EquipmentSlot slot : ARMOUR_SLOTS) {
             ItemStack stack = entity.getItemBySlot(slot);
             if (!(stack.getItem() instanceof ArmorItem item) || item.getEquipmentSlot() != slot) continue;
@@ -204,7 +221,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                 }
                 for (ArmourPiece piece : pieces) {
                     Matrix4f m = at[piece.part];
-                    if (m != null) submit(piece.type, piece.mesh, m, piece.color, light, OverlayTexture.NO_OVERLAY);
+                    if (m != null) submit(piece.type, piece.mesh, m, piece.color, light, OverlayTexture.NO_OVERLAY, bends[piece.part]);
                 }
                 continue;
             }
@@ -231,7 +248,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                 ResourceLocation texture = ClientHooks.getArmorTexture(entity, stack, layer, inner, slot);
                 RenderType type = PRenderTypes.RenderTypeProvider.trianglesCutout(texture);
                 for (int p : shown)
-                    if (at[p] != null) submit(type, armourMesh(parts[p], texture, null, li), at[p], color, light, OverlayTexture.NO_OVERLAY);
+                    if (at[p] != null) submit(type, armourMesh(parts[p], p, texture, null, li), at[p], color, light, OverlayTexture.NO_OVERLAY, bends[p]);
             }
             ArmorTrim trim = stack.get(DataComponents.TRIM);
             if (trim != null) {
@@ -240,17 +257,17 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                 RenderType type = PRenderTypes.RenderTypeProvider.trianglesCutout(Sheets.ARMOR_TRIMS_SHEET);
                 for (int p : shown)
                     if (at[p] != null)
-                        submit(type, armourMesh(parts[p], sprite, sprite, materialLayers.size()), at[p], 0xFFFFFFFF, light, OverlayTexture.NO_OVERLAY);
+                        submit(type, armourMesh(parts[p], p, sprite, sprite, materialLayers.size()), at[p], 0xFFFFFFFF, light, OverlayTexture.NO_OVERLAY, bends[p]);
             }
         }
     }
 
-    private PGeometryData armourMesh(ModelPart part, Object textureKey, TextureAtlasSprite sprite, int layer) {
+    private PGeometryData armourMesh(ModelPart part, int index, Object textureKey, TextureAtlasSprite sprite, int layer) {
         Map<Object, PGeometryData> meshes = armourMeshes.computeIfAbsent(part, p -> new HashMap<>());
         Object key = List.of(textureKey, layer);
         PGeometryData mesh = meshes.get(key);
         if (mesh == null) {
-            List<Quad> quads = armourQuads.computeIfAbsent(part, PulseGeometry::capture);
+            List<Quad> quads = armourQuads.computeIfAbsent(part, q -> PulseGeometry.slice(PulseGeometry.capture(q), NpcJoints.cuts(index)));
             mesh = Objects.requireNonNullElse(PulseGeometry.pack(quads, sprite), NONE);
             meshes.put(key, mesh);
         }
@@ -296,7 +313,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             for (Quad q : rec.quads)
                 groups.computeIfAbsent(List.of(q.part() < 0 ? BODY : q.part(), q.color(), Math.max(0, q.draw())), g -> new ArrayList<>()).add(q);
             groups.forEach((g, quads) -> {
-                PGeometryData mesh = PulseGeometry.pack(quads, null);
+                PGeometryData mesh = PulseGeometry.pack(PulseGeometry.slice(quads, NpcJoints.cuts(g.get(0))), null);
                 if (mesh != null) pieces.add(new ArmourPiece(g.get(0), type, mesh, g.get(1)));
             });
         });
@@ -325,22 +342,24 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     private static final boolean DEBUG = Boolean.getBoolean("lotr_revival.debug") || Integer.getInteger("lotr_revival.autotest", 0) > 0;
 
     // ---- held items ----
-    private void items(NpcEntity entity, NpcBipedModel model, PoseStack poseStack, MultiBufferSource buffers, int light) {
+    private void items(NpcEntity entity, NpcBipedModel model, float[] joints, PoseStack poseStack, MultiBufferSource buffers, int light) {
         boolean rightHanded = entity.getMainArm() == HumanoidArm.RIGHT;
         ItemStack left = rightHanded ? entity.getOffhandItem() : entity.getMainHandItem();
         ItemStack right = rightHanded ? entity.getMainHandItem() : entity.getOffhandItem();
-        item(entity, model, poseStack, buffers, right, HumanoidArm.RIGHT, light);
-        item(entity, model, poseStack, buffers, left, HumanoidArm.LEFT, light);
+        item(entity, model, joints, poseStack, buffers, right, HumanoidArm.RIGHT, light);
+        item(entity, model, joints, poseStack, buffers, left, HumanoidArm.LEFT, light);
     }
 
-    private void item(NpcEntity entity, NpcBipedModel model, PoseStack poseStack, MultiBufferSource buffers, ItemStack stack,
-                      HumanoidArm arm, int light) {
+    private void item(NpcEntity entity, NpcBipedModel model, float[] joints, PoseStack poseStack, MultiBufferSource buffers,
+                      ItemStack stack, HumanoidArm arm, int light) {
         if (stack.isEmpty()) return;
         boolean left = arm == HumanoidArm.LEFT;
         ItemDisplayContext context = left ? ItemDisplayContext.THIRD_PERSON_LEFT_HAND : ItemDisplayContext.THIRD_PERSON_RIGHT_HAND;
         // the hand frame Minecraft's held-item layer uses
         poseStack.pushPose();
         model.translateToHand(arm, poseStack);
+        Matrix4f forearm = NpcJoints.belowElbow(left ? LEFT_ARM : RIGHT_ARM, joints);   // the hand follows the bent elbow
+        if (forearm != null) poseStack.mulPose(forearm);
         poseStack.mulPose(Axis.XP.rotationDegrees(-90f));
         poseStack.mulPose(Axis.YP.rotationDegrees(180f));
         poseStack.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);

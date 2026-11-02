@@ -78,6 +78,7 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
       <select id="rate" aria-label="Playback speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select>
       <label><input id="showRig" type="checkbox" checked> rig</label>
       <label><input id="showSword" type="checkbox" checked> sword</label>
+      <label title="elbows, knees and waist bend as PulseLib bends them in game"><input id="showJoints" type="checkbox" checked> joints</label>
     </div>
     <canvas id="marks"></canvas>
     <ul id="issues"></ul>
@@ -163,24 +164,44 @@ npc.position.set(14, 24, 0);
 npc.scale.set(1, -1, -1);
 scene.add(npc);
 const SKIN = '#c99a74', CLOTH = { head: SKIN, body: '#4a6a8a', right_arm: SKIN, left_arm: SKIN, right_leg: '#5a4632', left_leg: '#4b3b2a' };
-const partObj = {};
+const partObj = {}, flex = [];   // flex: meshes bent by their part's joints (V.JOINTS), as PulseLib bends them in game
 for (const k of V.PARTS) {
   const [a, b] = V.BOXES[k], o = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.BoxGeometry(b[0] - a[0], b[1] - a[1], b[2] - a[2]), mat(CLOTH[k]));
+  const h = b[1] - a[1], bends = (V.JOINTS[k] || []).length > 0;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(b[0] - a[0], h, b[2] - a[2], 1, bends ? h * 2 : 1, 1), mat(CLOTH[k]));
   m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
   o.add(m); npc.add(o); partObj[k] = o;
+  if (bends) flex.push({ part: k, mesh: m, base: Float32Array.from(m.geometry.attributes.position.array) });
+}
+/** Bend the flexible meshes to the joint angles J (name -> radians). */
+function bendMeshes(J) {
+  for (const { part, mesh, base } of flex) {
+    const pos = mesh.geometry.attributes.position, o = mesh.position;
+    for (let i = 0; i < base.length; i += 3) {
+      const v = V.deform(part, J, [base[i] + o.x, base[i + 1] + o.y, base[i + 2] + o.z]);
+      pos.array[i] = v[0] - o.x; pos.array[i + 1] = v[1] - o.y; pos.array[i + 2] = v[2] - o.z;
+    }
+    pos.needsUpdate = true;
+    mesh.geometry.computeVertexNormals();
+  }
+}
+/** The rigid motion the joints give a point of a part and its axes (for things held in the hand). */
+function bentFrame(part, J, p) {
+  const o = V.deform(part, J, p), ax = (d) => new THREE.Vector3(...V.deform(part, J, [p[0] + d[0], p[1] + d[1], p[2] + d[2]])).sub(new THREE.Vector3(...o));
+  return new THREE.Matrix4().makeBasis(ax([1, 0, 0]), ax([0, 1, 0]), ax([0, 0, 1])).setPosition(...o);
 }
 for (const x of [-2, 2]) {      // eyes on the face (-z) so the facing reads at a glance
   const e = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 0.3), mat('#20242c'));
   e.position.set(x, -4.5, -4.1); partObj.head.add(e);
 }
-const sleeve = new THREE.Mesh(new THREE.BoxGeometry(4.2, 5, 4.2), mat('#3d5a77')); sleeve.position.set(-1, 0.5, 0); partObj.right_arm.add(sleeve);
+const sleeve = new THREE.Mesh(new THREE.BoxGeometry(4.2, 4.5, 4.2), mat('#3d5a77')); sleeve.position.set(-1, 0.25, 0); partObj.right_arm.add(sleeve);   // above the elbow
 const sleeveL = sleeve.clone(); sleeveL.position.set(1, 0.5, 0); partObj.left_arm.add(sleeveL);
 // held sword: vanilla items point forward (-z) out of the fist
 const sword = new THREE.Group();
 const blade = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 13), mat('#c9ced6')); blade.position.set(0, 0, -8.5);
 const guard = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4, 1), mat('#8a6a2a')); guard.position.set(0, 0, -1.6);
-sword.add(blade, guard); sword.position.set(-1, 9.5, 0); partObj.right_arm.add(sword);
+sword.add(blade, guard); sword.matrixAutoUpdate = false; partObj.right_arm.add(sword);
+const SWORD_AT = [-1, 9.5, 0];   // the fist, in the right arm's space; the sword follows the forearm
 
 // orc rig as a stick figure, mapped the same way (rig: y up, faces -z -> shown facing +z)
 const rigGroup = new THREE.Group();
@@ -234,6 +255,11 @@ function pose(c, time) {
     o.quaternion.copy(qa).slerp(qb, a);
     o.position.set(p[f0 * 3] + (p[f1 * 3] - p[f0 * 3]) * a, p[f0 * 3 + 1] + (p[f1 * 3 + 1] - p[f0 * 3 + 1]) * a, p[f0 * 3 + 2] + (p[f1 * 3 + 2] - p[f0 * 3 + 2]) * a);
   }
+  const J = {};
+  for (const k of V.JOINT_NAMES) { const v = d.joints && d.joints[k]; J[k] = v ? v[f0] + (v[f1] - v[f0]) * a : 0; }
+  if (!$('showJoints').checked) for (const k in J) J[k] = 0;
+  bendMeshes(J);
+  sword.matrix.copy(bentFrame('right_arm', J, SWORD_AT));
   rigGroup.visible = !!(c.clip && $('showRig').checked);
   if (rigGroup.visible) {
     const fr = c.clip.frames[Math.round(f)], fk = A.rigFK(rig, fr.locals, fr.rootPos);

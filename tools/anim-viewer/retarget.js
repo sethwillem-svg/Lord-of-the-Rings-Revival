@@ -492,6 +492,7 @@
     const wristRel = { right: [], left: [] };
     const frames = [];
     const hips0 = g(0, 'Hips');
+    const spineUp = ['Spine2', 'Spine1', 'Spine'].find(has);   // lower-back direction for the pelvis frame
     for (let f = 0; f < F; f++) {
       const W = {};            // desired world rotations by bone index
       let upper = frameFrom(o(sub(g(f, 'LeftArm'), g(f, 'RightArm'))),
@@ -539,7 +540,11 @@
       });
       const hp = scl(o(sub(g(f, 'Hips'), hips0)), s);
       const rootPos = opts.inPlace ? [0, hp[1] * opts.rootDrop, 0] : [hp[0], hp[1] * opts.rootDrop, hp[2]];
-      frames.push({ locals, rootPos });
+      // pelvis orientation (world, rig space), for consumers that bend the waist (bake_vanilla.js); rigs without a pelvis
+      // bone keep an unrotated root, so this is the only place it survives
+      const pelvis = iPelvis >= 0 ? W[iPelvis] : frameFrom(o(sub(g(f, 'LeftLeg'), g(f, 'RightLeg'))),
+        spineUp ? o(sub(g(f, spineUp), g(f, 'Hips'))) : col(upper, 1));
+      frames.push({ locals, rootPos, pelvis });
     }
 
     // wrists: the first frame's hand orientation is neutral (skeletons disagree on hand axes), later frames follow the
