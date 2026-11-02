@@ -139,7 +139,7 @@ public final class NpcExport {
         ps.mulPose(Axis.YP.rotationDegrees(180f));
         ps.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);
         PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
-        renderer.renderItem(entity, stack, left ? ItemDisplayContext.THIRD_PERSON_LEFT_HAND : ItemDisplayContext.THIRD_PERSON_RIGHT_HAND,
+        HeldItems.render(renderer, entity, stack, left ? ItemDisplayContext.THIRD_PERSON_LEFT_HAND : ItemDisplayContext.THIRD_PERSON_RIGHT_HAND,
                 left, ps, buffers, 0xF000F0);
         buffers.flush();
         int part = left ? LEFT_ARM : RIGHT_ARM;

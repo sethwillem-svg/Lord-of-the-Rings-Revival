@@ -375,7 +375,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         // Items with their own renderer (banners, banner shields, ...) paint several layers onto one surface, which only
         // works in draw order: draw those the normal way. Ordinary item models go to PulseLib.
         if (Minecraft.getInstance().getItemRenderer().getModel(stack, entity.level(), entity, entity.getId()).isCustomRenderer()) {
-            itemInHand.renderItem(entity, stack, context, left, poseStack, buffers, light);
+            HeldItems.render(itemInHand, entity, stack, context, left, poseStack, buffers, light);
             poseStack.popPose();
             return;
         }
@@ -407,7 +407,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         ps.mulPose(Axis.YP.rotationDegrees(180f));
         ps.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);
         PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
-        itemInHand.renderItem(entity, stack, context, left, ps, buffers, 0xF000F0);
+        HeldItems.render(itemInHand, entity, stack, context, left, ps, buffers, 0xF000F0);
         buffers.flush();
         List<Float> out = new ArrayList<>();
         buffers.byType.forEach((rt, rec) -> {
@@ -422,7 +422,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     /** Draws the item once into a recorder (hand space), then packs one mesh per (texture, colour). */
     private List<Piece> recordItem(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left) {
         PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
-        itemInHand.renderItem(entity, stack, context, left, new PoseStack(), buffers, 0xF000F0);
+        HeldItems.render(itemInHand, entity, stack, context, left, new PoseStack(), buffers, 0xF000F0);
         buffers.flush();
         List<Piece> pieces = new ArrayList<>();
         buffers.byType.forEach((rt, rec) -> {
