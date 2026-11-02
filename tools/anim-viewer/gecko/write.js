@@ -6,7 +6,8 @@
  * Blockbench shows a key (x, y, z) as the rotation Rz(z)·Ry(-y)·Rx(-x) and a position key as the offset (-x, y, z) (right-handed,
  * y up, facing -z); Minecraft's ModelPart angles read the same way. PulseLib's GeckoLib loader reads the file literally:
  * rotation Rx·Ry·Rz of the raw degrees (rotationXYZ, no flips), position raw/16. So keys are written as the true rotation's
- * XYZ angles and the true offset, and PulseLib shows what Blockbench shows. */
+ * XYZ angles and the true offset, and PulseLib shows what Blockbench shows. PulseLib lerps the three angles between keys
+ * (no slerp), so each key is unwrapped against the one before it. */
 (function (root) {
   'use strict';
 
@@ -76,10 +77,25 @@
     return toXyz(trueRotation(v));
   }
 
+  /** v moved by whole turns (and to the equivalent XYZ triple) to sit nearest prev, so PulseLib's Euler lerp takes the short way. */
+  function unwrap(v, prev) {
+    if (!prev) return v;
+    const near = (x, p) => x + 360 * Math.round((p - x) / 360);
+    let best = null, cost = Infinity;
+    for (const c of [v, [v[0] + 180, 180 - v[1], v[2] + 180]]) {
+      const u = c.map((x, i) => near(x, prev[i]));
+      const d = Math.max(...u.map((x, i) => Math.abs(x - prev[i])));
+      if (d < cost - 1e-9) { cost = d; best = u; }
+    }
+    return best;
+  }
+
   function channel(keys, rotation) {
     const out = {};
+    let prev = null;
     for (const k of keys) {
-      const e = { vector: (rotation ? toPulse(k.v) : [-k.v[0], k.v[1], k.v[2]]).map(round) };
+      const v = rotation ? (prev = unwrap(toPulse(k.v), prev)) : [-k.v[0], k.v[1], k.v[2]];
+      const e = { vector: v.map(round) };
       if (k.lerp && k.lerp !== 'linear') e.lerp_mode = k.lerp;
       out[timeKey(k.t)] = e;
     }

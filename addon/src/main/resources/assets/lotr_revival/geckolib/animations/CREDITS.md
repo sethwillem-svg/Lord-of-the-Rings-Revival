@@ -1,7 +1,7 @@
 # NPC animation credits
 
 The NPC clips (`entity/npc_biped_<race>.animation.json`) are converted from these sets by `tools/anim-viewer/build_npc.js`.
-Each source's licence is kept next to its data in `tools/anim-viewer/library/<source>/LICENSE.txt`.
+Each source's licence ships next to this file in `licenses/<source>.txt` (and with its data in `tools/anim-viewer/library/<source>/`).
 
 | Source | Author | Licence | Used for |
 | --- | --- | --- | --- |

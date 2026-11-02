@@ -36,3 +36,12 @@ test('a right arm at x -90 puts the fist in front of the body', () => {
   assert.ok(fist[2] < -9, fist.join());
   assert.ok(Math.abs(fist[1] - 22.5) < 1e-6);
 });
+
+test('rotations are lerped as Euler components like PulseLib, not slerped', () => {
+  const { quatXyz } = require('../gecko/sample.js');
+  const a = animationJson({ a: { length: 1, loop: false, bones: { right_arm: { rotation: [{ t: 0, v: [0, 0, 0], lerp: 'linear' }, { t: 1, v: [0, 0, 0], lerp: 'linear' }] } } } }).animations.a;
+  a.bones.right_arm.rotation = { '0.0': { vector: [0, 0, 0] }, '1.0': { vector: [90, 90, 0] } };   // file values, as PulseLib reads them
+  const q = samplePose(a, 0.5).right_arm.q, e = quatXyz([45, 45, 0]);
+  const dot = Math.abs(q.reduce((s, x, i) => s + x * e[i], 0));
+  assert.ok(dot > 1 - 1e-9, `${q} vs ${e}`);
+});

@@ -64,3 +64,12 @@ test('hold clips are written as hold_on_last_frame', () => {
   const a = animationJson({ c: { length: 1, loop: 'hold', bones: {} } });
   assert.equal(a.animations.c.loop, 'hold_on_last_frame');
 });
+
+test('written rotation keys are unwrapped: neighbours never jump more than 180° in a component', () => {
+  // (180,60,-90) and (-180,60,-90) are the same rotation; PulseLib lerps Euler components, so a raw jump would spin the arm
+  const keys = [[-38, 52, 34], [-90, 77, -90], [-170, 60, 80], [175, 62, 85], [10, -170, 45], [-10, 170, 40]];
+  const a = animationJson({ c: { length: 1, loop: false, bones: { right_arm: { rotation: keys.map((v, i) => ({ t: i / 5, v, lerp: 'linear' })) } } } });
+  const out = Object.values(a.animations.c.bones.right_arm.rotation).map((k) => k.vector);
+  for (let i = 1; i < out.length; i++) for (let j = 0; j < 3; j++) assert.ok(Math.abs(out[i][j] - out[i - 1][j]) <= 180 + 1e-6, `${i}: ${out[i - 1]} -> ${out[i]}`);
+  out.forEach((v, i) => assert.ok(close(eulerMatrix(v, 'XYZ'), trueRotation(keys[i]), 1e-3), 'same rotation ' + i));
+});

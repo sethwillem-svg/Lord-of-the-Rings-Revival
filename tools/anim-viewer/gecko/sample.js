@@ -1,5 +1,5 @@
-/* Plays the GeckoLib animation JSON the way PulseLib does: rotation keys are XYZ Euler degrees (Rx·Ry·Rz, slerped as
- * quaternions), position keys are px offsets, both as written (gecko/write.js), about the rig's pivots (gecko/rig.js).
+/* Plays the GeckoLib animation JSON the way PulseLib does: rotation keys are XYZ Euler degrees (Rx·Ry·Rz), interpolated
+ * component-wise as PulseLib's sampler does, position keys are px offsets, both as written (gecko/write.js), about the rig's pivots (gecko/rig.js).
  *   samplePose(animation, t)  { bone: { q: [x,y,z,w], pos: [x,y,z] } }  loops wrap, one-shots and holds clamp
  *   worldBones(pose)          { bone: { R (row-major 3x3), p } }  x -> R x + p in rig space (px, y up, facing -z)
  *   point(world, v)           a rig-space rest point moved by a bone's world transform
@@ -34,38 +34,27 @@
     ];
   }
 
-  function slerp(a, b, f) {
-    let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
-    if (d < 0) { b = b.map((x) => -x); d = -d; }
-    if (d > 0.9995) {
-      const r = a.map((x, i) => x + f * (b[i] - x));
-      const n = Math.hypot(...r);
-      return r.map((x) => x / n);
-    }
-    const th = Math.acos(d), s = Math.sin(th);
-    const wa = Math.sin((1 - f) * th) / s, wb = Math.sin(f * th) / s;
-    return a.map((x, i) => wa * x + wb * b[i]);
-  }
-
   function catmull(p0, p1, p2, p3, f) {
     return p1.map((_, i) => 0.5 * (2 * p1[i] + (-p0[i] + p2[i]) * f + (2 * p0[i] - 5 * p1[i] + 4 * p2[i] - p3[i]) * f * f + (-p0[i] + 3 * p1[i] - 3 * p2[i] + p3[i]) * f * f * f));
   }
 
+  /** Keys interpolate component-wise (rotations too, as Euler degrees, like PulseLib's sampler), then rotations become quaternions. */
   function sampleKeys(keys, t, rotation) {
-    const val = (k) => (rotation ? quatXyz(k.v) : k.v);
-    if (t <= keys[0].t) return val(keys[0]);
+    const v = sampleValues(keys, t);
+    return rotation ? quatXyz(v) : v;
+  }
+
+  function sampleValues(keys, t) {
+    if (t <= keys[0].t) return keys[0].v;
     for (let i = 1; i < keys.length; i++) {
       const a = keys[i - 1], b = keys[i];
       if (t > b.t) continue;
-      if (a.lerp === 'step') return val(a);
+      if (a.lerp === 'step') return a.v;
       const f = b.t > a.t ? (t - a.t) / (b.t - a.t) : 1;
-      if (rotation) return slerp(val(a), val(b), f);
-      if (a.lerp === 'catmullrom' || b.lerp === 'catmullrom') {
-        return catmull((keys[i - 2] || a).v, a.v, b.v, (keys[i + 1] || b).v, f);
-      }
+      if (a.lerp === 'catmullrom' || b.lerp === 'catmullrom') return catmull((keys[i - 2] || a).v, a.v, b.v, (keys[i + 1] || b).v, f);
       return a.v.map((x, j) => x + f * (b.v[j] - x));
     }
-    return val(keys[keys.length - 1]);
+    return keys[keys.length - 1].v;
   }
 
   function samplePose(animation, t) {

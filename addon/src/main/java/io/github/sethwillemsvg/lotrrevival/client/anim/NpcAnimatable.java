@@ -9,12 +9,15 @@ import com.mojang.logging.LogUtils;
 import io.github.sethwillemsvg.lotrrevival.combat.AttackClips;
 import io.github.sethwillemsvg.lotrrevival.combat.WeaponClass;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +48,7 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private long serverAttackAt = -1000;
     /** The pose last applied to the model this frame (NpcAnimator.apply), read by the renderer for held items. */
     @Nullable NpcPose lastPose;
+    private final Map<String, Float> pendingSpeeds = new HashMap<>();
 
     private NpcAnimatable(LivingEntity entity) {
         this.race = NpcAnimator.raceOf(entity);
@@ -124,10 +128,15 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         if (entity.swinging && !wasSwinging && entity.tickCount - serverAttackAt > 10 && entity.deathTime == 0) {
             ItemStack hand = entity.getMainHandItem();
             List<AttackClips.Clip> clips = AttackClips.of(race, hand.isEmpty() ? null : Objects.requireNonNullElse(WeaponClass.of(hand), "sword"));
-            if (!clips.isEmpty()) trigger(c, clips.get(attacks++ % clips.size()).slot(), 1f);
+            if (!clips.isEmpty()) trigger(c, handed(entity, clips.get(attacks++ % clips.size()).slot()), 1f);
         }
         wasSwinging = entity.swinging;
-        manager.tick();
+        try {
+            manager.tick();
+        } catch (RuntimeException e) {
+            warnOnce(state, e);
+        }
+        applyPendingSpeeds(c);
     }
 
     /** The base state now: free, riding, a stance, bow_aim, crossbow_aim or crossbow_reload (NpcGraphs.STATES). */
@@ -152,29 +161,74 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             String first = animation.replaceFirst("_\\d+$", "_1");
             animation = model.animations().containsKey(first) ? first : "attack_sword_1";
         }
-        trigger(c, animation, speed);
+        trigger(c, handed(entity, animation), speed);
     }
 
+    /**
+     * Starts an overlay. PulseLib only accepts a speed for an overlay that is playing (setOverlaySpeed throws otherwise), and
+     * an overlay starts playing on the tick after its trigger: a running one is restarted and sped now, a new one is
+     * triggered and gets its speed after the next tick (applyPendingSpeeds). Never lets an animation fault reach the game.
+     */
     private void trigger(PAnimationController<NpcAnimatable> c, String animation, float speed) {
         PBakedModel model = bound;
         if (model == null || !model.animations().containsKey(animation)) return;
-        var runtime = c.graphRuntime();
-        if (runtime != null) {
-            runtime.setOverlaySpeed(animation, speed);
-            runtime.restartOverlay(animation);
+        try {
+            var runtime = c.graphRuntime();
+            if (runtime != null && runtime.restartOverlay(animation)) {
+                runtime.setOverlaySpeed(animation, speed);
+                return;
+            }
+            c.trigger(animation);
+            if (speed != 1f) pendingSpeeds.put(animation, speed);
+        } catch (RuntimeException e) {
+            warnOnce(animation, e);
         }
-        c.trigger(animation);
     }
 
-    /** The base state: aiming beats riding beats a formation stance (still, or marching) beats moving freely. */
+    private void applyPendingSpeeds(PAnimationController<NpcAnimatable> c) {
+        if (pendingSpeeds.isEmpty()) return;
+        var runtime = c.graphRuntime();
+        pendingSpeeds.forEach((animation, speed) -> {
+            try {
+                if (runtime != null) runtime.setOverlaySpeed(animation, speed);
+            } catch (RuntimeException e) {
+                warnOnce(animation, e);
+            }
+        });
+        pendingSpeeds.clear();
+    }
+
+    private static boolean warned;
+
+    private static void warnOnce(String animation, RuntimeException e) {
+        if (warned) return;
+        warned = true;
+        LOG.warn("lotr_revival: could not play NPC animation {} (further errors are not logged)", animation, e);
+    }
+
+    /** The attack as this NPC plays it: the mirrored twin (<name>_l) when it holds its weapon in the left hand. */
+    private String handed(LivingEntity entity, String animation) {
+        PBakedModel model = bound;
+        String left = animation + "_l";
+        return entity.getMainArm() == HumanoidArm.LEFT && model != null && model.animations().containsKey(left) ? left : animation;
+    }
+
+    /**
+     * The base state. Riding comes first (aiming clips have no legs, so a mounted archer keeps sitting); aiming only while
+     * standing (a strafing archer keeps stepping) and, for a loaded crossbow, only while the NPC is fighting; then a formation
+     * stance (still, or marching); else moving freely.
+     */
     private static String baseState(LivingEntity entity, float speed) {
-        ItemStack use = entity.getUseItem();
-        String cls = entity.isUsingItem() ? WeaponClass.of(use) : null;
-        if ("bow".equals(cls) || "longbow".equals(cls)) return "bow_aim";
-        if ("crossbow".equals(cls)) return "crossbow_reload";
-        ItemStack main = entity.getMainHandItem();
-        if (main.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(main)) return "crossbow_aim";
         if (entity.isPassenger()) return "riding";
+        if (speed < NpcGraphs.WALK) {
+            ItemStack use = entity.getUseItem();
+            String cls = entity.isUsingItem() ? WeaponClass.of(use) : null;
+            if ("bow".equals(cls) || "longbow".equals(cls)) return "bow_aim";
+            if ("crossbow".equals(cls)) return "crossbow_reload";
+            ItemStack main = entity.getMainHandItem();
+            if (main.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(main) && entity instanceof Mob mob && mob.isAggressive())
+                return "crossbow_aim";
+        }
         String stance = NpcAnimator.stanceOf.apply(entity);
         if (stance != null && !stance.isEmpty()) {
             if (stance.equals("march")) return "march";
