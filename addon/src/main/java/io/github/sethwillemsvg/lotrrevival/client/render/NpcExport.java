@@ -59,7 +59,7 @@ public final class NpcExport {
     private static final int[] PRIORITY = {0, 3, 4, 5, 6, 2};
 
     /** One mesh: triangles in a body part's space (px, y down), UVs in its texture (0..1). hand: a held item (follows the forearm). */
-    record Mesh(int part, ResourceLocation texture, int color, boolean translucent, boolean hand, float[] pos, float[] uv, int[] idx) {}
+    record Mesh(int part, ResourceLocation texture, int color, boolean translucent, boolean hand, String weapon, float[] pos, float[] uv, int[] idx) {}
 
     public record Npc(String type, String race, String faction, String label, float widthScale, float scale, List<Mesh> meshes) {}
 
@@ -115,7 +115,7 @@ public final class NpcExport {
                     }
                     groups.computeIfAbsent(List.of(part, q.color()), g -> new ArrayList<>()).add(local);
                 }
-                groups.forEach((g, quads) -> meshes.add(mesh(g.get(0), texture, g.get(1), translucent, false,
+                groups.forEach((g, quads) -> meshes.add(mesh(g.get(0), texture, g.get(1), translucent, false, null,
                         PulseGeometry.slice(quads, NpcJoints.cuts(g.get(0))))));
             });
         } finally {
@@ -148,7 +148,8 @@ public final class NpcExport {
             if (texture == null) return;
             Map<Integer, List<Quad>> byColor = new LinkedHashMap<>();
             for (Quad q : rec.quads) byColor.computeIfAbsent(q.color(), c -> new ArrayList<>()).add(q);
-            byColor.forEach((color, quads) -> meshes.add(mesh(part, texture, color, rt.toString().contains("translucent"), true, quads)));
+            String weapon = WeaponGrip.classOf(stack);
+            byColor.forEach((color, quads) -> meshes.add(mesh(part, texture, color, rt.toString().contains("translucent"), true, weapon, quads)));
         });
     }
 
@@ -189,7 +190,7 @@ public final class NpcExport {
     }
 
     /** Faces (blocks) as one triangle mesh (px). */
-    private static Mesh mesh(int part, ResourceLocation texture, int color, boolean translucent, boolean hand, List<Quad> faces) {
+    private static Mesh mesh(int part, ResourceLocation texture, int color, boolean translucent, boolean hand, String weapon, List<Quad> faces) {
         int nv = 0, ni = 0;
         for (Quad q : faces) { nv += q.pos().length; ni += (q.pos().length - 2) * 3; }
         float[] pos = new float[nv * 3], uv = new float[nv * 2];
@@ -204,7 +205,7 @@ public final class NpcExport {
                 uv[v * 2] = q.u()[k]; uv[v * 2 + 1] = q.v()[k];
             }
         }
-        return new Mesh(part, texture, color, translucent, hand, pos, uv, idx);
+        return new Mesh(part, texture, color, translucent, hand, weapon, pos, uv, idx);
     }
 
     // ---- writing ----
@@ -271,6 +272,7 @@ public final class NpcExport {
                 mo.addProperty("color", String.format("%08x", m.color()));
                 if (m.translucent()) mo.addProperty("translucent", true);
                 if (m.hand()) mo.addProperty("hand", true);
+                if (m.weapon() != null) mo.addProperty("weapon", m.weapon());
                 mo.add("pos", numbers(m.pos(), 1000f));
                 float[] uv = m.uv().clone();
                 for (int k = 0; k < uv.length; k += 2) { uv[k] = (uv[k] - r[1]) * r[3]; uv[k + 1] = (uv[k + 1] - r[2]) * r[4]; }

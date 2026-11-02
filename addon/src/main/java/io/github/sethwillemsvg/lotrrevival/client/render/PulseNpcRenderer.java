@@ -89,6 +89,10 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     private final Map<ModelPart, List<Quad>> armourQuads = new WeakHashMap<>();
     private final Map<ModelPart, Map<Object, PGeometryData>> armourMeshes = new WeakHashMap<>();
     private final Map<ItemKey, List<Piece>> itemPieces = new HashMap<>();
+    /** Each held item's points in arm space (px), and where it sits per stance (arm space, blocks; NONE_PLACE: as drawn). */
+    private final Map<ItemKey, float[]> itemPoints = new HashMap<>();
+    private final Map<List<Object>, Matrix4f> itemPlace = new HashMap<>();
+    private static final Matrix4f NONE_PLACE = new Matrix4f();
     private final java.util.Set<Class<?>> warned = new java.util.HashSet<>();
     private TextureAtlas atlasSeen;
 
@@ -131,6 +135,8 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                     armourQuads.clear();
                     armourMeshes.clear();
                     itemPieces.clear();
+                    itemPoints.clear();
+                    itemPlace.clear();
                     meArmour.clear();
                     atlasSeen = atlas;
                 }
@@ -360,6 +366,9 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         model.translateToHand(arm, poseStack);
         Matrix4f forearm = NpcJoints.belowElbow(left ? LEFT_ARM : RIGHT_ARM, joints);   // the hand follows the bent elbow
         if (forearm != null) poseStack.mulPose(forearm);
+        ItemKey key = new ItemKey(ItemStack.hashItemAndComponents(stack), context, left);
+        Matrix4f place = place(entity, stack, key);   // its class's length and grip, and the stance's re-seating
+        if (place != NONE_PLACE) poseStack.mulPose(place);
         poseStack.mulPose(Axis.XP.rotationDegrees(-90f));
         poseStack.mulPose(Axis.YP.rotationDegrees(180f));
         poseStack.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);
@@ -372,9 +381,42 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         }
         Matrix4f m = new Matrix4f(poseStack.last().pose());
         poseStack.popPose();
-        List<Piece> pieces = itemPieces.computeIfAbsent(new ItemKey(ItemStack.hashItemAndComponents(stack), context, left),
-                k -> recordItem(entity, stack, context, left));
+        List<Piece> pieces = itemPieces.computeIfAbsent(key, k -> recordItem(entity, stack, context, left));
         for (Piece piece : pieces) submit(piece.type, piece.mesh, m, piece.color, light, OverlayTexture.NO_OVERLAY);
+    }
+
+    /** Where a held item sits in the arm (WeaponGrip), cached per item and stance. */
+    private Matrix4f place(NpcEntity entity, ItemStack stack, ItemKey key) {
+        String slot = NpcAnimator.slot(entity);
+        String stance = "spear_brace".equals(slot) || "shield_brace".equals(slot) ? slot : "";
+        return itemPlace.computeIfAbsent(List.of(key, stance), k -> {
+            float[] pts = itemPoints.computeIfAbsent(key, kk -> armPoints(entity, stack, key.context(), key.left()));
+            Matrix4f grip = WeaponGrip.grip(WeaponGrip.classOf(stack), key.left(), pts);
+            Matrix4f hold = WeaponGrip.hold(stance, key.left(), grip == null ? pts : WeaponGrip.transform(grip, pts));
+            if (grip == null && hold == null) return NONE_PLACE;
+            Matrix4f m = hold == null ? new Matrix4f() : new Matrix4f(hold);
+            if (grip != null) m.mul(grip);
+            return WeaponGrip.toBlocks(m);
+        });
+    }
+
+    /** The item's vertices as Minecraft's held-item layer places them in the arm (arm space, px). */
+    private float[] armPoints(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left) {
+        PoseStack ps = new PoseStack();
+        ps.mulPose(Axis.XP.rotationDegrees(-90f));
+        ps.mulPose(Axis.YP.rotationDegrees(180f));
+        ps.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);
+        PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
+        itemInHand.renderItem(entity, stack, context, left, ps, buffers, 0xF000F0);
+        buffers.flush();
+        List<Float> out = new ArrayList<>();
+        buffers.byType.forEach((rt, rec) -> {
+            if (rt.toString().contains("glint")) return;
+            for (Quad q : rec.quads) for (org.joml.Vector3f p : q.pos()) { out.add(p.x * 16f); out.add(p.y * 16f); out.add(p.z * 16f); }
+        });
+        float[] pts = new float[out.size()];
+        for (int i = 0; i < pts.length; i++) pts[i] = out.get(i);
+        return pts;
     }
 
     /** Draws the item once into a recorder (hand space), then packs one mesh per (texture, colour). */

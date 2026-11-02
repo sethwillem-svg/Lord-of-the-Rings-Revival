@@ -1,5 +1,5 @@
 {
-  "parent": "middle-earth:item/spear",
+  "parent": "minecraft:item/handheld",
   "textures": {
     "layer0": "middle-earth:item/diamond_spear_inventory"
   }

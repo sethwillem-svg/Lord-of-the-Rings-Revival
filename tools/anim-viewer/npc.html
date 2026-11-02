@@ -220,14 +220,19 @@ function exportTexture(i) {
   return texCache.get(i);
 }
 const holdCache = new Map();
-/** The stance's re-seating of everything held in this hand (computed once per NPC, slot and hand from the item's shape). */
+/** How this hand's item sits (as in game): its weapon class's length and grip, then the stance's re-seating. Computed once
+ *  per NPC, slot and hand from the item's shape. */
 function handHold(slot, part) {
-  if (!V.ITEM_HOLD[slot]) return null;
-  const key = slot + '/' + part;
+  const key = (V.ITEM_HOLD[slot] ? slot : '') + '/' + part;
   if (!holdCache.has(key)) {
-    const pts = npcHands.filter((h) => h.part === part).flatMap((h) => Array.from(h.hand.children[0].geometry.attributes.position.array));
-    const m = V.itemHold(slot, part, pts);
-    holdCache.set(key, m && new THREE.Matrix4().set(...m));
+    const held = npcHands.filter((h) => h.part === part);
+    let pts = held.flatMap((h) => Array.from(h.hand.children[0].geometry.attributes.position.array));
+    let m = new THREE.Matrix4();
+    const grip = held.length ? V.weaponGrip(held[0].weapon, part, pts) : null;
+    if (grip) { m.set(...grip); pts = V.transformPoints(grip, pts); }
+    const hold = V.itemHold(slot, part, pts);
+    if (hold) m = new THREE.Matrix4().set(...hold).multiply(m);
+    holdCache.set(key, grip || hold ? m : null);
   }
   return holdCache.get(key);
 }
@@ -260,7 +265,7 @@ async function showNpc(file) {
     if (m.hand) {
       const hand = new THREE.Group();
       hand.matrixAutoUpdate = false;
-      hand.add(mesh); partObj[part].add(hand); npcShown.push(hand); npcHands.push({ part, hand });
+      hand.add(mesh); partObj[part].add(hand); npcShown.push(hand); npcHands.push({ part, hand, weapon: m.weapon });
     } else {
       partObj[part].add(mesh); npcShown.push(mesh);
       if (m.part !== 'hat' && (V.JOINTS[part] || []).length) npcFlex.push({ part, mesh, base: Float32Array.from(m.pos) });
