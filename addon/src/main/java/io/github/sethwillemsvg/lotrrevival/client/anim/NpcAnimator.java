@@ -1,6 +1,7 @@
 package io.github.sethwillemsvg.lotrrevival.client.anim;
 
 import com.mojang.logging.LogUtils;
+import io.github.sethwillemsvg.lotrrevival.combat.NpcRaces;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.resources.ResourceLocation;
@@ -12,7 +13,6 @@ import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.function.Function;
@@ -61,6 +61,9 @@ public final class NpcAnimator {
         final Vector3f[] fromPos = new Vector3f[6];
         final Quaternionf[] lastRot = new Quaternionf[6];
         final Vector3f[] lastPos = new Vector3f[6];
+        float slotSpeed = 1f;    // playback speed of the slot (attacks timed by the server)
+        String serverSlot;      // attack the server asked for, started on the next frame
+        float serverSpeed = 1f, serverAt = -1e9f;
         final float[] fromJoints = new float[NpcClip.JOINTS.length];
         final float[] lastJoints = new float[NpcClip.JOINTS.length];
         State() {
@@ -104,7 +107,14 @@ public final class NpcAnimator {
 
         // ---- triggers ----
         boolean swinging = entity.swinging;
-        if (swinging && !s.wasSwinging && entity.deathTime == 0) {
+        if (s.serverSlot != null && entity.deathTime == 0) {   // the server's attack (combat.AttackTiming): its clip and speed
+            if (NpcClip.get(race, s.serverSlot) != null) {
+                start(s, s.serverSlot, ageInTicks);
+                s.slotSpeed = s.serverSpeed;
+                s.serverAt = ageInTicks;
+            }
+            s.serverSlot = null;
+        } else if (swinging && !s.wasSwinging && entity.deathTime == 0 && ageInTicks - s.serverAt > 10f) {
             String kind = entity.getMainHandItem().isEmpty() ? "unarmed" : "sword";
             int n = NpcClip.attackCount(race, kind);
             if (n > 0) start(s, "attack_" + kind + "_" + (1 + (s.attacks++ % n)), ageInTicks);
@@ -125,7 +135,7 @@ public final class NpcAnimator {
             t = (ageInTicks - s.slotStart) / 20f * speed;
         } else if (s.slot != null && (isAttack(s.slot) || s.slot.equals("hurt")) && !finished(race, s, ageInTicks)) {
             slot = s.slot;
-            t = (ageInTicks - s.slotStart) / 20f;
+            t = (ageInTicks - s.slotStart) / 20f * s.slotSpeed;
         } else {
             String loco = limbSwingAmount < WALK_SPEED ? "idle" : limbSwingAmount < RUN_SPEED ? "walk" : "run";
             String stance = stanceSlot(race, loco, stanceOf.apply(entity));
@@ -162,6 +172,13 @@ public final class NpcAnimator {
         clip.sampleJoints(t, s.lastJoints);
         if (w < 1f) for (int i = 0; i < s.lastJoints.length; i++) s.lastJoints[i] = Mth.lerp(w, s.fromJoints[i], s.lastJoints[i]);
         model.hat.copyFrom(model.head);
+    }
+
+    /** The server started an attack (combat.AttackTiming): play slot at speed from the next frame. */
+    public static void startAttack(LivingEntity entity, String slot, float speed) {
+        State s = STATES.computeIfAbsent(entity, e -> new State());
+        s.serverSlot = slot;
+        s.serverSpeed = speed;
     }
 
     /** The clip slot this NPC is playing (idle, walk, attack_sword_1, spear_brace, ...), or null. */
@@ -206,7 +223,7 @@ public final class NpcAnimator {
 
     private static boolean finished(String race, State s, float age) {
         NpcClip c = NpcClip.get(race, s.slot);
-        return c == null || (age - s.slotStart) / 20f >= c.length;
+        return c == null || (age - s.slotStart) / 20f * s.slotSpeed >= c.length;
     }
 
     private static void start(State s, String slot, float age) {
@@ -216,6 +233,7 @@ public final class NpcAnimator {
         s.blendStart = s.slot == null ? -1e9f : age;   // first clip: no blend from the zero pose
         s.slot = slot;
         s.slotStart = age;
+        s.slotSpeed = 1f;
     }
 
     /** ModelPart uses rotationZYX(zRot, yRot, xRot): decompose q = Rz * Ry * Rx. */
@@ -256,12 +274,6 @@ public final class NpcAnimator {
             } catch (ReflectiveOperationException | RuntimeException ignored) {
             }
         }
-        if (key == null) return null;
-        String k = key.toLowerCase(Locale.ROOT);
-        if (k.matches(".*(orc|uruk|goblin|snaga|gundabad|mordor|isengard|moria).*")) return "orc";
-        if (k.contains("dwar") || k.contains("erebor") || k.contains("durin")) return "dwarf";
-        if (k.contains("hobbit") || k.contains("shire")) return "hobbit";
-        if (k.contains("elf") || k.contains("elv") || k.contains("lorien") || k.contains("woodland") || k.contains("rivendell")) return "elf";
-        return "man";
+        return key == null ? null : NpcRaces.fromKey(key);
     }
 }

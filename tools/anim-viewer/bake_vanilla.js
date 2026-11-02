@@ -39,7 +39,7 @@
    * (HOLD) turns forward.
    */
   const ITEM_HOLD = {
-    spear_brace: { part: 'right_arm', kind: 'axis', to: [0, 1, 0], at: [-1, 10, 0] },
+    spear_brace: { part: 'right_arm', kind: 'axis', to: [0, 1, 0], at: [-4, 10, 0] },   // along the outside of the forearm
     shield_brace: { part: 'left_arm', kind: 'face', to: [0, 0, 1], at: [1, 7.5, 3.5] },
   };
 
@@ -72,7 +72,7 @@
    * forward; other classes keep Middle-earth's angle.
    */
   const WEAPON_LENGTH = { dagger: 0.6, sword: 1.0, longsword: 1.4, axe: 1.1, spear: 2.5, bow: 1.1, longbow: 1.6, crossbow: 0.9 };
-  const FIST = { right_arm: [-1, 10, -1], left_arm: [1, 10, -1] };
+  const FIST = { right_arm: [-1, 10, -2.5], left_arm: [1, 10, -2.5] };   // the front of the fist: grips sit there, not inside the arm
   const SPEAR_GRIP = 0.35, SPEAR_DIR = [0, -1.2 / Math.hypot(1.2, 1), -1 / Math.hypot(1.2, 1)];
 
   /** A weapon's grip: scale to its class length, grip in the fist (row-major 4x4, arm space px), or null for other items. */
@@ -150,6 +150,7 @@
   const JOINT_NAMES = Object.values(JOINTS).flat().map((j) => j.name);
   const WAIST = 7.5;       // waist joint below the neck (px): the middle of the body's bend zone
   const WAIST_TWIST = 0.6; // share of the mocap's hip-to-chest twist kept (all of it reads as too much on a box torso)
+  const JOINT_SHARE = 0.75; // share of the mocap's elbow, knee and waist bend kept: box limbs read as rubbery with all of it
   const RIG_PATH = 'src/main/art/blockbench/mordor_orc/mordor_orc.bbmodel';   // relative to the repo root
 
   // ---- small 3x3 helpers (row-major, same layout as retarget.js) ----
@@ -300,7 +301,7 @@
         J[side + '_knee'] = Math.atan2(dot(shin, Z), dot(shin, Y));
         putM(side + '_leg', frameOf(X, Y), add(hips, apply(Rr, [x, 0, 0])));
       }
-      for (const k of JOINT_NAMES) joints[k].push(J[k]);
+      for (const k of JOINT_NAMES) joints[k].push(J[k] * JOINT_SHARE);
     }
     // floor contact: shift each frame until the lowest (bent) box corner touches the floor (y = 24)
     const n = parts.head.length;
@@ -361,7 +362,28 @@
       for (let i = 0; i < P.q.length; i += 4) P.q.splice(i, 4, ...q);
     }
     for (const [name, a] of Object.entries(hold.joints || {})) joints[name] = joints[name].map(() => a);
-    return { dt: +clip.dt.toFixed(6), length: +clip.length.toFixed(4), loop: LOOPS.has(slot), hit: +clip.hitTime.toFixed(4), parts, joints };
+    const data = { dt: +clip.dt.toFixed(6), length: +clip.length.toFixed(4), loop: LOOPS.has(slot), hit: +clip.hitTime.toFixed(4), parts, joints };
+    if (slot.startsWith('attack_')) data.hit = hitTime(data, slot.includes('unarmed'));
+    return data;
+  }
+
+  /**
+   * When an attack connects (s): the frame where the weapon tip (or the fist) moves fastest, either hand, between 15% and
+   * 80% of the clip. The server applies the damage at this moment (combat.AttackTiming).
+   */
+  function hitTime(data, unarmed) {
+    const n = data.parts.head.q.length / 4, tip = unarmed ? 0 : -10;
+    const at = (f, part, x) => {
+      const P = frame(data, f);
+      return add(P[part].p, apply(P[part].R, deform(part, P.joints, [x, 10, tip])));
+    };
+    let best = 0, bestF = Math.round(n * 0.4);
+    for (let f = Math.max(1, Math.floor(n * 0.15)); f < Math.ceil(n * 0.8); f++)
+      for (const [part, x] of [['right_arm', -1], ['left_arm', 1]]) {
+        const v = Math.hypot(...sub(at(f, part, x), at(f - 1, part, x)));
+        if (v > best) { best = v; bestF = f; }
+      }
+    return +(bestF * data.dt).toFixed(4);
   }
 
   /** [x y z w] for a vanilla ModelPart rotation (applied z, then y, then x: the inverse of NpcAnimator.set). */
