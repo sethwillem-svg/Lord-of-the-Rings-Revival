@@ -3,6 +3,8 @@
  * Sources (LIBRARY.sources):
  *   ual    Quaternius Universal Animation Library 1 and 2 (CC0), converted with ual_to_bvh.js into library/ual/
  *   cmu    CMU Graphics Lab Motion Capture Database (no restrictions), cut with cmu_import.py into library/cmu/
+ *   kaykit KayKit character animations by Kay Lousberg (CC0, hand-animated): weapon attacks, bow and crossbow, converted
+ *          with ual_to_bvh.js into library/kaykit/ (see its LICENSE.txt for the exact packs)
  *   local  your own clips in library/local/ (git-ignored: Unity Asset Store packs and other files you may not
  *          redistribute; convert FBX with fbx_to_bvh.py). Files named <race>.<clip key>.bvh join that race.
  * Each race has `clips` (spec keys, mostly UAL, shared between races) and `unique` (10 CMU takes no other race uses).
@@ -24,6 +26,10 @@
 
   const SMASH = { src: 'Sword_Heavy_Combo', range: [63, 120], opts: { ik: true, ikTargetY: 0 },
                   note: 'overhead downstroke cut from the heavy combo; weapon IK puts the tip on the ground' };
+
+  const kay = (src, note) => Object.assign({ from: 'kaykit', src }, note ? { note } : {});
+  // Minecraft puts a bow in the main (right) hand; KayKit's archer holds it in the left
+  const mirrored = (e) => Object.assign({}, e, { mirror: true, note: (e.note ? e.note + '; ' : '') + 'mirrored: bow in the right hand' });
 
   // humanoid defaults; races below override single keys
   const HUMANOID = {
@@ -62,8 +68,31 @@
     'work.chop': { src: 'TreeChopping_Loop' },
     'work.carry': { src: 'Walk_Carry_Loop' },
     'ride.idle': { src: 'Driving_Loop', note: 'seated, hands forward as on reins' },
-    'ranged.crossbow.aim': { src: 'Pistol_Idle_Loop', note: 'two-handed aim at shoulder height' },
-    'ranged.crossbow.reload': { src: 'Pistol_Reload', note: 'rough stand-in' },
+    // weapon classes (client.render.WeaponGrip / combat.WeaponClass): KayKit's hand-animated attacks
+    'attack.dagger.1': kay('1H_Melee_Attack_Stab', 'quick one-handed stab'),
+    'attack.dagger.2': kay('Dualwield_Melee_Attack_Stab', 'stab with both hands (thieves carry two daggers)'),
+    'attack.dagger.3': kay('Dualwield_Melee_Attack_Slice', 'slash with both hands'),
+    'attack.axe.1': kay('1H_Melee_Attack_Chop', 'overhead chop'),
+    'attack.axe.2': kay('1H_Melee_Attack_Slice_Diagonal', 'diagonal hack'),
+    'attack.axe.3': kay('1H_Melee_Attack_Slice_Horizontal', 'flat swing'),
+    'attack.longsword.1': kay('2H_Melee_Attack_Chop', 'two-handed overhead chop'),
+    'attack.longsword.2': kay('2H_Melee_Attack_Slice', 'two-handed slice'),
+    'attack.longsword.3': kay('2H_Melee_Attack_Spin', 'two-handed spinning cut'),
+    'attack.spear.1': kay('2H_Melee_Attack_Stab', 'two-handed thrust'),
+    'attack.spear.2': kay('1H_Melee_Attack_Stab', 'one-handed thrust (spear and shield)'),
+    'hold.spear': kay('2H_Melee_Idle', 'two-handed guard'),
+    'attack.shield.bash': kay('Block_Attack', 'shield bash'),
+    'attack.axe.4': { from: 'cmu', src: '62_10', range: [108, 149], note: 'real one-handed overhead strike (the last, hardest blow of a hammering take)' },
+    'hold.spear.1': { from: 'cmu', src: '124_08', note: 'both hands on a level shaft held forward' },
+    'move.lunge.spear': { from: 'cmu', src: '144_17', note: 'lunging footwork' },
+    'hold.guard.1': { from: 'cmu', src: '76_04', note: 'defensive guard pose' },
+    'ranged.bow.idle': mirrored(kay('Ranged_Bow_Idle')),
+    'ranged.bow.draw': mirrored(kay('Ranged_Bow_Draw')),
+    'ranged.bow.aim': mirrored(kay('Ranged_Bow_Aiming_Idle', 'held at full draw')),
+    'ranged.bow.release': mirrored(kay('Ranged_Bow_Release')),
+    'ranged.crossbow.aim': kay('2H_Ranged_Aiming', 'two-handed aim at shoulder height'),
+    'ranged.crossbow.shoot': kay('2H_Ranged_Shoot'),
+    'ranged.crossbow.reload': kay('2H_Ranged_Reload'),
   };
 
   const pick = (from, keys) => Object.fromEntries(keys.filter((k) => from[k]).map((k) => [k, from[k]]));
@@ -241,12 +270,13 @@
     ual: { dir: 'library/ual/', label: 'UAL', credit: 'Universal Animation Library 1 and 2 by Quaternius (CC0)' },
     cmu: { dir: 'library/cmu/', label: 'CMU',
            credit: 'CMU Graphics Lab Motion Capture Database, mocap.cs.cmu.edu (BVH conversion by B. Hahne)' },
+    kaykit: { dir: 'library/kaykit/', label: 'KayKit', credit: 'KayKit character animations by Kay Lousberg (CC0)' },
     local: { dir: 'library/local/', label: 'local', credit: 'your clips in library/local (not in git)' },
   };
 
   const LIBRARY = {
     dir: SOURCES.ual.dir,
-    credit: SOURCES.ual.credit + '; ' + SOURCES.cmu.credit,
+    credit: SOURCES.ual.credit + '; ' + SOURCES.cmu.credit + '; ' + SOURCES.kaykit.credit,
     sources: SOURCES,
     defaults: { inPlace: true, ik: false },
     races: RACES,

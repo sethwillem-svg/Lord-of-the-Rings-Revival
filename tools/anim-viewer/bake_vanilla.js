@@ -22,8 +22,17 @@
     attack_unarmed_1: 'attack.unarmed.1', attack_unarmed_2: 'attack.unarmed.2',
     // formation stances (specs/addon/hiring-reputation.md)
     guard: 'hold.sword', shield_brace: 'defend.brace.shield', spear_brace: 'hold.sword', march: 'move.march',
+    // attack sets per weapon class (combat.AttackClips picks attack_<class>_N; classes without clips swing a sword)
+    attack_dagger_1: 'attack.dagger.1', attack_dagger_2: 'attack.dagger.2', attack_dagger_3: 'attack.dagger.3',
+    attack_axe_1: 'attack.axe.1', attack_axe_2: 'attack.axe.2', attack_axe_3: 'attack.axe.3', attack_axe_4: 'attack.axe.4',
+    attack_longsword_1: 'attack.longsword.1', attack_longsword_2: 'attack.longsword.2', attack_longsword_3: 'attack.longsword.3',
+    attack_spear_1: 'attack.spear.1', attack_spear_2: 'attack.spear.2',
+    attack_shield_1: 'attack.shield.bash', spear_guard: 'hold.spear',
+    // ranged (played while the NPC draws or aims)
+    bow_draw: 'ranged.bow.draw', bow_aim: 'ranged.bow.aim', bow_release: 'ranged.bow.release',
+    crossbow_aim: 'ranged.crossbow.aim', crossbow_shoot: 'ranged.crossbow.shoot', crossbow_reload: 'ranged.crossbow.reload',
   };
-  const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'spear_brace', 'march']);
+  const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'spear_brace', 'march', 'spear_guard', 'bow_aim', 'crossbow_aim']);
   /** Slots that hold some parts and joints still after baking: part -> vanilla rotation (radians, x y z), joint -> angle.
    *  spear_brace: the guard stance with the spear arm's forearm raised forward (no library clip braces a spear);
    *  shield_brace: the shield forearm upright in front of the chest, turned a little inward. */
