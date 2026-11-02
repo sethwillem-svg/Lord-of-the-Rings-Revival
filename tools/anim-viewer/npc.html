@@ -128,7 +128,7 @@ async function liveClip(race, slot) {
   for (const s of [].concat(entry.src)) files[dir + s + '.bvh'] = await fetchText(dir + encodeURIComponent(s) + '.bvh');
   const bvh = V.joinBvh(A, LIB, entry, (rel) => files[rel]);
   const clip = A.retarget(bvh, rig, MAP, V.bakeOptions(A, LIB, race, entry));
-  return { data: V.clipData(A, rig, clip, slot), clip, entry };
+  return { data: V.clipData(A, rig, clip, slot, (LIB.races[race].settings || {}).style), clip, entry };
 }
 async function bakedClip(race, slot) {
   const r = await fetch(`${BAKED_DIR}${race}/${slot}.json`, { cache: 'no-store' });

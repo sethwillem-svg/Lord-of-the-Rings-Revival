@@ -156,12 +156,13 @@ public final class NpcAnimator {
             String loco = limbSwingAmount < WALK_SPEED ? "idle" : limbSwingAmount < RUN_SPEED ? "walk" : "run";
             String stance = stanceSlot(race, loco, stanceOf.apply(entity));
             if (stance != null) loco = stance;
+            else loco = variant(race, loco, entity);
             if (!loco.equals(s.slot)) start(s, loco, ageInTicks);
             slot = loco;
             NpcClip c = NpcClip.get(race, loco);
             if (c == null) return;
-            boolean cyclic = loco.equals("walk") || loco.equals("run") || loco.equals("march");
-            t = !cyclic ? ageInTicks / 20f : limbSwing / (loco.equals("run") ? RUN_CYCLE : WALK_CYCLE) * c.length;
+            boolean cyclic = loco.startsWith("walk") || loco.startsWith("run") || loco.equals("march");
+            t = !cyclic ? ageInTicks / 20f : limbSwing / (loco.startsWith("run") ? RUN_CYCLE : WALK_CYCLE) * c.length / c.cycles;
         }
         NpcClip clip = NpcClip.get(race, slot);
         if (clip == null) return;
@@ -208,6 +209,17 @@ public final class NpcAnimator {
     public static float[] joints(LivingEntity entity) {
         State s = STATES.get(entity);
         return s == null ? null : s.lastJoints;
+    }
+
+    /**
+     * Each NPC keeps one of its race's variants of a locomotion clip (walk, walk_2; idle twice as often as idle_2), chosen
+     * from its id, so a crowd does not move in lockstep.
+     */
+    private static String variant(String race, String loco, LivingEntity entity) {
+        int h = Math.floorMod(entity.getId() * 0x9E3779B1, 1024);
+        if (loco.equals("walk")) return h % 2 == 1 && NpcClip.get(race, "walk_2") != null ? "walk_2" : "walk";
+        if (loco.equals("idle")) return h % 3 == 2 && NpcClip.get(race, "idle_2") != null ? "idle_2" : "idle";
+        return loco;
     }
 
     /** The stance clip replacing a locomotion clip, or null to keep it: standing plays the stance, walking in column marches. */

@@ -27,6 +27,8 @@ public final class NpcClip {
     public final float length;
     public final boolean loop;
     public final float hit;
+    /** Gait cycles (two steps) in a walk or run clip: one cycle of leg movement in game plays 1/cycles of it. */
+    public final int cycles;
     private final int frames;
     private final float[][] rot = new float[PARTS.length][];
     private final float[][] pos = new float[PARTS.length][];
@@ -37,6 +39,7 @@ public final class NpcClip {
         length = json.get("length").getAsFloat();
         loop = json.get("loop").getAsBoolean();
         hit = json.has("hit") ? json.get("hit").getAsFloat() : 0f;
+        cycles = json.has("cycles") ? Math.max(1, json.get("cycles").getAsInt()) : 1;
         JsonObject parts = json.getAsJsonObject("parts");
         for (int i = 0; i < PARTS.length; i++) {
             JsonObject p = parts.getAsJsonObject(PARTS[i]);

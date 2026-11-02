@@ -18,6 +18,7 @@
   const RACES = ['man', 'elf', 'dwarf', 'hobbit', 'orc'];
   const SLOTS = {
     idle: 'move.idle', walk: 'move.walk', run: 'move.run', hurt: 'react.hurt', death: 'react.death',
+    idle_2: 'move.idle.1', walk_2: 'move.walk.2',   // variants: one per NPC
     attack_sword_1: 'attack.sword.1', attack_sword_2: 'attack.sword.2', attack_sword_3: 'attack.sword.3', attack_sword_4: 'attack.sword.4',
     attack_unarmed_1: 'attack.unarmed.1', attack_unarmed_2: 'attack.unarmed.2',
     // formation stances (specs/addon/hiring-reputation.md)
@@ -32,7 +33,7 @@
     bow_draw: 'ranged.bow.draw', bow_aim: 'ranged.bow.aim', bow_release: 'ranged.bow.release',
     crossbow_aim: 'ranged.crossbow.aim', crossbow_shoot: 'ranged.crossbow.shoot', crossbow_reload: 'ranged.crossbow.reload',
   };
-  const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'spear_brace', 'march', 'spear_guard', 'bow_aim', 'crossbow_aim']);
+  const LOOPS = new Set(['idle', 'walk', 'run', 'idle_2', 'walk_2', 'guard', 'shield_brace', 'spear_brace', 'march', 'spear_guard', 'bow_aim', 'crossbow_aim']);
   /** Slots that hold some parts and joints still after baking: part -> vanilla rotation (radians, x y z), joint -> angle.
    *  spear_brace: the guard stance with the spear arm's forearm raised forward (no library clip braces a spear);
    *  shield_brace: the shield forearm upright in front of the chest, turned a little inward. */
@@ -211,6 +212,7 @@
             2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)];
   }
   const dot4 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+  const norm4 = (a) => { const l = Math.hypot(...a) || 1; return a.map((v) => v / l); };
   const clamp1 = (v) => Math.max(-1, Math.min(1, v));
 
   /** A point of a part (part space, px) moved by that part's joints (angles: joint name -> radians). PulseLib's bend and
@@ -241,7 +243,29 @@
   }
 
   /** One retargeted clip -> six vanilla parts and the joint angles per frame: { parts, joints }. A is retarget.js. */
-  function bake(A, rig, clip) {
+  /**
+   * Race posture on top of every clip (LIB.races[race].settings.style), no speed changes: hunch (deg, chest leans forward),
+   * armsOut (deg, arms held away from the body; negative: closer), kneeBend (deg added to both knees, thighs lean forward by
+   * half to keep the feet under the hips), stride (share of the mocap's leg swing: shorter steps).
+   */
+  function bake(A, rig, clip, style, lockHeading) {
+    const st = Object.assign({ hunch: 0, armsOut: 0, kneeBend: 0, stride: 1 }, style || {}), D = Math.PI / 180;
+    // loops (walks) keep one heading: mocap takes walked in curves would turn the NPC. The pelvis heading, smoothed over
+    // a second, is taken out of every frame, so the hips' natural sway stays and only the drift goes.
+    const drift = clip.frames.map((fr) => {
+      const px = apply(fr.pelvis || [1, 0, 0, 0, 1, 0, 0, 0, 1], [1, 0, 0]);
+      return Math.atan2(-px[2], px[0]);
+    });
+    for (let f = 1; f < drift.length; f++) {   // unwrap
+      while (drift[f] - drift[f - 1] > Math.PI) drift[f] -= 2 * Math.PI;
+      while (drift[f] - drift[f - 1] < -Math.PI) drift[f] += 2 * Math.PI;
+    }
+    const W = Math.round(0.5 / clip.dt);
+    const heading = drift.map((_, f) => {
+      let s = 0, n = 0;
+      for (let k = Math.max(0, f - W); k <= Math.min(drift.length - 1, f + W); k++) { s += drift[k]; n++; }
+      return s / n;
+    });
     const B = rigBones(rig), S = B.scale;
     const shinLen = (i) => rig.bones[i].origin[1];          // ankle at the floor in the rest pose
     const parts = {}, joints = {};
@@ -252,15 +276,22 @@
     const dM = (v) => [v[0], -v[1], v[2]];                    // rig direction -> model direction
     const perp = (v, n) => norm(sub(v, scl(n, dot(v, n))));
     const col0 = (m) => [m[0], m[3], m[6]];
+    const col2 = (m) => [m[2], m[5], m[8]];
     const frameOf = (X, Y) => { const Z = cross(X, Y); return [X[0], Y[0], Z[0], X[1], Y[1], Z[1], X[2], Y[2], Z[2]]; };
     const arm = { right: {}, left: {} };
-    for (const fr of clip.frames) {
+    clip.frames.forEach((fr, fi) => {
       const fk = A.rigFK(rig, fr.locals, fr.rootPos);
+      if (lockHeading) {
+        const Yc = axisAngle([0, 1, 0], -(heading[fi] - heading[0])), c = [fr.rootPos[0], 0, fr.rootPos[2]];
+        fk.pos = fk.pos.map((p) => add(c, apply(Yc, sub(p, c))));
+        fk.rot = fk.rot.map((R) => mul(Yc, R));
+        fr = Object.assign({}, fr, { pelvis: fr.pelvis && mul(Yc, fr.pelvis) });
+      }
       const root = scl(fr.rootPos, S);
       const J = {};
       // torso: the chest (rig body) carries the neck, head and arms; the hips follow the pelvis (rig root) through the waist
       // bend, so the waist joint sits WAIST px below the neck and the legs hang from the hips
-      const Rb = fk.rot[B.body];
+      const Rb = mul(fk.rot[B.body], axisAngle([1, 0, 0], -st.hunch * D));   // race hunch: lean forward in the chest's frame
       // the hips' turn in the chest's frame, as the waist ops apply it: roll . pitch . yaw (twist scaled by WAIST_TWIST);
       // the pelvis is rebuilt from it so the legs hang from the hips as drawn
       const rel0 = mul(tr(toModelMat(Rb)), toModelMat(fr.pelvis || fk.rot[B.root]));
@@ -295,7 +326,9 @@
         st.X = X; st.up = up;
         const Z = cross(X, up);
         J[side + '_elbow'] = Math.atan2(dot(fore, Z), dot(fore, up));
-        putM(side + '_arm', frameOf(X, up), at([x, 10, 0]));
+        let Ma = frameOf(X, up);
+        if (st.armsOut) Ma = mul(axisAngle(norm(col2(toModelMat(Rb))), (side === 'right' ? 1 : -1) * st.armsOut * D), Ma);
+        putM(side + '_arm', Ma, at([x, 10, 0]));
       }
       // legs hang from the hips (turned with the pelvis): the thigh aims hip -> knee with no twist of its own (its x axis is
       // the pelvis's) and the shin bends at the knee
@@ -304,14 +337,17 @@
         const foot = add(fk.pos[iS], apply(fk.rot[iS], [0, -shinLen(iS), 0]));
         // no swing inward past vertical (in the pelvis frame): vanilla legs are 4 px boxes touching at rest, so any crossing clips
         const local = apply(Pt, dM(norm(sub(fk.pos[iS], fk.pos[iL]))));
+        if (st.stride !== 1) { local[0] *= st.stride; local[2] *= st.stride; }   // race stride: less swing
         local[0] = side === 'right' ? Math.min(local[0], 0) : Math.max(local[0], 0);
         const Y = norm(apply(P, local)), shin = dM(norm(sub(foot, fk.pos[iS])));
         const X = perp(col0(P), Y), Z = cross(X, Y);
-        J[side + '_knee'] = Math.atan2(dot(shin, Z), dot(shin, Y));
-        putM(side + '_leg', frameOf(X, Y), add(hips, apply(Rr, [x, 0, 0])));
+        J[side + '_knee'] = Math.max(-0.1, Math.atan2(dot(shin, Z), dot(shin, Y)) + st.kneeBend * D);
+        let Ml = frameOf(X, Y);
+        if (st.kneeBend) Ml = mul(axisAngle(X, -st.kneeBend * D / 2), Ml);   // thigh forward by half the extra bend
+        putM(side + '_leg', Ml, add(hips, apply(Rr, [x, 0, 0])));
       }
       for (const k of JOINT_NAMES) joints[k].push(J[k] * JOINT_SHARE);
-    }
+    });
     // floor contact: shift each frame until the lowest (bent) box corner touches the floor (y = 24)
     const n = parts.head.length;
     for (let f = 0; f < n; f++) {
@@ -364,8 +400,8 @@
     return e.src ? e : null;
   }
 
-  function clipData(A, rig, clip, slot) {
-    const { parts, joints } = bake(A, rig, clip), hold = HOLD[slot] || {};
+  function clipData(A, rig, clip, slot, style) {
+    const { parts, joints } = bake(A, rig, clip, style, LOOPS.has(slot)), hold = HOLD[slot] || {};
     for (const [name, [x, y, z]] of Object.entries(hold.parts || {})) {
       const q = eulerQuat(x, y, z), P = parts[name];
       for (let i = 0; i < P.q.length; i += 4) P.q.splice(i, 4, ...q);
@@ -373,7 +409,42 @@
     for (const [name, a] of Object.entries(hold.joints || {})) joints[name] = joints[name].map(() => a);
     const data = { dt: +clip.dt.toFixed(6), length: +clip.length.toFixed(4), loop: LOOPS.has(slot), hit: +clip.hitTime.toFixed(4), parts, joints };
     if (slot.startsWith('attack_')) data.hit = hitTime(data, slot.includes('unarmed'));
+    if (data.loop) loopSeam(data);
+    if (/^(walk|run|march)/.test(slot)) data.cycles = gaitCycles(data);
     return data;
+  }
+
+  /** Loops that were not made to loop (mocap takes cut from longer recordings): ease the last 8 frames into the first, so
+   *  the wrap does not jump. Seamless loops are unchanged. */
+  function loopSeam(data) {
+    const n = data.parts.head.q.length / 4, N = Math.min(8, Math.floor(n / 4));
+    if (N < 2) return;
+    for (const P of Object.values(data.parts)) {
+      for (let k = 1; k <= N; k++) {
+        const f = n - 1 - N + k, w = k / N;
+        let a = P.q.slice(f * 4, f * 4 + 4), b = P.q.slice(0, 4);
+        if (dot4(a, b) < 0) b = b.map((v) => -v);
+        const q = norm4(a.map((v, i) => v + (b[i] - v) * w));
+        for (let i = 0; i < 4; i++) P.q[f * 4 + i] = r4(q[i]);
+        for (let i = 0; i < 3; i++) P.p[f * 3 + i] = r4(P.p[f * 3 + i] + (P.p[i] - P.p[f * 3 + i]) * w);
+      }
+    }
+    for (const v of Object.values(data.joints || {}))
+      for (let k = 1; k <= N; k++) { const f = n - 1 - N + k, w = k / N; v[f] = r4(v[f] + (v[0] - v[f]) * w); }
+  }
+
+  /** How many full gait cycles (two steps) a walk/run clip holds: rising crossings of the right thigh's swing (the game
+   *  maps one cycle of leg movement onto 1/cycles of the clip, so feet keep pace with the ground). */
+  function gaitCycles(data) {
+    const n = data.parts.head.q.length / 4, sw = [];
+    for (let f = 0; f < n; f++) { const R = frame(data, f).right_leg.R; sw.push(Math.atan2(-R[7], R[4])); }   // thigh pitch
+    const mean = sw.reduce((a, b) => a + b, 0) / n, band = 0.25 * (Math.max(...sw) - Math.min(...sw));
+    let up = 0, low = sw[0] < mean - band;   // a cycle: from below mean - band to above mean + band (ignores jitter)
+    for (let f = 1; f < n; f++) {
+      if (sw[f] < mean - band) low = true;
+      else if (low && sw[f] > mean + band) { up++; low = false; }
+    }
+    return Math.max(1, up);
   }
 
   /**
@@ -493,7 +564,7 @@
         let bvh;
         try { bvh = joinBvh(A, LIB, entry, (rel) => fs.readFileSync(path.join(HERE, rel), 'utf8')); }
         catch (e) { console.warn(`skip ${race}/${slot}: ${e.message}`); continue; }
-        const data = clipData(A, rig, A.retarget(bvh, rig, map, bakeOptions(A, LIB, race, entry)), slot);
+        const data = clipData(A, rig, A.retarget(bvh, rig, map, bakeOptions(A, LIB, race, entry)), slot, (r.settings || {}).style);
         fs.writeFileSync(path.join(OUT, race, slot + '.json'), JSON.stringify(data));
         index[race].push(slot);
         n++;
