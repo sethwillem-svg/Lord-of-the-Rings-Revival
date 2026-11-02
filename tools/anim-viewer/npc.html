@@ -219,7 +219,20 @@ function exportTexture(i) {
   }
   return texCache.get(i);
 }
+const holdCache = new Map();
+/** The stance's re-seating of everything held in this hand (computed once per NPC, slot and hand from the item's shape). */
+function handHold(slot, part) {
+  if (!V.ITEM_HOLD[slot]) return null;
+  const key = slot + '/' + part;
+  if (!holdCache.has(key)) {
+    const pts = npcHands.filter((h) => h.part === part).flatMap((h) => Array.from(h.hand.children[0].geometry.attributes.position.array));
+    const m = V.itemHold(slot, part, pts);
+    holdCache.set(key, m && new THREE.Matrix4().set(...m));
+  }
+  return holdCache.get(key);
+}
 function clearNpc() {
+  holdCache.clear();
   for (const o of npcShown || []) o.parent.remove(o);
   npcShown = null; npcFlex.length = 0; npcHands.length = 0;
   for (const o of testFigure) o.visible = true;
@@ -342,8 +355,11 @@ function pose(c, time) {
     pos.needsUpdate = true;
     mesh.geometry.computeVertexNormals();
   }
-  for (const { part, hand } of npcHands)
+  for (const { part, hand } of npcHands) {
     hand.matrix.copy(bentFrame(part, J, HAND_AT)).multiply(new THREE.Matrix4().makeTranslation(-HAND_AT[0], -HAND_AT[1], -HAND_AT[2]));
+    const hold = handHold(c.slot, part);   // a stance re-seats the held item (as in game)
+    if (hold) hand.matrix.multiply(hold);
+  }
   rigGroup.visible = !!(c.clip && $('showRig').checked);
   if (rigGroup.visible) {
     const fr = c.clip.frames[Math.round(f)], fk = A.rigFK(rig, fr.locals, fr.rootPos);

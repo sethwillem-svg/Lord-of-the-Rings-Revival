@@ -25,8 +25,67 @@
   };
   const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'spear_brace', 'march']);
   /** Slots that hold some parts and joints still after baking: part -> vanilla rotation (radians, x y z), joint -> angle.
-   *  No library clip braces a spear, so spear_brace is the guard stance with the spear arm pointed forward. */
-  const HOLD = { spear_brace: { parts: { right_arm: [-0.6, 0, 0] }, joints: { right_elbow: -0.3 } } };
+   *  spear_brace: the guard stance with the spear arm's forearm raised forward (no library clip braces a spear);
+   *  shield_brace: the shield forearm upright in front of the chest, turned a little inward. */
+  const HOLD = {
+    spear_brace: { parts: { right_arm: [-0.5, 0, 0] }, joints: { right_elbow: -1.42 } },
+    shield_brace: { parts: { left_arm: [-1.0, 0.4, 0] }, joints: { left_elbow: -2.14 } },
+  };
+  /**
+   * How a stance re-seats the held item (client.render.NpcJoints holds the same numbers). Middle-earth holds a spear at an
+   * angle to the forearm and a shield face-out, and each model differs, so the item's own shape decides (itemHold): the
+   * spear's long axis is turned onto `to` with its shaft through `at` (the fist: couched along the forearm), the shield's
+   * face (outer side) onto `to` with its centre at `at` (in front of the forearm). Arm space, px; `to` is where the pose
+   * (HOLD) turns forward.
+   */
+  const ITEM_HOLD = {
+    spear_brace: { part: 'right_arm', kind: 'axis', to: [0, 1, 0], at: [-1, 10, 0] },
+    shield_brace: { part: 'left_arm', kind: 'face', to: [0, 0, 1], at: [1, 7.5, 3.5] },
+  };
+
+  /** Centre and principal axes (longest first) of a point cloud [x, y, z, ...]: Jacobi on the covariance. */
+  function shape(pos) {
+    const n = pos.length / 3, c = [0, 0, 0];
+    for (let i = 0; i < pos.length; i += 3) { c[0] += pos[i] / n; c[1] += pos[i + 1] / n; c[2] += pos[i + 2] / n; }
+    const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let i = 0; i < pos.length; i += 3) {
+      const d = [pos[i] - c[0], pos[i + 1] - c[1], pos[i + 2] - c[2]];
+      for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) A[r][k] += d[r] * d[k];
+    }
+    const V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (let sweep = 0; sweep < 30; sweep++) {
+      for (const [p, q] of [[0, 1], [0, 2], [1, 2]]) {
+        if (Math.abs(A[p][q]) < 1e-12) continue;
+        const th = 0.5 * Math.atan2(2 * A[p][q], A[q][q] - A[p][p]), cs = Math.cos(th), sn = Math.sin(th);
+        for (let k = 0; k < 3; k++) { const a = A[k][p], b = A[k][q]; A[k][p] = cs * a - sn * b; A[k][q] = sn * a + cs * b; }
+        for (let k = 0; k < 3; k++) { const a = A[p][k], b = A[q][k]; A[p][k] = cs * a - sn * b; A[q][k] = sn * a + cs * b; }
+        for (let k = 0; k < 3; k++) { const a = V[k][p], b = V[k][q]; V[k][p] = cs * a - sn * b; V[k][q] = sn * a + cs * b; }
+      }
+    }
+    const axes = [0, 1, 2].map((k) => ({ v: norm([V[0][k], V[1][k], V[2][k]]), e: A[k][k] })).sort((a, b) => b.e - a.e);
+    return { c, axes: axes.map((a) => a.v) };
+  }
+
+  /** The stance's re-seating of a held item (points pos, arm space px) as a row-major 4x4 matrix, or null. */
+  function itemHold(slot, part, pos) {
+    const h = ITEM_HOLD[slot];
+    if (!h || h.part !== part || pos.length < 9) return null;
+    const { c, axes } = shape(pos);
+    let from, pivot;
+    if (h.kind === 'axis') {
+      let a = axes[0];
+      pivot = add(c, scl(a, dot(sub(h.at, c), a)));        // the shaft's point nearest the fist
+      if (dot(a, [0, -1, -1]) < 0) a = scl(a, -1);          // the tip: held items point forward and up out of the fist
+      from = a;
+    } else {
+      let nrm = axes[2];
+      const armX = part === 'right_arm' ? -1 : 1;
+      if (dot(nrm, sub(c, [armX, c[1], 0])) < 0) nrm = scl(nrm, -1);   // the outer face: away from the arm
+      from = nrm; pivot = c;
+    }
+    const R = between(norm(from), h.to), t = sub(h.at, apply(R, pivot));
+    return [R[0], R[1], R[2], t[0], R[3], R[4], R[5], t[1], R[6], R[7], R[8], t[2], 0, 0, 0, 1];
+  }
   const PARTS = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'];
   /** Vanilla biped boxes in each part's own space (HumanoidModel.createMesh). */
   const BOXES = {
@@ -335,7 +394,7 @@
     return Object.entries(checks).filter(([, c]) => c.frames.length).map(([id, c]) => ({ id, label: c.label, frames: c.frames, share: c.frames.length / n }));
   }
 
-  const api = { RACES, SLOTS, LOOPS, HOLD, JOINTS, JOINT_NAMES, deform, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
+  const api = { RACES, SLOTS, LOOPS, HOLD, ITEM_HOLD, itemHold, JOINTS, JOINT_NAMES, deform, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.VanillaBake = api;
 
