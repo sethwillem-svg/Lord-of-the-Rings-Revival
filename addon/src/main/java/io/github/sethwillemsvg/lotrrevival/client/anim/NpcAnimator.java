@@ -1,12 +1,15 @@
 package io.github.sethwillemsvg.lotrrevival.client.anim;
 
 import com.mojang.logging.LogUtils;
+import io.github.sethwillemsvg.lotrrevival.combat.AttackClips;
 import io.github.sethwillemsvg.lotrrevival.combat.NpcRaces;
+import io.github.sethwillemsvg.lotrrevival.combat.WeaponClass;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
@@ -14,6 +17,7 @@ import org.slf4j.Logger;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.function.Function;
 
@@ -115,12 +119,19 @@ public final class NpcAnimator {
             }
             s.serverSlot = null;
         } else if (swinging && !s.wasSwinging && entity.deathTime == 0 && ageInTicks - s.serverAt > 10f) {
-            String kind = entity.getMainHandItem().isEmpty() ? "unarmed" : "sword";
-            int n = NpcClip.attackCount(race, kind);
-            if (n > 0) start(s, "attack_" + kind + "_" + (1 + (s.attacks++ % n)), ageInTicks);
+            // a swing the server did not time (should not happen with the add-on on the server): the weapon class's clips
+            ItemStack hand = entity.getMainHandItem();
+            var clips = AttackClips.of(race, hand.isEmpty() ? null : Objects.requireNonNullElse(WeaponClass.of(hand), "sword"));
+            if (!clips.isEmpty()) start(s, clips.get(s.attacks++ % clips.size()).slot(), ageInTicks);
+        }
+        // drawing a bow or aiming / loading a crossbow plays the ranged clips; letting go plays the release
+        String ranged = rangedSlot(model);
+        if (ranged == null && s.slot != null && (s.slot.equals("bow_aim") || s.slot.equals("crossbow_aim")) && entity.deathTime == 0) {
+            String release = s.slot.equals("bow_aim") ? "bow_release" : "crossbow_shoot";
+            if (NpcClip.get(race, release) != null) start(s, release, ageInTicks);
         }
         s.wasSwinging = swinging;
-        if (entity.hurtTime > s.lastHurtTime && !isAttack(s.slot) && entity.deathTime == 0) start(s, "hurt", ageInTicks);
+        if (entity.hurtTime > s.lastHurtTime && !isAttack(s.slot) && rangedSlot(model) == null && entity.deathTime == 0) start(s, "hurt", ageInTicks);
         s.lastHurtTime = entity.hurtTime;
 
         // ---- pick the clip and its time ----
@@ -133,9 +144,14 @@ public final class NpcAnimator {
             float speed = c == null ? 1f : Math.max(1f, c.length * 20f / DEATH_TICKS);
             slot = "death";
             t = (ageInTicks - s.slotStart) / 20f * speed;
-        } else if (s.slot != null && (isAttack(s.slot) || s.slot.equals("hurt")) && !finished(race, s, ageInTicks)) {
+        } else if (s.slot != null && (isAttack(s.slot) || isOneShot(s.slot)) && !finished(race, s, ageInTicks)) {
             slot = s.slot;
             t = (ageInTicks - s.slotStart) / 20f * s.slotSpeed;
+        } else if (ranged != null && NpcClip.get(race, ranged) != null) {
+            if (!ranged.equals(s.slot)) start(s, ranged, ageInTicks);
+            slot = ranged;
+            NpcClip c = NpcClip.get(race, ranged);
+            t = c.loop ? ageInTicks / 20f : (ageInTicks - s.slotStart) / 20f;
         } else {
             String loco = limbSwingAmount < WALK_SPEED ? "idle" : limbSwingAmount < RUN_SPEED ? "walk" : "run";
             String stance = stanceSlot(race, loco, stanceOf.apply(entity));
@@ -210,7 +226,20 @@ public final class NpcAnimator {
 
     private static boolean keepsOurPose(HumanoidModel<?> model, LivingEntity entity) {
         if (entity.isPassenger() || entity.isSleeping() || entity.isSwimming() || entity.isFallFlying() || model.crouching) return false;
-        return simple(model.rightArmPose) && simple(model.leftArmPose);
+        return simple(model.rightArmPose) && simple(model.leftArmPose) || rangedSlot(model) != null;
+    }
+
+    /** The ranged clip for the model's arm pose: drawing a bow, loading or aiming a crossbow; null otherwise. */
+    private static String rangedSlot(HumanoidModel<?> model) {
+        HumanoidModel.ArmPose r = model.rightArmPose, l = model.leftArmPose;
+        if (r == HumanoidModel.ArmPose.BOW_AND_ARROW || l == HumanoidModel.ArmPose.BOW_AND_ARROW) return "bow_aim";
+        if (r == HumanoidModel.ArmPose.CROSSBOW_CHARGE || l == HumanoidModel.ArmPose.CROSSBOW_CHARGE) return "crossbow_reload";
+        if (r == HumanoidModel.ArmPose.CROSSBOW_HOLD || l == HumanoidModel.ArmPose.CROSSBOW_HOLD) return "crossbow_aim";
+        return null;
+    }
+
+    private static boolean isOneShot(String slot) {
+        return slot.equals("hurt") || slot.equals("bow_release") || slot.equals("crossbow_shoot");
     }
 
     private static boolean simple(HumanoidModel.ArmPose pose) {

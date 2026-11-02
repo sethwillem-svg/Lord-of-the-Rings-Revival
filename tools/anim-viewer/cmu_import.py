@@ -118,6 +118,11 @@ TAKES = {
     '80_19': ('Sequence-076-080/80', 'pushing broom', 5, None),
     '144_13': ('Sequence-141-144/144', 'Left_Punch_Sequence001', 5, None),
     '144_26': ('Sequence-141-144/144', 'Right_Blocks', 5, None),
+    # weapon classes (extras next to the KayKit attacks)
+    '62_10': ('Sequence-060-075/62', 'hammering sequence: one-handed overhead strikes (axe)', 5, None),
+    '124_08': ('Sequence-113-128/124', 'Baseball Bunt: both hands on a level shaft held forward (spear guard)', 4, None),
+    '144_17': ('Sequence-141-144/144', 'Lunges (spear footwork)', 4, None),
+    '76_04': ('Sequence-076-080/76', 'defensive guard pose', 3.5, None),
     '79_69': ('Sequence-076-080/79', 'very happy', 5, None),
     # hobbit
     '139_31': ('Sequence-136-140/139', 'Sneaking', 5, None),

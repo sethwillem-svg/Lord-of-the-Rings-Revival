@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Quaternius Universal Animation Library (UAL1/UAL2, CC0) -> BVH clips for the mocap rig viewer.
+/* Quaternius Universal Animation Library (UAL1/UAL2, CC0) and KayKit (CC0) .glb -> BVH clips for the mocap rig viewer.
  *
  *   node tools/anim-viewer/ual_to_bvh.js UAL1_Standard.glb tools/anim-viewer/library/ual [name-regex]
  *
@@ -9,6 +9,8 @@
  * so each joint gets three position channels holding its offset from its parent in world space (no rotations).
  * Kept joints: spine, neck, head, a synthetic HeadTop_End, clavicles, arms, the index/middle/pinky knuckles (for
  * "wrist follows the mocap"), legs, feet and toes. The T-pose reference clip is skipped.
+ * KayKit's rigs (Kay Lousberg's character packs: hips, spine, chest, head, upperarm.l, wrist.l, upperleg.l ...) are
+ * read too: no neck, clavicles or fingers, so the head's up axis and the shoulder line do that work.
  */
 'use strict';
 const fs = require('fs');
@@ -41,9 +43,13 @@ function accessor(i) {
 const SIDE = { l: 'Left', r: 'Right' };
 const LIMB = { clavicle: 'Shoulder', upperarm: 'Arm', lowerarm: 'ForeArm', hand: 'Hand', thigh: 'UpLeg', calf: 'Leg', foot: 'Foot', ball: 'ToeBase' };
 const FINGER = { index: 'Index', middle: 'Middle', pinky: 'Pinky' };
+const KAYKIT = { upperarm: 'Arm', lowerarm: 'ForeArm', wrist: 'Hand', upperleg: 'UpLeg', lowerleg: 'Leg', foot: 'Foot', toes: 'ToeBase' };
 function rename(n) {
-  const fixed = { pelvis: 'Hips', spine_01: 'Spine', spine_02: 'Spine1', spine_03: 'Spine2', neck_01: 'Neck', Head: 'Head' };
+  const fixed = { pelvis: 'Hips', spine_01: 'Spine', spine_02: 'Spine1', spine_03: 'Spine2', neck_01: 'Neck', Head: 'Head',
+                  hips: 'Hips', spine: 'Spine', chest: 'Spine2', head: 'Head' };   // second row: KayKit
   if (fixed[n]) return fixed[n];
+  const k = n.match(/^(upperarm|lowerarm|wrist|upperleg|lowerleg|foot|toes)\.([lr])$/);
+  if (k) return SIDE[k[2]] + KAYKIT[k[1]];
   let m = n.match(/^(clavicle|upperarm|lowerarm|hand|thigh|calf|foot|ball)_([lr])$/);
   if (m) return SIDE[m[2]] + LIMB[m[1]];
   m = n.match(/^(index|middle|pinky)_0([12])_([lr])$/);
@@ -83,8 +89,8 @@ const nodes = gl.nodes, parentOf = {};
 nodes.forEach((n, i) => (n.children || []).forEach((c) => { parentOf[c] = i; }));
 const skin = gl.skins[0].joints;
 const kept = skin.filter((i) => rename(nodes[i].name));
-const headNode = skin.find((i) => nodes[i].name === 'Head');
-if (headNode === undefined || !kept.length) throw new Error('no Unreal-mannequin skeleton found (expected pelvis, Head, thigh_l ...)');
+const headNode = skin.find((i) => rename(nodes[i].name) === 'Head');
+if (headNode === undefined || !kept.length) throw new Error('no Unreal-mannequin or KayKit skeleton found (expected pelvis/hips, Head/head, thigh_l/upperleg.l ...)');
 const names = kept.map((i) => rename(nodes[i].name)).concat('HeadTop_End');
 const parent = kept.map((i) => {
   let p = parentOf[i];
