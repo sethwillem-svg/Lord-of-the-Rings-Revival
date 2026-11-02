@@ -39,6 +39,11 @@ public class SwitchingNpcRenderer extends EntityRenderer<NpcEntity> {
         shadowRadius = 0.5f;
     }
 
+    /** Middle-earth's own renderer (the viewer export records it). */
+    public NpcEntityRenderer theirs() {
+        return theirs;
+    }
+
     private EntityRenderer<NpcEntity> current() {
         return switch (mode) {
             case THEIRS -> theirs;

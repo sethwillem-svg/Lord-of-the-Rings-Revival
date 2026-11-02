@@ -121,7 +121,8 @@ public final class AutoBench {
         }
     }
 
-    private static void menu(Minecraft mc) {
+    /** From the title screen into the bench world (created flat on first use); ExportRun uses it too. */
+    static void menu(Minecraft mc) {
         if (mc.screen instanceof AccessibilityOnboardingScreen) {   // first launch: skip straight to the title screen
             mc.options.onboardAccessibility = false;
             mc.options.save();

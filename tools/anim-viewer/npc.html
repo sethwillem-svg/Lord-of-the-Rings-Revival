@@ -46,6 +46,7 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
     Left: the orc rig the clip was retargeted onto. Right: the vanilla biped.</div>
 
   <h2>Clips</h2>
+  <div class="row"><label for="model">Model</label><select id="model" style="flex:1;min-width:0"><option value="">Test figure</option></select></div>
   <div class="row"><label for="race">Race</label><select id="race"></select></div>
   <div class="row"><label for="mode">Source</label>
     <select id="mode"><option value="live">Live bake (current code + edits)</option><option value="baked">Baked files in the add-on</option></select></div>
@@ -202,6 +203,81 @@ const blade = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 13), mat('#c9ced6')
 const guard = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4, 1), mat('#8a6a2a')); guard.position.set(0, 0, -1.6);
 sword.add(blade, guard); sword.matrixAutoUpdate = false; partObj.right_arm.add(sword);
 const SWORD_AT = [-1, 9.5, 0];   // the fist, in the right arm's space; the sword follows the forearm
+const testFigure = Object.values(partObj).flatMap((o) => o.children);   // hidden while an exported NPC is shown
+
+// ---------------- exported Middle-earth NPCs (./addon/bench.sh export writes them; never committed) ----------------
+const EXPORT_DIR = '../../addon/run/viewer_export/';
+const PART_OBJ = { head: 'head', hat: 'head', body: 'body', right_arm: 'right_arm', left_arm: 'left_arm', right_leg: 'right_leg', left_leg: 'left_leg' };
+const HAND_AT = [0, 10, 0];      // a point below the elbow: held items move with it
+let exportIndex = null, npcShown = null;
+const npcFlex = [], npcHands = [], texCache = new Map(), texLoader = new THREE.TextureLoader();
+function exportTexture(i) {
+  if (!texCache.has(i)) {
+    const t = texLoader.load(EXPORT_DIR + exportIndex.textures[i].file + '?v=' + exportIndex.stamp);
+    t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.flipY = false;
+    texCache.set(i, t);
+  }
+  return texCache.get(i);
+}
+function clearNpc() {
+  for (const o of npcShown || []) o.parent.remove(o);
+  npcShown = null; npcFlex.length = 0; npcHands.length = 0;
+  for (const o of testFigure) o.visible = true;
+  npc.scale.set(1, -1, -1); npc.position.y = 24;
+}
+async function showNpc(file) {
+  clearNpc();
+  if (!file) return;
+  const d = await (await fetch(EXPORT_DIR + file, { cache: 'no-store' })).json();
+  npcShown = [];
+  d.meshes.forEach((m, order) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(m.pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
+    g.setIndex(m.idx);
+    g.computeVertexNormals();
+    const c = parseInt(m.color, 16), a = ((c >>> 24) & 255) / 255;
+    const material = new THREE.MeshLambertMaterial({
+      map: exportTexture(m.tex), color: new THREE.Color(((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255),
+      side: THREE.DoubleSide, alphaTest: m.translucent ? 0.01 : 0.1, transparent: !!m.translucent, opacity: m.translucent ? a : 1,
+      depthFunc: THREE.LessEqualDepth,   // skin layers lie on one surface: later ones draw over earlier ones, as in game
+    });
+    const mesh = new THREE.Mesh(g, material), part = PART_OBJ[m.part];
+    mesh.renderOrder = order;
+    if (m.hand) {
+      const hand = new THREE.Group();
+      hand.matrixAutoUpdate = false;
+      hand.add(mesh); partObj[part].add(hand); npcShown.push(hand); npcHands.push({ part, hand });
+    } else {
+      partObj[part].add(mesh); npcShown.push(mesh);
+      if (m.part !== 'hat' && (V.JOINTS[part] || []).length) npcFlex.push({ part, mesh, base: Float32Array.from(m.pos) });
+    }
+  });
+  for (const o of testFigure) o.visible = false;
+  const s = d.scale || 1, w = d.widthScale || 1;
+  npc.scale.set(w * s, -s, -w * s); npc.position.y = 24 * s;
+  if (d.race && [...$('race').options].some((o) => o.value === d.race) && $('race').value !== d.race) {
+    $('race').value = d.race; await fillClips(); select(cur ? cur.slot : 'idle');
+  }
+}
+async function loadExportIndex() {
+  const sel = $('model');
+  try {
+    const r = await fetch(EXPORT_DIR + 'index.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error();
+    exportIndex = await r.json();
+    exportIndex.stamp = Date.now();
+    const groups = {};
+    for (const n of exportIndex.npcs) (groups[n.type.split(':').pop().split('.')[0]] ||= []).push(n);
+    for (const [faction, list] of Object.entries(groups).sort()) {
+      const og = document.createElement('optgroup'); og.label = faction.replace(/_/g, ' ');
+      for (const n of list) { const o = document.createElement('option'); o.value = n.file; o.textContent = n.label; og.appendChild(o); }
+      sel.appendChild(og);
+    }
+  } catch (e) {
+    const o = document.createElement('option'); o.disabled = true; o.textContent = 'Middle-earth NPCs: run ./addon/bench.sh export'; sel.appendChild(o);
+  }
+}
 
 // orc rig as a stick figure, mapped the same way (rig: y up, faces -z -> shown facing +z)
 const rigGroup = new THREE.Group();
@@ -260,6 +336,14 @@ function pose(c, time) {
   if (!$('showJoints').checked) for (const k in J) J[k] = 0;
   bendMeshes(J);
   sword.matrix.copy(bentFrame('right_arm', J, SWORD_AT));
+  for (const { part, mesh, base } of npcFlex) {
+    const pos = mesh.geometry.attributes.position;
+    for (let i = 0; i < base.length; i += 3) pos.array.set(V.deform(part, J, [base[i], base[i + 1], base[i + 2]]), i);
+    pos.needsUpdate = true;
+    mesh.geometry.computeVertexNormals();
+  }
+  for (const { part, hand } of npcHands)
+    hand.matrix.copy(bentFrame(part, J, HAND_AT)).multiply(new THREE.Matrix4().makeTranslation(-HAND_AT[0], -HAND_AT[1], -HAND_AT[2]));
   rigGroup.visible = !!(c.clip && $('showRig').checked);
   if (rigGroup.visible) {
     const fr = c.clip.frames[Math.round(f)], fk = A.rigFK(rig, fr.locals, fr.rootPos);
@@ -272,7 +356,7 @@ function pose(c, time) {
     });
     rigLines.geometry.attributes.position.needsUpdate = true;
   }
-  sword.visible = $('showSword').checked;
+  sword.visible = $('showSword').checked && !npcShown;
   return f;
 }
 
@@ -344,6 +428,7 @@ function drawMarks() {
   if (!cur.issues.length) { const li = document.createElement('li'); li.textContent = 'no issues found'; li.style.borderColor = '#57ab5a'; ul.appendChild(li); }
 }
 
+$('model').onchange = () => showNpc($('model').value);
 $('race').onchange = async () => { await fillClips(); select(cur ? cur.slot : 'idle'); };
 $('mode').onchange = async () => { cache.clear(); await fillClips(); select(cur ? cur.slot : 'idle'); };
 $('play').onclick = () => { playing = !playing; $('play').textContent = playing ? '⏸' : '▶'; };
@@ -421,6 +506,7 @@ function frame(now) {
   } catch (e) { $('msg').textContent = 'Could not load the orc rig: ' + e.message + ' (serve the repo root, e.g. ./tools/anim-viewer/view.sh npc)'; }
   try { const r = await fetch('vanilla_overrides.json', { cache: 'no-store' }); if (r.ok) overrides = await r.json(); } catch (e) { /* none yet */ }
   sources = await listSources();
+  await loadExportIndex();
   requestAnimationFrame(frame);
   await fillClips();
   select(params.get('clip') || 'idle');

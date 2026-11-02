@@ -51,6 +51,7 @@
   };
   const JOINT_NAMES = Object.values(JOINTS).flat().map((j) => j.name);
   const WAIST = 7.5;       // waist joint below the neck (px): the middle of the body's bend zone
+  const WAIST_TWIST = 0.6; // share of the mocap's hip-to-chest twist kept (all of it reads as too much on a box torso)
   const RIG_PATH = 'src/main/art/blockbench/mordor_orc/mordor_orc.bbmodel';   // relative to the repo root
 
   // ---- small 3x3 helpers (row-major, same layout as retarget.js) ----
@@ -151,17 +152,20 @@
       const J = {};
       // torso: the chest (rig body) carries the neck, head and arms; the hips follow the pelvis (rig root) through the waist
       // bend, so the waist joint sits WAIST px below the neck and the legs hang from the hips
-      const Rr = fr.pelvis || fk.rot[B.root], Rb = fk.rot[B.body];
+      const Rb = fk.rot[B.body];
+      // the hips' turn in the chest's frame, as the waist ops apply it: roll . pitch . yaw (twist scaled by WAIST_TWIST);
+      // the pelvis is rebuilt from it so the legs hang from the hips as drawn
+      const rel0 = mul(tr(toModelMat(Rb)), toModelMat(fr.pelvis || fk.rot[B.root]));
+      J.waist_pitch = Math.asin(clamp1(rel0[7]));
+      J.waist_yaw = Math.atan2(-rel0[6], rel0[8]) * WAIST_TWIST;
+      J.waist_roll = Math.atan2(-rel0[1], rel0[4]);
+      const rel = mul(axisAngle([0, 0, 1], J.waist_roll), mul(axisAngle([1, 0, 0], J.waist_pitch), axisAngle([0, 1, 0], J.waist_yaw)));
+      const Rr = toModelMat(mul(toModelMat(Rb), rel));   // model -> rig: the same flip
       const hips = add([0, 12, 0], root);
       const neck = add(add(hips, apply(Rr, [0, 12 - WAIST, 0])), apply(Rb, [0, WAIST, 0]));
       const at = (v) => add(neck, apply(Rb, sub(v, [0, 12, 0])));   // a point of the vanilla torso (neck at y = 12)
       put('body', Rb, neck);
       put('head', fk.rot[B.head], neck);
-      // the hips' turn in the chest's frame, as the waist ops apply it: roll . pitch . yaw
-      const rel = mul(tr(toModelMat(Rb)), toModelMat(Rr));
-      J.waist_pitch = Math.asin(clamp1(rel[7]));
-      J.waist_yaw = Math.atan2(-rel[6], rel[8]);
-      J.waist_roll = Math.atan2(-rel[1], rel[4]);
       // arms: the upper arm aims shoulder -> elbow and the forearm bends at the elbow. Its twist puts the elbow's bend on the
       // part's x axis; with the arm nearly straight that is undefined, so the twist follows the hand (the held item hangs off
       // it) and blends over to the bend between 8 and 30 deg. The twist may change at most MAX_TWIST deg/s, which removes the
