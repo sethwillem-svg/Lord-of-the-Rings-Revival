@@ -36,7 +36,7 @@ repositories {
 dependencies {
     implementation "com.arcanc.pulselib:pulselib-neoforge:${pulselib_version}"
     // Spark profiler in dev runs only (bench.sh profiles the renderers with it); not a dependency of the add-on
-    runtimeOnly "maven.modrinth:spark:${spark_version}"
+    if (!project.hasProperty('noSpark')) runtimeOnly "maven.modrinth:spark:${spark_version}"   // -PnoSpark: without it
 
     // The Middle-earth mod is All Rights Reserved: compiled against and run from your local build, never bundled or committed.
     def me = providers.gradleProperty('meJar').getOrElse('')
