@@ -20,8 +20,10 @@
     idle: 'move.idle', walk: 'move.walk', run: 'move.run', hurt: 'react.hurt', death: 'react.death',
     attack_sword_1: 'attack.sword.1', attack_sword_2: 'attack.sword.2', attack_sword_3: 'attack.sword.3', attack_sword_4: 'attack.sword.4',
     attack_unarmed_1: 'attack.unarmed.1', attack_unarmed_2: 'attack.unarmed.2',
+    // formation stances (specs/addon/hiring-reputation.md)
+    guard: 'hold.sword', shield_brace: 'defend.brace.shield', march: 'move.march',
   };
-  const LOOPS = new Set(['idle', 'walk', 'run']);
+  const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'march']);
   const PARTS = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'];
   /** Vanilla biped boxes in each part's own space (HumanoidModel.createMesh). */
   const BOXES = {

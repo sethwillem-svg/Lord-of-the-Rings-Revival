@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.function.Function;
 
 /**
  * Plays our baked clips on the Middle-earth mod's NPC model (a vanilla HumanoidModel subclass) by overwriting the six
@@ -38,6 +39,13 @@ public final class NpcAnimator {
     private static final Map<Class<?>, Boolean> NPC_CLASSES = new WeakHashMap<>();
 
     private NpcAnimator() {}
+
+    /** Stance of a unit in formation: "" (none), guard, shield_brace, spear_brace or march (specs/addon/hiring-reputation.md).
+     *  The squad code supplies it per unit; until then /lotrrender stance sets testStance for every NPC. */
+    public static Function<LivingEntity, String> stanceOf = e -> NpcAnimator.testStance;
+    public static String testStance = "";
+    /** Spear brace: the guard clip with the spear arm held forward (radians, applied after the clip). */
+    private static final float SPEAR_ARM_X = -0.6f;
 
     private static final class State {
         String race;
@@ -107,11 +115,14 @@ public final class NpcAnimator {
             t = (ageInTicks - s.slotStart) / 20f;
         } else {
             String loco = limbSwingAmount < WALK_SPEED ? "idle" : limbSwingAmount < RUN_SPEED ? "walk" : "run";
+            String stance = stanceSlot(race, loco, stanceOf.apply(entity));
+            if (stance != null) loco = stance;
             if (!loco.equals(s.slot)) start(s, loco, ageInTicks);
             slot = loco;
             NpcClip c = NpcClip.get(race, loco);
             if (c == null) return;
-            t = loco.equals("idle") ? ageInTicks / 20f : limbSwing / (loco.equals("walk") ? WALK_CYCLE : RUN_CYCLE) * c.length;
+            boolean cyclic = loco.equals("walk") || loco.equals("run") || loco.equals("march");
+            t = !cyclic ? ageInTicks / 20f : limbSwing / (loco.equals("run") ? RUN_CYCLE : WALK_CYCLE) * c.length;
         }
         NpcClip clip = NpcClip.get(race, slot);
         if (clip == null) return;
@@ -135,7 +146,23 @@ public final class NpcAnimator {
             s.lastPos[i].set(p);
             set(parts[i], q, p);
         }
+        if (slot.equals("guard") && "spear_brace".equals(stanceOf.apply(entity))) model.rightArm.setRotation(SPEAR_ARM_X, 0f, 0f);
         model.hat.copyFrom(model.head);
+    }
+
+    /** The stance clip replacing a locomotion clip, or null to keep it: standing plays the stance, walking in column marches. */
+    private static String stanceSlot(String race, String loco, String stance) {
+        if (stance == null || stance.isEmpty()) return null;
+        String slot = switch (loco) {
+            case "idle" -> switch (stance) {
+                case "guard", "spear_brace" -> "guard";
+                case "shield_brace" -> "shield_brace";
+                default -> null;
+            };
+            case "walk" -> stance.equals("march") ? "march" : null;
+            default -> null;
+        };
+        return slot != null && NpcClip.get(race, slot) != null ? slot : null;
     }
 
     private static boolean keepsOurPose(HumanoidModel<?> model, LivingEntity entity) {

@@ -9,7 +9,10 @@
   "attack_sword_2",
   "attack_sword_3",
   "attack_unarmed_1",
-  "attack_unarmed_2"
+  "attack_unarmed_2",
+  "guard",
+  "shield_brace",
+  "march"
  ],
  "elf": [
   "idle",
@@ -21,7 +24,10 @@
   "attack_sword_2",
   "attack_sword_3",
   "attack_unarmed_1",
-  "attack_unarmed_2"
+  "attack_unarmed_2",
+  "guard",
+  "shield_brace",
+  "march"
  ],
  "dwarf": [
   "idle",
@@ -33,7 +39,10 @@
   "attack_sword_2",
   "attack_sword_3",
   "attack_unarmed_1",
-  "attack_unarmed_2"
+  "attack_unarmed_2",
+  "guard",
+  "shield_brace",
+  "march"
  ],
  "hobbit": [
   "idle",
@@ -45,7 +54,10 @@
   "attack_sword_2",
   "attack_sword_3",
   "attack_unarmed_1",
-  "attack_unarmed_2"
+  "attack_unarmed_2",
+  "guard",
+  "shield_brace",
+  "march"
  ],
  "orc": [
   "idle",
@@ -58,6 +70,9 @@
   "attack_sword_3",
   "attack_sword_4",
   "attack_unarmed_1",
-  "attack_unarmed_2"
+  "attack_unarmed_2",
+  "guard",
+  "shield_brace",
+  "march"
  ]
 }
