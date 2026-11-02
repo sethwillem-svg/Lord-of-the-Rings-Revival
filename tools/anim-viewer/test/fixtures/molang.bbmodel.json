@@ -1,0 +1,6 @@
+{"animations":[{"name":"wobble","loop":"loop","length":1,"animators":{
+ "a":{"name":"Arm_R","type":"bone","keyframes":[
+  {"channel":"rotation","time":0,"interpolation":"linear","data_points":[{"x":"math.sin(q.anim_time)","y":"","z":"5"}]},
+  {"channel":"position","time":0.5,"interpolation":"step","data_points":[{"x":"1","y":"2","z":"3"}]}]},
+ "b":{"name":"Bicep_Default_R","type":"bone","keyframes":[{"channel":"rotation","time":0,"interpolation":"linear","data_points":[{"x":"1","y":"0","z":"0"}]}]},
+ "c":{"name":"Effects","type":"effect","keyframes":[{"channel":"timeline","time":0,"interpolation":"linear","data_points":[{"script":"x"}]}]}}}]}
