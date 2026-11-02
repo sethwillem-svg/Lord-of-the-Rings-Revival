@@ -34,3 +34,27 @@ test('animation json writes keys by time with lerp_mode', () => {
   assert.equal(a.animations.wave.animation_length, 1);
   assert.equal(a.animations.wave.loop, true);
 });
+
+const { eulerMatrix, zyxToXyz } = require('../gecko/write.js');
+const close = (a, b, eps = 1e-6) => a.every((x, i) => Math.abs(x - b[i]) < eps);
+
+test('eulerMatrix composes in the named order', () => {
+  // 90° about x then nothing: y axis goes to z
+  const m = eulerMatrix([90, 0, 0], 'XYZ');
+  assert.ok(close([m[1], m[4], m[7]], [0, 0, 1]), m.join());
+});
+
+test('rotations are written in PulseLib order (XYZ) giving the same matrix as Blockbench (ZYX)', () => {
+  for (const v of [[-38, 52, 34], [-90, 77, -90], [0, 90, -35], [10, -170, 45]]) {
+    const xyz = zyxToXyz(v);
+    assert.ok(close(eulerMatrix(xyz, 'XYZ'), eulerMatrix(v, 'ZYX')), `${v} -> ${xyz}`);
+  }
+  const a = animationJson({ c: { length: 1, loop: false, bones: { right_arm: { rotation: [{ t: 0, v: [-38, 52, 34], lerp: 'linear' }] } } } });
+  const w = a.animations.c.bones.right_arm.rotation['0.0'].vector;
+  assert.ok(close(eulerMatrix(w, 'XYZ'), eulerMatrix([-38, 52, 34], 'ZYX'), 1e-3));
+});
+
+test('hold clips are written as hold_on_last_frame', () => {
+  const a = animationJson({ c: { length: 1, loop: 'hold', bones: {} } });
+  assert.equal(a.animations.c.loop, 'hold_on_last_frame');
+});
