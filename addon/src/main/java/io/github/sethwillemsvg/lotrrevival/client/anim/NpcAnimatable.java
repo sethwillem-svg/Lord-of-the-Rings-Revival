@@ -43,6 +43,8 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private int lastHurt, attacks;
     private boolean wasSwinging;
     private long serverAttackAt = -1000;
+    /** The pose last applied to the model this frame (NpcAnimator.apply), read by the renderer for held items. */
+    @Nullable NpcPose lastPose;
 
     private NpcAnimatable(LivingEntity entity) {
         this.race = NpcAnimator.raceOf(entity);
@@ -126,6 +128,17 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         }
         wasSwinging = entity.swinging;
         manager.tick();
+    }
+
+    /** The base state now: free, riding, a stance, bow_aim, crossbow_aim or crossbow_reload (NpcGraphs.STATES). */
+    public String state() {
+        return state;
+    }
+
+    /** The pose applied to this NPC's model this frame, or null. */
+    @Nullable
+    public NpcPose lastPose() {
+        return lastPose;
     }
 
     /** The server started an attack (combat.AttackTiming): play it at speed. */

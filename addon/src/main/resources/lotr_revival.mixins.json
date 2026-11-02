@@ -11,7 +11,6 @@
     "HierarchicalModelMixin",
     "HumanoidModelMixin",
     "LivingEntityRendererAccessor",
-    "LivingEntityRendererMixin",
     "ModelPartCaptureMixin",
     "PulseLibSamplerMixin",
     "TextureStateShardAccessor"
