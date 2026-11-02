@@ -3,8 +3,10 @@
  *   animationJson(clips)  Bedrock animation 1.8.0 from { name: Clip }
  * Clip = { length (s), loop, bones: { bone: { rotation?: Key[], position?: Key[] } } }, Key = { t, v: [x,y,z], lerp },
  * degrees and px in Blockbench conventions. lerp is 'linear' (omitted in the file), 'catmullrom' or 'step'.
- * Blockbench composes a bone's rotation as Rz·Ry·Rx; PulseLib's GeckoLib loader reads the file literally and composes
- * Rx·Ry·Rz (quaternion rotationXYZ, no axis flips), so rotation keys are written re-expressed in that order. */
+ * Blockbench shows a key (x, y, z) as the rotation Rz(z)·Ry(-y)·Rx(-x) and a position key as the offset (-x, y, z) (right-handed,
+ * y up, facing -z); Minecraft's ModelPart angles read the same way. PulseLib's GeckoLib loader reads the file literally:
+ * rotation Rx·Ry·Rz of the raw degrees (rotationXYZ, no flips), position raw/16. So keys are written as the true rotation's
+ * XYZ angles and the true offset, and PulseLib shows what Blockbench shows. */
 (function (root) {
   'use strict';
 
@@ -44,9 +46,23 @@
     return o;
   }
 
-  /** Blockbench (ZYX) Euler degrees as the XYZ Euler degrees of the same rotation. */
-  function zyxToXyz(v) {
-    const m = eulerMatrix(v, 'ZYX');
+  /** The rotation Blockbench shows for key v. */
+  function trueRotation(v) {
+    return eulerMatrix([-v[0], -v[1], v[2]], 'ZYX');
+  }
+
+  /** The Blockbench key of a rotation matrix (inverse of trueRotation). */
+  function fromTrue(m) {
+    const sb = Math.max(-1, Math.min(1, -m[6]));
+    const b = Math.asin(sb);
+    let a, c;
+    if (Math.abs(sb) < 0.999999) { a = Math.atan2(m[7], m[8]); c = Math.atan2(m[3], m[0]); }
+    else { a = Math.atan2(-m[5], m[4]); c = 0; }
+    return [-a / RAD, -b / RAD, c / RAD];
+  }
+
+  /** XYZ Euler degrees (PulseLib) of a rotation matrix. */
+  function toXyz(m) {
     const sb = Math.max(-1, Math.min(1, m[2]));
     const b = Math.asin(sb);
     let a, c;
@@ -55,10 +71,15 @@
     return [a / RAD, b / RAD, c / RAD];
   }
 
+  /** A Blockbench rotation key as written for PulseLib. */
+  function toPulse(v) {
+    return toXyz(trueRotation(v));
+  }
+
   function channel(keys, rotation) {
     const out = {};
     for (const k of keys) {
-      const e = { vector: (rotation ? zyxToXyz(k.v) : k.v).map(round) };
+      const e = { vector: (rotation ? toPulse(k.v) : [-k.v[0], k.v[1], k.v[2]]).map(round) };
       if (k.lerp && k.lerp !== 'linear') e.lerp_mode = k.lerp;
       out[timeKey(k.t)] = e;
     }
@@ -80,7 +101,7 @@
     return { format_version: '1.8.0', animations };
   }
 
-  const api = { geoJson, animationJson, timeKey, eulerMatrix, zyxToXyz, mul3 };
+  const api = { geoJson, animationJson, timeKey, eulerMatrix, mul3, trueRotation, fromTrue, toXyz, toPulse };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.GeckoWrite = api;
 })(typeof window !== 'undefined' ? window : globalThis);
