@@ -20,6 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class NpcClip {
     public static final String[] PARTS = {"head", "body", "right_arm", "left_arm", "right_leg", "left_leg"};
+    /** Flexible joint angles (radians), bent in game by client.render.NpcJoints. */
+    public static final String[] JOINTS = {"right_elbow", "left_elbow", "right_knee", "left_knee", "waist_yaw", "waist_pitch", "waist_roll"};
 
     public final float dt;
     public final float length;
@@ -28,6 +30,7 @@ public final class NpcClip {
     private final int frames;
     private final float[][] rot = new float[PARTS.length][];
     private final float[][] pos = new float[PARTS.length][];
+    private final float[][] joints = new float[JOINTS.length][];   // null entries: the clip has no such joint (older bakes)
 
     private NpcClip(JsonObject json) {
         dt = json.get("dt").getAsFloat();
@@ -41,6 +44,26 @@ public final class NpcClip {
             pos[i] = floats(p.getAsJsonArray("p"));
         }
         frames = rot[0].length / 4;
+        JsonObject j = json.has("joints") ? json.getAsJsonObject("joints") : null;
+        for (int i = 0; i < JOINTS.length; i++)
+            if (j != null && j.has(JOINTS[i])) joints[i] = floats(j.getAsJsonArray(JOINTS[i]));
+    }
+
+    /** Frame position at time t: loops wrap, one-shots hold their last frame. */
+    private float frameAt(float t) {
+        if (loop && length > 0f) return ((t % length) + length) % length / dt;
+        return Math.max(0f, Math.min(t, length)) / dt;
+    }
+
+    /** Joint angles at time t into out (JOINTS order; 0 for joints the clip lacks). */
+    public void sampleJoints(float t, float[] out) {
+        float f = frameAt(t);
+        int f0 = Math.min((int) f, frames - 1), f1 = Math.min(f0 + 1, frames - 1);
+        float a = f - f0;
+        for (int i = 0; i < JOINTS.length; i++) {
+            float[] v = joints[i];
+            out[i] = v == null ? 0f : v[f0] + (v[f1] - v[f0]) * a;
+        }
     }
 
     private static float[] floats(JsonArray a) {
@@ -51,9 +74,7 @@ public final class NpcClip {
 
     /** Sample part i at time t (seconds) into the pose arrays. Loops wrap; one-shots hold their last frame. */
     public void sample(int part, float t, Quaternionf q, Vector3f p) {
-        float f;
-        if (loop && length > 0f) f = ((t % length) + length) % length / dt;
-        else f = Math.max(0f, Math.min(t, length)) / dt;
+        float f = frameAt(t);
         int f0 = Math.min((int) f, frames - 1), f1 = Math.min(f0 + 1, frames - 1);
         float a = f - f0;
         float[] r = rot[part], v = pos[part];

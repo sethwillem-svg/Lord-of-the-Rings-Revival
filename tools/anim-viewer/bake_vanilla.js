@@ -24,9 +24,9 @@
     guard: 'hold.sword', shield_brace: 'defend.brace.shield', spear_brace: 'hold.sword', march: 'move.march',
   };
   const LOOPS = new Set(['idle', 'walk', 'run', 'guard', 'shield_brace', 'spear_brace', 'march']);
-  /** Slots that hold some parts still after baking: part -> vanilla rotation (radians, x y z). No library clip braces a spear,
-   *  so spear_brace is the guard stance with the spear arm pointed forward. */
-  const HOLD = { spear_brace: { right_arm: [-0.6, 0, 0] } };
+  /** Slots that hold some parts and joints still after baking: part -> vanilla rotation (radians, x y z), joint -> angle.
+   *  No library clip braces a spear, so spear_brace is the guard stance with the spear arm pointed forward. */
+  const HOLD = { spear_brace: { parts: { right_arm: [-0.6, 0, 0] }, joints: { right_elbow: -0.3 } } };
   const PARTS = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'];
   /** Vanilla biped boxes in each part's own space (HumanoidModel.createMesh). */
   const BOXES = {
@@ -35,6 +35,22 @@
     right_leg: [[-2, 0, -2], [2, 12, 2]], left_leg: [[-2, 0, -2], [2, 12, 2]],
   };
   const MAX_TWIST = 720;   // deg/s an arm may twist about its own axis
+  /**
+   * Flexible joints, drawn in game with PulseLib's bend and twist deformers (client.render.NpcJoints holds the same numbers).
+   * Part space, px, y down. Every op works on the zone [origin, origin + extent] along +y: a bend curves the zone about its
+   * axis and turns everything below it rigidly by the angle; a twist turns the zone progressively about +y. Applied in order.
+   */
+  const JOINTS = {
+    body: [{ name: 'waist_yaw', op: 'twist', origin: 6, extent: 3, axis: [0, 1, 0] },
+           { name: 'waist_pitch', op: 'bend', origin: 6, extent: 3, axis: [1, 0, 0] },
+           { name: 'waist_roll', op: 'bend', origin: 6, extent: 3, axis: [0, 0, 1] }],
+    right_arm: [{ name: 'right_elbow', op: 'bend', origin: 3, extent: 2, axis: [1, 0, 0] }],
+    left_arm: [{ name: 'left_elbow', op: 'bend', origin: 3, extent: 2, axis: [1, 0, 0] }],
+    right_leg: [{ name: 'right_knee', op: 'bend', origin: 5, extent: 2, axis: [1, 0, 0] }],
+    left_leg: [{ name: 'left_knee', op: 'bend', origin: 5, extent: 2, axis: [1, 0, 0] }],
+  };
+  const JOINT_NAMES = Object.values(JOINTS).flat().map((j) => j.name);
+  const WAIST = 7.5;       // waist joint below the neck (px): the middle of the body's bend zone
   const RIG_PATH = 'src/main/art/blockbench/mordor_orc/mordor_orc.bbmodel';   // relative to the repo root
 
   // ---- small 3x3 helpers (row-major, same layout as retarget.js) ----
@@ -86,68 +102,113 @@
             2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)];
   }
   const dot4 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+  const clamp1 = (v) => Math.max(-1, Math.min(1, v));
+
+  /** A point of a part (part space, px) moved by that part's joints (angles: joint name -> radians). PulseLib's bend and
+   *  twist operations, with no negative extent. */
+  function deform(part, angles, p) {
+    let v = p;
+    for (const j of JOINTS[part] || []) {
+      const ang = (angles && angles[j.name]) || 0;
+      if (Math.abs(ang) < 1e-5) continue;
+      const L = [0, 1, 0], O = [0, j.origin, 0], d = sub(v, O), along = dot(d, L), t = Math.max(0, Math.min(j.extent, along));
+      if (j.op === 'twist') { v = add(O, apply(axisAngle(L, ang * t / j.extent), d)); continue; }
+      const ax = j.axis, rad = cross(ax, L), r = dot(d, rad), a = dot(d, ax), k = ang / j.extent, R = 1 / k;
+      const q = axisAngle(ax, k * t);
+      v = add(add(add(sub(scl(rad, R), apply(q, scl(rad, R - r))), scl(apply(q, L), along - t)), scl(ax, a)), O);
+    }
+    return v;
+  }
   const r4 = (v) => Math.round(v * 1e4) / 1e4;
 
   /** Bones of the muster rig the bake reads. */
   function rigBones(rig) {
     const I = (n) => { if (rig.idx[n] === undefined) throw new Error('rig has no bone ' + n); return rig.idx[n]; };
-    const B = { body: I('body'), head: I('head'), ra: I('right_arm'), rh: I('right_hand'), la: I('left_arm'), lh: I('left_hand'),
+    const B = { root: I('root'), body: I('body'), head: I('head'),
+                ra: I('right_arm'), rf: I('right_forearm'), rh: I('right_hand'), la: I('left_arm'), lf: I('left_forearm'), lh: I('left_hand'),
                 rl: I('right_leg'), rs: I('right_shin'), ll: I('left_leg'), ls: I('left_shin') };
     B.scale = 12 / rig.bones[B.rl].origin[1];               // rig hip height -> vanilla hip height (12 px)
     return B;
   }
 
-  /** One retargeted clip -> six vanilla parts per frame. A is retarget.js. */
+  /** One retargeted clip -> six vanilla parts and the joint angles per frame: { parts, joints }. A is retarget.js. */
   function bake(A, rig, clip) {
     const B = rigBones(rig), S = B.scale;
     const shinLen = (i) => rig.bones[i].origin[1];          // ankle at the floor in the rest pose
-    const parts = {};
+    const parts = {}, joints = {};
     for (const k of PARTS) parts[k] = [];
-    const put = (name, R, P) => parts[name].push({ q: quat(toModelMat(R)), p: toModelPos(P) });
+    for (const k of JOINT_NAMES) joints[k] = [];
+    const put = (name, R, P) => parts[name].push({ q: quat(toModelMat(R)), p: toModelPos(P) });   // rig rotation
+    const putM = (name, M, P) => parts[name].push({ q: quat(M), p: toModelPos(P) });              // model rotation
+    const dM = (v) => [v[0], -v[1], v[2]];                    // rig direction -> model direction
+    const perp = (v, n) => norm(sub(v, scl(n, dot(v, n))));
+    const col0 = (m) => [m[0], m[3], m[6]];
+    const frameOf = (X, Y) => { const Z = cross(X, Y); return [X[0], Y[0], Z[0], X[1], Y[1], Z[1], X[2], Y[2], Z[2]]; };
     const arm = { right: {}, left: {} };
     for (const fr of clip.frames) {
       const fk = A.rigFK(rig, fr.locals, fr.rootPos);
       const root = scl(fr.rootPos, S);
-      const waist = add([0, 12, 0], root);
-      const Rb = fk.rot[B.body];
-      const at = (v) => add(waist, apply(Rb, v));          // a point of the vanilla torso, rotated about the waist
-      const neck = at([0, 12, 0]);
+      const J = {};
+      // torso: the chest (rig body) carries the neck, head and arms; the hips follow the pelvis (rig root) through the waist
+      // bend, so the waist joint sits WAIST px below the neck and the legs hang from the hips
+      const Rr = fr.pelvis || fk.rot[B.root], Rb = fk.rot[B.body];
+      const hips = add([0, 12, 0], root);
+      const neck = add(add(hips, apply(Rr, [0, 12 - WAIST, 0])), apply(Rb, [0, WAIST, 0]));
+      const at = (v) => add(neck, apply(Rb, sub(v, [0, 12, 0])));   // a point of the vanilla torso (neck at y = 12)
       put('body', Rb, neck);
       put('head', fk.rot[B.head], neck);
-      // arms: aim shoulder -> wrist; the twist about the arm follows the hand (the held item hangs off it in game).
-      // The pose is carried over from the previous frame (no swing-twist singularity with the arm overhead) and the
-      // twist may change at most MAX_TWIST deg/s, which removes the retarget's one-frame wrist flips.
-      for (const [side, iA, iH, x] of [['right', B.ra, B.rh, -5], ['left', B.la, B.lh, 5]]) {
-        const H = fk.rot[iH], dir = norm(sub(fk.pos[iH], fk.pos[iA]));
-        const target = mul(between(norm(apply(H, [0, -1, 0])), dir), H);
-        const st = arm[side];
-        let R = target;
-        if (st.R) {
-          const carried = mul(between(st.dir, dir), st.R);
-          const u = norm(apply(carried, [0, 0, -1])), v = norm(apply(target, [0, 0, -1]));
-          const phi = Math.atan2(dot(cross(u, v), dir), dot(u, v)), cap = MAX_TWIST * Math.PI / 180 * clip.dt;
-          R = mul(axisAngle(dir, Math.max(-cap, Math.min(cap, phi))), carried);
+      // the hips' turn in the chest's frame, as the waist ops apply it: roll . pitch . yaw
+      const rel = mul(tr(toModelMat(Rb)), toModelMat(Rr));
+      J.waist_pitch = Math.asin(clamp1(rel[7]));
+      J.waist_yaw = Math.atan2(-rel[6], rel[8]);
+      J.waist_roll = Math.atan2(-rel[1], rel[4]);
+      // arms: the upper arm aims shoulder -> elbow and the forearm bends at the elbow. Its twist puts the elbow's bend on the
+      // part's x axis; with the arm nearly straight that is undefined, so the twist follows the hand (the held item hangs off
+      // it) and blends over to the bend between 8 and 30 deg. The twist may change at most MAX_TWIST deg/s, which removes the
+      // retarget's one-frame wrist flips. All in model space.
+      for (const [side, iA, iF, iH, x] of [['right', B.ra, B.rf, B.rh, -5], ['left', B.la, B.lf, B.lh, 5]]) {
+        const up = dM(norm(sub(fk.pos[iF], fk.pos[iA]))), fore = dM(norm(sub(fk.pos[iH], fk.pos[iF])));
+        let X = perp(dM(apply(fk.rot[iH], [1, 0, 0])), up);
+        const h = cross(fore, up), bent = Math.acos(clamp1(dot(up, fore))) * 180 / Math.PI;
+        if (Math.hypot(...h) > 1e-6) {
+          const hx = perp(h, up), w = Math.max(0, Math.min(1, (bent - 8) / 22)), ws = w * w * (3 - 2 * w);
+          X = norm(apply(axisAngle(up, ws * Math.atan2(dot(cross(X, hx), up), dot(X, hx))), X));
         }
-        st.R = R; st.dir = dir;
-        put(side + '_arm', R, at([x, 10, 0]));
+        const st = arm[side];
+        if (st.X) {
+          const carried = perp(apply(between(st.up, up), st.X), up), cap = MAX_TWIST * Math.PI / 180 * clip.dt;
+          const phi = Math.atan2(dot(cross(carried, X), up), dot(carried, X));
+          X = norm(apply(axisAngle(up, Math.max(-cap, Math.min(cap, phi))), carried));
+        }
+        st.X = X; st.up = up;
+        const Z = cross(X, up);
+        J[side + '_elbow'] = Math.atan2(dot(fore, Z), dot(fore, up));
+        putM(side + '_arm', frameOf(X, up), at([x, 10, 0]));
       }
+      // legs hang from the hips (turned with the pelvis): the thigh aims hip -> knee with no twist of its own (its x axis is
+      // the pelvis's) and the shin bends at the knee
+      const P = toModelMat(Rr), Pt = tr(P);
       for (const [side, iL, iS, x] of [['right', B.rl, B.rs, -1.9], ['left', B.ll, B.ls, 1.9]]) {
         const foot = add(fk.pos[iS], apply(fk.rot[iS], [0, -shinLen(iS), 0]));
-        const dir = norm(sub(foot, fk.pos[iL]));
-        // no swing inward past vertical: vanilla legs are 4 px boxes touching at rest, so any crossing clips
-        dir[0] = side === 'right' ? Math.min(dir[0], 0) : Math.max(dir[0], 0);
-        // swing only, no twist: the mocap hip twist makes a straight box leg swivel
-        put(side + '_leg', between([0, -1, 0], norm(dir)), add([x, 12, 0], root));
+        // no swing inward past vertical (in the pelvis frame): vanilla legs are 4 px boxes touching at rest, so any crossing clips
+        const local = apply(Pt, dM(norm(sub(fk.pos[iS], fk.pos[iL]))));
+        local[0] = side === 'right' ? Math.min(local[0], 0) : Math.max(local[0], 0);
+        const Y = norm(apply(P, local)), shin = dM(norm(sub(foot, fk.pos[iS])));
+        const X = perp(col0(P), Y), Z = cross(X, Y);
+        J[side + '_knee'] = Math.atan2(dot(shin, Z), dot(shin, Y));
+        putM(side + '_leg', frameOf(X, Y), add(hips, apply(Rr, [x, 0, 0])));
       }
+      for (const k of JOINT_NAMES) joints[k].push(J[k]);
     }
-    // floor contact: straight legs cannot bend, so shift each frame until the lowest box corner touches the floor (y = 24)
+    // floor contact: shift each frame until the lowest (bent) box corner touches the floor (y = 24)
     const n = parts.head.length;
     for (let f = 0; f < n; f++) {
       let low = -Infinity;
+      const J = Object.fromEntries(JOINT_NAMES.map((k) => [k, joints[k][f]]));
       for (const k of PARTS) {
         const { q, p } = parts[k][f], R = quatToMat(q), [a, b] = BOXES[k];
         for (const cx of [a[0], b[0]]) for (const cy of [a[1], b[1]]) for (const cz of [a[2], b[2]])
-          low = Math.max(low, p[1] + apply(R, [cx, cy, cz])[1]);
+          low = Math.max(low, p[1] + apply(R, deform(k, J, [cx, cy, cz]))[1]);
       }
       for (const k of PARTS) parts[k][f].p[1] += 24 - low;
     }
@@ -157,7 +218,7 @@
       for (let f = 1; f < list.length; f++) if (dot4(list[f].q, list[f - 1].q) < 0) list[f].q = list[f].q.map((v) => -v);
       out[k] = { q: list.flatMap((e) => e.q.map(r4)), p: list.flatMap((e) => e.p.map(r4)) };
     }
-    return out;
+    return { parts: out, joints: Object.fromEntries(JOINT_NAMES.map((k) => [k, joints[k].map(r4)])) };
   }
 
   /** Retarget options the bake uses for a library entry (the viewer's library defaults, in place). */
@@ -192,12 +253,13 @@
   }
 
   function clipData(A, rig, clip, slot) {
-    const parts = bake(A, rig, clip);
-    for (const [name, [x, y, z]] of Object.entries(HOLD[slot] || {})) {
+    const { parts, joints } = bake(A, rig, clip), hold = HOLD[slot] || {};
+    for (const [name, [x, y, z]] of Object.entries(hold.parts || {})) {
       const q = eulerQuat(x, y, z), P = parts[name];
       for (let i = 0; i < P.q.length; i += 4) P.q.splice(i, 4, ...q);
     }
-    return { dt: +clip.dt.toFixed(6), length: +clip.length.toFixed(4), loop: LOOPS.has(slot), hit: +clip.hitTime.toFixed(4), parts };
+    for (const [name, a] of Object.entries(hold.joints || {})) joints[name] = joints[name].map(() => a);
+    return { dt: +clip.dt.toFixed(6), length: +clip.length.toFixed(4), loop: LOOPS.has(slot), hit: +clip.hitTime.toFixed(4), parts, joints };
   }
 
   /** [x y z w] for a vanilla ModelPart rotation (applied z, then y, then x: the inverse of NpcAnimator.set). */
@@ -206,13 +268,14 @@
     return [sx * cy * cz - cx * sy * sz, cx * sy * cz + sx * cy * sz, cx * cy * sz - sx * sy * cz, cx * cy * cz + sx * sy * sz].map((v) => +v.toFixed(6));
   }
 
-  /** Pose of frame f: {part: {q, p, R}}. */
+  /** Pose of frame f: {part: {q, p, R}, joints: {name: angle}}. */
   function frame(data, f) {
     const out = {};
     for (const k of PARTS) {
       const P = data.parts[k], q = P.q.slice(f * 4, f * 4 + 4);
       out[k] = { q, p: P.p.slice(f * 3, f * 3 + 3), R: quatToMat(q) };
     }
+    out.joints = Object.fromEntries(JOINT_NAMES.map((k) => [k, data.joints && data.joints[k] ? data.joints[k][f] : 0]));
     return out;
   }
 
@@ -237,18 +300,21 @@
       const P = frame(data, f), body = P.body;
       const local = (pt) => apply(tr(body.R), sub(pt, body.p));       // into the torso box (x -4..4, y 0..12, z -2..2)
       for (const side of ['right_arm', 'left_arm']) {
-        const hand = add(P[side].p, apply(P[side].R, [side === 'right_arm' ? -1 : 1, 9, 0]));
+        const hand = add(P[side].p, apply(P[side].R, deform(side, P.joints, [side === 'right_arm' ? -1 : 1, 9, 0])));
         const l = local(hand);
         if (Math.abs(l[0]) < 3 && l[1] > 1 && l[1] < 11 && Math.abs(l[2]) < 1.5) { checks.arm_in_body.frames.push(f); break; }
       }
-      const foot = (k) => add(P[k].p, apply(P[k].R, [0, 12, 0]));
-      const fr = foot('right_leg'), fl = foot('left_leg');
+      // the hips' frame: the torso turned by the waist joints (roll . pitch . yaw)
+      const hipsR = mul(body.R, mul(axisAngle([0, 0, 1], P.joints.waist_roll), mul(axisAngle([1, 0, 0], P.joints.waist_pitch), axisAngle([0, 1, 0], P.joints.waist_yaw))));
+      const foot = (k) => add(P[k].p, apply(P[k].R, deform(k, P.joints, [0, 12, 0])));
+      const fr = apply(tr(hipsR), foot('right_leg')), fl = apply(tr(hipsR), foot('left_leg'));
       if (fr[0] > fl[0] - 0.5) checks.legs_cross.frames.push(f);
-      if (Math.max(fr[1], fl[1]) > 24.75) checks.under_floor.frames.push(f);
-      if (Math.max(fr[1], fl[1]) < 21) checks.floating.frames.push(f);
+      const yr = foot('right_leg')[1], yl = foot('left_leg')[1];
+      if (Math.max(yr, yl) > 24.75) checks.under_floor.frames.push(f);
+      if (Math.max(yr, yl) < 21) checks.floating.frames.push(f);
       for (const k of ['right_leg', 'left_leg']) {
         // twist about the leg's own long axis (swing-twist split): what makes a box leg look screwed in
-        const R = P[k].R, T = mul(tr(between([0, 1, 0], norm(apply(R, [0, 1, 0])))), R);
+        const R = mul(tr(hipsR), P[k].R), T = mul(tr(between([0, 1, 0], norm(apply(R, [0, 1, 0])))), R);
         if (Math.abs(Math.atan2(T[2], T[0])) * 180 / Math.PI > 45) { checks.leg_twist.frames.push(f); break; }
       }
       const hf = apply(P.head.R, [0, 0, -1]), bf = apply(body.R, [0, 0, -1]);
@@ -265,7 +331,7 @@
     return Object.entries(checks).filter(([, c]) => c.frames.length).map(([id, c]) => ({ id, label: c.label, frames: c.frames, share: c.frames.length / n }));
   }
 
-  const api = { RACES, SLOTS, LOOPS, HOLD, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
+  const api = { RACES, SLOTS, LOOPS, HOLD, JOINTS, JOINT_NAMES, deform, PARTS, BOXES, RIG_PATH, bake, bakeOptions, resolveEntry, joinBvh, clipData, frame, qa, quatToMat };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.VanillaBake = api;
 
