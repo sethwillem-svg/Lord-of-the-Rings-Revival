@@ -142,6 +142,7 @@ function clearAtKeys(anim, len) {
   for (const b of Object.values(anim.bones || {})) for (const ch of Object.values(b)) {
     if (ch && typeof ch === 'object' && !Array.isArray(ch)) for (const k of Object.keys(ch)) ts.add(Number(k));
   }
+  // clearOfBody samples from its `from` to the clip's end: ending the clip just after t makes it judge the one moment t
   return [...ts].filter((t) => t >= fade && t <= L).every((t) => clearOfBody({ ...anim, animation_length: Math.min(L, t + 1e-6) }, len, t));
 }
 
