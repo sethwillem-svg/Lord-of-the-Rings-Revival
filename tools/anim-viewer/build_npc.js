@@ -472,7 +472,7 @@ function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
 function stretchWindup(clip, until, factor) {
   if (until <= 0) return;
   const added = until * (factor - 1);
-  if (clip.lead) clip.lead *= factor;
+  if (clip.lead) clip.lead = clip.lead < until ? clip.lead * factor : clip.lead + added;   // the lead-in's end moves with its keys
   for (const ch of Object.values(clip.bones)) for (const keys of Object.values(ch)) for (const k of keys) k.t = k.t < until ? k.t * factor : k.t + added;
   clip.length += added;
 }
