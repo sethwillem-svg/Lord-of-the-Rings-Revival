@@ -6,7 +6,7 @@
   'use strict';
   const FALLBACK = { dagger: 'sword', longsword: 'sword', axe: 'sword', spear: 'sword', bow: 'unarmed', longbow: 'unarmed',
     crossbow: 'unarmed', shield: 'unarmed', banner: 'sword' };
-  const MOVEMENT = /^(idle(_\d+)?|walk|run|crouch_walk|swim|climb|ride_idle|ride_move|guard|march|hurt|taunt_\d+)$/;
+  const MOVEMENT = /^(idle(_\d+)?|walk|run|crouch_walk|swim|climb|ride_idle|ride_move|guard|march|hurt|taunt_\d+)$/;   // shield versions are mapped in below
 
   function attackClass(names, cls) {
     const has = (c) => names.includes(`attack_${c}_1`);
@@ -25,7 +25,10 @@
     if (main === 'crossbow') extra.add('crossbow_reload').add('crossbow_aim').add('crossbow_shoot');
     if (main === 'spear') extra.add('spear_brace');
     if (off === 'shield') extra.add('shield_brace').add('attack_shield_1');
-    return names.filter((n) => MOVEMENT.test(n) || attack.test(n) || extra.has(n));
+    const picked = names.filter((n) => MOVEMENT.test(n) || attack.test(n) || extra.has(n));
+    if (off !== 'shield') return picked;
+    // with a shield, a clip that has a shield version plays that instead (the off arm holds the shield up)
+    return picked.map((n) => (names.includes(n + '_shield') ? n + '_shield' : n));
   }
 
   const api = { attackClass, clipsFor, FALLBACK };

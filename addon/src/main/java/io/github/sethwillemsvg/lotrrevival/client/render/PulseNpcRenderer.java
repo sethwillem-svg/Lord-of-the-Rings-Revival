@@ -11,6 +11,7 @@ import com.mojang.math.Axis;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimatable;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimator;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcPose;
+import io.github.sethwillemsvg.lotrrevival.combat.Hands;
 import io.github.sethwillemsvg.lotrrevival.client.render.PulseGeometry.Quad;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidArmorModel;
@@ -352,8 +353,9 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     // ---- held items ----
     private void items(NpcEntity entity, NpcBipedModel model, float[] joints, PoseStack poseStack, MultiBufferSource buffers, int light) {
         boolean rightHanded = entity.getMainArm() == HumanoidArm.RIGHT;
-        ItemStack left = rightHanded ? entity.getOffhandItem() : entity.getMainHandItem();
-        ItemStack right = rightHanded ? entity.getMainHandItem() : entity.getOffhandItem();
+        ItemStack main = Hands.weapon(entity), other = Hands.other(entity);   // a shield given as the main item goes to the off arm
+        ItemStack left = rightHanded ? other : main;
+        ItemStack right = rightHanded ? main : other;
         item(entity, model, joints, poseStack, buffers, right, HumanoidArm.RIGHT, light);
         item(entity, model, joints, poseStack, buffers, left, HumanoidArm.LEFT, light);
     }

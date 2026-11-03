@@ -79,3 +79,8 @@ test('every attack has a left-handed twin on weapon_l, with no hit entry of its 
     if (built.man.clips[name].bones.weapon_r) assert.ok(l.bones.weapon_l && !l.bones.weapon_r, name);
   }
 });
+
+test('every state the in-game graph names is in each race file (client.anim.NpcGraphs)', () => {
+  const states = ['idle', 'walk', 'run', 'ride_idle', 'ride_move', 'guard', 'shield_brace', 'spear_brace', 'march', 'bow_aim', 'crossbow_aim', 'crossbow_reload', 'hurt', 'bow_release', 'crossbow_shoot'];
+  for (const race of RACES) for (const s of states) assert.ok(built[race].animations.animations[s], `${race} ${s}`);
+});

@@ -40,3 +40,11 @@ test('a weapon held in the left hand plays the left-handed twins', () => {
 });
 
 test('"all" lists every clip', () => assert.deepEqual(clipsFor(NAMES, 'all', null), NAMES));
+
+test('with a shield in the off hand the shield versions replace the plain clips', () => {
+  const names = [...NAMES, 'idle_shield', 'walk_shield', 'attack_spear_1_shield', 'attack_sword_1_shield'];
+  const c = clipsFor(names, 'spear', 'shield');
+  assert.ok(c.includes('idle_shield') && c.includes('walk_shield') && c.includes('attack_spear_1_shield'));
+  assert.ok(!c.includes('idle') && !c.includes('attack_spear_1') && !c.includes('attack_sword_1_shield'));
+  assert.ok(!clipsFor(names, 'sword', null).some((n) => n.endsWith('_shield')));
+});

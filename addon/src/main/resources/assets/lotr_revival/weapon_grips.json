@@ -1,8 +1,8 @@
 {
   "dagger": { "length": 0.6 },
   "sword": { "length": 1.0 },
-  "longsword": { "length": 1.4 },
-  "axe": { "length": 1.1 },
+  "longsword": { "length": 1.8 },
+  "axe": { "length": 1.4 },
   "spear": { "length": 2.5 },
   "bow": { "length": 1.1 },
   "longbow": { "length": 1.6 },

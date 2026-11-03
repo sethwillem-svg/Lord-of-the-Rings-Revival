@@ -58,7 +58,7 @@ public final class AttackTiming {
                 || src.is(DamageTypeTags.IS_PROJECTILE) || !(npc.level() instanceof ServerLevel level)) return;
         e.setCanceled(true);   // dealt at the hit frame instead
         if (PENDING.containsKey(npc)) return;
-        var hand = npc.getMainHandItem();
+        var hand = Hands.weapon(npc);
         String cls = hand.isEmpty() ? null : Objects.requireNonNullElse(WeaponClass.of(hand), "sword");
         List<AttackClips.Clip> clips = AttackClips.of(NpcRaces.of(npc), cls);
         float windup = MIN_WINDUP_TICKS, speed = 1f;

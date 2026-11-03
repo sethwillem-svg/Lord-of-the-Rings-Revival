@@ -7,6 +7,7 @@ import com.arcanc.pulselib.content.animatable.PAnimationManager;
 import com.arcanc.pulselib.content.model.baked.PBakedModel;
 import com.mojang.logging.LogUtils;
 import io.github.sethwillemsvg.lotrrevival.combat.AttackClips;
+import io.github.sethwillemsvg.lotrrevival.combat.Hands;
 import io.github.sethwillemsvg.lotrrevival.combat.WeaponClass;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
@@ -36,10 +37,13 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private static final Map<LivingEntity, NpcAnimatable> ALL = new WeakHashMap<>();
     private static final String GRAPH = "npc";
     private static final String[] IDLES = {"idle", "idle", "idle_2", "idle_3", "idle"};
+    private static final String SHIELD = "_shield";
     private static boolean logged;
 
     final String race;
     private final String idle;
+    /** Holds a shield in the off hand (when its animations were set up): plays the clips' shield versions. */
+    private final boolean shield;
     private final PAnimationManager<NpcAnimatable> manager;
     @Nullable private PBakedModel bound;
     private String state = "free";
@@ -53,6 +57,7 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private NpcAnimatable(LivingEntity entity) {
         this.race = NpcAnimator.raceOf(entity);
         this.idle = IDLES[Math.floorMod(entity.getId() * 0x9E3779B1, IDLES.length)];
+        this.shield = "shield".equals(WeaponClass.of(Hands.other(entity)));
         this.manager = new PAnimationManager<>(this, AnimManagerKey.ofObject(this));
     }
 
@@ -84,7 +89,8 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             PBakedModel model = model();
             Set<String> overlays = model == null ? Set.of()
                     : model.animations().keySet().stream().filter(NpcGraphs::isOverlay).collect(Collectors.toSet());
-            return NpcGraphs.npc(model != null && model.animations().containsKey(idle) ? idle : "idle", overlays);
+            String base = model != null && model.animations().containsKey(idle) ? idle : "idle";
+            return NpcGraphs.npc(base, name -> shield && model != null && model.animations().containsKey(name + SHIELD) ? name + SHIELD : name, overlays);
         });
     }
 
@@ -126,7 +132,7 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         lastHurt = entity.hurtTime;
         // a swing the server did not time (should not happen with the add-on on the server): the weapon class's clips
         if (entity.swinging && !wasSwinging && entity.tickCount - serverAttackAt > 10 && entity.deathTime == 0) {
-            ItemStack hand = entity.getMainHandItem();
+            ItemStack hand = Hands.weapon(entity);
             List<AttackClips.Clip> clips = AttackClips.of(race, hand.isEmpty() ? null : Objects.requireNonNullElse(WeaponClass.of(hand), "sword"));
             if (!clips.isEmpty()) trigger(c, handed(entity, clips.get(attacks++ % clips.size()).slot()), 1f);
         }
@@ -206,11 +212,16 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         LOG.warn("lotr_revival: could not play NPC animation {} (further errors are not logged)", animation, e);
     }
 
-    /** The attack as this NPC plays it: the mirrored twin (<name>_l) when it holds its weapon in the left hand. */
+    /**
+     * The attack as this NPC plays it: its shield version (<name>_shield, the off arm keeping the shield up) when it holds a
+     * shield, else the mirrored twin (<name>_l) when it holds its weapon in the left hand.
+     */
     private String handed(LivingEntity entity, String animation) {
         PBakedModel model = bound;
+        if (model == null) return animation;
+        if ("shield".equals(WeaponClass.of(Hands.other(entity))) && model.animations().containsKey(animation + SHIELD)) return animation + SHIELD;
         String left = animation + "_l";
-        return entity.getMainArm() == HumanoidArm.LEFT && model != null && model.animations().containsKey(left) ? left : animation;
+        return entity.getMainArm() == HumanoidArm.LEFT && model.animations().containsKey(left) ? left : animation;
     }
 
     /**

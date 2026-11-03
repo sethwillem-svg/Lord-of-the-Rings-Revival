@@ -17,7 +17,7 @@ test('the fist in arm space is the weapon bone pivot in rig space', () => {
 
 test('class lengths come from weapon_grips.json', () => {
   assert.deepEqual(Object.fromEntries(Object.entries(grips).map(([k, v]) => [k, v.length])),
-    { dagger: 0.6, sword: 1.0, longsword: 1.4, axe: 1.1, spear: 2.5, bow: 1.1, longbow: 1.6, crossbow: 0.9 });
+    { dagger: 0.6, sword: 1.0, longsword: 1.8, axe: 1.4, spear: 2.5, bow: 1.1, longbow: 1.6, crossbow: 0.9 });
 });
 
 test('an item is scaled to its class length; unknown classes keep their size', () => {

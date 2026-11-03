@@ -47,6 +47,7 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
     <option value="auto">from the model</option><option value="unarmed">unarmed</option><option>dagger</option><option>sword</option>
     <option>longsword</option><option>axe</option><option>spear</option><option>bow</option><option>longbow</option><option>crossbow</option>
     <option value="all">all clips</option></select></div>
+  <div class="row"><label for="shield">Shield</label><input id="shield" type="checkbox"> <span class="note">off arm holds a shield up (the clips' shield versions)</span></div>
   <div class="row"><label for="showAll">Show all</label><input id="showAll" type="checkbox"> <span class="note">every clip in the list at once</span></div>
   <ul class="clips" id="clips"></ul>
   <div class="note err" id="msg"></div>
@@ -113,15 +114,18 @@ let exportIndex = null;
 /** The weapon classes of the model's hands: { main, off, leftHanded }. */
 function heldClasses() {
   if (source.kind === 'test') return { main: 'sword', off: null, leftHanded: false };
-  const hand = (part) => (source.d.meshes.find((m) => m.hand && m.part === part && m.weapon) || {}).weapon || null;
+  const hand = (part) => H.exportClass((source.d.meshes.find((m) => m.hand && m.part === part && m.weapon) || {}).weapon || null, source.d.label);
   const right = hand('right_arm'), left = hand('left_arm');
+  // a shield given as the main item and a weapon in the off hand: the game swaps them (combat.Hands), so does the viewer
+  if (right === 'shield' && left && left !== 'shield') return { main: left, off: 'shield', leftHanded: false, swapped: true };
   if (!right && left && left !== 'shield') return { main: left, off: null, leftHanded: true };
   return { main: right, off: left, leftHanded: false };
 }
 function weaponChoice() {
   const w = $('weapon').value, held = heldClasses();
-  if (w === 'auto') return held;
-  return { main: w === 'unarmed' ? null : w, off: held.off, leftHanded: held.leftHanded };
+  const off = $('shield').checked ? 'shield' : held.off === 'shield' ? null : held.off;
+  if (w === 'auto') return { main: held.main, off, leftHanded: held.leftHanded };
+  return { main: w === 'unarmed' ? null : w, off, leftHanded: held.leftHanded };
 }
 
 // ---------------- building figures ----------------
@@ -166,7 +170,14 @@ function testFigure(fig, weapon) {
   boxMesh(fig, 'right_arm', [-1.3, 9.5, -2.5], [-0.7, 10.5, 0], '#5a3a1a', 'right', weapon);
 }
 function npcFigure(fig, d) {
-  d.meshes.forEach((m, order) => {
+  const swapped = heldClasses().swapped;
+  d.meshes.forEach((m0, order) => {
+    let m = m0;
+    if (swapped && m.hand) {   // mirror the item onto the other arm (part space: x flips)
+      const pos = m.pos.slice();
+      for (let i = 0; i < pos.length; i += 3) pos[i] = -pos[i];
+      m = Object.assign({}, m, { pos, part: m.part === 'right_arm' ? 'left_arm' : 'right_arm' });
+    }
     const c = parseInt(m.color, 16), a = ((c >>> 24) & 255) / 255;
     const material = new THREE.MeshLambertMaterial({
       map: exportTexture(m.tex), color: new THREE.Color(((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255),
@@ -174,7 +185,7 @@ function npcFigure(fig, d) {
       depthFunc: THREE.LessEqualDepth,   // skin layers lie on one surface: later ones draw over earlier ones, as in game
     });
     const hand = m.hand ? (m.part === 'left_arm' ? 'left' : 'right') : null;
-    addMesh(fig, m.part, m.pos, m.uv, m.idx, material, hand, m.weapon).renderOrder = order;
+    addMesh(fig, m.part, m.pos, m.uv, m.idx, material, hand, H.exportClass(m.weapon, d.label)).renderOrder = order;
   });
 }
 /** Each hand's items share one scale: class length over their joint longest extent. */
@@ -313,6 +324,7 @@ function drawMarks() {
 // ---------------- exported NPCs ----------------
 async function showModel(file) {
   source = file ? { kind: 'npc', d: await getJson(EXPORT_DIR + file) } : { kind: 'test' };
+  $('shield').checked = heldClasses().off === 'shield';
   if (source.kind === 'npc' && source.d.race && RACES.includes(source.d.race) && $('race').value !== source.d.race) {
     $('race').value = source.d.race; await loadRace();
   } else fillList();
@@ -364,6 +376,7 @@ const span = () => (!cur || !cur.anim ? 0 : $('showAll').checked
 $('model').onchange = () => showModel($('model').value);
 $('race').onchange = () => loadRace();
 $('weapon').onchange = () => { fillList(); rebuildFigures(); };
+$('shield').onchange = () => { fillList(); rebuildFigures(); };
 $('showAll').onchange = () => { t = 0; rebuildFigures(); drawMarks(); };
 $('play').onclick = () => { playing = !playing; $('play').textContent = playing ? '⏸' : '▶'; };
 $('scrub').oninput = () => { t = +$('scrub').value * span(); playing = false; $('play').textContent = '▶'; };
