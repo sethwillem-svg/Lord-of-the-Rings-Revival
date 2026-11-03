@@ -40,12 +40,14 @@ hit and settle marked, so the tempo can be checked by eye without the game.
 | --- | --- | --- | --- | --- | --- | --- |
 | `windup` | phase scale, lead-in end → apex | 1 | 0.82 | 1.35 | 0.75 | 0.9 |
 | `tame` | hold at the apex, seconds (was `hold`) | 0.05 | 0 | 0.15 | 0.03 | 0.02 |
-| `strike` | phase scale, apex → hit + 0.05 s | 1 | 0.85 | 0.95 | 1 | 0.78 |
+| `strike` | phase scale, apex → hit + 0.05 s | 1 | 0.85 | 1.3 | 0.85 | 0.78 |
 | `recover` | phase scale, hit + 0.05 s → end | 1 | 1 | 1.3 | 0.9 | 0.9 |
 | `tsume.windup` | p ≥ 1: slows into the apex, `g(u) = 1 − (1 − u)^p` | 1.6 | 1.3 | 2.2 | 1.4 | 1.1 |
-| `tsume.strike` | p ≥ 1: accelerates out of the apex to the hit, `g(u) = u^p` | 1.6 | 1.3 | 2.0 | 1.5 | 2.4 |
+| `tsume.strike` | p ≥ 1: accelerates out of the apex to the hit, `g(u) = u^p` | 1.6 | 1.3 | 3.0 | 1.5 | 2.4 |
 | `tsume.recover` | p ≥ 1: leaves the hit fast, settles slowly, `g(u) = 1 − (1 − u)^p` | 1.6 | 1.2 | 2.6 | 1.5 | 2.0 |
 | `ready` | ease back to the idle pose at the end | false | true | false | false | false |
+
+Tuned in Task 3 against fighting.test.js; relative race behaviour is the binding part.
 
 - `g` maps **new** phase progress `u ∈ [0,1]` to **source** progress; the warp applied to key times is its inverse
   (`u^(1/p)` and `1 − (1 − v)^(1/p)`, closed form). `p = 1` is today's linear scale.
