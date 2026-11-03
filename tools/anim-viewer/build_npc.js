@@ -356,14 +356,38 @@ function leadIn(clip, idle, slot, side = 'right', walk = null) {
 }
 
 /**
+ * Where the weapon tip starts a swing (at `from` s, the lead-in's end): its azimuth about the body axis from straight ahead
+ * (degrees), unwrapped by following the tip back from the hit (past ±180: it came round the other side), and its z (+ is
+ * behind the body).
+ */
+function startOf(anim, len, hit, from = 0) {
+  const tipRest = bladeAt('right', len, 1), tip = (t) => point(worldBones(samplePose(anim, t)).weapon_r, tipRest);
+  const az = (t) => { const p = tip(t); return Math.atan2(p[0], -p[2]); };
+  let prev = az(hit), sum = (prev * 180) / Math.PI;
+  for (let t = hit - 1 / 60; t > from - 1 / 60 + 1e-9; t -= 1 / 60) {
+    const now = az(Math.max(from, t));
+    let d = ((now - prev) * 180) / Math.PI;
+    d -= 360 * Math.round(d / 360);
+    sum += d; prev = now;
+  }
+  return { az: sum, z: tip(from)[2] };
+}
+
+/** Does start p lie further back than start q: on the same side, at least as far round from the front (and no more than
+ *  BACK_LIMIT), and not moved toward the front (z)? */
+const BACK_LIMIT = 150;
+const furtherBack = (p, q) => Math.sign(p.az) === Math.sign(q.az) && Math.abs(p.az) >= Math.abs(q.az) - 1e-9 && Math.abs(p.az) <= BACK_LIMIT && p.z >= q.z - 1e-9;
+
+/**
  * The wind-up drawn further back after posture (STYLE fight.windupAfter, times the style's strength): each arm key before
  * the hit moves away from the hit pose by share w of its distance (as fight's windup, but on the postured clip, whose
- * offsets would otherwise undo much of it). Bounded so the swing starts with the weapon tip within 150° of the front about
- * the body axis (followed back from the hit): pushed past that, a wind-up comes round the other side and starts in front.
+ * offsets would otherwise undo much of it). The Euler push does not always go back: on some clips it swings the start
+ * round the other side or down in front. So the largest of w, 7/8 w, ... w/8 is taken whose swing starts further back
+ * (furtherBack) than the unpushed one, within 150° of the front; none if no push does. This is judged on the postured clip;
+ * finishAttack checks it again on the finished one.
  */
-const BACK_LIMIT = 150;
 function drawBack(clip, slot, w) {
-  const cls = slot.split('_')[1], len = classLength(slot), tipRest = bladeAt('right', len, 1);
+  const cls = slot.split('_')[1], len = classLength(slot);
   const hit = strikeHit(animationJson({ c: clip }).animations.c, len);
   const arms = TWO_HANDED.has(cls) ? ['right_arm', 'weapon_r', 'left_arm', 'weapon_l'] : ['right_arm', 'weapon_r'];
   const pushed = (sh) => {
@@ -376,22 +400,14 @@ function drawBack(clip, slot, w) {
     }
     return c;
   };
-  const inFront = (c) => {   // the tip's azimuth at the start, unwrapped by following it back from the hit
-    const a = animationJson({ c }).animations.c, az = (t) => { const p = point(worldBones(samplePose(a, t)).weapon_r, tipRest); return Math.atan2(p[0], -p[2]); };
-    let prev = az(hit), sum = (prev * 180) / Math.PI;
-    for (let t = hit - 1 / 60; t > -1 / 60 + 1e-9; t -= 1 / 60) {
-      const now = az(Math.max(0, t));
-      let d = ((now - prev) * 180) / Math.PI;
-      d -= 360 * Math.round(d / 360);
-      sum += d; prev = now;
-    }
-    return Math.abs(sum) <= BACK_LIMIT;
-  };
-  if (!(w > 0) || !inFront(clip)) return clip;
-  let lo = 0, hi = w;
-  if (inFront(pushed(w))) lo = w;
-  else for (let i = 0; i < 8; i++) { const m = (lo + hi) / 2; if (inFront(pushed(m))) lo = m; else hi = m; }
-  return lo > 0 ? pushed(lo) : clip;
+  const start = (c) => startOf(animationJson({ c }).animations.c, len, hit);
+  const s0 = start(clip);
+  if (!(w > 0) || Math.abs(s0.az) > BACK_LIMIT) return clip;
+  for (let i = 8; i >= 1; i--) {
+    const c = pushed((w * i) / 8);
+    if (furtherBack(start(c), s0)) return c;
+  }
+  return clip;
 }
 
 /**
@@ -400,9 +416,19 @@ function drawBack(clip, slot, w) {
  * judges this exact output.
  */
 function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
-  let c = clone(clip);
+  const c = clone(clip);
   applyStyle(c, slot, style);
-  if (style.fight && style.fight.windupAfter && c.fightK) c = drawBack(c, slot, style.fight.windupAfter * c.fightK);
+  const w = style.fight && style.fight.windupAfter && c.fightK ? style.fight.windupAfter * c.fightK : 0;
+  const back = w ? drawBack(c, slot, w) : c;
+  if (back === c) return finishPostured(c, slot, style, idle, side, walk);
+  // the drawn-back wind-up, kept only if the finished swing still starts further back than it would without it
+  const len = classLength(slot), at = (x) => { const a = animationJson({ c: x }).animations.c; return startOf(a, len, strikeHit(a, len, side), x.lead || 0); };
+  const pushed = finishPostured(back, slot, style, idle, side, walk), plain = finishPostured(c, slot, style, idle, side, walk);
+  return furtherBack(at(pushed), at(plain)) ? pushed : plain;
+}
+
+/** finishAttack's steps after posture (and any drawn-back wind-up). */
+function finishPostured(c, slot, style, idle, side, walk) {
   hipsFollow(c);
   smooth(c);
   c = hingeify(c, { rate: 60, filter: true });
@@ -666,5 +692,5 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _tempo: { warp, apexOf, apply: tempo } };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo } };
 if (require.main === module) main();

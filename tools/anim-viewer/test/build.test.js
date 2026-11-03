@@ -6,7 +6,10 @@ const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
 const { SLOTS, RACES, STYLE } = require('../npc_slots.js');
 const { animationJson } = require('../gecko/write.js');
-const { buildRace, classLength, _tempo } = require('../build_npc.js');
+const { buildRace, classLength, hitTime, _tempo, _fight, _finish, _clipFor } = require('../build_npc.js');
+const { samplePose, worldBones, point } = require('../gecko/sample.js');
+const { blade } = require('../gecko/strike.js');
+const M = require('./lib/motion.js');
 const { built, sources } = require('./lib/built.js');   // every race as the build makes it today (cached by its inputs)
 
 for (const race of ['man', 'elf', 'dwarf', 'hobbit', 'orc']) test(race + ' has every slot', () => {
@@ -177,4 +180,40 @@ test('unarmed attacks take the man table with tame 0.03 (0 on a short wind-up or
     if (h.apex - (h.lead || 0) < 0.05 - 1e-3) assert.equal(h.tame, 0, `${r} ${n}`);
     assert.equal(h.ready > 0, !!STYLE[r].tempo.ready, `${r} ${n} ready ${h.ready}`);
   }
+});
+
+/** Where the weapon tip starts a finished attack (at its lead): azimuth about the body axis from straight ahead (degrees),
+ *  unwrapped by following the tip back from the hit, and how far the tip is from the axis, horizontally (px). */
+function tipStart(anim, name, lead, hit) {
+  const tip = blade('right', classLength(name), 1), at = (t) => point(worldBones(samplePose(anim, t)).weapon_r, tip);
+  const az = (t) => { const p = at(t); return Math.atan2(p[0], -p[2]); };
+  let prev = az(hit), sum = M.deg(prev);
+  for (const t of [...M.times(anim).filter((x) => x > lead + 1e-9 && x < hit - 1e-9).reverse(), lead]) {
+    const now = az(t);
+    let d = M.deg(now - prev);
+    d -= 360 * Math.round(d / 360);
+    sum += d; prev = now;
+  }
+  const p = at(lead);
+  return { az: sum, r: Math.hypot(p[0], p[2]) };
+}
+
+test('the orc wind-up drawn back after posture (fight.windupAfter) never starts the swing further forward than without it', () => {
+  const style = STYLE.orc, plain = { ...style, fight: { ...style.fight, windupAfter: 0 } }, o = built.orc, bad = [];
+  assert.ok(style.fight.windupAfter > 0, 'orcs draw their wind-up back');
+  for (const [name, h] of Object.entries(o.hits)) {
+    const raw = _clipFor(name, { source: 'animationsplus', clip: h.clip }, 'orc', sources());
+    if (h.style) _fight(raw, name, style.fight, h.style);
+    const finish = (st) => {
+      const c = _finish(raw, name, st, o.clips.idle, 'right', o.clips.walk), a = animationJson({ c }).animations.c;
+      return { a, ...tipStart(a, name, c.lead || 0, hitTime(a, name)) };
+    };
+    const a = finish(style), b = finish(plain);
+    // the test judges the real clip: rebuilt, it is the one the build made (as JSON, where -0 reads back as 0)
+    assert.deepEqual(JSON.parse(JSON.stringify(a.a)), o.animations.animations[name], `${name}: rebuilt as built`);
+    if (a.r < 4 || b.r < 4) continue;   // within 4 px of the body axis the azimuth says nothing
+    // 0.5° of slack: the build follows the tip at 60 Hz, this test at 60 Hz and every key
+    if (Math.sign(a.az) !== Math.sign(b.az) || Math.abs(a.az) < Math.abs(b.az) - 0.5) bad.push(`${name} (${h.clip}): starts at ${a.az.toFixed(0)}° drawn back, ${b.az.toFixed(0)}° without`);
+  }
+  assert.deepEqual(bad, []);
 });
