@@ -48,6 +48,7 @@ hit and settle marked, so the tempo can be checked by eye without the game.
 | `ready` | ease back to the idle pose at the end | false | true | false | false | false |
 
 Tuned in Task 3 against fighting.test.js; relative race behaviour is the binding part.
+Orcs also draw the wind-up back after posture (`fight.windupAfter`): bounded at 150° from the front, never moving the swing's start forward, judged on the finished clip.
 
 - `g` maps **new** phase progress `u ∈ [0,1]` to **source** progress; the warp applied to key times is its inverse
   (`u^(1/p)` and `1 − (1 − v)^(1/p)`, closed form). `p = 1` is today's linear scale.
