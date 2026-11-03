@@ -351,24 +351,32 @@ function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
   return tempo(c, slot, tempoFor(slot, style), idle, side);
 }
 
-/** The tempo an attack takes: its race's, except unarmed blows, which every race throws on man's table with a 0.03 s tame. */
-const tempoFor = (slot, style) => (/^attack_unarmed_/.test(slot) ? { ...STYLE.man.tempo, tame: 0.03 } : style.tempo);
+/**
+ * The tempo an attack takes: its race's, except unarmed blows, which every race throws on man's timing with a 0.03 s tame
+ * (still easing back into its own ready stance).
+ */
+const tempoFor = (slot, style) => (/^attack_unarmed_/.test(slot)
+  ? { ...STYLE.man.tempo, tame: 0.03, ready: !!(style.tempo && style.tempo.ready) } : style.tempo);
 
 /**
- * The end of a swing's wind-up (s): the last moment between lead + 0.05 s and hit − 0.05 s at which the weapon tip's speed
- * is a local minimum under half the strike's peak (the turn at the top). A swing with none (a thrust that only speeds up)
- * takes hit − 0.1 s.
+ * The end of a swing's wind-up (s) and whether the tip is slow there: the slowest turn (a local minimum of the weapon tip's
+ * speed) between lead + 0.02 s and hit − 0.05 s, if it is under half the strike's peak. A swing with none (a thrust that only
+ * speeds up) takes hit − 0.1 s, slow only if the tip happens to be under half the peak there.
  */
-function apexOf(anim, len, side, hit, lead = 0) {
-  const L = anim.animation_length, from = lead + 0.05, to = hit - 0.05;
+function apexScan(anim, len, side, hit, lead = 0) {
+  const L = anim.animation_length, from = lead + 0.02, to = hit - 0.05;
   const s = tipSpeeds(anim, len, side, Math.max(0, lead / L), Math.min(1, (hit + 0.05) / L));
   const peak = Math.max(0, ...s.map((x) => x.v));
-  for (let i = s.length - 2; i >= 1; i--) {
-    if (s[i].t > to + 1e-9 || s[i].t < from - 1e-9) continue;
-    if (s[i].v <= s[i - 1].v && s[i].v < s[i + 1].v && s[i].v < 0.5 * peak) return s[i].t;   // last of a still stretch
+  let best = null;
+  for (let i = 1; i < s.length - 1; i++) {
+    if (s[i].t < from - 1e-9 || s[i].t > to + 1e-9 || s[i].v > s[i - 1].v || s[i].v > s[i + 1].v) continue;
+    if (!best || s[i].v <= best.v) best = s[i];   // the last of equally slow moments: the end of a still stretch
   }
-  return Math.max(0, hit - 0.1);
+  if (best && best.v < 0.5 * peak) return { apex: best.t, slow: true };
+  const apex = Math.max(0, hit - 0.1), at = s.reduce((a, x) => (Math.abs(x.t - Math.max(lead, apex)) < Math.abs(a.t - Math.max(lead, apex)) ? x : a), s[0]);
+  return { apex, slow: !!at && at.v < 0.5 * peak };
 }
+const apexOf = (anim, len, side, hit, lead = 0) => apexScan(anim, len, side, hit, lead).apex;
 
 /**
  * Where source time x lands under a race's tempo t (pure). Wind-up W = [lead, apex], strike S = [apex, hit + 0.05 s] and
@@ -393,7 +401,8 @@ function warp(x, { lead, apex, hit, end, t }) {
 
 /**
  * A race's tempo (STYLE.tempo) on a finished attack: the tame-tsume warp around its apex and hit (warp), the apex pose
- * held for the tame (none on a wind-up under 0.05 s), and an optional ease back into the ready stance. Sets c.apex (s, new time), c.tame and c.ready (s).
+ * held for the tame (none where the tip is still fast there or the wind-up is under 0.05 s), and an optional ease back into
+ * the ready stance. Sets c.apex (s, new time), c.tame and c.ready (s).
  * fixed = { apex, hit } stands in for the measured ones (tests).
  */
 function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
@@ -401,9 +410,11 @@ function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
   const c = clone(clip), len = classLength(slot), lead = c.lead || 0;
   const src = fixed ? null : animationJson({ c: clip }).animations.c;
   const hit = fixed ? fixed.hit : strikeHit(src, len, side);
-  const apex = Math.min(hit, Math.max(lead, fixed ? fixed.apex : apexOf(src, len, side, hit, lead)));
-  // a tame only on a wind-up of 0.05 s or more: on a shorter one the hold would swallow the hit
-  const tame = apex - lead >= 0.05 - 1e-9 ? t.tame || 0 : 0;
+  const scan = fixed ? { apex: fixed.apex, slow: true } : apexScan(src, len, side, hit, lead);
+  const apex = Math.min(hit, Math.max(lead, scan.apex));
+  // a tame only where the tip is slow at the apex (a fast blade would freeze mid-swing) and on a wind-up of 0.05 s or more
+  // (on a shorter one the hold would swallow the hit)
+  const tame = scan.slow && apex - lead >= 0.05 - 1e-9 ? t.tame || 0 : 0;
   const at = { lead, apex, hit, end: clip.length, t: { ...t, tame } }, top = warp(apex, at);
   for (const ch of Object.values(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
     const atApex = valueAt(keys, apex, clip.length, false).slice();

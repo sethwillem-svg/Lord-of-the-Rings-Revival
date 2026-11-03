@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
-const { SLOTS, RACES } = require('../npc_slots.js');
+const { SLOTS, RACES, STYLE } = require('../npc_slots.js');
+const { animationJson } = require('../gecko/write.js');
 const { buildRace, classLength, _tempo } = require('../build_npc.js');
 const { built, sources } = require('./lib/built.js');   // every race as the build makes it today (cached by its inputs)
 
@@ -147,11 +148,16 @@ test('tame inserts the apex pose twice, tame seconds apart, and lengthens the cl
   assert.deepEqual(keys[i].v, keys[i + 1].v); assert.ok(Math.abs(keys[i + 1].t - 0.45) < 1e-9);
   assert.ok(Math.abs(c.length - 0.85) < 1e-9); assert.equal(c.tame, 0.15); assert.ok(Math.abs(c.apex - 0.3) < 1e-9);
 });
+/** A right-arm swing at 60 Hz whose arm angle (degrees about x) follows f(t). */
+const swing = (f, length = 0.5) => animationJson({ c: { length, bones: { right_arm: { rotation: Array.from({ length: Math.round(length * 60) + 1 }, (_, i) => ({ t: i / 60, v: [f(i / 60), 0, 0], lerp: 'linear' })) } } } }).animations.c;
 test('a monotonic thrust takes its apex at hit − 0.1 s', () => {
   // a clip whose tip speed only rises until the hit: apexOf must not find a minimum and must return hit - 0.1
-  const a = built.man.animations.animations.attack_spear_1;
-  const hit = built.man.hits.attack_spear_1.hit, apex = _tempo.apexOf(a, classLength('attack_spear_1'), 'right', hit);
-  assert.ok(apex <= hit - 0.1 + 1e-9 && apex >= 0);
+  const a = swing((x) => -90 * (x / 0.4) ** 2), apex = _tempo.apexOf(a, classLength('attack_spear_1'), 'right', 0.4);
+  assert.ok(Math.abs(apex - 0.3) < 1e-9, String(apex));
+});
+test('a swing that turns takes its apex at the turn', () => {
+  const a = swing((x) => 400 * (x - 0.25) ** 2), apex = _tempo.apexOf(a, classLength('attack_sword_1'), 'right', 0.4);
+  assert.ok(Math.abs(apex - 0.25) <= 1 / 60, String(apex));
 });
 test('every hit entry records apex before the hit, tame ≥ 0 and ready ≥ 0', () => {
   for (const r of RACES) for (const [n, h] of Object.entries(built[r].hits)) {
@@ -163,11 +169,12 @@ test('every hit lands after the tame: hit ≥ apex + tame', () => {
   for (const r of RACES) for (const [n, h] of Object.entries(built[r].hits)) if (h.hit < h.apex + h.tame - 1e-3) bad.push(`${r} ${n}: apex ${h.apex} + tame ${h.tame} > hit ${h.hit}`);
   assert.deepEqual(bad, []);
 });
-test('unarmed attacks take the man table with tame 0.03 (0 only when the wind-up is under 0.05 s)', () => {
+test('unarmed attacks take the man table with tame 0.03 (0 on a short wind-up or a fast apex), and the race\'s own ready', () => {
   assert.ok([0, 0.03].includes(built.orc.hits.attack_unarmed_1.tame), String(built.orc.hits.attack_unarmed_1.tame));
   for (const r of RACES) for (const [n, h] of Object.entries(built[r].hits)) if (/^attack_unarmed_/.test(n)) {
+    assert.ok([0, 0.03].includes(h.tame), `${r} ${n} tame ${h.tame}`);
     // man's windup scale is 1, so apex − lead is the source wind-up
-    assert.equal(h.tame, h.apex - (h.lead || 0) >= 0.05 - 1e-3 ? 0.03 : 0, `${r} ${n}`);
-    assert.equal(h.ready, 0, `${r} ${n}`);
+    if (h.apex - (h.lead || 0) < 0.05 - 1e-3) assert.equal(h.tame, 0, `${r} ${n}`);
+    assert.equal(h.ready > 0, !!STYLE[r].tempo.ready, `${r} ${n} ready ${h.ready}`);
   }
 });

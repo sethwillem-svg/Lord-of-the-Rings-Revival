@@ -43,9 +43,9 @@ function pairs(race, oneHanded = true) {
   const man = built.man.hits, h = built[race].hits;
   return Object.keys(h).filter((n) => (!oneHanded || ATTACK.test(n)) && man[n] && h[n].clip === man[n].clip && h[n].style >= 0.6);
 }
-/** At least 3 in 4 of the race's paired attacks show the difference; names the ones that do not. */
-function mostly(race, label, holds, oneHanded = true) {
-  const ps = pairs(race, oneHanded), fails = ps.filter((n) => !holds(n));
+/** At least 3 in 4 of the race's paired attacks (those `only` keeps) show the difference; names the ones that do not. */
+function mostly(race, label, holds, oneHanded = true, only = () => true) {
+  const ps = pairs(race, oneHanded).filter(only), fails = ps.filter((n) => !holds(n));
   assert.ok(ps.length >= 3, `${race}: only ${ps.length} attacks to compare`);
   assert.ok(fails.length <= ps.length / 4, `${race} ${label} on only ${ps.length - fails.length}/${ps.length}; not: ${fails.join(', ')}`);
 }
@@ -84,17 +84,19 @@ test('dwarves drive with the body: on the same swing, more torso twist than a ma
 
 test('hobbits strike low and quick: on the same swing, a lower strike and a quicker wind-up than a man', () => {
   mostly('hobbit', 'strikes lower', (n) => strike(anim('hobbit', n), classLength(n)).tip[1] < strike(anim('man', n), classLength(n)).tip[1] - 1);
-  mostly('hobbit', 'winds up quicker (in time)', (n) => windupTime('hobbit', n) < windupTime('man', n) * 0.9);
+  mostly('hobbit', 'winds up quicker (in time)', (n) => windupTime('hobbit', n) < windupTime('man', n) * 0.9, true, ownTempo);
 });
 
 // ---- tempo: how each race times its swing (STYLE.tempo) ----
+/** Unarmed blows take man's tempo in every race (spec), so race-vs-man tempo checks leave them out. */
+const ownTempo = (n) => !/^attack_unarmed_/.test(n);
 /** Seconds from the authored swing's start (after any lead-in) to the hit. */
 const windupTime = (race, n) => built[race].hits[n].hit - (built[race].hits[n].lead || 0);
 /** The tip's top speed in the strike (px/s). */
 const topSpeed = (race, n) => Math.max(...M.velocities(M.track(framesOf(race, n), 'weapon_r', blade('right', classLength(n), 1))).map((x) => x.speed));
 
 test('elves swing swiftly: on the same swing, the wind-up to the hit takes under 90% of a man\u2019s time', () => {
-  mostly('elf', 'winds up swiftly', (n) => windupTime('elf', n) < windupTime('man', n) * 0.9, false);
+  mostly('elf', 'winds up swiftly', (n) => windupTime('elf', n) < windupTime('man', n) * 0.9, false, ownTempo);
 });
 
 test('elves return to their ready stance: every attack ends within 3 px of the idle pose (weapon tip and both hands)', () => {
@@ -123,7 +125,7 @@ test('dwarves swing heavy and overhead: the wind-up lifts the weapon over the he
     return top > 32;   // above the top of the head
   });
   assert.ok(overhead.length >= 0.75 * v.length, `overhead on ${overhead.length}/${v.length}: not ${v.filter((n) => !overhead.includes(n)).join(', ')}`);
-  mostly('dwarf', 'winds up slower', (n) => windupTime('dwarf', n) > windupTime('man', n) * 1.15, false);
+  mostly('dwarf', 'winds up slower', (n) => windupTime('dwarf', n) > windupTime('man', n) * 1.15, false, ownTempo);
 });
 
 // ---- shields ----
