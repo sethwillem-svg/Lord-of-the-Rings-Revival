@@ -114,9 +114,12 @@ function strikeArc(race, n) {
   return hi - lo;
 }
 
-test('orcs strike fast and wide: on the same swing, a faster strike (10% more top speed) and a wider arc', { todo: 'parked for the maintainer: 4/7 (the wider arc fails; the faster strike passes)' }, () => {
+test('orcs strike fast: on the same swing, a faster strike (10% more top speed)', () => {
   // unarmed blows take man's tempo (ownTempo), so their speed is not the orc's to compare
   mostly('orc', 'strikes faster', (n) => topSpeed('orc', n) > topSpeed('man', n) * 1.1, false, ownTempo);
+});
+
+test('orcs strike wide: on the same swing, a wider arc', { todo: 'parked for the maintainer: 4/7' }, () => {
   mostly('orc', 'swings a wider arc', (n) => strikeArc('orc', n) > strikeArc('man', n) * 1.1, false);
 });
 

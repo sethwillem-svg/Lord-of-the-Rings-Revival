@@ -97,7 +97,9 @@ excluding the ready ease.
 | T10 | hitstop numbers | `Hitstop.ticks(race, cls)` table above | GameTest `HitstopTests` in `combat/test` |
 | T11 | hitstop fires | a landed held hit sends one `NpcHitPayload` with `ticks == Hitstop.ticks(...)`; a missed one (target stepped out) sends none | GameTest, extends `AttackTimingTests` with a captured `PacketDistributor` sink or a static listener hook on `AttackTiming` |
 
-T5's time share (≤ 0.30) and T7's ratio cannot both hold on a clip with no wind-up phase (W ≥ 1.06·S is required); revisit with the key-pose follow-up.
+On clips whose wind-up is shorter than about 1.06× the strike, T5's time share (≤ 0.30) and T7's upper bound (1.2) can't both hold;
+revisit with the key-pose follow-up. The Task 4 `recover` increase made T7 worse on two clips: man `attack_longsword_3` 1.29 → 1.66,
+orc `attack_sword_4` 2.74 → 3.78.
 
 - Existing motion tests keep their limits (3:1 spacing, fastest at hit ± 0.1 s, no bounce, no pops over fades). The new
   tempo must pass them; nothing is loosened.

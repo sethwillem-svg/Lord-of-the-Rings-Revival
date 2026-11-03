@@ -13,7 +13,7 @@
 const test = require('node:test');
 const M = require('./lib/motion.js');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
-const { RACES } = require('../npc_slots.js');
+const { RACES, STYLE } = require('../npc_slots.js');
 const { shipped } = require('./lib/shipped.js');
 const { FIST, baseName, tipRest, tipOf, report, pathIn, within, peak, median } = require('./lib/swing.js');
 const { mostly } = require('./lib/pairs.js');
@@ -80,10 +80,14 @@ const T5 = { dwarf: 0.55, orc: 0.55, man: 0.45, hobbit: 0.45, elf: 0.45 };
 const T6 = { dwarf: 0.6, orc: 0.55, man: 0.45, hobbit: 0.45, elf: 0.45 };
 const T7 = { dwarf: [1.1, Infinity], elf: [0, 0.9], man: [0.8, 1.2], hobbit: [0.8, 1.2], orc: [0.8, 1.2] };
 
-test('T1 kime: the wind-up apex reads as a held beat, the tip under 10% of its peak for at least the tame (elves 0.03 s)', { todo: 'needs authored anticipation/settle key poses (spec follow-up)' }, () => {
+/** T1's hold: the race's tame (STYLE tempo), not the clip's own hits.json tame, which the build drops on short wind-ups;
+ *  unarmed blows take 0.03 s (spec, edge cases) and elves at least 0.03 s (the turnaround still reads). */
+const tameOf = (c) => Math.max(/^attack_unarmed_/.test(c.name) ? 0.03 : STYLE[c.race].tempo.tame, c.race === 'elf' ? 0.03 : 0);
+
+test('T1 kime: the wind-up apex reads as a held beat, the tip under 10% of its peak for at least the race\u2019s tame (elves 0.03 s)', { todo: 'elves have tame 0 and no slow turnaround at the apex; tempo() drops the tame for wind-ups < 0.05 s' }, () => {
   const bad = [];
   for (const c of plain) {
-    const need = Math.max(c.h.tame || 0, c.race === 'elf' ? 0.03 : 0), d = dwell(c);
+    const need = tameOf(c), d = dwell(c);
     if (d < need - 1e-6) bad.push(`${c.race} ${c.name}: held ${d.toFixed(3)} s, tame ${need} s`);
   }
   report(bad);
@@ -137,7 +141,7 @@ test('T6 tsume: the recovery leaves the hit fast and settles slowly, its first 3
   report(bad);
 });
 
-test('T7 weight: recovery time over wind-up time — dwarves settle long (≥ 1.1), elves snap back (≤ 0.9), others 0.8..1.2', { todo: 'needs authored anticipation/settle key poses (spec follow-up)' }, () => {
+test('T7 weight: recovery time over wind-up time — dwarves settle long (≥ 1.1), elves snap back (≤ 0.9), others 0.8..1.2', { todo: 'man longsword_3, orc sword_4: wind-up too short against the recovery' }, () => {
   const bad = [];
   for (const c of plain.filter(windsUp)) {
     const r = weight(c), [lo, hi] = T7[tempoRace(c)];
@@ -146,16 +150,18 @@ test('T7 weight: recovery time over wind-up time — dwarves settle long (≥ 1.
   report(bad);
 });
 
-test('T9 orcs end off balance: on the same swing as a man, the torso ends ≥ 8° from idle and the free hand ≥ 6 px further from rest', { todo: 'orc off-balance end: 4/6' }, () => {
+test('T9 orcs end off balance: on the same swing as a man, the torso ends ≥ 8° from idle and the free hand ≥ 6 px further from rest', { todo: 'orc off-balance end: 2/4 weapon attacks' }, () => {
   const pose = (race, name, t) => worldBones(samplePose(shipped[race].animations.animations[name], t));
   const idle = (race) => pose(race, 'idle', 0);
   const end = (race, n) => { const h = shipped[race].hits[n]; return pose(race, n, h.length - (h.ready || 0)); };
   const hand = (w) => point(w.weapon_l, FIST.left);
   const handOff = (race, n) => M.len(M.sub(hand(end(race, n)), hand(idle(race))));
+  // an unarmed blow may strike with the left hand, so its "free" hand is not free: weapon attacks only
+  const armed = (n) => !/^attack_unarmed_/.test(n);
   mostly('orc', 'ends off balance', (n) => {
     const a = M.waist(end('orc', n)), b = M.waist(idle('orc'));
     return (Math.abs(a.twist - b.twist) >= 8 || Math.abs(a.flex - b.flex) >= 8) && handOff('orc', n) >= handOff('man', n) + 6;
-  });
+  }, true, armed);
 });
 
 test('twins: the _l and _shield versions give the plain attack’s meri-hari (T3) and weight (T7) within 1%', () => {
