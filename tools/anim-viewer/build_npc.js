@@ -82,6 +82,7 @@ const scaleKeys = (keys, f) => keys.forEach((k, i) => { k.v = f(k, i); });
 
 /** A race's way of swinging (STYLE.fight), at strength k (0..1), on an attack in Blockbench values before mirroring. */
 function fight(clip, slot, f, k) {
+  clip.fightK = k;   // finishAttack draws the wind-up back after posture (drawBack) at this strength
   const cls = slot.split('_')[1], hit = strikeHit(animationJson({ c: clip }).animations.c, classLength(slot));
   const rot = (bone) => clip.bones[bone] && clip.bones[bone].rotation;
   const at = (keys, t) => valueAt(keys, t, clip.length, false);
@@ -144,12 +145,22 @@ function clearAtKeys(anim, len) {
   return [...ts].filter((t) => t >= fade && t <= L).every((t) => clearOfBody({ ...anim, animation_length: Math.min(L, t + 1e-6) }, len, t));
 }
 
+/** The held item (a one-block blade, as test/weapons.test.js draws every clip's) stays above the floor (y ≥ -1 px) from
+ *  start to end, sampled at 60 Hz: a follow-through carried further can drive it into the ground. */
+function aboveFloor(anim) {
+  for (let t = 0; t <= anim.animation_length + 1e-9; t += 1 / 60) {
+    const w = worldBones(samplePose(anim, Math.min(t, anim.animation_length)));
+    if ([0.35, 0.65, 1].some((f) => point(w.weapon_r, bladeAt('right', 1, f))[1] < -1)) return false;
+  }
+  return true;
+}
+
 /** A finished attack the game can ship: it meets the quality bar (gecko/strike.js quality) with the blade clear of the
- *  body at its keys too (clearAtKeys) and, for two-handed weapons, keeps the free hand on the grip at the strike (within
- *  8 px of the shaft). */
+ *  body at its keys too (clearAtKeys) and above the floor (aboveFloor) and, for two-handed weapons, keeps the free hand on
+ *  the grip at the strike (within 8 px of the shaft). */
 function meetsBar(anim, slot) {
   const len = classLength(slot);
-  return quality(anim, len) && clearAtKeys(anim, len) && !(TWO_HANDED.has(slot.split('_')[1]) && strike(anim, len).leftToBlade > 8);
+  return quality(anim, len) && clearAtKeys(anim, len) && aboveFloor(anim) && !(TWO_HANDED.has(slot.split('_')[1]) && strike(anim, len).leftToBlade > 8);
 }
 
 /**
@@ -344,6 +355,45 @@ function leadIn(clip, idle, slot, side = 'right', walk = null) {
 }
 
 /**
+ * The wind-up drawn further back after posture (STYLE fight.windupAfter, times the style's strength): each arm key before
+ * the hit moves away from the hit pose by share w of its distance (as fight's windup, but on the postured clip, whose
+ * offsets would otherwise undo much of it). Bounded so the swing starts with the weapon tip within 150° of the front about
+ * the body axis (followed back from the hit): pushed past that, a wind-up comes round the other side and starts in front.
+ */
+const BACK_LIMIT = 150;
+function drawBack(clip, slot, w) {
+  const cls = slot.split('_')[1], len = classLength(slot), tipRest = bladeAt('right', len, 1);
+  const hit = strikeHit(animationJson({ c: clip }).animations.c, len);
+  const arms = TWO_HANDED.has(cls) ? ['right_arm', 'weapon_r', 'left_arm', 'weapon_l'] : ['right_arm', 'weapon_r'];
+  const pushed = (sh) => {
+    const c = clone(clip);
+    for (const bone of arms) {
+      const keys = c.bones[bone] && c.bones[bone].rotation;
+      if (!keys) continue;
+      const vHit = valueAt(keys, hit, c.length, false).slice();
+      scaleKeys(keys, (key) => (key.t < hit ? key.v.map((x, j) => x + (x - vHit[j]) * sh * Math.min(1, (hit - key.t) / (0.4 * hit + 1e-6))) : key.v));
+    }
+    return c;
+  };
+  const inFront = (c) => {   // the tip's azimuth at the start, unwrapped by following it back from the hit
+    const a = animationJson({ c }).animations.c, az = (t) => { const p = point(worldBones(samplePose(a, t)).weapon_r, tipRest); return Math.atan2(p[0], -p[2]); };
+    let prev = az(hit), sum = (prev * 180) / Math.PI;
+    for (let t = hit - 1 / 60; t > -1 / 60 + 1e-9; t -= 1 / 60) {
+      const now = az(Math.max(0, t));
+      let d = ((now - prev) * 180) / Math.PI;
+      d -= 360 * Math.round(d / 360);
+      sum += d; prev = now;
+    }
+    return Math.abs(sum) <= BACK_LIMIT;
+  };
+  if (!(w > 0) || !inFront(clip)) return clip;
+  let lo = 0, hi = w;
+  if (inFront(pushed(w))) lo = w;
+  else for (let i = 0; i < 8; i++) { const m = (lo + hi) / 2; if (inFront(pushed(m))) lo = m; else hi = m; }
+  return lo > 0 ? pushed(lo) : clip;
+}
+
+/**
  * The finishing steps every attack goes through after its race's fighting style: posture, a lead-in from standing, the
  * hips following the torso, smooth curves, true hinges resampled evenly, and the edge leading. The style check (fought)
  * judges this exact output.
@@ -351,6 +401,7 @@ function leadIn(clip, idle, slot, side = 'right', walk = null) {
 function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
   let c = clone(clip);
   applyStyle(c, slot, style);
+  if (style.fight && style.fight.windupAfter && c.fightK) c = drawBack(c, slot, style.fight.windupAfter * c.fightK);
   hipsFollow(c);
   smooth(c);
   c = hingeify(c, { rate: 60, filter: true });
