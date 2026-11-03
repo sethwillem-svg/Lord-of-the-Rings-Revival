@@ -14,8 +14,11 @@ public final class ClientAttack {
         if (level != null && level.getEntity(p.entityId()) instanceof LivingEntity e) NpcAnimator.startAttack(e, p.slot(), p.speed());
     }
 
-    /** Client side of NpcHitPayload: the hitstop freeze. */
+    /** Client side of NpcHitPayload: the hitstop freeze, on the attacker's swing and on an NPC target's hurt. */
     public static void hit(NpcHitPayload p) {
-        // Task 7 fills this
+        var level = Minecraft.getInstance().level;
+        if (level == null) return;
+        if (level.getEntity(p.entityId()) instanceof LivingEntity e) NpcAnimator.hitstop(e, p.ticks());
+        if (level.getEntity(p.targetId()) instanceof LivingEntity t) NpcAnimator.hurtStop(t, p.ticks());
     }
 }

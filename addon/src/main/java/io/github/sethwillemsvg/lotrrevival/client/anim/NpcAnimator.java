@@ -99,6 +99,16 @@ public final class NpcAnimator {
         if (isNpc(entity)) NpcAnimatable.of(entity).attack(entity, animation, speed);
     }
 
+    /** The NPC's held hit landed (combat.Hitstop): its swing freezes for ticks. */
+    public static void hitstop(LivingEntity entity, int ticks) {
+        if (isNpc(entity)) NpcAnimatable.of(entity).hitstop(ticks);
+    }
+
+    /** An NPC took a held hit: its hurt flinch freezes for ticks. Players get nothing (vanilla's hurt shake is enough). */
+    public static void hurtStop(LivingEntity entity, int ticks) {
+        if (isNpc(entity)) NpcAnimatable.of(entity).hurtStop(ticks);
+    }
+
     /** The joint angles of the pose last applied to this NPC (JOINTS order, radians), or null if it has none. Read by the
      *  PulseLib renderer, which bends the limbs with them. */
     public static float[] joints(LivingEntity entity) {

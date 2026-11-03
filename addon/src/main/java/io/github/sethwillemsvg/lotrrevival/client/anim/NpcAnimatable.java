@@ -38,6 +38,8 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private static final String GRAPH = "npc";
     private static final String[] IDLES = {"idle", "idle", "idle_2", "idle_3", "idle"};
     private static final String SHIELD = "_shield";
+    /** Overlay speed during a hitstop: PulseLib holds a speed-0 overlay's pose and never ends it, so every freeze is undone here. */
+    private static final float FREEZE = 0f;
     private static boolean logged;
 
     final String race;
@@ -53,6 +55,12 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     /** The pose last applied to the model this frame (NpcAnimator.apply), read by the renderer for held items. */
     @Nullable NpcPose lastPose;
     private final Map<String, Float> pendingSpeeds = new HashMap<>();
+    /** The overlay the last attack() played (its handed name) and its speed: what a hitstop freezes and restores. */
+    @Nullable private String lastAttack;
+    private float lastSpeed = 1f;
+    /** Ticks left on the swing's freeze (hitstop) and the hurt's (hurtStop); a hurt freeze that came before its hurt waits
+     *  hurtWait ticks as hurtQueued; sinceHurt counts ticks since "hurt" was triggered. */
+    private int freeze, hurtFreeze, hurtQueued, hurtWait, sinceHurt = 100;
 
     private NpcAnimatable(LivingEntity entity) {
         this.race = NpcAnimator.raceOf(entity);
@@ -122,6 +130,7 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         manager.initializeControllers();
         PAnimationController<NpcAnimatable> c = controller();
         if (c == null) return;
+        if (entity.deathTime > 0) thaw(c);
         Entity mover = entity.isPassenger() && entity.getVehicle() != null ? entity.getVehicle() : entity;
         float speed = (float) Math.hypot(mover.getX() - mover.xo, mover.getZ() - mover.zo);
         String next = baseState(entity, speed);
@@ -132,7 +141,10 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         state = next;
         c.setParameter(NpcGraphs.SPEED, speed);
         for (String s : NpcGraphs.STATES) c.setParameter(s, s.equals(state));
-        if (entity.hurtTime > lastHurt && entity.deathTime == 0) trigger(c, "hurt", 1f);
+        if (entity.hurtTime > lastHurt && entity.deathTime == 0) {
+            trigger(c, "hurt", 1f);
+            sinceHurt = 0;
+        }
         lastHurt = entity.hurtTime;
         // a swing the server did not time (should not happen with the add-on on the server): the weapon class's clips
         if (entity.swinging && !wasSwinging && entity.tickCount - serverAttackAt > 10 && entity.deathTime == 0) {
@@ -147,6 +159,12 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             warnOnce(state, e);
         }
         applyPendingSpeeds(c);
+        // freezes count down after PulseLib's tick, so a freeze of n ticks holds the pose for n of them
+        if (freeze > 0 && --freeze == 0) setSpeed(c, lastAttack, lastSpeed);
+        if (hurtFreeze > 0 && --hurtFreeze == 0) setSpeed(c, "hurt", 1f);
+        if (hurtQueued > 0 && sinceHurt == 0) hurtStop(hurtQueued);   // the hit came first; its hurt has just started
+        else if (hurtWait > 0 && --hurtWait == 0) hurtQueued = 0;
+        if (sinceHurt < 100) sinceHurt++;
     }
 
     /** The base state now: free, riding, a stance, bow_aim, crossbow_aim or crossbow_reload (NpcGraphs.STATES). */
@@ -171,7 +189,55 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             String first = animation.replaceFirst("_\\d+$", "_1");
             animation = model.animations().containsKey(first) ? first : "attack_sword_1";
         }
-        trigger(c, handed(entity, animation), speed);
+        String handed = handed(entity, animation);
+        // a new swing drops the freeze: the same overlay gets its own speed from trigger, another one is let go at its speed
+        if (freeze > 0 && !handed.equals(lastAttack)) setSpeed(c, lastAttack, lastSpeed);
+        freeze = 0;
+        lastAttack = handed;
+        lastSpeed = speed;
+        trigger(c, handed, speed);
+    }
+
+    /** This NPC's hit landed (combat.Hitstop): the swing last started by attack() holds still for ticks. */
+    public void hitstop(int ticks) {
+        PAnimationController<NpcAnimatable> c = controller();
+        if (c == null || lastAttack == null || ticks <= 0) return;
+        freeze = setSpeed(c, lastAttack, FREEZE) ? ticks : 0;
+    }
+
+    /** This NPC took a held hit: its hurt flinch holds still for ticks, now if it began in the last 2 ticks, else when it
+     *  begins within the next 2 (the hit and the hurt reach the client in either order). */
+    public void hurtStop(int ticks) {
+        PAnimationController<NpcAnimatable> c = controller();
+        PBakedModel model = bound;
+        if (c == null || ticks <= 0 || model == null || !model.animations().containsKey("hurt")) return;
+        hurtQueued = hurtWait = 0;
+        if (sinceHurt <= 2) {
+            hurtFreeze = setSpeed(c, "hurt", FREEZE) ? ticks : 0;
+        } else {
+            hurtQueued = ticks;
+            hurtWait = 2;
+        }
+    }
+
+    /** Ends both freezes (on death), giving each frozen overlay its speed back. */
+    private void thaw(PAnimationController<NpcAnimatable> c) {
+        if (freeze > 0) setSpeed(c, lastAttack, lastSpeed);
+        if (hurtFreeze > 0) setSpeed(c, "hurt", 1f);
+        freeze = hurtFreeze = hurtQueued = hurtWait = 0;
+    }
+
+    /** Sets a playing overlay's speed; false when PulseLib refuses (the overlay has ended), which drops the freeze. */
+    private boolean setSpeed(PAnimationController<NpcAnimatable> c, String animation, float speed) {
+        try {
+            var runtime = c.graphRuntime();
+            if (runtime == null) return false;
+            runtime.setOverlaySpeed(animation, speed);
+            return true;
+        } catch (RuntimeException e) {
+            warnOnce(animation, e);
+            return false;
+        }
     }
 
     /**
