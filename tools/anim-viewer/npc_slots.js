@@ -62,7 +62,7 @@
       tempo: { windup: 1.35, tame: 0.15, strike: 0.95, recover: 1.3, tsume: { windup: 2.2, strike: 2.0, recover: 2.6 }, ready: false },
       prefer: 'overhead' },
     hobbit: { kneeBend: 9, stride: 0.65, fight: { windup: -0.6, low: 14, extend: -0.3, freeArm: { out: -6 } },
-      tempo: { windup: 0.75, tame: 0.03, strike: 1, recover: 0.9, tsume: { windup: 1.4, strike: 1.5, recover: 1.5 }, ready: false } },
+      tempo: { windup: 0.75, tame: 0.03, strike: 0.85, recover: 0.9, tsume: { windup: 1.4, strike: 1.5, recover: 1.5 }, ready: false } },
     orc: { hunch: 12, armsForward: 8, armsOut: 12, kneeBend: 14,
       fight: { windup: 0.75, overswing: 0.4, lean: 10, lead: -0.05, freeArm: { out: 15, flail: 1.5 }, jitter: 5 },
       tempo: { windup: 0.9, tame: 0.02, strike: 0.78, recover: 0.9, tsume: { windup: 1.1, strike: 2.4, recover: 2.0 }, ready: false } },
