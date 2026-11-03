@@ -59,7 +59,7 @@
     elf: { hunch: -8, armsOut: -5, fight: { overswing: -0.15, extend: 0.9, lean: 6, lead: 0.03, freeArm: { out: 45 } },
       tempo: { windup: 0.82, tame: 0, strike: 0.85, recover: 1, tsume: { windup: 1.3, strike: 1.3, recover: 1.2 }, ready: true } },
     dwarf: { hunch: 9, armsOut: 11, kneeBend: 15, fight: { windup: 0.3, twist: 0.45, lean: 8, extend: -0.2 },
-      tempo: { windup: 1.35, tame: 0.15, strike: 0.95, recover: 1.3, tsume: { windup: 2.2, strike: 2.0, recover: 2.6 }, ready: false },
+      tempo: { windup: 1.35, tame: 0.15, strike: 1.3, recover: 1.3, tsume: { windup: 2.2, strike: 3.0, recover: 2.6 }, ready: false },
       prefer: 'overhead' },
     hobbit: { kneeBend: 9, stride: 0.65, fight: { windup: -0.6, low: 14, extend: -0.3, freeArm: { out: -6 } },
       tempo: { windup: 0.75, tame: 0.03, strike: 0.85, recover: 0.9, tsume: { windup: 1.4, strike: 1.5, recover: 1.5 }, ready: false } },
