@@ -2,14 +2,14 @@
 /* Builds the NPC rig and each race's clip set for PulseLib's GeckoLib loader.
  *   node tools/anim-viewer/build_npc.js     writes, under addon/src/main/resources/assets/lotr_revival/geckolib/,
  *     models/entity/npc_biped_<race>.geo.json, animations/entity/npc_biped_<race>.animation.json and .hits.json
- * hits.json: { "<attack>": { "length": s, "hit": s } } — the hit is the fastest moment of the weapon tip (a point a block in
- * front of the fist) between 15% and 80% of the clip; the server times damage by it (combat.AttackTiming). */
+ * hits.json: { "<attack>": { "length": s, "hit": s } } — the hit is where, in the fast part of the swing, the weapon's tip is
+ * most directly in front of the NPC (gecko/strike.js); the server times damage by it (combat.AttackTiming). */
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
 const { RIG } = require('./gecko/rig.js');
 const { geoJson, animationJson } = require('./gecko/write.js');
-const { samplePose, worldBones, point } = require('./gecko/sample.js');
+const { hitTime: strikeHit } = require('./gecko/strike.js');
 const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
 const { importMoBends } = require('./import/mobends.js');
 const { importSeriousPlayer } = require('./import/seriousplayer.js');
@@ -20,7 +20,6 @@ const LIB = path.join(__dirname, 'library');
 const OUT = path.join(__dirname, '../../addon/src/main/resources/assets/lotr_revival/geckolib');
 const LOOPED = new Set(['idle', 'walk', 'run', 'crouch_walk', 'swim', 'climb', 'ride_idle', 'ride_move', 'march', 'guard', 'shield_brace', 'spear_brace', 'crossbow_aim']);
 const STRIDE = new Set(['walk', 'run', 'march']);
-const TIP = [6, 12, -14];   // weapon_r pivot plus 12 px forward
 
 function loadSources() {
   const json = (p) => JSON.parse(fs.readFileSync(path.join(LIB, p), 'utf8'));
@@ -118,21 +117,15 @@ function applyStyle(clip, slot, style) {
   }
 }
 
-/** When the swing lands: the end of the weapon tip's fastest stretch (speed back under half its peak), searched between
- * 15% and 80% of the clip. AnimationsPlus clips start wound up, so the fastest stretch often begins at the window's edge. */
-function hitTime(animation) {
-  const L = animation.animation_length, dt = 1 / 60;
-  const tip = (t) => point(worldBones(samplePose(animation, t)).weapon_r, TIP);
-  const speed = (t) => { const a = tip(Math.max(0, t - dt)), b = tip(Math.min(L, t + dt)); return Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]); };
-  const ts = [];
-  for (let t = 0.15 * L; t <= 0.8 * L + 1e-9; t += dt / 2) ts.push(t);
-  const v = ts.map(speed);
-  let peak = 0;
-  v.forEach((s, i) => { if (s > v[peak] + 1e-9) peak = i; });
-  let end = peak;
-  while (end + 1 < ts.length && v[end + 1] >= 0.5 * v[peak]) end++;
-  return +ts[end].toFixed(3);
+/** Class lengths (blocks) for hit times: weapon_grips.json, fists and shields as short reaches. */
+const GRIPS = JSON.parse(fs.readFileSync(path.join(__dirname, '../../addon/src/main/resources/assets/lotr_revival/weapon_grips.json'), 'utf8'));
+function classLength(attack) {
+  const cls = attack.split('_')[1];
+  return (GRIPS[cls] && GRIPS[cls].length) || (cls === 'unarmed' ? 0.25 : 1);
 }
+
+/** When the swing lands: in its fast part, where the weapon tip is most directly ahead (gecko/strike.js). */
+const hitTime = (animation, attack = 'attack_sword_1') => strikeHit(animation, classLength(attack));
 
 function buildRace(race, sources, slots = SLOTS) {
   const clips = {}, style = STYLE[race] || {};
@@ -149,7 +142,7 @@ function buildRace(race, sources, slots = SLOTS) {
   const animations = animationJson(clips);
   const hits = {};
   for (const name of Object.keys(clips)) if (name.startsWith('attack_') && !name.endsWith('_l')) {
-    hits[name] = { length: animations.animations[name].animation_length, hit: hitTime(animations.animations[name]) };
+    hits[name] = { length: animations.animations[name].animation_length, hit: hitTime(animations.animations[name], name) };
   }
   return { geo: geoJson(RIG), animations, hits, clips };
 }
@@ -174,5 +167,5 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength };
 if (require.main === module) main();

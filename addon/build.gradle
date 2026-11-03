@@ -22,6 +22,12 @@ neoForge {
             // -PquickPlay=<world>: open that saved world straight from launch (bench.sh uses it once the bench world exists)
             if (project.hasProperty('quickPlay')) programArguments.addAll('--quickPlaySingleplayer', project.property('quickPlay').toString())
         }
+        // ./gradlew runGameTestServer -PmeJar=...: the add-on's game tests (combat.test) on a headless server, then quits
+        gameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run/gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
     }
     mods {
         "${mod_id}" { sourceSet(sourceSets.main) }

@@ -99,6 +99,7 @@ public final class ExportRun {
         }
         try {
             NpcExport.write(dir, out);
+            PoseSamples.write(dir);   // the game's poses for the viewer parity test
             LOG.info("[lotr_revival export] wrote {} NPCs to {} ({} skipped)", out.size(), dir, skipped);
         } catch (Exception e) {
             LOG.error("[lotr_revival export] could not write {}", dir, e);

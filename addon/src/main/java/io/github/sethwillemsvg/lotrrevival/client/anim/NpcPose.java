@@ -50,10 +50,7 @@ public final class NpcPose {
         if (model == null || a.controller() == null) return null;
         List<PAnimationController<NpcAnimatable>> controllers = new ArrayList<>();
         a.controllers().forEach(controllers::add);
-        PPose pose = model.evaluate(controllers, Map.of(), partialTick);
-        Matrix4f[] posed = world(model, pose), bind = world(model, model.bindPose());
-        Matrix4f[] rig = new Matrix4f[posed.length];
-        for (int i = 0; i < posed.length; i++) rig[i] = new Matrix4f(posed[i]).mul(new Matrix4f(bind[i]).invert());
+        Matrix4f[] rig = rigMotion(model, model.evaluate(controllers, Map.of(), partialTick));
         if (aimPitch != 0f) for (String side : new String[] {"right", "left"}) aim(model, rig, side, aimPitch);
         return new NpcPose(model, rig);
     }
@@ -73,6 +70,14 @@ public final class NpcPose {
     /** The shoulder in rig space at rest (blocks): AnimationsPlus' arm pivots (tools/anim-viewer/gecko/rig.js). */
     private static Vector3f shoulderRest(String side) {
         return new Vector3f(side.equals("right") ? 4.5f / 16f : -4.5f / 16f, 22.5f / 16f, 0f);
+    }
+
+    /** Each bone's motion in rig space (blocks): rest point -> posed point, W_pose * W_bind^-1, in the model's bone order. */
+    public static Matrix4f[] rigMotion(PBakedModel model, PPose pose) {
+        Matrix4f[] posed = world(model, pose), bind = world(model, model.bindPose());
+        Matrix4f[] rig = new Matrix4f[posed.length];
+        for (int i = 0; i < posed.length; i++) rig[i] = new Matrix4f(posed[i]).mul(new Matrix4f(bind[i]).invert());
+        return rig;
     }
 
     private static Matrix4f[] world(PBakedModel model, PPose pose) {
