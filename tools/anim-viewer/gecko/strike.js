@@ -179,7 +179,7 @@
       && clearOfBody(anim, blocks, fade, side) && spacing(anim, blocks, fade, side) >= 3;
   }
 
-  const api = { fadeFor, quality, spacing, bodyHitAfter, clearOfBody, FIST, DIR, blade, frontAngle, hitTime, strike, acceptable, hinge, hingesOk, cleanSwing, waistOk };
+  const api = { speeds, fadeFor, quality, spacing, bodyHitAfter, clearOfBody, FIST, DIR, blade, frontAngle, hitTime, strike, acceptable, hinge, hingesOk, cleanSwing, waistOk };
   if (isNode) module.exports = api;
   else root.GeckoStrike = api;
 })(typeof window !== 'undefined' ? window : globalThis);

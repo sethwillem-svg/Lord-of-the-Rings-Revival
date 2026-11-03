@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
 const { SLOTS, RACES } = require('../npc_slots.js');
-const { buildRace } = require('../build_npc.js');
+const { buildRace, classLength, _tempo } = require('../build_npc.js');
 const { built, sources } = require('./lib/built.js');   // every race as the build makes it today (cached by its inputs)
 
 for (const race of ['man', 'elf', 'dwarf', 'hobbit', 'orc']) test(race + ' has every slot', () => {
@@ -122,4 +122,39 @@ test('the build cache is keyed on every file the build reads (test/lib/built.js 
   }
   const covered = new Set(inputs());
   assert.deepEqual([...read].filter((f) => !covered.has(f)).map((f) => path.relative(tools, f)), []);
+});
+
+// ---- tempo: the tame-tsume time warp (specs/addon/npc-attack-tempo.md, "Time warp") ----
+const P = { lead: 0.1, apex: 0.3, hit: 0.4, end: 0.7 };
+test('warp with p = 1 and tame 0 equals the old linear scales', () => {
+  const t = { windup: 2, tame: 0, strike: 0.5, recover: 1, tsume: { windup: 1, strike: 1, recover: 1 } };
+  assert.equal(_tempo.warp(0.1, { ...P, t }), 0.1);          // lead-in untouched
+  assert.equal(_tempo.warp(0.2, { ...P, t }), 0.3);          // half the wind-up, scaled 2x
+  assert.equal(_tempo.warp(0.3, { ...P, t }), 0.5);          // apex
+  assert.equal(_tempo.warp(0.45, { ...P, t }), 0.575);       // strike (apex→hit+0.05) scaled 0.5
+  assert.equal(_tempo.warp(0.7, { ...P, t }), 0.825);        // end
+});
+test('tsume windup p = 2 spends the second half of the wind-up on the last 29% of the source', () => {
+  const t = { windup: 1, tame: 0, strike: 1, recover: 1, tsume: { windup: 2, strike: 1, recover: 1 } };
+  // g(u) = 1-(1-u)^2 ; g(0.5) = 0.75 : source 0.75 of the way is reached at half the new time → warp(0.25) = 0.2
+  assert.ok(Math.abs(_tempo.warp(0.1 + 0.2 * 0.75, { ...P, t }) - 0.2) < 1e-9);
+});
+test('tame inserts the apex pose twice, tame seconds apart, and lengthens the clip by tame', () => {
+  const clip = { length: 0.7, lead: 0.1, bones: { right_arm: { rotation: Array.from({ length: 43 }, (_, i) => ({ t: i / 60, v: [i, 0, 0], lerp: 'linear' })) } } };
+  const t = { windup: 1, tame: 0.15, strike: 1, recover: 1, tsume: { windup: 1, strike: 1, recover: 1 } };
+  const c = _tempo.apply(clip, 'attack_sword_1', t, null, 'right', { apex: 0.3, hit: 0.4 });
+  const keys = c.bones.right_arm.rotation, i = keys.findIndex((k) => Math.abs(k.t - 0.3) < 1e-9);
+  assert.deepEqual(keys[i].v, keys[i + 1].v); assert.ok(Math.abs(keys[i + 1].t - 0.45) < 1e-9);
+  assert.ok(Math.abs(c.length - 0.85) < 1e-9); assert.equal(c.tame, 0.15); assert.ok(Math.abs(c.apex - 0.3) < 1e-9);
+});
+test('a monotonic thrust takes its apex at hit − 0.1 s', () => {
+  // a clip whose tip speed only rises until the hit: apexOf must not find a minimum and must return hit - 0.1
+  const a = built.man.animations.animations.attack_spear_1;
+  const hit = built.man.hits.attack_spear_1.hit, apex = _tempo.apexOf(a, classLength('attack_spear_1'), 'right', hit);
+  assert.ok(apex <= hit - 0.1 + 1e-9 && apex >= 0);
+});
+test('every hit entry records apex before the hit, tame ≥ 0 and ready ≥ 0', () => {
+  for (const r of RACES) for (const [n, h] of Object.entries(built[r].hits)) {
+    assert.ok(h.apex > (h.lead || 0) - 1e-9 && h.apex < h.hit, `${r} ${n}`); assert.ok(h.tame >= 0 && h.ready >= 0, `${r} ${n}`);
+  }
 });

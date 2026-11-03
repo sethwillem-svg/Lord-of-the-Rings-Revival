@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { RIG } = require('./gecko/rig.js');
 const { geoJson, animationJson } = require('./gecko/write.js');
-const { hitTime: strikeHit, acceptable, strike, hingesOk, cleanSwing, waistOk, clearOfBody, spacing, bodyHitAfter, fadeFor, quality, blade: bladeAt, DIR: STRIKE_DIR } = require('./gecko/strike.js');
+const { hitTime: strikeHit, speeds: tipSpeeds, acceptable, strike, hingesOk, cleanSwing, waistOk, clearOfBody, spacing, bodyHitAfter, fadeFor, quality, blade: bladeAt, DIR: STRIKE_DIR } = require('./gecko/strike.js');
 const { trueRotation, fromTrue, mul3 } = require('./gecko/write.js');
 const { samplePose, worldBones, point } = require('./gecko/sample.js');
 const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
@@ -352,33 +352,67 @@ function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
 }
 
 /**
- * A race's tempo (STYLE.tempo) on a finished attack: a piecewise time warp around the hit (wind-up, strike, recovery each
- * scaled; the lead-in kept), an optional hold at the top of the wind-up, and an optional ease back into the ready stance.
+ * The end of a swing's wind-up (s): the last moment between lead + 0.05 s and hit − 0.05 s at which the weapon tip's speed
+ * is a local minimum under half the strike's peak (the turn at the top). A swing with none (a thrust that only speeds up)
+ * takes hit − 0.1 s.
  */
-function tempo(clip, slot, t, idle, side = 'right') {
+function apexOf(anim, len, side, hit, lead = 0) {
+  const L = anim.animation_length, from = lead + 0.05, to = hit - 0.05;
+  const s = tipSpeeds(anim, len, side, Math.max(0, lead / L), Math.min(1, (hit + 0.05) / L));
+  const peak = Math.max(0, ...s.map((x) => x.v));
+  for (let i = s.length - 2; i >= 1; i--) {
+    if (s[i].t > to + 1e-9 || s[i].t < from - 1e-9) continue;
+    if (s[i].v <= s[i - 1].v && s[i].v < s[i + 1].v && s[i].v < 0.5 * peak) return s[i].t;   // last of a still stretch
+  }
+  return Math.max(0, hit - 0.1);
+}
+
+/**
+ * Where source time x lands under a race's tempo t (pure). Wind-up W = [lead, apex], strike S = [apex, hit + 0.05 s] and
+ * recovery R = [hit + 0.05 s, end] are each scaled (t.windup, t.strike, t.recover) and eased (tsume, p ≥ 1: g maps new
+ * progress to source progress, 1 − (1 − u)^p slowing into the apex and settling after the hit, u^p bursting to the hit;
+ * keys move by its inverse); the tame (t.tame s) sits between W and S, and the lead-in is untouched. Times come back
+ * rounded to 1e-12 s, so poses that meet land on the same instant (the files keep four decimals).
+ */
+function warp(x, { lead, apex, hit, end, t }) {
+  const p = t.tsume || {}, b = Math.min(end, hit + 0.05);
+  const W = apex - lead, S = b - apex, R = end - b;
+  const w = W * (t.windup || 1), st = S * (t.strike || 1), rc = R * (t.recover || 1), tame = t.tame || 0;
+  const ease = (u, q, out) => (out ? 1 - Math.pow(1 - u, 1 / (q || 1)) : Math.pow(u, 1 / (q || 1)));   // g⁻¹: source → new
+  let y;   // a branch is reached only when its phase has length
+  if (x <= lead) y = x;
+  else if (x <= apex) y = lead + w * ease((x - lead) / W, p.windup, true);
+  else if (x <= b) y = lead + w + tame + st * ease((x - apex) / S, p.strike, false);
+  else if (x <= end) y = lead + w + tame + st + rc * ease((x - b) / R, p.recover, true);
+  else y = lead + w + tame + st + rc + (x - end) * (t.recover || 1);
+  return Math.round(y * 1e12) / 1e12;
+}
+
+/**
+ * A race's tempo (STYLE.tempo) on a finished attack: the tame-tsume warp around its apex and hit (warp), the apex pose
+ * held for the tame, and an optional ease back into the ready stance. Sets c.apex (s, new time), c.tame and c.ready (s).
+ * fixed = { apex, hit } stands in for the measured ones (tests).
+ */
+function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
   if (!t) return clip;
-  const c = clone(clip), len = classLength(slot);
-  const hit = strikeHit(animationJson({ c }).animations.c, len, side), lead = c.lead || 0;
-  const a = Math.max(lead, hit - 0.1), b = Math.min(c.length, hit + 0.05), hold = t.hold || 0;
-  const w = t.windup || 1, st = t.strike || 1, rc = t.recover || 1;
-  const map = (x) => {
-    if (x <= lead) return x;
-    if (x <= a) return lead + (x - lead) * w;
-    const A = lead + (a - lead) * w + hold;
-    if (x <= b) return A + (x - a) * st;
-    return A + (b - a) * st + (x - b) * rc;
-  };
+  const c = clone(clip), len = classLength(slot), lead = c.lead || 0;
+  const src = fixed ? null : animationJson({ c: clip }).animations.c;
+  const hit = fixed ? fixed.hit : strikeHit(src, len, side);
+  const apex = Math.min(hit, Math.max(lead, fixed ? fixed.apex : apexOf(src, len, side, hit, lead)));
+  const at = { lead, apex, hit, end: clip.length, t }, tame = t.tame || 0, top = warp(apex, at);
   for (const ch of Object.values(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
-    const atA = valueAt(keys, a, clip.length, false).slice();
-    for (const k of keys) k.t = map(k.t);
-    if (hold > 0) {   // the pose at the top of the wind-up, held
-      const ta = lead + (a - lead) * w;
-      keys.push({ t: ta, v: atA.slice(), lerp: 'linear' }, { t: ta + hold, v: atA.slice(), lerp: 'linear' });
+    const atApex = valueAt(keys, apex, clip.length, false).slice();
+    for (const k of keys) k.t = warp(k.t, at);
+    if (tame > 0) {   // the pose at the top of the wind-up, held
+      keys.push({ t: top, v: atApex.slice(), lerp: 'linear' }, { t: top + tame, v: atApex.slice(), lerp: 'linear' });
       keys.sort((x, y) => x.t - y.t);
-      ch[kind] = keys.filter((k, i, arr) => i === 0 || k.t - arr[i - 1].t > 1e-6 || k.t < ta - 1e-6 || k.t > ta + hold + 1e-6);
+      ch[kind] = keys.filter((k, i, arr) => i === 0 || k.t - arr[i - 1].t > 1e-6 || k.t < top - 1e-6 || k.t > top + tame + 1e-6);
     }
   }
-  c.length = map(c.length);
+  c.length = warp(clip.length, at);
+  c.apex = top;
+  c.tame = tame;
+  c.ready = 0;
   if (t.ready && idle) {   // ease back into the ready stance, no faster than a third of the swing
     const anim = animationJson({ c }).animations.c, rest = animationJson({ i: idle }).animations.i;
     const bone = side === 'left' ? 'weapon_l' : 'weapon_r', tipRest = bladeAt(side, len, 1);
@@ -392,6 +426,7 @@ function tempo(clip, slot, t, idle, side = 'right') {
       keys.push({ t: c.length + T, v: to, lerp: 'catmullrom' });
     }
     c.length += T;
+    c.ready = T;
   }
   return c;
 }
@@ -496,7 +531,8 @@ function buildRace(race, sources, slots = SLOTS) {
   const base = ['idle', 'walk'].map((n) => animations.animations[n]);
   for (const name of Object.keys(clips)) if (/^attack_[a-z]+_\d+$/.test(name)) {   // not the _l and _shield versions: same hit
     const a = animations.animations[name];
-    hits[name] = { length: a.animation_length, hit: hitTime(a, name), ...fades(a, name, base, classLength(name)), ...meta[name], ...(clips[name].lead ? { lead: +clips[name].lead.toFixed(3) } : {}) };
+    hits[name] = { length: a.animation_length, hit: hitTime(a, name), ...fades(a, name, base, classLength(name)), ...meta[name], ...(clips[name].lead ? { lead: +clips[name].lead.toFixed(3) } : {}),
+      apex: +(clips[name].apex || 0).toFixed(3), tame: +(clips[name].tame || 0).toFixed(3), ready: +(clips[name].ready || 0).toFixed(3) };
   }
   return { geo: geoJson(RIG), animations, hits, clips };
 }
@@ -521,5 +557,5 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _tempo: { warp, apexOf, apply: tempo } };
 if (require.main === module) main();
