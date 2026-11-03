@@ -11,12 +11,11 @@
  * ("dwarves ... take longer than a man's", "elves swing swiftly", "hobbits ... a quicker wind-up").
  * T4 and T7 only judge attacks with a wind-up (apex − lead) of 0.1 s or more: a share of a near-zero phase is noise. */
 const test = require('node:test');
-const assert = require('node:assert/strict');
 const M = require('./lib/motion.js');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { RACES } = require('../npc_slots.js');
 const { shipped } = require('./lib/shipped.js');
-const { FIST, baseName, tipRest, tipOf, report, overlap, pathIn, within, peak, median } = require('./lib/swing.js');
+const { FIST, baseName, tipRest, tipOf, report, pathIn, within, peak, median } = require('./lib/swing.js');
 const { mostly } = require('./lib/pairs.js');
 
 const clips = [];   // every attack and its twins: { race, name, anim, fs, h, tip }
