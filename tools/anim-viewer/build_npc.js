@@ -134,19 +134,23 @@ function fight(clip, slot, f, k) {
   for (const bone of Object.keys(clip.bones)) for (const ch of Object.values(clip.bones[bone])) ch.sort((x, y) => x.t - y.t);
 }
 
+/** A finished attack the game can ship: it meets the quality bar (gecko/strike.js quality) and, for two-handed weapons,
+ *  keeps the free hand on the grip at the strike (within 8 px of the shaft). */
+function meetsBar(anim, slot) {
+  const len = classLength(slot);
+  return quality(anim, len) && !(TWO_HANDED.has(slot.split('_')[1]) && strike(anim, len).leftToBlade > 8);
+}
+
 /**
- * The strongest version of a race's fighting style on an attack that still strikes in front without spinning (gecko/strike.js
- * acceptable) and, for two-handed weapons, keeps the free hand on the grip: full strength, else 60%, 30%, none.
+ * The strongest version of a race's fighting style on an attack that still meets the bar (meetsBar): full strength, else
+ * 60%, 30%, none.
  */
 function fought(clip, slot, style, idle, walk) {
-  const cls = slot.split('_')[1];
   for (const k of [1, 0.6, 0.3]) {
     const c = clone(clip);
     fight(c, slot, style.fight, k);
     const anim = animationJson({ c: finishAttack(c, slot, style, idle, 'right', walk) }).animations.c;   // judged as written
-    if (!quality(anim, classLength(slot))) continue;
-    if (TWO_HANDED.has(cls) && strike(anim, classLength(slot)).leftToBlade > 8) continue;
-    return { clip: c, k };
+    if (meetsBar(anim, slot)) return { clip: c, k };
   }
   return { clip, k: 0 };
 }
@@ -488,15 +492,15 @@ function withShield(clip, arm) {
 }
 
 /**
- * An attack that meets the bar (gecko/strike.js quality) as finished for this race: its own clip with the race's style
- * (stepped down if need be), else the next clip of its class's pool (npc_slots.js POOL) not already used by another slot.
+ * An attack that meets the bar (meetsBar) as finished for this race: its own clip with the race's style (stepped down if
+ * need be), else the next clip of its class's pool (npc_slots.js POOL) not already used by another slot.
  */
 function bestAttack(c, slot, entry, race, sources, style, clips, used) {
   const cls = slot.split('_')[1], len = classLength(slot);
   const tryClip = (raw) => {
     const f = style.fight ? fought(raw, slot, style, clips.idle, clips.walk) : { clip: raw, k: 0 };
     const anim = animationJson({ c: finishAttack(f.clip, slot, style, clips.idle, 'right', clips.walk) }).animations.c;
-    return quality(anim, len) ? f : null;
+    return meetsBar(anim, slot) ? f : null;
   };
   let pool = POOL[cls] || [];
   if (style.prefer === 'overhead') {   // the clips whose wind-up lifts the weapon highest first, its own clip among them
