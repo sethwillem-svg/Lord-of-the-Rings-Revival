@@ -45,6 +45,12 @@ public final class AttackTiming {
         NeoForge.EVENT_BUS.addListener(AttackTiming::onLevelTick);
     }
 
+    /** The game tick a held attack of this NPC lands on, or -1 when none is pending (combat.test.AttackTimingTests). */
+    public static long dueTick(NpcEntity npc) {
+        Pending p = PENDING.get(npc);
+        return p == null ? -1 : p.due();
+    }
+
     private static void onDamage(LivingIncomingDamageEvent e) {
         if (replaying) return;
         DamageSource src = e.getSource();

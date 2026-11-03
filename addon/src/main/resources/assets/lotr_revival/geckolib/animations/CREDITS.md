@@ -5,7 +5,7 @@ Each source's licence ships next to this file in `licenses/<source>.txt` (and wi
 
 | Source | Author | Licence | Used for |
 | --- | --- | --- | --- |
-| [AnimationsPlus](https://github.com/emart126/AnimationsPlus) | Eric Martinez (emart126) | MIT | idles, walk, run, crouch, swim, climb, riding, sword, spear, dagger, axe, shield and unarmed attacks, bow, crossbow, block stances, hurt, taunts |
-| [Mo' Bends](https://github.com/mobends/MoBends) | Iwo Plaza | MIT | longsword attacks (slash down, inward, outward, up, whirl) |
+| [AnimationsPlus](https://github.com/emart126/AnimationsPlus) | Eric Martinez (emart126) | MIT | every clip in the race files: idles, walk, run, crouch, swim, climb, riding, all attacks, bow, crossbow, stances, hurt, taunts |
+| [Mo' Bends](https://github.com/mobends/MoBends) | Iwo Plaza | MIT | imported for the viewer (its longsword slashes were replaced by AnimationsPlus' two-handed swings) |
 | [Serious Player Animations](https://github.com/McVader34/Serious-Player-Animations) | McVader | MIT | imported for the viewer and later slots (not in the race files yet) |
 | [Emotecraft-emotes](https://github.com/KosmX/Emotecraft-emotes) | KosmX and contributors | CC0 1.0 | imported for the viewer and later slots (not in the race files yet) |

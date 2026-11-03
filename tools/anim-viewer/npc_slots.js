@@ -7,7 +7,6 @@
   'use strict';
   const RACES = ['man', 'elf', 'dwarf', 'hobbit', 'orc'];
   const ap = (clip, extra) => ({ source: 'animationsplus', clip, ...extra });
-  const mb = (clip, extra) => ({ source: 'mobends', clip, ...extra });
   const SLOTS = {
     // movement
     idle: ap('idle'), idle_2: ap('Idle_1', { loop: true }), idle_3: ap('Idle_2', { loop: true }), idle_4: ap('Idle_3', { loop: true }),
@@ -15,19 +14,20 @@
     // riding
     ride_idle: ap('sitHorse'), ride_move: ap('sitmoveHorse'),
     // attacks by weapon class
-    attack_sword_1: ap('Sword_Swing_1R'), attack_sword_2: ap('Sword_Swing_2R'), attack_sword_3: ap('Sword_Swing_3R'), attack_sword_4: ap('Sword_Swing_4R'),
-    attack_longsword_1: mb('slash_down'), attack_longsword_2: mb('slash_inward'), attack_longsword_3: mb('slash_outward'),
-    attack_longsword_4: mb('slash_up'), attack_longsword_5: mb('slash_whirl'),
-    attack_spear_1: ap('Spear_Swing_1R'), attack_spear_2: ap('Spear_Swing_2R'), attack_spear_3: ap('Spear_Swing_3R'),
-    attack_dagger_1: ap('Assassin_MultiHitR'), attack_dagger_2: ap('Sword_Swing_2R'),
-    attack_axe_1: ap('axe_1R'), attack_axe_2: ap('axe_2R'),
+    // Chosen by measurement (test/weapons.test.js): each strike lands in front of the NPC, nothing spins, and two-handed
+    // classes (longsword, spear, axe) keep the left hand on the grip.
+    attack_sword_1: ap('Wand_Wave_1R'), attack_sword_2: ap('Sword_Swing_3R'), attack_sword_3: ap('Relik_Strike_2R'), attack_sword_4: ap('Relik_Strike_3R'),
+    attack_longsword_1: ap('pickaxe_1R'), attack_longsword_2: ap('axe_1R'), attack_longsword_3: ap('Spear_Swing_2R'),
+    attack_spear_1: ap('Spear_Swing_2R'), attack_spear_2: ap('Spear_Swing_3R'),
+    attack_dagger_1: ap('hoe_1R'), attack_dagger_2: ap('Wand_Wave_3R'), attack_dagger_3: ap('Sword_Swing_3R'),
+    attack_axe_1: ap('axe_1R'), attack_axe_2: ap('pickaxe_1R'),
     attack_shield_1: ap('Warrior_bashR'),
-    attack_unarmed_1: ap('attackR'), attack_unarmed_2: ap('attackL'),
+    attack_unarmed_1: ap('attackR'), attack_unarmed_2: ap('Wand_Wave_3R'),
     // ranged
     bow_aim: ap('bowR'), bow_release: ap('Bow_ShootR'),
     crossbow_reload: ap('loadR'), crossbow_aim: ap('crossR'), crossbow_shoot: ap('Cross_ShootR'),
     // formation stances (specs/addon/hiring-reputation.md)
-    guard: ap('blockR', { loop: true }), shield_brace: ap('blockL', { loop: true }), spear_brace: ap('Spear_Swing_1R', { hold: 0 }), march: ap('walk'),
+    guard: ap('blockR', { loop: true }), shield_brace: ap('blockL', { loop: true }), spear_brace: ap('Spear_Swing_2R', { hold: 0.19 }),   // the two-handed thrust held at its strike: spear levelled forward march: ap('walk'),
     // reactions and social
     hurt: ap('Fall_0'),
     taunt_1: ap('Taunt_0'), taunt_2: ap('Taunt_1'), taunt_3: ap('Taunt_2'), taunt_4: ap('Taunt_3'), taunt_5: ap('Taunt_4'), taunt_6: ap('Taunt_5'),

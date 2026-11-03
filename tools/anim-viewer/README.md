@@ -19,8 +19,15 @@ each with its `LICENSE.txt`), converted onto the rig per race:
 
 ```sh
 node tools/anim-viewer/build_npc.js          # writes geckolib/models + animations (+ .hits.json) under addon/src/main/resources/assets/lotr_revival/
-node --test tools/anim-viewer/test/*.test.js # the converters, the race files and the hit times
+node --test tools/anim-viewer/test/*.test.js # converters, race files, hit times and the weapon checks
 ```
+
+The weapon checks (`test/weapons.test.js`) hold every attack to: the strike lands in front of the NPC, nothing spins,
+two-handed classes keep the free hand on the grip, longer weapons reach further, the left-handed twins mirror the right,
+and the blade stays out of the body and above the floor. With an export (`./addon/bench.sh export`) they also check every
+real Middle-earth item sits in the hand at its class length and shields face forward, and `test/parity.test.js` checks the
+viewer poses clips exactly as the game does. The server's hit timing has game tests:
+`cd addon && ./gradlew runGameTestServer -PmeJar=/path/to/middle-earth.jar`.
 
 - Which clip plays in which slot, and each race's posture, are in `npc_slots.js`.
 - `npc.html` plays those files on the test figure or on Middle-earth NPCs exported from the game (`./addon/bench.sh export`), with

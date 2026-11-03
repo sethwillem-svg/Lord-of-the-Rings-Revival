@@ -1,0 +1,76 @@
+package io.github.sethwillemsvg.lotrrevival.combat.test;
+
+import io.github.sethwillemsvg.lotrrevival.LotrRevival;
+import io.github.sethwillemsvg.lotrrevival.combat.AttackTiming;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.sevenstars.middleearth.entity.npcs.NpcEntity;
+import net.sevenstars.middleearth.entity.npcs.initializer.NpcEntityBuilder;
+
+/**
+ * combat.AttackTiming on a real Middle-earth NPC: its melee damage waits for the attack clip's hit tick, lands on it, and
+ * misses a target that stepped out of reach. Run with ./gradlew runGameTestServer -PmeJar=... (the Middle-earth jar).
+ */
+@GameTestHolder(LotrRevival.MOD_ID)
+@PrefixGameTestTemplate(false)
+public final class AttackTimingTests {
+    private AttackTimingTests() {}
+
+    private static final ResourceLocation SOLDIER = ResourceLocation.fromNamespaceAndPath("middle-earth", "gondor.soldier");
+
+    private static NpcEntity soldier(GameTestHelper h) {
+        NpcEntity npc = new NpcEntityBuilder(h.getLevel(), h.absolutePos(new BlockPos(1, 1, 1))).withNpcType(SOLDIER).build();
+        if (npc == null) throw new IllegalStateException("Middle-earth could not build " + SOLDIER);
+        npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        npc.setNoAi(true);
+        h.getLevel().addFreshEntity(npc);
+        return npc;
+    }
+
+    private static Zombie target(GameTestHelper h) {
+        Zombie z = h.spawnWithNoFreeWill(EntityType.ZOMBIE, new BlockPos(1, 1, 2));   // one block in front
+        z.setSilent(true);
+        return z;
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 80)
+    public static void damageLandsOnTheHitTick(GameTestHelper h) {
+        NpcEntity npc = soldier(h);
+        Zombie target = target(h);
+        float health = target.getHealth();
+        npc.doHurtTarget(target);
+        long now = h.getLevel().getGameTime(), due = AttackTiming.dueTick(npc);
+        h.assertTrue(due > now, "the swing's damage was not held for the hit frame");
+        h.assertTrue(target.getHealth() == health, "damage was dealt at the swing, not at the hit frame");
+        long wait = due - now;
+        if (wait > 2) h.runAfterDelay(wait - 2, () -> h.assertTrue(target.getHealth() == health, "damage came before the hit tick"));
+        h.runAfterDelay(wait + 2, () -> {
+            h.assertTrue(target.getHealth() < health, "no damage on the hit tick");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 80)
+    public static void stepOutOfReachAndItMisses(GameTestHelper h) {
+        NpcEntity npc = soldier(h);
+        Zombie target = target(h);
+        float health = target.getHealth();
+        npc.doHurtTarget(target);
+        long wait = AttackTiming.dueTick(npc) - h.getLevel().getGameTime();
+        h.assertTrue(wait > 0, "the swing's damage was not held for the hit frame");
+        target.teleportTo(target.getX() + 6, target.getY(), target.getZ());   // well past reach plus slack
+        h.runAfterDelay(wait + 2, () -> {
+            h.assertTrue(target.getHealth() == health, "a target out of reach was still hit");
+            h.succeed();
+        });
+    }
+}
