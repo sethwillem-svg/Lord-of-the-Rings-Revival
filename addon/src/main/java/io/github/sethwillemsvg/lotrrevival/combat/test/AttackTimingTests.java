@@ -103,4 +103,26 @@ public final class AttackTimingTests {
             h.succeed();
         });
     }
+
+    @GameTest(template = "empty", timeoutTicks = 160)
+    public static void aMissAfterAHitClearsTheHitstop(GameTestHelper h) {
+        NpcEntity npc = soldier(h);
+        Zombie target = target(h);
+        npc.doHurtTarget(target);
+        long first = AttackTiming.dueTick(npc) - h.getLevel().getGameTime();
+        h.runAfterDelay(first + 2, () -> {
+            h.assertTrue(AttackTiming.lastStop(npc) > 0, "the first hit sent no hitstop");
+            target.setHealth(target.getMaxHealth());
+            target.invulnerableTime = 0;
+            npc.doHurtTarget(target);   // second attack: held, and the target steps out before it lands
+            long second = AttackTiming.dueTick(npc) - h.getLevel().getGameTime();
+            h.assertTrue(second > 0, "the second swing's damage was not held");
+            h.assertTrue(AttackTiming.lastStop(npc) == -1, "a new attack kept the old hitstop");
+            target.teleportTo(target.getX() + 6, target.getY(), target.getZ());
+            h.runAfterDelay(second + 2, () -> {
+                h.assertTrue(AttackTiming.lastStop(npc) == -1, "a miss after a hit sent hitstop " + AttackTiming.lastStop(npc));
+                h.succeed();
+            });
+        });
+    }
 }
