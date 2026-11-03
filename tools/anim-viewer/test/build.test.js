@@ -1,6 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
 const { SLOTS, RACES } = require('../npc_slots.js');
 const { buildRace } = require('../build_npc.js');
@@ -97,4 +99,27 @@ test('the shipped race files are what the build makes today (run node tools/anim
     for (const n of names(h, sh)) if (!isDeepStrictEqual(h[n], sh[n])) stale.push(`${race}.hits.json ${n}`);
   }
   assert.equal(stale.length, 0, `${stale.length} stale: ${stale.slice(0, 20).join(', ')}`);
+});
+
+test('the build cache is keyed on every file the build reads (test/lib/built.js inputs)', () => {
+  const { inputs } = require('./lib/built.js');
+  const tools = path.join(__dirname, '..') + path.sep, tests = __dirname + path.sep;
+  const ours = () => Object.keys(require.cache).filter((m) => m.startsWith(tools) && !m.startsWith(tests));
+  const saved = ours().map((m) => [m, require.cache[m]]);
+  const read = new Set(), real = fs.readFileSync;
+  fs.readFileSync = function (f, ...rest) {   // records every file read, the build's modules included
+    if (typeof f === 'string' || f instanceof URL || Buffer.isBuffer(f)) read.add(path.resolve(f instanceof URL ? f.pathname : String(f)));
+    return real.call(this, f, ...rest);
+  };
+  try {
+    for (const m of ours()) delete require.cache[m];   // loaded afresh, so the reads it makes as it loads count too
+    const b = require('../build_npc.js');
+    b.buildRace('man', b.loadSources());
+  } finally {
+    fs.readFileSync = real;
+    for (const m of ours()) delete require.cache[m];
+    for (const [m, mod] of saved) require.cache[m] = mod;
+  }
+  const covered = new Set(inputs());
+  assert.deepEqual([...read].filter((f) => !covered.has(f)).map((f) => path.relative(tools, f)), []);
 });
