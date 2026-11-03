@@ -160,7 +160,7 @@
 
   /** The first moment after `after` at which the blade is inside the torso or head, or null. */
   function bodyHitAfter(anim, blocks, after, side = 'right') {
-    for (let t = after; t <= anim.animation_length + 1e-9; t += 1 / 60) {
+    for (let t = after; t <= anim.animation_length + 1e-9; t += 1 / 120) {
       const sub = { animation_length: anim.animation_length, loop: anim.loop, bones: anim.bones };
       if (!clearOfBody({ ...sub, animation_length: Math.min(anim.animation_length, t + 1e-6) }, blocks, t, side)) return t;
     }

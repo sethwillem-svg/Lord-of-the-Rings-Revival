@@ -88,7 +88,8 @@ test('every state the in-game graph names is in each race file (client.anim.NpcG
 test('the shipped race files are what the build makes today (run node tools/anim-viewer/build_npc.js after changing it)', () => {
   const { shipped } = require('./lib/shipped.js');
   for (const race of RACES) {
-    assert.deepEqual(built[race].animations, shipped[race].animations, `${race}.animation.json is stale`);
-    assert.deepEqual(built[race].hits, shipped[race].hits, `${race}.hits.json is stale`);
+    const json = (x) => JSON.parse(JSON.stringify(x));   // as written to disk (-0 and 0 are the same there)
+    assert.deepEqual(json(built[race].animations), shipped[race].animations, `${race}.animation.json is stale`);
+    assert.deepEqual(json(built[race].hits), shipped[race].hits, `${race}.hits.json is stale`);
   }
 });

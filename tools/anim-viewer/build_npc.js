@@ -323,7 +323,6 @@ function leadIn(clip, idle, slot, side = 'right', walk = null) {
 function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
   let c = clone(clip);
   applyStyle(c, slot, style);
-  if (idle) c = leadIn(c, idle, slot, side, walk);
   hipsFollow(c);
   smooth(c);
   c = hingeify(c, { rate: 60, filter: true });
@@ -339,6 +338,8 @@ function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
   // a follow-through that would carry the blade into the body ends just before it
   const hit = strikeHit(anim(), len, side), into = bodyHitAfter(anim(), len, hit + 0.05, side);
   if (into !== null) trimTo(c, Math.max(hit + 0.05, into - 1 / 60));
+  // last: a lead-in from standing, judged on the finished swing's own first pose and hit
+  if (idle) c = leadIn(c, idle, slot, side, walk);
   edgeAlign(c, slot, side);
   return c;
 }
@@ -405,12 +406,12 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used) {
 }
 
 function buildRace(race, sources, slots = SLOTS) {
-  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style), used = new Set();
+  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style), used = new Set(), leftOf = [];
   for (const [slot, entry] of Object.entries(slots)) {
     let c = clipFor(slot, entry, race, sources);
     if (/^attack_/.test(slot)) c = bestAttack(c, slot, entry, race, sources, style, clips, used);   // before mirroring
     if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
-      clips[slot + '_l'] = finishAttack(mirror(c), slot, style, clips.idle, 'left', clips.walk);
+      leftOf.push(slot);   // mirrored from the finished swing below: an exact twin
     }
     if (/^attack_/.test(slot)) c = finishAttack(c, slot, style, clips.idle, 'right', clips.walk);
     else {
@@ -420,6 +421,7 @@ function buildRace(race, sources, slots = SLOTS) {
       c = hingeify(c);   // elbows and knees as the hinges the game draws (hinge.js)
     }
     clips[slot] = c;
+    if (leftOf.includes(slot)) clips[slot + '_l'] = mirror(c);
     if (SHIELD_SLOTS.test(slot)) clips[slot + '_shield'] = withShield(c, shield);
   }
   const animations = animationJson(clips);
