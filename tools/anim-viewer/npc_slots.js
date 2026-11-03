@@ -38,6 +38,7 @@
    * so the feet stay under), stride (walk/run/march leg swing scale). Degrees. */
   /* fight (attacks only; npc_slots tests in test/fighting.test.js): how each race swings, from animation craft —
    *   windup     the wind-up drawn further back (+) or kept short (-), as a share of its distance from the strike pose
+   *   windupAfter  the same push again after posture, only as far as keeps the swing's starting tip within 150° of the front
    *   overswing  the follow-through carried past the strike (+) or reined in (-)
    *   twist      the torso's turn exaggerated (+): a body-driven swing
    *   extend     the weapon arm straighter at the strike (+) or kept compact (-)
@@ -64,7 +65,7 @@
     hobbit: { kneeBend: 9, stride: 0.65, fight: { windup: -0.6, low: 14, extend: -0.3, freeArm: { out: -6 } },
       tempo: { windup: 0.75, tame: 0.03, strike: 0.85, recover: 0.9, tsume: { windup: 1.4, strike: 1.5, recover: 1.5 }, ready: false } },
     orc: { hunch: 12, armsForward: 8, armsOut: 12, kneeBend: 14,
-      fight: { windup: 0.75, overswing: 0.4, lean: 10, lead: -0.05, freeArm: { out: 15, flail: 1.5 }, jitter: 5 },
+      fight: { windup: 0.4, windupAfter: 0.8, overswing: 0.6, lean: 10, freeArm: { out: 15, flail: 1.5 }, jitter: 5 },
       tempo: { windup: 0.9, tame: 0.02, strike: 0.78, recover: 0.9, tsume: { windup: 1.1, strike: 2.4, recover: 2.0 }, ready: false } },
   };
   /** Substitutes per class, tried in order when a race's version of a slot's clip misses the quality bar (build_npc.js). */
