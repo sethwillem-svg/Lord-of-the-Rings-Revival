@@ -70,7 +70,23 @@
     return s.frontAngle <= 45 && s.tip[2] <= -6 && s.tip[1] >= 4 && s.tip[1] <= 50 && s.bodyYawRange <= 180 && s.tipSweep <= 300;
   }
 
-  const api = { FIST, DIR, blade, frontAngle, hitTime, strike, acceptable };
+  /** A joint's hinge angle (degrees; the game's bend deformer reads it the same way): negative folds forward. */
+  function hinge(w, joint, parent) {
+    const P = w[parent].R, J = w[joint].R;
+    const col1 = [0, 1, 2].map((r) => P[r] * J[1] + P[3 + r] * J[4] + P[6 + r] * J[7]);   // (P^T J) y column
+    return (Math.atan2(-col1[2], col1[1]) * 180) / Math.PI;
+  }
+
+  /** Elbows never fold backwards and knees never forwards by more than 10° during the clip. */
+  function hingesOk(anim) {
+    for (let t = 0; t <= anim.animation_length + 1e-9; t += anim.animation_length / 16) {
+      const w = pose(anim, t);
+      for (const s of ['right', 'left']) if (hinge(w, `${s}_elbow`, `${s}_arm`) > 10 || hinge(w, `${s}_knee`, `${s}_leg`) < -10) return false;
+    }
+    return true;
+  }
+
+  const api = { FIST, DIR, blade, frontAngle, hitTime, strike, acceptable, hinge, hingesOk };
   if (isNode) module.exports = api;
   else root.GeckoStrike = api;
 })(typeof window !== 'undefined' ? window : globalThis);

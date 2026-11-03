@@ -1,5 +1,6 @@
 package io.github.sethwillemsvg.lotrrevival.combat;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
@@ -28,7 +29,8 @@ public final class WeaponClass {
     public static String of(ItemStack stack) {
         var item = stack.getItem();
         if (item instanceof CustomDaggerWeaponItem) return "dagger";
-        if (item instanceof CustomLongswordWeaponItem) return "longsword";
+        // Middle-earth files its scimitars with the longswords; they are one-handed curved swords
+        if (item instanceof CustomLongswordWeaponItem) return BuiltInRegistries.ITEM.getKey(item).getPath().contains("scimitar") ? "sword" : "longsword";
         if (item instanceof CustomSpearWeaponItem || item instanceof ReachWeaponItem || item instanceof TridentItem) return "spear";
         if (item instanceof CustomAxeWeaponItem || item instanceof AxeItem) return "axe";
         if (item instanceof CustomSwordWeaponItem || item instanceof SwordItem) return "sword";

@@ -11,6 +11,7 @@ import com.arcanc.pulselib.content.model.animation.PInterruptionPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 /**
  * The NPC's animation graph: one base state at a time (moving, riding, a formation stance or aiming), chosen by exactly one
@@ -28,15 +29,19 @@ public final class NpcGraphs {
     static final float WALK = 0.04f, RUN = 0.18f, RIDE_MOVE = 0.08f;
     private static final float BLEND = 3f, FADE_IN = 2f, FADE_OUT = 3f;
 
-    /** @param idle this NPC's idle (idle, idle_2 ...)   @param overlays the one-shot animations the race's file has */
-    public static PAnimationGraph npc(String idle, Collection<String> overlays) {
+    /**
+     * @param idle     this NPC's idle (idle, idle_2 ...)
+     * @param version  the animation this NPC plays for a movement clip: its shield version (name_shield) when it holds one
+     * @param overlays the one-shot animations the race's file has
+     */
+    public static PAnimationGraph npc(String idle, UnaryOperator<String> version, Collection<String> overlays) {
         List<PAnimationState> states = new ArrayList<>();
-        states.add(blend("free", new float[] {0f, WALK, RUN}, idle, "walk", "run"));
+        states.add(blend("free", new float[] {0f, WALK, RUN}, version.apply(idle), version.apply("walk"), version.apply("run")));
         states.add(blend("riding", new float[] {0f, RIDE_MOVE}, "ride_idle", "ride_move"));
-        states.add(clip("guard", PAnimationType.CYCLE));
+        states.add(new PAnimationState.Clip("guard", version.apply("guard"), PAnimationType.CYCLE, PInterpolationType.LINEAR, 1f, false));
         states.add(clip("shield_brace", PAnimationType.CYCLE));
         states.add(clip("spear_brace", PAnimationType.CYCLE));
-        states.add(blend("march", new float[] {0f, WALK}, idle, "march"));
+        states.add(blend("march", new float[] {0f, WALK}, version.apply(idle), version.apply("march")));
         states.add(clip("bow_aim", PAnimationType.HOLD_LAST_FRAME));
         states.add(clip("crossbow_aim", PAnimationType.CYCLE));
         states.add(clip("crossbow_reload", PAnimationType.HOLD_LAST_FRAME));

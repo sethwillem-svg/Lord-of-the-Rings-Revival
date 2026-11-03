@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { strike, blade, FIST } = require('../gecko/strike.js');
-const { partToRig, itemScale, scaleAbout } = require('../gecko/held.js');
+const { partToRig, itemScale, scaleAbout, exportClass } = require('../gecko/held.js');
 const { loadSources, buildRace, classLength } = require('../build_npc.js');
 const { RACES } = require('../npc_slots.js');
 
@@ -107,7 +107,7 @@ const hands = () => exported.flatMap((d) => ['right_arm', 'left_arm'].map((part)
   if (!ms.length) return null;
   const pts = [];
   for (const m of ms) for (let i = 0; i < m.pos.length; i += 3) pts.push(partToRig(part, [m.pos[i], m.pos[i + 1], m.pos[i + 2]]));
-  return { label: `${d.label} (${part})`, side: part === 'left_arm' ? 'left' : 'right', weapon: ms[0].weapon, pts };
+  return { label: `${d.label} (${part})`, side: part === 'left_arm' ? 'left' : 'right', weapon: exportClass(ms[0].weapon, d.label), pts };
 }).filter(Boolean));
 const extent = (pts) => Math.max(...[0, 1, 2].map((i) => Math.max(...pts.map((p) => p[i])) - Math.min(...pts.map((p) => p[i]))));
 

@@ -39,7 +39,10 @@
     return [0, 1, 2].map((i) => R[i * 3] * v[0] + R[i * 3 + 1] * v[1] + R[i * 3 + 2] * v[2] + joint.pivot[i] + w * joint.pos[i]);
   }
 
-  const api = { PART_PIVOT, FIST, partToRig, itemScale, scaleAbout, bendPoint };
+  /** An exported item's weapon class; exports made before scimitars became swords (combat.WeaponClass) still say longsword. */
+  const exportClass = (weapon, label) => (weapon === 'longsword' && /scimitar/i.test(label || '') ? 'sword' : weapon);
+
+  const api = { PART_PIVOT, FIST, partToRig, itemScale, scaleAbout, bendPoint, exportClass };
   if (isNode) module.exports = api;
   else root.GeckoHeld = api;
 })(typeof window !== 'undefined' ? window : globalThis);

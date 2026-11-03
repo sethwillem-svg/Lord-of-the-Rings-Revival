@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { RIG } = require('./gecko/rig.js');
 const { geoJson, animationJson } = require('./gecko/write.js');
-const { hitTime: strikeHit, acceptable } = require('./gecko/strike.js');
+const { hitTime: strikeHit, acceptable, strike, hingesOk } = require('./gecko/strike.js');
 const { samplePose, worldBones, point } = require('./gecko/sample.js');
 const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
 const { importMoBends } = require('./import/mobends.js');
@@ -75,35 +75,75 @@ function noise(key) {
   return ((h >>> 0) / 4294967295) * 2 - 1;
 }
 
-/** A brawler's swing: arms lag the body, swings overshoot their first pose, keys wobble (STYLE.sloppy). */
-function sloppy(clip, slot, { lag = 0, overswing = 1, jitter = 0 }) {
-  for (const bone of ['right_arm', 'weapon_r', 'left_arm', 'weapon_l', 'upper']) {
-    const keys = clip.bones[bone] && clip.bones[bone].rotation;
-    if (!keys || keys.length < 2) continue;
-    const v0 = keys[0].v.slice(), arm = bone !== 'upper';
-    keys.forEach((k, i) => {
-      if (i === 0) return;
-      if (arm) {
-        k.v = k.v.map((x, j) => v0[j] + (x - v0[j]) * overswing);
-        k.t = Math.min(clip.length, k.t + lag);
-      }
-      k.v = k.v.map((x, j) => x + jitter * noise(`${slot}/${bone}/${i}/${j}`));
+const TWO_HANDED = new Set(['longsword', 'spear', 'axe']);
+const scaleKeys = (keys, f) => keys.forEach((k, i) => { k.v = f(k, i); });
+
+/** A race's way of swinging (STYLE.fight), at strength k (0..1), on an attack in Blockbench values before mirroring. */
+function fight(clip, slot, f, k) {
+  const cls = slot.split('_')[1], hit = strikeHit(animationJson({ c: clip }).animations.c, classLength(slot));
+  const rot = (bone) => clip.bones[bone] && clip.bones[bone].rotation;
+  const at = (keys, t) => valueAt(keys, t, clip.length, false);
+  // wind-up and follow-through: away from (or toward) the strike pose, before and after the hit
+  for (const bone of ['right_arm', 'weapon_r', 'upper', 'body']) {
+    const keys = rot(bone);
+    if (!keys) continue;
+    const vHit = at(keys, hit).slice();
+    scaleKeys(keys, (key) => {
+      if (key.t < hit) return key.v.map((x, j) => x + (x - vHit[j]) * (f.windup || 0) * k * Math.min(1, (hit - key.t) / (0.4 * hit + 1e-6)));
+      if (key.t > hit) return key.v.map((x, j) => vHit[j] + (x - vHit[j]) * (1 + (f.overswing || 0) * k));
+      return key.v;
     });
   }
+  for (const bone of ['upper', 'body']) if (rot(bone)) scaleKeys(rot(bone), (key) => [key.v[0], key.v[1] * (1 + (f.twist || 0) * k), key.v[2]]);
+  if (rot('right_elbow')) scaleKeys(rot('right_elbow'), (key) => key.v.map((x) => x * (1 - (f.extend || 0) * k)));
+  const curve = (t) => (t <= hit ? t / Math.max(hit, 1e-6) : 1 - 0.6 * ((t - hit) / Math.max(clip.length - hit, 1e-6)));
+  if (f.lean) {
+    clip.bones.upper = clip.bones.upper || {};
+    const keys = clip.bones.upper.rotation || [{ t: 0, v: [0, 0, 0], lerp: 'linear' }];
+    if (!keys.some((x) => Math.abs(x.t - hit) < 1e-6)) keys.push({ t: hit, v: at(keys, hit).slice(), lerp: 'linear' });
+    keys.sort((x, y) => x.t - y.t);
+    scaleKeys(keys, (key) => [key.v[0] + f.lean * k * curve(key.t), key.v[1], key.v[2]]);
+    clip.bones.upper.rotation = keys;
+  }
+  if (f.low && rot('right_arm')) scaleKeys(rot('right_arm'), (key) => [key.v[0] + f.low * k * curve(key.t), key.v[1], key.v[2]]);
+  if (f.lead) {   // + the hips (upper) go first, - the arm trails the body
+    const shift = (bone, d) => rot(bone) && scaleKeys(rot(bone), (key) => { if (key.t > 0) key.t = Math.max(0, Math.min(clip.length, key.t + d)); return key.v; });
+    if (f.lead > 0) shift('upper', -f.lead * k);
+    else for (const b of ['right_arm', 'weapon_r']) shift(b, -f.lead * k);
+  }
+  if (f.freeArm && !TWO_HANDED.has(cls)) {
+    const arm = rot('right_arm') || [{ t: 0, v: [0, 0, 0] }], v0 = arm[0].v;
+    const times = [...new Set([0, clip.length, ...arm.map((x) => x.t)])].sort((x, y) => x - y);
+    const left = (clip.bones.left_arm = clip.bones.left_arm || {});
+    const base = left.rotation || [{ t: 0, v: [0, 0, 0], lerp: 'linear' }];
+    left.rotation = times.map((t) => {
+      const r = at(arm, t), v = at(base, t).slice(), fl = (f.freeArm.flail || 0) * k;
+      return { t, v: [v[0] - fl * (r[0] - v0[0]), v[1] - fl * (r[1] - v0[1]), v[2] - (f.freeArm.out || 0) * k], lerp: 'linear' };
+    });
+  }
+  if (f.jitter) for (const bone of ['right_arm', 'weapon_r', 'left_arm', 'upper'])
+    if (rot(bone)) scaleKeys(rot(bone), (key, i) => (i === 0 ? key.v : key.v.map((x, j) => x + f.jitter * k * noise(`${slot}/${bone}/${i}/${j}`))));
+  for (const bone of Object.keys(clip.bones)) for (const ch of Object.values(clip.bones[bone])) ch.sort((x, y) => x.t - y.t);
 }
 
 /**
- * The scrappiest version of an attack that still strikes in front without spinning (gecko/strike.js acceptable): the race's
- * sloppiness at full strength, else 60%, 30%, none.
+ * The strongest version of a race's fighting style on an attack that still strikes in front without spinning (gecko/strike.js
+ * acceptable) and, for two-handed weapons, keeps the free hand on the grip: full strength, else 60%, 30%, none.
  */
-function sloppiest(clip, slot, style) {
+function fought(clip, slot, style) {
+  const cls = slot.split('_')[1];
   for (const k of [1, 0.6, 0.3]) {
-    const s = style.sloppy, c = clone(clip);
-    sloppy(c, slot, { lag: s.lag * k, overswing: 1 + (s.overswing - 1) * k, jitter: s.jitter * k });
+    const c = clone(clip);
+    fight(c, slot, style.fight, k);
     const styled = clone(c);
     applyStyle(styled, slot, style);
-    if (acceptable(animationJson({ c: styled }).animations.c, classLength(slot))) return c;
+    const anim = animationJson({ c: styled }).animations.c;
+    if (!acceptable(anim, classLength(slot)) || !hingesOk(anim)) continue;
+    if (TWO_HANDED.has(cls) && strike(anim, classLength(slot)).leftToBlade > 8) continue;
+    if (process.env.FIGHT_DEBUG) console.log(slot, style.fight === undefined ? '' : 'strength', k);
+    return c;
   }
+  if (process.env.FIGHT_DEBUG) console.log(slot, 'strength', 0);
   return clip;
 }
 
@@ -187,11 +227,29 @@ function classLength(attack) {
 /** When the swing lands: in its fast part, where the weapon tip is most directly ahead (gecko/strike.js). */
 const hitTime = (animation, attack = 'attack_sword_1') => strikeHit(animation, classLength(attack));
 
+/** Clips that get a shield version (<name>_shield): movement, the guard, and every attack. */
+const SHIELD_SLOTS = /^(idle(_\d)?|walk|run|march|guard|attack_[a-z]+_\d+)$/;
+const SHIELD_BONES = ['left_arm', 'left_elbow', 'weapon_l'];
+
+/** The off arm holding a shield up in front: AnimationsPlus' left-hand block, with the race's arm posture. */
+function shieldArm(sources, style) {
+  const hold = holdAt(clone(sources.animationsplus.blockL), 0);
+  applyStyle(hold, 'shield_brace', style);
+  return Object.fromEntries(SHIELD_BONES.map((b) => [b, hold.bones[b] || { rotation: [{ t: 0, v: [0, 0, 0], lerp: 'linear' }] }]));
+}
+
+/** The same clip with the off arm replaced by the held shield. */
+function withShield(clip, arm) {
+  const c = clone(clip);
+  for (const b of SHIELD_BONES) c.bones[b] = clone(arm[b]);
+  return c;
+}
+
 function buildRace(race, sources, slots = SLOTS) {
-  const clips = {}, style = STYLE[race] || {};
+  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style);
   for (const [slot, entry] of Object.entries(slots)) {
     let c = clipFor(slot, entry, race, sources);
-    if (style.sloppy && /^attack_/.test(slot)) c = sloppiest(c, slot, style);   // before mirroring: the twin wobbles the same
+    if (style.fight && /^attack_/.test(slot)) c = fought(c, slot, style);   // before mirroring: the twin swings the same
     if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
       const l = mirror(c);
       applyStyle(l, slot, style);
@@ -200,10 +258,11 @@ function buildRace(race, sources, slots = SLOTS) {
     applyStyle(c, slot, style);
     if (slot === 'run') groundFeet(c);   // the sprint's long airborne phase floats both feet
     clips[slot] = c;
+    if (SHIELD_SLOTS.test(slot)) clips[slot + '_shield'] = withShield(c, shield);
   }
   const animations = animationJson(clips);
   const hits = {};
-  for (const name of Object.keys(clips)) if (name.startsWith('attack_') && !name.endsWith('_l')) {
+  for (const name of Object.keys(clips)) if (/^attack_[a-z]+_\d+$/.test(name)) {   // not the _l and _shield versions: same hit
     hits[name] = { length: animations.animations[name].animation_length, hit: hitTime(animations.animations[name], name) };
   }
   return { geo: geoJson(RIG), animations, hits, clips };
