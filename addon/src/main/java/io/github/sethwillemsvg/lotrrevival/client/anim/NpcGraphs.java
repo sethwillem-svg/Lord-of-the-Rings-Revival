@@ -11,6 +11,7 @@ import com.arcanc.pulselib.content.model.animation.PInterruptionPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 /**
@@ -27,14 +28,17 @@ public final class NpcGraphs {
     /** speed parameter: horizontal blocks per tick. */
     public static final String SPEED = "speed";
     static final float WALK = 0.04f, RUN = 0.18f, RIDE_MOVE = 0.08f;
-    private static final float BLEND = 3f, FADE_IN = 2f, FADE_OUT = 3f;
+    private static final float BLEND = 3f;
+    /** Fades (s) for overlays without their own: hurt and the ranged releases. */
+    public static final float FADE_IN = 0.1f, FADE_OUT = 0.15f;
 
     /**
      * @param idle     this NPC's idle (idle, idle_2 ...)
      * @param version  the animation this NPC plays for a movement clip: its shield version (name_shield) when it holds one
      * @param overlays the one-shot animations the race's file has
+     * @param fades    an overlay's fade-in and fade-out in seconds (attacks: from hits.json, long enough that nothing pops)
      */
-    public static PAnimationGraph npc(String idle, UnaryOperator<String> version, Collection<String> overlays) {
+    public static PAnimationGraph npc(String idle, UnaryOperator<String> version, Collection<String> overlays, Function<String, float[]> fades) {
         List<PAnimationState> states = new ArrayList<>();
         states.add(blend("free", new float[] {0f, WALK, RUN}, version.apply(idle), version.apply("walk"), version.apply("run")));
         states.add(blend("riding", new float[] {0f, RIDE_MOVE}, "ride_idle", "ride_move"));
@@ -50,8 +54,10 @@ public final class NpcGraphs {
             for (int to = 0; to < STATES.size(); to++)
                 if (from != to) transitions.add(new PAnimationTransition(from, to, PCondition.parameter(STATES.get(to)), 0f, BLEND, 0,
                         PInterruptionPolicy.FROM_CURRENT));
-        for (String name : overlays)
-            states.add(new PAnimationState.OneShotOverlay(name, name, name, FADE_IN, FADE_OUT, PInterpolationType.LINEAR, 1f, false));
+        for (String name : overlays) {
+            float[] f = fades.apply(name);   // seconds; PulseLib counts ticks
+            states.add(new PAnimationState.OneShotOverlay(name, name, name, f[0] * 20f, f[1] * 20f, PInterpolationType.LINEAR, 1f, false));
+        }
         return new PAnimationGraph(states, transitions);
     }
 

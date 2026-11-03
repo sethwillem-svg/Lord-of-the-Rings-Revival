@@ -71,16 +71,24 @@ test('run is one stride starting on the same leg as walk, so the blend stays in 
   assert.ok(Math.abs(legAt0(run) - minLeg(run)) < 1, `${legAt0(run)} vs ${minLeg(run)}`);
 });
 
-test('every attack has a left-handed twin on weapon_l, with no hit entry of its own', () => {
+test('every attack has a left-handed twin that swings on weapon_l, with no hit entry of its own', () => {
   for (const name of Object.keys(built.man.hits)) {
     const l = built.man.clips[name + '_l'];
     assert.ok(l, name + '_l');
     assert.ok(!built.man.hits[name + '_l']);
-    if (built.man.clips[name].bones.weapon_r) assert.ok(l.bones.weapon_l && !l.bones.weapon_r, name);
+    if (built.man.clips[name].bones.weapon_r) assert.ok(l.bones.weapon_l, name);   // weapon_r may carry the empty hand's forearm twist (hinge.js)
   }
 });
 
 test('every state the in-game graph names is in each race file (client.anim.NpcGraphs)', () => {
   const states = ['idle', 'walk', 'run', 'ride_idle', 'ride_move', 'guard', 'shield_brace', 'spear_brace', 'march', 'bow_aim', 'crossbow_aim', 'crossbow_reload', 'hurt', 'bow_release', 'crossbow_shoot'];
   for (const race of RACES) for (const s of states) assert.ok(built[race].animations.animations[s], `${race} ${s}`);
+});
+
+test('the shipped race files are what the build makes today (run node tools/anim-viewer/build_npc.js after changing it)', () => {
+  const { shipped } = require('./lib/shipped.js');
+  for (const race of RACES) {
+    assert.deepEqual(built[race].animations, shipped[race].animations, `${race}.animation.json is stale`);
+    assert.deepEqual(built[race].hits, shipped[race].hits, `${race}.hits.json is stale`);
+  }
 });

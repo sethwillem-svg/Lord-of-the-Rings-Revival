@@ -27,7 +27,8 @@ public final class AttackClips {
     private static final Map<String, String> FALLBACK = Map.of("dagger", "sword", "longsword", "sword", "axe", "sword",
             "spear", "sword", "bow", "unarmed", "longbow", "unarmed", "crossbow", "unarmed", "shield", "unarmed", "banner", "sword");
 
-    public record Clip(String slot, float length, float hit) {}
+    /** An attack: its length, hit time, and how long it fades in and out over the NPC's stance (seconds). */
+    public record Clip(String slot, float length, float hit, float fadeIn, float fadeOut) {}
 
     private static final Map<String, Map<String, Clip>> HITS = new ConcurrentHashMap<>();
     private static final Map<String, List<Clip>> BY_CLASS = new ConcurrentHashMap<>();
@@ -49,6 +50,12 @@ public final class AttackClips {
         });
     }
 
+    /** An attack by name, including its _l and _shield versions (they share the plain attack's timing), or null. */
+    @Nullable
+    public static Clip clip(String race, String name) {
+        return hits(race).get(name.replaceAll("_(l|shield)$", ""));
+    }
+
     private static Map<String, Clip> hits(String race) {
         return HITS.computeIfAbsent(race, r -> {
             Map<String, Clip> out = new HashMap<>();
@@ -57,7 +64,8 @@ public final class AttackClips {
                 JsonObject o = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
                 for (var e : o.entrySet()) {
                     JsonObject c = e.getValue().getAsJsonObject();
-                    out.put(e.getKey(), new Clip(e.getKey(), c.get("length").getAsFloat(), c.get("hit").getAsFloat()));
+                    out.put(e.getKey(), new Clip(e.getKey(), c.get("length").getAsFloat(), c.get("hit").getAsFloat(),
+                            c.has("fadeIn") ? c.get("fadeIn").getAsFloat() : 0.1f, c.has("fadeOut") ? c.get("fadeOut").getAsFloat() : 0.15f));
                 }
             } catch (Exception e) {
                 LOG.warn("lotr_revival: could not read the {} hit times", r, e);

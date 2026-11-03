@@ -3,11 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
-const { loadSources, buildRace } = require('../build_npc.js');
 const { RACES } = require('../npc_slots.js');
 
-const sources = loadSources();
-const built = Object.fromEntries(RACES.map((r) => [r, buildRace(r, sources)]));
+const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
 const CALM = /^(idle(_\d)?|walk|run|guard|march)$/;
 const STANDING = /^(idle(_\d)?|walk|run|guard|march|shield_brace|spear_brace)$/;
 const times = (a, n = 24) => Array.from({ length: n + 1 }, (_, i) => (i * a.animation_length) / n);

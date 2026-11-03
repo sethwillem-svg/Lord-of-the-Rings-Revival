@@ -19,7 +19,7 @@
     attack_sword_1: ap('Wand_Wave_1R'), attack_sword_2: ap('Sword_Swing_3R'), attack_sword_3: ap('Relik_Strike_2R'), attack_sword_4: ap('Relik_Strike_3R'),
     attack_longsword_1: ap('pickaxe_1R'), attack_longsword_2: ap('Spear_Swing_3R'), attack_longsword_3: ap('Spear_Swing_2R'),
     attack_spear_1: ap('Spear_Swing_2R'), attack_spear_2: ap('Spear_Swing_3R'),
-    attack_dagger_1: ap('hoe_1R'), attack_dagger_2: ap('Wand_Wave_3R'), attack_dagger_3: ap('Sword_Swing_3R'),
+    attack_dagger_1: ap('Wand_Wave_3R'), attack_dagger_2: ap('Sword_Swing_3R'),   // AP hoe_1R whips back up after its hit
     attack_axe_1: ap('axe_1R'), attack_axe_2: ap('pickaxe_1R'),
     attack_shield_1: ap('Warrior_bashR'),
     attack_unarmed_1: ap('attackR'), attack_unarmed_2: ap('Wand_Wave_3R'),
@@ -31,7 +31,7 @@
     guard: ap('blockR', { loop: true }), shield_brace: ap('blockL', { loop: true }), spear_brace: ap('Spear_Swing_2R', { hold: 0.19 }), march: ap('walk'),
     // reactions and social
     hurt: ap('Fall_0'),
-    taunt_1: ap('Taunt_0'), taunt_2: ap('Taunt_1'), taunt_3: ap('Taunt_2'), taunt_4: ap('Taunt_3'), taunt_5: ap('Taunt_4'), taunt_6: ap('Taunt_5'),
+    taunt_1: ap('Taunt_0'), taunt_2: ap('Taunt_2'), taunt_3: ap('Taunt_3'), taunt_4: ap('Taunt_4'), taunt_5: ap('Taunt_5'),   // AP Taunt_1 flips its knees through 360°
   };
   /** Race posture, added to every clip: hunch (upper x; the head lifts back by most of it, so eyes stay on the horizon), arms
    * forward (arms x: rounded shoulders), arms out (arms z, away from the body), knee bend (knees x, thighs half the other way
@@ -56,7 +56,17 @@
     orc: { hunch: 12, armsForward: 8, armsOut: 12, kneeBend: 14,
       fight: { windup: 0.75, overswing: 0.25, lean: 10, lead: -0.05, freeArm: { out: 15, flail: 0.6 }, jitter: 5 } },
   };
-  const api = { RACES, SLOTS, STYLE };
+  /** Substitutes per class, tried in order when a race's version of a slot's clip misses the quality bar (build_npc.js). */
+  const POOL = {
+    sword: ['Wand_Wave_1R', 'Sword_Swing_3R', 'Relik_Strike_2R', 'Relik_Strike_3R', 'Relik_Strike_1R', 'Sword_Swing_2R', 'Sword_Swing_1R', 'Wand_Wave_2R'],
+    longsword: ['pickaxe_1R', 'Spear_Swing_3R', 'Spear_Swing_2R', 'axe_1R', 'Relik_Strike_3R', 'shovel_1R'],
+    spear: ['Spear_Swing_2R', 'Spear_Swing_3R', 'Spear_Swing_1R', 'shovel_1R'],
+    dagger: ['Wand_Wave_3R', 'Sword_Swing_3R', 'Sword_Swing_2R', 'Wand_Wave_1R', 'hoe_1R'],
+    axe: ['axe_1R', 'pickaxe_1R', 'Spear_Swing_3R', 'Relik_Strike_3R'],
+    shield: ['Warrior_bashR', 'Warrior_uppercutR'],
+    unarmed: ['attackR', 'Wand_Wave_3R', 'attackL', 'Warrior_uppercutR'],
+  };
+  const api = { RACES, SLOTS, STYLE, POOL };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NpcSlots = api;
 })(typeof window !== 'undefined' ? window : globalThis);

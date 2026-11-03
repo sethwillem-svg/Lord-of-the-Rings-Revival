@@ -90,7 +90,11 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             Set<String> overlays = model == null ? Set.of()
                     : model.animations().keySet().stream().filter(NpcGraphs::isOverlay).collect(Collectors.toSet());
             String base = model != null && model.animations().containsKey(idle) ? idle : "idle";
-            return NpcGraphs.npc(base, name -> shield && model != null && model.animations().containsKey(name + SHIELD) ? name + SHIELD : name, overlays);
+            return NpcGraphs.npc(base, name -> shield && model != null && model.animations().containsKey(name + SHIELD) ? name + SHIELD : name, overlays,
+                    name -> {
+                        AttackClips.Clip c = AttackClips.clip(race, name);
+                        return c == null ? new float[] {NpcGraphs.FADE_IN, NpcGraphs.FADE_OUT} : new float[] {c.fadeIn(), c.fadeOut()};
+                    });
         });
     }
 

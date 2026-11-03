@@ -4,11 +4,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { strike, blade, FIST } = require('../gecko/strike.js');
-const { loadSources, buildRace, classLength } = require('../build_npc.js');
+const { classLength } = require('../build_npc.js');
 const { RACES } = require('../npc_slots.js');
 
-const sources = loadSources();
-const built = Object.fromEntries(RACES.map((r) => [r, buildRace(r, sources)]));
+const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
 const ATTACK = /^attack_(sword|dagger|unarmed)_\d+$/;   // one-handed: every style applies in full
 const anim = (race, name) => built[race].animations.animations[name];
 const attacks = (race) => Object.keys(built[race].animations.animations).filter((n) => ATTACK.test(n));

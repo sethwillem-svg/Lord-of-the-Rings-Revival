@@ -9,13 +9,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { RIG } = require('./gecko/rig.js');
 const { geoJson, animationJson } = require('./gecko/write.js');
-const { hitTime: strikeHit, acceptable, strike, hingesOk } = require('./gecko/strike.js');
+const { hitTime: strikeHit, acceptable, strike, hingesOk, cleanSwing, waistOk, clearOfBody, spacing, bodyHitAfter, fadeFor, quality, blade: bladeAt, DIR: STRIKE_DIR } = require('./gecko/strike.js');
+const { trueRotation, fromTrue, mul3 } = require('./gecko/write.js');
 const { samplePose, worldBones, point } = require('./gecko/sample.js');
 const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
 const { importMoBends } = require('./import/mobends.js');
 const { importSeriousPlayer } = require('./import/seriousplayer.js');
 const { importEmote } = require('./import/emotecraft.js');
-const { RACES, SLOTS, STYLE } = require('./npc_slots.js');
+const { RACES, SLOTS, STYLE, POOL } = require('./npc_slots.js');
+const { hingeify, lowPass } = require('./hinge.js');
 
 const LIB = path.join(__dirname, 'library');
 const OUT = path.join(__dirname, '../../addon/src/main/resources/assets/lotr_revival/geckolib');
@@ -130,20 +132,16 @@ function fight(clip, slot, f, k) {
  * The strongest version of a race's fighting style on an attack that still strikes in front without spinning (gecko/strike.js
  * acceptable) and, for two-handed weapons, keeps the free hand on the grip: full strength, else 60%, 30%, none.
  */
-function fought(clip, slot, style) {
+function fought(clip, slot, style, idle, walk) {
   const cls = slot.split('_')[1];
   for (const k of [1, 0.6, 0.3]) {
     const c = clone(clip);
     fight(c, slot, style.fight, k);
-    const styled = clone(c);
-    applyStyle(styled, slot, style);
-    const anim = animationJson({ c: styled }).animations.c;
-    if (!acceptable(anim, classLength(slot)) || !hingesOk(anim)) continue;
+    const anim = animationJson({ c: finishAttack(c, slot, style, idle, 'right', walk) }).animations.c;   // judged as written
+    if (!quality(anim, classLength(slot))) continue;
     if (TWO_HANDED.has(cls) && strike(anim, classLength(slot)).leftToBlade > 8) continue;
-    if (process.env.FIGHT_DEBUG) console.log(slot, style.fight === undefined ? '' : 'strength', k);
     return c;
   }
-  if (process.env.FIGHT_DEBUG) console.log(slot, 'strength', 0);
   return clip;
 }
 
@@ -205,7 +203,7 @@ function applyStyle(clip, slot, style) {
   if (style.stride && STRIDE.has(slot)) {
     for (const leg of ['right_leg', 'left_leg']) for (const k of (clip.bones[leg] && clip.bones[leg].rotation) || []) k.v[0] *= style.stride;
   }
-  const hunch = (style.hunch || 0) * (/^attack_/.test(slot) ? 0.5 : 1);   // attacks straighten up halfway: a lunge, not a dig
+  const hunch = (style.hunch || 0) * (/^(attack_|ride_)/.test(slot) ? 0.5 : 1);   // attacks and riders straighten up halfway
   add('upper', [hunch, 0, 0]);
   add('head', [-0.8 * hunch, 0, 0]);   // look ahead, not at the floor
   add('right_arm', [-(style.armsForward || 0), 0, style.armsOut || 0]);
@@ -227,14 +225,153 @@ function classLength(attack) {
 /** When the swing lands: in its fast part, where the weapon tip is most directly ahead (gecko/strike.js). */
 const hitTime = (animation, attack = 'attack_sword_1') => strikeHit(animation, classLength(attack));
 
+/** Smooth curves through an attack's keys (Catmull-Rom; PulseLib and gecko/sample.js both play it): no corners at the keys. */
+function smooth(clip) {
+  for (const ch of Object.values(clip.bones)) for (const keys of Object.values(ch)) for (const k of keys) k.lerp = 'catmullrom';
+}
+
+/** The hips turn with the torso (share of the upper body's twist): a body-driven swing, and no 70° twist over still hips. */
+function hipsFollow(clip, share = 0.4) {
+  const up = clip.bones.upper && clip.bones.upper.rotation;
+  if (!up || up.every((k) => Math.abs(k.v[1]) < 1e-6)) return;
+  const lower = (clip.bones.lower = clip.bones.lower || {});
+  const own = lower.rotation || [{ t: 0, v: [0, 0, 0], lerp: 'linear' }];
+  const times = [...new Set([...up.map((k) => k.t), ...own.map((k) => k.t)])].sort((a, b) => a - b);
+  lower.rotation = times.map((t) => {
+    const v = valueAt(own, t, clip.length, clip.loop === true).slice();
+    v[1] += share * valueAt(up, t, clip.length, clip.loop === true)[1];
+    return { t, v, lerp: 'linear' };
+  });
+}
+
+/**
+ * Rolls an edged weapon about its own length so its edge, not its flat, leads at the strike: the flat faces the arm's x
+ * in the weapon frame (Minecraft seats a sword's flat sideways), turned by the roll that puts it square to the swing.
+ */
+function edgeAlign(clip, slot, side) {
+  const bone = side === 'left' ? 'weapon_l' : 'weapon_r', ch = clip.bones[bone];
+  if (!ch || !ch.rotation) return;
+  const len = classLength(slot), anim = animationJson({ c: clip }).animations.c, hit = strikeHit(anim, len, side);
+  const dt = 1 / 120, tipAt = (t) => point(worldBones(samplePose(anim, Math.max(0, Math.min(clip.length, t))))[bone], bladeAt(side, len, 1));
+  const v = tipAt(hit + dt).map((x, i) => x - tipAt(hit - dt)[i]);
+  const R = worldBones(samplePose(anim, hit))[bone].R, axis = STRIKE_DIR.map((x, i) => (i === 0 && side === 'left' ? -x : x));
+  let best = 0, bestCost = Infinity;
+  for (let a = -90; a <= 90; a += 1) {   // a roll of ±90° covers every flat orientation
+    const Rr = eulerAxis(axis, (a * Math.PI) / 180), n = mulVec(R, mulVec(Rr, [1, 0, 0]));
+    const cost = Math.abs(n[0] * v[0] + n[1] * v[1] + n[2] * v[2]) + 1e-4 * Math.abs(a);
+    if (cost < bestCost) { bestCost = cost; best = a; }
+  }
+  if (!best) return;
+  const Rr = eulerAxis(axis, (best * Math.PI) / 180);
+  for (const k of ch.rotation) k.v = fromTrue(mul3(trueRotation(k.v), Rr));   // about the weapon pivot: positions stay
+}
+const mulVec = (R, v) => [0, 1, 2].map((r) => R[r * 3] * v[0] + R[r * 3 + 1] * v[1] + R[r * 3 + 2] * v[2]);
+function eulerAxis(u, a) {
+  const c = Math.cos(a), s = Math.sin(a), t = 1 - c, [x, y, z] = u;
+  return [t * x * x + c, t * x * y - s * z, t * x * z + s * y, t * x * y + s * z, t * y * y + c, t * y * z - s * x, t * x * z - s * y, t * y * z + s * x, t * z * z + c];
+}
+
+/**
+ * How long an overlay fades in and out (s): long enough that blending from standing (idle, walk) into the first pose, and
+ * from the last pose back, moves the weapon no faster than the swing itself; the fade-in ends before the hit.
+ */
+function fades(anim, attack, base, len, side = 'right') {
+  const bone = side === 'left' ? 'weapon_l' : 'weapon_r', tip = bladeAt(side, len, 1);
+  const at = (a, t) => point(worldBones(samplePose(a, t))[bone], tip);
+  let peak = 0;
+  for (let t = 1 / 120; t <= anim.animation_length; t += 1 / 120) peak = Math.max(peak, Math.hypot(...at(anim, t).map((x, i) => x - at(anim, t - 1 / 120)[i])) * 120);
+  const dist = (p) => Math.max(...base.map((b) => Math.hypot(...p.map((x, i) => x - at(b, 0)[i]))));
+  const hit = strikeHit(anim, len, side), round = (x) => Math.ceil(x * 20) / 20;   // whole ticks
+  const fadeIn = Math.min(0.1, Math.max(0.05, Math.floor(0.8 * hit * 20) / 20));   // the lead-in (leadIn) keeps it gentle
+  const fadeOut = Math.min(Math.max(0.15, round(dist(at(anim, anim.animation_length)) / peak)), 0.5);
+  return { fadeIn, fadeOut };
+}
+
+/**
+ * Anticipation: an attack whose first pose is far from standing gets a lead-in, from the standing pose (idle's first frame)
+ * into its first pose, at no more than 30% of the swing's top speed (a slow wind-up, as animation craft has it). The overlay then fades in from a pose it is already in,
+ * and the strike keeps its own timing after the lead-in.
+ */
+function leadIn(clip, idle, slot, side = 'right', walk = null) {
+  const bone = side === 'left' ? 'weapon_l' : 'weapon_r', len = classLength(slot), tipRest = bladeAt(side, len, 1);
+  const anim = animationJson({ c: clip }).animations.c, rest = animationJson({ i: idle }).animations.i;
+  const moving = walk ? animationJson({ w: walk }).animations.w : null;
+  const tip = (a, t) => point(worldBones(samplePose(a, t))[bone], tipRest);
+  let peak = 0;
+  for (let t = 1 / 120; t <= clip.length; t += 1 / 120) peak = Math.max(peak, Math.hypot(...tip(anim, t).map((x, i) => x - tip(anim, t - 1 / 120)[i])) * 120);
+  const from = (a) => Math.hypot(...tip(anim, 0).map((x, i) => x - tip(a, 0)[i]));
+  const dist = Math.max(from(rest), moving ? from(moving) : 0), hit = strikeHit(anim, len, side);
+  const fade = Math.min(0.1, Math.max(0.05, Math.floor(0.8 * hit * 20) / 20));   // as fades() will set it
+  if (peak <= 0 || dist / fade <= peak) return clip;   // the fade alone is gentle enough
+  // from standing at no more than 30% of the swing's speed, and late enough that the full 0.1 s fade fits before the hit
+  const T = Math.ceil(Math.max(from(rest) / (0.3 * peak), 0.13 - hit) * 20) / 20;
+  const c = clone(clip);
+  for (const [bone2, ch] of Object.entries(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
+    const fromIdle = idle.bones[bone2] && idle.bones[bone2][kind] ? valueAt(idle.bones[bone2][kind], 0, idle.length, true).slice() : [0, 0, 0];
+    for (const k of keys) k.t += T;
+    keys.unshift({ t: 0, v: fromIdle, lerp: keys[0].lerp });
+  }
+  c.length += T;
+  return c;
+}
+
+/**
+ * The finishing steps every attack goes through after its race's fighting style: posture, a lead-in from standing, the
+ * hips following the torso, smooth curves, true hinges resampled evenly, and the edge leading. The style check (fought)
+ * judges this exact output.
+ */
+function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
+  let c = clone(clip);
+  applyStyle(c, slot, style);
+  if (idle) c = leadIn(c, idle, slot, side, walk);
+  hipsFollow(c);
+  smooth(c);
+  c = hingeify(c, { rate: 60, filter: true });
+  const len = classLength(slot), anim = () => animationJson({ c }).animations.c;
+  // corners left by posture or style: up to three more smoothing passes
+  for (let i = 0; i < 3 && !cleanSwing(anim(), len, fadeFor(anim(), len, side), side); i++) for (const ch of Object.values(c.bones)) for (const keys of Object.values(ch)) lowPass(keys);
+  // a wind-up hurried against its strike (under 3:1) is drawn out, until it is not
+  for (let i = 0; i < 3; i++) {
+    const ratio = spacing(anim(), len, fadeFor(anim(), len, side), side);
+    if (ratio >= 3) break;
+    stretchWindup(c, strikeHit(anim(), len, side) - 0.15, (3 * 1.08) / ratio);
+  }
+  // a follow-through that would carry the blade into the body ends just before it
+  const hit = strikeHit(anim(), len, side), into = bodyHitAfter(anim(), len, hit + 0.05, side);
+  if (into !== null) trimTo(c, Math.max(hit + 0.05, into - 1 / 60));
+  edgeAlign(c, slot, side);
+  return c;
+}
+
+/** Slows everything before `until` by `factor` (keys there spread out; later keys move back by the added time). */
+function stretchWindup(clip, until, factor) {
+  if (until <= 0) return;
+  const added = until * (factor - 1);
+  for (const ch of Object.values(clip.bones)) for (const keys of Object.values(ch)) for (const k of keys) k.t = k.t < until ? k.t * factor : k.t + added;
+  clip.length += added;
+}
+
+/** Ends a clip at time t (keys after it replaced by the pose at t). */
+function trimTo(clip, t) {
+  if (t >= clip.length) return;
+  for (const ch of Object.values(clip.bones)) for (const [kind, keys] of Object.entries(ch)) {
+    const v = valueAt(keys, t, clip.length, false).slice();
+    const kept = keys.filter((k) => k.t < t - 1e-9);
+    kept.push({ t, v, lerp: 'linear' });
+    ch[kind] = kept;
+  }
+  clip.length = t;
+}
+
 /** Clips that get a shield version (<name>_shield): movement, the guard, and every attack. */
 const SHIELD_SLOTS = /^(idle(_\d)?|walk|run|march|guard|attack_[a-z]+_\d+)$/;
 const SHIELD_BONES = ['left_arm', 'left_elbow', 'weapon_l'];
 
 /** The off arm holding a shield up in front: AnimationsPlus' left-hand block, with the race's arm posture. */
 function shieldArm(sources, style) {
-  const hold = holdAt(clone(sources.animationsplus.blockL), 0);
+  let hold = holdAt(clone(sources.animationsplus.blockL), 0);
   applyStyle(hold, 'shield_brace', style);
+  hold = hingeify(hold);
   return Object.fromEntries(SHIELD_BONES.map((b) => [b, hold.bones[b] || { rotation: [{ t: 0, v: [0, 0, 0], lerp: 'linear' }] }]));
 }
 
@@ -245,25 +382,52 @@ function withShield(clip, arm) {
   return c;
 }
 
+/**
+ * An attack that meets the bar (gecko/strike.js quality) as finished for this race: its own clip with the race's style
+ * (stepped down if need be), else the next clip of its class's pool (npc_slots.js POOL) not already used by another slot.
+ */
+function bestAttack(c, slot, entry, race, sources, style, clips, used) {
+  const cls = slot.split('_')[1], len = classLength(slot);
+  const tryClip = (raw) => {
+    const styled = style.fight ? fought(raw, slot, style, clips.idle, clips.walk) : raw;
+    const anim = animationJson({ c: finishAttack(styled, slot, style, clips.idle, 'right', clips.walk) }).animations.c;
+    return quality(anim, len) ? styled : null;
+  };
+  const own = used.has(cls + '/' + entry.clip) ? null : tryClip(c);
+  if (own) { used.add(cls + '/' + entry.clip); return own; }
+  for (const alt of POOL[cls] || []) {
+    if (used.has(cls + '/' + alt) || !sources.animationsplus[alt]) continue;
+    const got = tryClip(clipFor(slot, { source: 'animationsplus', clip: alt }, race, sources));
+    if (got) { used.add(cls + '/' + alt); if (process.env.FIGHT_DEBUG) console.log(race, slot, 'uses', alt); return got; }
+  }
+  if (process.env.FIGHT_DEBUG) console.log(race, slot, 'kept although it misses the bar');
+  return style.fight ? fought(c, slot, style, clips.idle, clips.walk) : c;
+}
+
 function buildRace(race, sources, slots = SLOTS) {
-  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style);
+  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style), used = new Set();
   for (const [slot, entry] of Object.entries(slots)) {
     let c = clipFor(slot, entry, race, sources);
-    if (style.fight && /^attack_/.test(slot)) c = fought(c, slot, style);   // before mirroring: the twin swings the same
+    if (/^attack_/.test(slot)) c = bestAttack(c, slot, entry, race, sources, style, clips, used);   // before mirroring
     if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
-      const l = mirror(c);
-      applyStyle(l, slot, style);
-      clips[slot + '_l'] = l;
+      clips[slot + '_l'] = finishAttack(mirror(c), slot, style, clips.idle, 'left', clips.walk);
     }
-    applyStyle(c, slot, style);
-    if (slot === 'run') groundFeet(c);   // the sprint's long airborne phase floats both feet
+    if (/^attack_/.test(slot)) c = finishAttack(c, slot, style, clips.idle, 'right', clips.walk);
+    else {
+      applyStyle(c, slot, style);
+      if (slot === 'run') groundFeet(c);   // the sprint's long airborne phase floats both feet
+      hipsFollow(c);   // the hips take part of every torso twist
+      c = hingeify(c);   // elbows and knees as the hinges the game draws (hinge.js)
+    }
     clips[slot] = c;
     if (SHIELD_SLOTS.test(slot)) clips[slot + '_shield'] = withShield(c, shield);
   }
   const animations = animationJson(clips);
   const hits = {};
+  const base = ['idle', 'walk'].map((n) => animations.animations[n]);
   for (const name of Object.keys(clips)) if (/^attack_[a-z]+_\d+$/.test(name)) {   // not the _l and _shield versions: same hit
-    hits[name] = { length: animations.animations[name].animation_length, hit: hitTime(animations.animations[name], name) };
+    const a = animations.animations[name];
+    hits[name] = { length: a.animation_length, hit: hitTime(a, name), ...fades(a, name, base, classLength(name)) };
   }
   return { geo: geoJson(RIG), animations, hits, clips };
 }

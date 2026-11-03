@@ -77,16 +77,107 @@
     return (Math.atan2(-col1[2], col1[1]) * 180) / Math.PI;
   }
 
-  /** Elbows never fold backwards and knees never forwards by more than 10° during the clip. */
+  /** Elbows never fold backwards and knees never forwards by more than 10°, and they bend no faster than 1400°/s / 1100°/s. */
   function hingesOk(anim) {
-    for (let t = 0; t <= anim.animation_length + 1e-9; t += anim.animation_length / 16) {
-      const w = pose(anim, t);
-      for (const s of ['right', 'left']) if (hinge(w, `${s}_elbow`, `${s}_arm`) > 10 || hinge(w, `${s}_knee`, `${s}_leg`) < -10) return false;
+    let prev = null;
+    for (let t = 0; t <= anim.animation_length + 1e-9; t += 1 / 120) {
+      const w = pose(anim, t), now = {};
+      for (const s of ['right', 'left']) {
+        now[s + 'e'] = hinge(w, `${s}_elbow`, `${s}_arm`); now[s + 'k'] = hinge(w, `${s}_knee`, `${s}_leg`);
+        if (now[s + 'e'] > 10 || now[s + 'k'] < -10) return false;
+        if (prev && (Math.abs(now[s + 'e'] - prev[s + 'e']) * 120 > 1400 || Math.abs(now[s + 'k'] - prev[s + 'k']) * 120 > 1100)) return false;
+      }
+      prev = now;
     }
     return true;
   }
 
-  const api = { FIST, DIR, blade, frontAngle, hitTime, strike, acceptable, hinge, hingesOk };
+  /**
+   * The weapon moves cleanly: after the first `from` seconds (the overlay's fade-in) the tip never turns on a radius tighter
+   * than a quarter of the blade while fast, and after the hit it does not speed up again (a bounce).
+   */
+  function cleanSwing(anim, blocks, from = 0.1, side = 'right') {
+    const L = anim.animation_length, dt = 1 / 120, hit = hitTime(anim, blocks, side);
+    const tip = (t) => S.point(pose(anim, Math.max(0, Math.min(L, t)))[BONE[side]], blade(side, blocks, 1));
+    const v = [];
+    for (let t = dt; t <= L + 1e-9; t += dt) { const a = tip(t - dt), b = tip(t); v.push({ t, d: b.map((x, i) => (x - a[i]) / dt) }); }
+    v.forEach((x) => { x.s = Math.hypot(...x.d); });
+    const peak = Math.max(...v.map((x) => x.s));
+    for (let i = 1; i < v.length; i++) {
+      if (v[i].t < from || v[i].s < 0.5 * peak || v[i - 1].s < 0.5 * peak) continue;
+      const c = (v[i].d[0] * v[i - 1].d[0] + v[i].d[1] * v[i - 1].d[1] + v[i].d[2] * v[i - 1].d[2]) / (v[i].s * v[i - 1].s);
+      const ang = Math.acos(Math.max(-1, Math.min(1, c)));
+      if (ang > 1e-6 && ((v[i].s + v[i - 1].s) / 2) / (ang / dt) < 0.25 * blocks * 16) return false;
+    }
+    const fastest = v.filter((x) => x.t >= from).reduce((b, x) => (x.s > b.s ? x : b));
+    if (Math.abs(fastest.t - hit) > 0.1) return false;   // the fastest moment is the strike
+    const slow = v.find((x) => x.t > hit && x.s < 0.4 * peak);   // a bounce: speeding up again once slowed
+    return !(slow && v.some((x) => x.t > slow.t && x.t < slow.t + 0.25 && x.s > 0.6 * peak));
+  }
+
+  /** The torso over the hips stays in a spine's range (twist 60°, forward 45°, back 25°, sideways 30°) throughout. */
+  function waistOk(anim) {
+    for (let t = 0; t <= anim.animation_length + 1e-9; t += anim.animation_length / 24) {
+      const w = pose(anim, t), L = w.lower.R, U = w.upper.R, R = [];
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) R.push(L[r] * U[c] + L[3 + r] * U[3 + c] + L[6 + r] * U[6 + c]);
+      const f = [-R[2], -R[5], -R[8]], u = [R[1], R[4], R[7]];
+      const twist = (Math.atan2(-f[0], -f[2]) * 180) / Math.PI, flex = (Math.asin(Math.max(-1, Math.min(1, -f[1]))) * 180) / Math.PI;
+      const side = (Math.atan2(u[0], u[1]) * 180) / Math.PI;
+      if (Math.abs(twist) > 60 || flex > 45 || flex < -25 || Math.abs(side) > 30) return false;
+    }
+    return true;
+  }
+
+  /** The blade stays out of the torso and head from `from` seconds on (the overlay's fade-in hides the frames before). */
+  function clearOfBody(anim, blocks, from = 0.1, side = 'right') {
+    const boxes = [['body', [[-4, 12, -2], [4, 24, 2]]], ['head', [[-4, 24, -4], [4, 32, 4]]]];
+    for (let t = from; t <= anim.animation_length + 1e-9; t += 1 / 60) {
+      const w = pose(anim, t);
+      for (const k of [0.3, 0.5, 0.7, 0.9, 1]) {
+        const p = S.point(w[BONE[side]], blade(side, blocks, k));
+        for (const [bone, box] of boxes) {
+          const b = w[bone], v = [0, 1, 2].map((i) => p[i] - b.p[i]);
+          const q = [0, 1, 2].map((c) => b.R[c] * v[0] + b.R[3 + c] * v[1] + b.R[6 + c] * v[2]);
+          if (q.every((x, i) => x > box[0][i] && x < box[1][i])) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /** Strike speed over wind-up speed: the tip's top speed near the hit against its mean speed earlier (after `from`). */
+  function spacing(anim, blocks, from = 0.1, side = 'right') {
+    const hit = hitTime(anim, blocks, side), L = anim.animation_length, dt = 1 / 120;
+    const tip = (t) => S.point(pose(anim, Math.max(0, Math.min(L, t)))[BONE[side]], blade(side, blocks, 1));
+    const wind = [], strikeV = [];
+    for (let t = dt; t <= L + 1e-9; t += dt) {
+      const v = Math.hypot(...tip(t).map((x, i) => x - tip(t - dt)[i])) / dt, mid = t - dt / 2;
+      if (mid > from && mid < hit - 0.15) wind.push(v); else if (mid >= hit - 0.15 && mid <= hit + 0.02) strikeV.push(v);
+    }
+    if (wind.length < 6 || !strikeV.length) return Infinity;
+    return Math.max(...strikeV) / (wind.reduce((a, b) => a + b, 0) / wind.length);
+  }
+
+  /** The first moment after `after` at which the blade is inside the torso or head, or null. */
+  function bodyHitAfter(anim, blocks, after, side = 'right') {
+    for (let t = after; t <= anim.animation_length + 1e-9; t += 1 / 60) {
+      const sub = { animation_length: anim.animation_length, loop: anim.loop, bones: anim.bones };
+      if (!clearOfBody({ ...sub, animation_length: Math.min(anim.animation_length, t + 1e-6) }, blocks, t, side)) return t;
+    }
+    return null;
+  }
+
+  /** The fade-in an attack gets (s): 0.1, shorter only for an early hit (the fade must be over by 80% of it). */
+  const fadeFor = (anim, blocks, side = 'right') => Math.min(0.1, Math.max(0.05, Math.floor(0.8 * hitTime(anim, blocks, side) * 20) / 20));
+
+  /** Everything a finished attack must be (the build's own bar; the tests measure independently). */
+  function quality(anim, blocks, side = 'right') {
+    const fade = fadeFor(anim, blocks, side);
+    return acceptable(anim, blocks) && hingesOk(anim) && waistOk(anim) && cleanSwing(anim, blocks, fade, side)
+      && clearOfBody(anim, blocks, fade, side) && spacing(anim, blocks, fade, side) >= 3;
+  }
+
+  const api = { fadeFor, quality, spacing, bodyHitAfter, clearOfBody, FIST, DIR, blade, frontAngle, hitTime, strike, acceptable, hinge, hingesOk, cleanSwing, waistOk };
   if (isNode) module.exports = api;
   else root.GeckoStrike = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -9,11 +9,10 @@ const path = require('node:path');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { strike, blade, FIST } = require('../gecko/strike.js');
 const { partToRig, itemScale, scaleAbout, exportClass } = require('../gecko/held.js');
-const { loadSources, buildRace, classLength } = require('../build_npc.js');
+const { classLength } = require('../build_npc.js');
 const { RACES } = require('../npc_slots.js');
 
-const sources = loadSources();
-const built = Object.fromEntries(RACES.map((r) => [r, buildRace(r, sources)]));
+const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
 const ATTACK = /^attack_([a-z]+)_\d+$/;
 const TWO_HANDED = new Set(['longsword', 'spear', 'axe']);
 const EXPORT = path.join(__dirname, '../../../addon/run/viewer_export');
