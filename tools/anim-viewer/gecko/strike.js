@@ -64,7 +64,13 @@
     return { hit, tip, frontAngle: frontAngle(tip), bodyYawRange: yawHi - yawLo, tipSweep: azHi - azLo, leftToBlade };
   }
 
-  const api = { FIST, DIR, blade, frontAngle, hitTime, strike };
+  /** A strike the game can use: lands in front (tip 6 px ahead, within 45°, knee height to just over the head) and does not spin. */
+  function acceptable(anim, blocks) {
+    const s = strike(anim, blocks);
+    return s.frontAngle <= 45 && s.tip[2] <= -6 && s.tip[1] >= 4 && s.tip[1] <= 50 && s.bodyYawRange <= 180 && s.tipSweep <= 300;
+  }
+
+  const api = { FIST, DIR, blade, frontAngle, hitTime, strike, acceptable };
   if (isNode) module.exports = api;
   else root.GeckoStrike = api;
 })(typeof window !== 'undefined' ? window : globalThis);

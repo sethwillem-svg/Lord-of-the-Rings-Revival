@@ -9,7 +9,7 @@
   const ap = (clip, extra) => ({ source: 'animationsplus', clip, ...extra });
   const SLOTS = {
     // movement
-    idle: ap('idle'), idle_2: ap('Idle_1', { loop: true }), idle_3: ap('Idle_2', { loop: true }), idle_4: ap('Idle_3', { loop: true }),
+    idle: ap('idle'), idle_2: ap('Idle_1', { loop: true }), idle_3: ap('Idle_2', { loop: true }),   // AP Idle_3 bends the elbows backwards
     walk: ap('walk'), run: ap('sprint', { strides: 3 }), crouch_walk: ap('crouchwalk'), swim: ap('swim'), climb: ap('climb'),
     // riding
     ride_idle: ap('sitHorse'), ride_move: ap('sitmoveHorse'),
@@ -32,14 +32,17 @@
     hurt: ap('Fall_0'),
     taunt_1: ap('Taunt_0'), taunt_2: ap('Taunt_1'), taunt_3: ap('Taunt_2'), taunt_4: ap('Taunt_3'), taunt_5: ap('Taunt_4'), taunt_6: ap('Taunt_5'),
   };
-  /** Race posture, added to every clip: hunch (upper x), arms out (arms z, away from the body), knee bend (knees x, thighs
-   * half the other way so the feet stay under), stride (walk/run/march leg swing scale). Degrees. */
+  /** Race posture, added to every clip: hunch (upper x; the head lifts back by most of it, so eyes stay on the horizon), arms
+   * forward (arms x: rounded shoulders), arms out (arms z, away from the body), knee bend (knees x, thighs half the other way
+   * so the feet stay under), stride (walk/run/march leg swing scale). Degrees. sloppy (attacks only): the body leads and the
+   * arms lag by lag seconds, swings overshoot by overswing, and every key wobbles by up to jitter degrees — a brawler, not a
+   * fencer. */
   const STYLE = {
     man: {},
     elf: { hunch: -8, armsOut: -5 },
     dwarf: { hunch: 9, armsOut: 11, kneeBend: 15 },
     hobbit: { kneeBend: 9, stride: 0.65 },
-    orc: { hunch: 24, armsOut: 15, kneeBend: 18 },
+    orc: { hunch: 12, armsForward: 8, armsOut: 12, kneeBend: 14, sloppy: { lag: 0.05, overswing: 1.1, jitter: 5 } },
   };
   const api = { RACES, SLOTS, STYLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

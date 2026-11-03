@@ -35,7 +35,7 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private static final Logger LOG = LogUtils.getLogger();
     private static final Map<LivingEntity, NpcAnimatable> ALL = new WeakHashMap<>();
     private static final String GRAPH = "npc";
-    private static final String[] IDLES = {"idle", "idle", "idle_2", "idle_3", "idle_4", "idle"};
+    private static final String[] IDLES = {"idle", "idle", "idle_2", "idle_3", "idle"};
     private static boolean logged;
 
     final String race;
