@@ -29,7 +29,7 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
 .bar{background:var(--panel);border-top:1px solid var(--line);padding:8px 12px}
 .bar .row{margin:0}
 #scrub{flex:1;accent-color:var(--accent)}
-#marks{width:100%;height:10px;display:block;margin-top:4px}
+#marks{width:100%;height:44px;display:block;margin-top:4px}
 .err{color:var(--bad)}
 </style>
 </head>
@@ -61,10 +61,11 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
       <input id="scrub" type="range" min="0" max="1" step="0.0001" value="0" aria-label="Time">
       <span id="time" style="min-width:150px;text-align:right">0.00 s</span>
       <select id="rate" aria-label="Playback speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select>
+      <label title="previews holding poses on 2s/3s: the pose changes every step/20 s (a step of 3 is a pose every 0.15 s)">Step (koma) <select id="step" aria-label="Step (koma)"><option>1</option><option>2</option><option>3</option></select></label>
       <label><input id="showSword" type="checkbox" checked> items</label>
       <label title="elbows and knees bend as PulseLib bends them in game; off: stiff limbs, as vanilla and Middle-earth's renderer draw them"><input id="showJoints" type="checkbox" checked> joints</label>
     </div>
-    <canvas id="marks" title="yellow: the hit (hits.json)"></canvas>
+    <canvas id="marks" title="line: tip speed · yellow: the hit · shaded: the held beat (tame) · grey: the ease back (ready)"></canvas>
   </div>
 </main>
 
@@ -88,9 +89,12 @@ const JOINT = { right_arm: 'right_elbow', left_arm: 'left_elbow', right_leg: 'ri
 const STRAIGHT = new Set(Object.values(JOINT));
 const BAND = 2;            // px either side of a joint over which the bend blends in
 const SPACING = 40;        // px between figures in Show all
+const TRACE_HZ = 60;       // samples per s of the tip speed trace
 const HOLD = 0.6;          // s a one-shot holds its last frame before it repeats
+const DIR = [0, Math.SQRT1_2, -Math.SQRT1_2];   // the blade runs this way from the fist
 const PIVOT = Object.fromEntries(RIG.map((b) => [b.name, b.pivot]));
 
+let traceCache = null;      // { key, v: tip speeds } of the selected clip
 let grips = {}, files = {}, cur = null, t = 0, playing = true, last = performance.now();
 let source = { kind: 'test' };   // what each figure is built from: the test figure or an exported NPC ({ kind: 'npc', d })
 let figures = [];                // [{ group, meshes, name, anim, hit, label }]
@@ -270,11 +274,15 @@ function place(fig, time) {
 /** A figure's clip time at global time t: loops wrap; one-shots play, hold a moment, and repeat (Show all), or clamp. */
 function clipTime(fig, time, all) {
   const L = fig.anim.animation_length;
+  const k = +$('step').value;
+  if (k > 1) time = Math.floor(time / (k / 20) + 1e-6) * (k / 20);   // hold each pose for k game ticks
   if (fig.anim.loop === true) return L > 0 ? time % L : 0;
   return all ? Math.min(time % (L + HOLD), L) : Math.min(time, L);
 }
 
 // ---------------- clips ----------------
+/** The hits.json entry of a clip; the _l and _shield versions share their plain clip's. */
+const hitFor = (f, name) => f.hits[name] || f.hits[name.replace(/_(l|shield)$/, '')];
 const race = () => $('race').value;
 async function loadRace() {
   const r = race();
@@ -308,7 +316,8 @@ function fillList() {
 function select(name) {
   for (const li of $('clips').children) li.classList.toggle('on', li.dataset.name === name);
   const f = files[race()];
-  cur = { name, anim: f.anim.animations[name], hit: f.hits[name] };
+  cur = { name, anim: f.anim.animations[name], hit: hitFor(f, name) };
+  traceCache = null;
   if (!$('showAll').checked || !figures.length) { t = 0; rebuildFigures(); }
   drawMarks();
 }
@@ -317,8 +326,34 @@ function drawMarks() {
   cv.width = w * devicePixelRatio; cv.height = h * devicePixelRatio; g.scale(devicePixelRatio, devicePixelRatio);
   g.clearRect(0, 0, w, h);
   if (!cur || !cur.hit || $('showAll').checked) return;
+  const hit = cur.hit, x = (s) => (s / hit.length) * (w - 3);
+  if (hit.tame > 0) { g.fillStyle = 'rgba(217,164,65,0.22)'; g.fillRect(x(hit.apex), 0, x(hit.apex + hit.tame) - x(hit.apex), h); }
+  if (hit.ready > 0) { g.fillStyle = '#8a8f99'; g.fillRect(x(hit.length - hit.ready), 0, 2, h); }
+  const v = tipSpeeds();
+  if (v) {   // tip speed, scaled to the clip's fastest moment
+    const top = Math.max(...v, 1e-6);
+    g.strokeStyle = '#6fb4e8'; g.lineWidth = 1.5; g.beginPath();
+    v.forEach((s, i) => { const px = (i / (v.length - 1)) * (w - 3), py = h - 2 - (s / top) * (h - 4); i ? g.lineTo(px, py) : g.moveTo(px, py); });
+    g.stroke();
+  }
   g.fillStyle = '#d9a441';
-  g.fillRect((cur.hit.hit / cur.hit.length) * (w - 3), 0, 3, h);
+  g.fillRect(x(hit.hit), 0, 3, h);
+}
+/** The weapon tip's speed (px/s) along the selected clip, 60 Hz; cached per selection and weapon. */
+function tipSpeeds() {
+  const name = cur.name, left = /_l$/.test(name);
+  const cls = (name.match(/^attack_([a-z]+)_\d/) || [])[1];
+  const len = ((grips[cls] || grips[weaponChoice().main] || grips.sword || {}).length || 1) * 16;
+  const key = `${race()}/${name}/${len}`;
+  if (traceCache && traceCache.key === key) return traceCache.v;
+  const bone = left ? 'weapon_l' : 'weapon_r', fist = H.FIST[left ? 'left' : 'right'];
+  const dir = [left ? -DIR[0] : DIR[0], DIR[1], DIR[2]];
+  const tip = fist.map((c, i) => c + dir[i] * len);
+  const L = cur.anim.animation_length, n = Math.max(2, Math.round(L * TRACE_HZ) + 1), pts = [];
+  for (let i = 0; i < n; i++) pts.push(S.point(S.worldBones(S.samplePose(cur.anim, Math.min(L, i / TRACE_HZ)))[bone], tip));
+  const v = pts.map((p, i) => { const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1); return Math.hypot(pts[b][0] - pts[a][0], pts[b][1] - pts[a][1], pts[b][2] - pts[a][2]) / ((b - a) / TRACE_HZ); });
+  traceCache = { key, v };
+  return v;
 }
 
 // ---------------- exported NPCs ----------------
