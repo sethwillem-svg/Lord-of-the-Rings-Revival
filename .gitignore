@@ -42,3 +42,6 @@ repo/
 ### Claude Code ###
 .claude/worktrees/
 .claude/settings.local.json
+
+### Animation tools ###
+tools/anim-viewer/test/.cache/

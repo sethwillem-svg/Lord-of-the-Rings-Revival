@@ -1,35 +1,73 @@
 'use strict';
 /* Motion measurements for the tests: clips sampled densely and points followed through time. Kept apart from the build
  * (build_npc.js never uses it), so the tests judge the build's output with their own yardstick. Rig space: px, y up,
- * facing -z; times in seconds. */
+ * facing -z; times in seconds. Clips are sampled on a 60 Hz grid and exactly at every key, so samples are not evenly
+ * spaced: rates use each sample pair's own dt. Posed frames of shipped clips are cached in test/.cache (gitignored). */
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 const { samplePose, worldBones, point } = require('../../gecko/sample.js');
 
-const RATE = 120;
+const RATE = 60;
+const CACHE = path.join(__dirname, '../.cache');
+/** The player's own source salts the cache, so a change to how clips are played or posed is never served stale. */
+const PLAYER = ['sample.js', 'rig.js'].map((f) => fs.readFileSync(path.join(__dirname, '../../gecko', f), 'utf8')).join('\n');
 const sub = (a, b) => a.map((x, i) => x - b[i]);
 const len = (v) => Math.hypot(...v);
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
 const deg = (r) => (r * 180) / Math.PI;
 
-/** Times from 0 to the clip's end at RATE per second. */
-function times(anim, rate = RATE) {
-  const n = Math.max(2, Math.ceil(anim.animation_length * rate));
-  return Array.from({ length: n + 1 }, (_, i) => (i * anim.animation_length) / n);
+/** Every key time of every bone's rotation, position and scale (GeckoLib JSON: an object keyed by time strings; a bare
+ *  array is a constant and has none). */
+function keyTimes(anim) {
+  const out = [];
+  for (const b of Object.values(anim.bones || {})) for (const ch of ['rotation', 'position', 'scale']) {
+    const c = b[ch];
+    if (c && typeof c === 'object' && !Array.isArray(c)) for (const k of Object.keys(c)) out.push(Number(k));
+  }
+  return out;
 }
 
-/** The posed skeleton at every time. */
-function frames(anim, rate = RATE) {
-  return times(anim, rate).map((t) => ({ t, w: worldBones(samplePose(anim, t)) }));
+/** Sorted unique times from 0 to the clip's end: the rate grid, the end and every key time. A grid time within 1 ms of a key
+ *  gives way to it (keys are written rounded to 0.1 ms), so no sample pair is a sliver apart. */
+function times(anim, rate = RATE) {
+  const end = anim.animation_length || 0, EPS = 1e-3;
+  const exact = [...new Set([...keyTimes(anim), end].filter((t) => t >= 0 && t <= end))].sort((a, b) => a - b);
+  const grid = [];
+  for (let i = 0; i / rate <= end; i++) grid.push(i / rate);
+  let j = 0;
+  const free = grid.filter((t) => {
+    while (j < exact.length && exact[j] < t - EPS) j++;
+    return !(j < exact.length && Math.abs(exact[j] - t) <= EPS);
+  });
+  return [...exact, ...free].sort((a, b) => a - b);
+}
+
+/** The posed skeleton at every time: [{ t, w }]. Given a key (such as 'man/attack_sword_1'), read from and written to the
+ *  cache, named by a hash of the key, the clip, the rate and the player's source. */
+function frames(anim, rate = RATE, key = null) {
+  const file = key === null ? null
+    : path.join(CACHE, `${crypto.createHash('sha1').update(key + JSON.stringify(anim) + rate + PLAYER).digest('hex')}.json`);
+  if (file && fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8'));
+  const out = times(anim, rate).map((t) => ({ t, w: worldBones(samplePose(anim, t)) }));
+  if (file) {
+    fs.mkdirSync(CACHE, { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;   // test files run in parallel: write aside, then rename into place
+    fs.writeFileSync(tmp, JSON.stringify(out));
+    fs.renameSync(tmp, file);
+  }
+  return out;
 }
 
 /** A rest point carried by a bone, through the frames: [{ t, p }]. */
 const track = (fs, bone, rest) => fs.map((f) => ({ t: f.t, p: point(f.w[bone], rest) }));
 
-/** Velocities (px/s) between consecutive samples of a track: [{ t, v, speed }]. */
+/** Velocities (px/s) between consecutive samples of a track: [{ t, dt, v, speed }], t the pair's midpoint, dt its span. */
 function velocities(tr) {
   const out = [];
   for (let i = 1; i < tr.length; i++) {
     const dt = tr[i].t - tr[i - 1].t, v = sub(tr[i].p, tr[i - 1].p).map((x) => x / dt);
-    out.push({ t: (tr[i].t + tr[i - 1].t) / 2, v, speed: len(v) });
+    out.push({ t: (tr[i].t + tr[i - 1].t) / 2, dt, v, speed: len(v) });
   }
   return out;
 }

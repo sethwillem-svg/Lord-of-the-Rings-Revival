@@ -6,6 +6,7 @@ const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { strike, blade, FIST } = require('../gecko/strike.js');
 const { classLength } = require('../build_npc.js');
 const { RACES } = require('../npc_slots.js');
+const M = require('./lib/motion.js');
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
 const ATTACK = /^attack_(sword|dagger|unarmed)_\d+$/;   // one-handed: every style applies in full
@@ -13,27 +14,22 @@ const anim = (race, name) => built[race].animations.animations[name];
 const attacks = (race) => Object.keys(built[race].animations.animations).filter((n) => ATTACK.test(n));
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
-/** How far a rig point travels over a clip from `from` seconds on (px). */
-function path(a, bone, p, from = 0) {
-  let d = 0, prev = null;
-  for (let t = from; t <= a.animation_length + 1e-9; t += (a.animation_length - from) / 40) {
-    const q = point(worldBones(samplePose(a, t))[bone], p);
-    if (prev) d += Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]);
-    prev = q;
-  }
-  return d;
+/** A race's clip posed at every sample (test/lib/motion.js, cached). */
+const framesOf = (race, n) => M.frames(anim(race, n), M.RATE, `${race}/${n}`);
+/** How far a rig point carried by a bone travels between two times of a race's clip (px): through every sample between
+ *  them, from the exact pose at the start to the exact pose at the end. */
+function travel(race, n, bone, p, from, to) {
+  const at = (t) => ({ t, p: point(worldBones(samplePose(anim(race, n), t))[bone], p) });
+  const s = [at(from), ...M.track(framesOf(race, n), bone, p).filter((x) => x.t > from + 1e-9 && x.t < to - 1e-9), at(to)];
+  return s.slice(1).reduce((d, x, i) => d + M.len(M.sub(x.p, s[i].p)), 0);
 }
+/** How far a rig point travels over a race's clip from `from` seconds on (px). */
+const path = (race, n, bone, p, from = 0) => travel(race, n, bone, p, from, anim(race, n).animation_length);
 /** How big the wind-up is: the length of the path the weapon tip travels from the authored swing's start (after any lead-in
  *  from standing, hits.json lead) to the hit — a bigger wind-up carries the weapon further before it strikes. */
-function windup(a, n, race) {
-  const h = built[race].hits[n], len = classLength(n);
-  let d = 0, prev = null;
-  for (let t = h.lead || 0; t <= h.hit + 1e-9; t += 1 / 120) {
-    const q = point(worldBones(samplePose(a, t)).weapon_r, blade('right', len, 1));
-    if (prev) d += Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]);
-    prev = q;
-  }
-  return d;
+function windup(race, n) {
+  const h = built[race].hits[n];
+  return travel(race, n, 'weapon_r', blade('right', classLength(n), 1), h.lead || 0, h.hit);
 }
 
 /** A posed rig point in the chest's own frame (the body bone's rest frame), so turning with the torso does not count as moving. */
@@ -65,8 +61,8 @@ test('every race keeps its fighting style: at least 60% of it on 80% of its atta
 });
 
 test('orcs swing wild: on the same swing as a man, a bigger wind-up and a free arm that flails more', () => {
-  mostly('orc', 'winds up bigger', (n) => windup(anim('orc', n), n, 'orc') > windup(anim('man', n), n, 'man') * 1.15);
-  mostly('orc', 'flails the free arm more', (n) => path(anim('orc', n), 'weapon_l', FIST.left, built.orc.hits[n].lead || 0) > path(anim('man', n), 'weapon_l', FIST.left, built.man.hits[n].lead || 0) * 1.25);
+  mostly('orc', 'winds up bigger', (n) => windup('orc', n) > windup('man', n) * 1.15);
+  mostly('orc', 'flails the free arm more', (n) => path('orc', n, 'weapon_l', FIST.left, built.orc.hits[n].lead || 0) > path('man', n, 'weapon_l', FIST.left, built.man.hits[n].lead || 0) * 1.25);
 });
 
 test('elves strike at full stretch: on the same swing, the tip lands further out and the free arm is held out wide', () => {
@@ -95,14 +91,7 @@ test('hobbits strike low and quick: on the same swing, a lower strike and a quic
 /** Seconds from the authored swing's start (after any lead-in) to the hit. */
 const windupTime = (race, n) => built[race].hits[n].hit - (built[race].hits[n].lead || 0);
 /** The tip's top speed in the strike (px/s). */
-const topSpeed = (a, n) => {
-  let top = 0;
-  for (let t = 1 / 120; t <= a.animation_length; t += 1 / 120) {
-    const q = point(worldBones(samplePose(a, t)).weapon_r, blade('right', classLength(n), 1)), p = point(worldBones(samplePose(a, t - 1 / 120)).weapon_r, blade('right', classLength(n), 1));
-    top = Math.max(top, Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) * 120);
-  }
-  return top;
-};
+const topSpeed = (race, n) => Math.max(...M.velocities(M.track(framesOf(race, n), 'weapon_r', blade('right', classLength(n), 1))).map((x) => x.speed));
 
 test('elves swing swiftly: on the same swing, the wind-up to the hit takes under 90% of a man\u2019s time', () => {
   mostly('elf', 'winds up swiftly', (n) => windupTime('elf', n) < windupTime('man', n) * 0.9, false);
@@ -121,7 +110,7 @@ test('elves return to their ready stance: every attack ends within 3 px of the i
 });
 
 test('orcs strike fast and wide: on the same swing, a faster strike (10% more top speed) and a wider arc', () => {
-  mostly('orc', 'strikes faster', (n) => topSpeed(anim('orc', n), n) > topSpeed(anim('man', n), n) * 1.1, false);
+  mostly('orc', 'strikes faster', (n) => topSpeed('orc', n) > topSpeed('man', n) * 1.1, false);
   mostly('orc', 'swings a wider arc', (n) => strike(anim('orc', n), classLength(n)).tipSweep > strike(anim('man', n), classLength(n)).tipSweep * 1.1, false);
 });
 

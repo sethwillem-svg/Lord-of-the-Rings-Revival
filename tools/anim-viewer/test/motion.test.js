@@ -1,7 +1,8 @@
 'use strict';
-/* Motion checks: every clip sampled at 120 Hz and judged over its whole course with limits from outside the build —
- * anatomy and sports biomechanics for joints, animation craft for swings, and the game's own fade times. Measured with
- * test/lib/motion.js (independent of build_npc.js and gecko/strike.js). Each failure names the clip, the time and the value. */
+/* Motion checks: every clip sampled at 60 Hz and at every key, and judged over its whole course with limits from outside
+ * the build — anatomy and sports biomechanics for joints, animation craft for swings, and the game's own fade times.
+ * Measured with test/lib/motion.js (independent of build_npc.js and gecko/strike.js); samples are not evenly spaced, so
+ * rates use each sample pair's own dt. Each failure names the clip, the time and the value. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const M = require('./lib/motion.js');
@@ -11,7 +12,7 @@ const { RACES } = require('../npc_slots.js');
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
 const all = [];   // { race, name, anim, fs }
-for (const race of RACES) for (const [name, anim] of Object.entries(built[race].animations.animations)) all.push({ race, name, anim, fs: M.frames(anim) });
+for (const race of RACES) for (const [name, anim] of Object.entries(built[race].animations.animations)) all.push({ race, name, anim, fs: M.frames(anim, M.RATE, `${race}/${name}`) });
 const attacks = all.filter((c) => /^attack_/.test(c.name));
 const JOINTS = [['right_elbow', 'right_arm'], ['left_elbow', 'left_arm'], ['right_knee', 'right_leg'], ['left_knee', 'left_leg']];
 const FIST = { right: [6, 12, -2], left: [-6, 12, -2] }, DIR = [0, Math.SQRT1_2, -Math.SQRT1_2];
@@ -45,9 +46,9 @@ test('elbows and knees bend no faster than people can: 1500°/s elbows, 1200°/s
   for (const c of all) for (const [j, p] of JOINTS) {
     let prev = null;
     for (const f of c.fs) {
-      const b = M.hinge(f.w, j, p).bend;
-      if (prev !== null && Math.abs(b - prev) * M.RATE > (j.includes('elbow') ? 1500 : 1200)) { bad.push(`${c.race} ${c.name} t=${f.t.toFixed(2)} ${j}: ${(Math.abs(b - prev) * M.RATE).toFixed(0)}°/s`); break; }
-      prev = b;
+      const b = M.hinge(f.w, j, p).bend, rate = prev && Math.abs(b - prev.b) / (f.t - prev.t);
+      if (prev && rate > (j.includes('elbow') ? 1500 : 1200)) { bad.push(`${c.race} ${c.name} t=${f.t.toFixed(2)} ${j}: ${rate.toFixed(0)}°/s`); break; }
+      prev = { b, t: f.t };
     }
   }
   report(bad);
@@ -75,7 +76,7 @@ test('every bone moves without jumps: no rest point moves faster than 600 px/s b
 });
 
 // ---------------- the weapon ----------------
-/** The weapon tip of an attack at 120 Hz. */
+/** The weapon tip of an attack, sample by sample. */
 const tipOf = (c) => {
   const side = sideOf(c.name), len = classLength(baseName(c.name));
   return { side, len, v: M.velocities(M.track(c.fs, side === 'left' ? 'weapon_l' : 'weapon_r', tipRest(side, len))) };
@@ -88,7 +89,7 @@ test('the weapon tip moves in clean arcs: once faded in and while fast, it never
     for (let i = 1; i < v.length; i++) {
       if (v[i].t < from || v[i].speed < 0.5 * peak || v[i - 1].speed < 0.5 * peak) continue;
       const ang = Math.acos(Math.max(-1, Math.min(1, M.dot(v[i].v, v[i - 1].v) / (v[i].speed * v[i - 1].speed))));
-      const radius = ((v[i].speed + v[i - 1].speed) / 2) / (ang * M.RATE);
+      const radius = ((v[i].speed + v[i - 1].speed) / 2) / (ang / (v[i].t - v[i - 1].t));   // speed over turn rate
       if (radius < 0.25 * len * 16) { bad.push(`${c.race} ${c.name} t=${v[i].t.toFixed(2)}: turns on ${radius.toFixed(1)} px`); break; }
     }
   }
@@ -100,8 +101,9 @@ test('swings have spacing: the strike is at least 3x faster than the wind-up (an
   for (const c of attacks.filter((x) => !/_(l|shield)$/.test(x.name))) {
     const { v } = tipOf(c), hit = hitsOf(c).hit;
     const wind = v.filter((x) => x.t < hit - 0.15 && x.t > hitsOf(c).fadeIn), strike = v.filter((x) => x.t >= hit - 0.15 && x.t <= hit + 0.02);
-    if (wind.length < 6) continue;   // no separate wind-up to compare
-    const w = wind.reduce((s, x) => s + x.speed, 0) / wind.length, s = Math.max(...strike.map((x) => x.speed));
+    const span = wind.reduce((s, x) => s + x.dt, 0);
+    if (span < 0.05 - 1e-9) continue;   // no separate wind-up to compare
+    const w = wind.reduce((s, x) => s + x.speed * x.dt, 0) / span, s = Math.max(...strike.map((x) => x.speed));   // mean over time
     if (s < 3 * w) bad.push(`${c.race} ${c.name}: strike ${s.toFixed(0)} px/s, wind-up ${w.toFixed(0)} px/s`);
   }
   report(bad);
