@@ -9,7 +9,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { RIG } = require('./gecko/rig.js');
 const { geoJson, animationJson } = require('./gecko/write.js');
-const { hitTime: strikeHit } = require('./gecko/strike.js');
+const { hitTime: strikeHit, acceptable } = require('./gecko/strike.js');
+const { samplePose, worldBones, point } = require('./gecko/sample.js');
 const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
 const { importMoBends } = require('./import/mobends.js');
 const { importSeriousPlayer } = require('./import/seriousplayer.js');
@@ -67,6 +68,45 @@ function addRotation(clip, bone, d) {
   for (const k of ch.rotation) k.v = k.v.map((x, i) => x + d[i]);
 }
 
+/** A small deterministic random in [-1, 1] from a string. */
+function noise(key) {
+  let h = 2166136261;
+  for (const c of key) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return ((h >>> 0) / 4294967295) * 2 - 1;
+}
+
+/** A brawler's swing: arms lag the body, swings overshoot their first pose, keys wobble (STYLE.sloppy). */
+function sloppy(clip, slot, { lag = 0, overswing = 1, jitter = 0 }) {
+  for (const bone of ['right_arm', 'weapon_r', 'left_arm', 'weapon_l', 'upper']) {
+    const keys = clip.bones[bone] && clip.bones[bone].rotation;
+    if (!keys || keys.length < 2) continue;
+    const v0 = keys[0].v.slice(), arm = bone !== 'upper';
+    keys.forEach((k, i) => {
+      if (i === 0) return;
+      if (arm) {
+        k.v = k.v.map((x, j) => v0[j] + (x - v0[j]) * overswing);
+        k.t = Math.min(clip.length, k.t + lag);
+      }
+      k.v = k.v.map((x, j) => x + jitter * noise(`${slot}/${bone}/${i}/${j}`));
+    });
+  }
+}
+
+/**
+ * The scrappiest version of an attack that still strikes in front without spinning (gecko/strike.js acceptable): the race's
+ * sloppiness at full strength, else 60%, 30%, none.
+ */
+function sloppiest(clip, slot, style) {
+  for (const k of [1, 0.6, 0.3]) {
+    const s = style.sloppy, c = clone(clip);
+    sloppy(c, slot, { lag: s.lag * k, overswing: 1 + (s.overswing - 1) * k, jitter: s.jitter * k });
+    const styled = clone(c);
+    applyStyle(styled, slot, style);
+    if (acceptable(animationJson({ c: styled }).animations.c, classLength(slot))) return c;
+  }
+  return clip;
+}
+
 /** Overlays (attacks, hurt, ranged releases) play over the legs' locomotion: posture must not add bones they leave alone. */
 const isOverlay = (slot) => /^attack_/.test(slot) || ['hurt', 'bow_release', 'crossbow_shoot'].includes(slot);
 
@@ -96,10 +136,28 @@ function oneStride(clip, count) {
   for (const [bone, ch] of Object.entries(clip.bones)) {
     bones[bone] = {};
     for (const [kind, keys] of Object.entries(ch)) {
-      bones[bone][kind] = Array.from({ length: n + 1 }, (_, i) => ({ t: (i * period) / n, v: valueAt(keys, start + (i * period) / n, clip.length, true).slice(), lerp: 'linear' }));
+      const ks = Array.from({ length: n + 1 }, (_, i) => ({ t: (i * period) / n, v: valueAt(keys, start + (i * period) / n, clip.length, true).slice(), lerp: 'linear' }));
+      ks[n].v = ks[0].v.slice();   // one exact cycle: no seam
+      bones[bone][kind] = ks;
     }
   }
   return { length: period, loop: true, bones };
+}
+
+/** Keeps a locomotion clip's lower foot on the floor: the root is moved down by however high the lower foot is, per key. */
+function groundFeet(clip) {
+  const legKeys = (clip.bones.right_leg && clip.bones.right_leg.rotation) || [];
+  if (!legKeys.length) return;
+  const anim = animationJson({ c: clip }).animations.c;
+  const root = (clip.bones.root = clip.bones.root || {});
+  const pos = root.position || [{ t: 0, v: [0, 0, 0], lerp: 'linear' }];
+  root.position = legKeys.map((k) => {
+    const w = worldBones(samplePose(anim, Math.min(k.t, clip.length - 1e-6)));
+    const low = Math.min(point(w.right_knee, [1.9, 0, 0])[1], point(w.left_knee, [-1.9, 0, 0])[1]);
+    const v = valueAt(pos, k.t, clip.length, clip.loop === true).slice();
+    v[1] -= low;
+    return { t: k.t, v, lerp: 'linear' };
+  });
 }
 
 function applyStyle(clip, slot, style) {
@@ -107,9 +165,11 @@ function applyStyle(clip, slot, style) {
   if (style.stride && STRIDE.has(slot)) {
     for (const leg of ['right_leg', 'left_leg']) for (const k of (clip.bones[leg] && clip.bones[leg].rotation) || []) k.v[0] *= style.stride;
   }
-  add('upper', [style.hunch || 0, 0, 0]);
-  add('right_arm', [0, 0, style.armsOut || 0]);
-  add('left_arm', [0, 0, -(style.armsOut || 0)]);
+  const hunch = (style.hunch || 0) * (/^attack_/.test(slot) ? 0.5 : 1);   // attacks straighten up halfway: a lunge, not a dig
+  add('upper', [hunch, 0, 0]);
+  add('head', [-0.8 * hunch, 0, 0]);   // look ahead, not at the floor
+  add('right_arm', [-(style.armsForward || 0), 0, style.armsOut || 0]);
+  add('left_arm', [-(style.armsForward || 0), 0, -(style.armsOut || 0)]);
   const knee = Math.max(0, style.kneeBend || 0);
   for (const side of ['right', 'left']) {
     add(side + '_knee', [knee, 0, 0]);
@@ -130,13 +190,15 @@ const hitTime = (animation, attack = 'attack_sword_1') => strikeHit(animation, c
 function buildRace(race, sources, slots = SLOTS) {
   const clips = {}, style = STYLE[race] || {};
   for (const [slot, entry] of Object.entries(slots)) {
-    const c = clipFor(slot, entry, race, sources);
+    let c = clipFor(slot, entry, race, sources);
+    if (style.sloppy && /^attack_/.test(slot)) c = sloppiest(c, slot, style);   // before mirroring: the twin wobbles the same
     if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
       const l = mirror(c);
       applyStyle(l, slot, style);
       clips[slot + '_l'] = l;
     }
     applyStyle(c, slot, style);
+    if (slot === 'run') groundFeet(c);   // the sprint's long airborne phase floats both feet
     clips[slot] = c;
   }
   const animations = animationJson(clips);

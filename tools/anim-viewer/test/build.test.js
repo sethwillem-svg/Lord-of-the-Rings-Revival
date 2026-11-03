@@ -27,9 +27,9 @@ test('every hit entry names an attack in the same file, hit inside the clip', ()
   assert.ok(Object.keys(built.man.hits).length >= 14);
 });
 
-test('orc posture adds hunch to upper', () => {
+test('orc posture adds its hunch (12°) to upper', () => {
   const x = (r) => r.clips.idle.bones.upper.rotation[0].v[0];
-  assert.ok(Math.abs(x(built.orc) - x(built.man) - 24) < 1e-6);
+  assert.ok(Math.abs(x(built.orc) - x(built.man) - 12) < 1e-6);
 });
 
 test('hobbits take shorter strides', () => {
