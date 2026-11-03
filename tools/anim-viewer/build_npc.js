@@ -303,7 +303,13 @@ function fades(anim, attack, base, len, side = 'right') {
   for (let t = 1 / 120; t <= anim.animation_length; t += 1 / 120) peak = Math.max(peak, Math.hypot(...at(anim, t).map((x, i) => x - at(anim, t - 1 / 120)[i])) * 120);
   const dist = (p) => Math.max(...base.map((b) => Math.hypot(...p.map((x, i) => x - at(b, 0)[i]))));
   const hit = strikeHit(anim, len, side), round = (x) => Math.ceil(x * 20) / 20;   // whole ticks
-  const fadeIn = Math.min(0.1, Math.max(0.05, Math.floor(0.8 * hit * 20) / 20));   // the lead-in (leadIn) keeps it gentle
+  // the lead-in (leadIn) keeps it gentle, judged before the race's tempo; a tempo that brings the hit forward shortens this
+  // fade, so it is lengthened a tick at a time (to 0.15 s, still ending before the hit) while the blend from standing would
+  // outrun the swing. The swing's peak here is on the 60 Hz grid: finer sampling only finds it faster.
+  let grid = 0;
+  for (let t = 1 / 60; t <= anim.animation_length + 1e-9; t += 1 / 60) grid = Math.max(grid, Math.hypot(...at(anim, t).map((x, i) => x - at(anim, t - 1 / 60)[i])) * 60);
+  let fadeIn = Math.min(0.1, Math.max(0.05, Math.floor(0.8 * hit * 20) / 20));
+  while (dist(at(anim, 0)) / fadeIn > grid && fadeIn + 0.05 <= 0.15 + 1e-9 && fadeIn + 0.05 < hit) fadeIn = Math.round((fadeIn + 0.05) * 20) / 20;
   const fadeOut = Math.min(Math.max(0.15, round(dist(at(anim, anim.animation_length)) / peak)), 0.5);
   return { fadeIn, fadeOut };
 }
