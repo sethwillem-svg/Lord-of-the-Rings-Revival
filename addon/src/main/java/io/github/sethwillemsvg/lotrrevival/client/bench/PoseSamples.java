@@ -33,7 +33,7 @@ public final class PoseSamples {
     private static final List<String> CLIPS = List.of("idle", "walk", "run", "ride_move", "guard", "spear_brace", "bow_aim",
             "attack_sword_1", "attack_sword_3", "attack_longsword_1", "attack_spear_1", "attack_dagger_1", "attack_axe_1",
             "attack_sword_1_l", "hurt");
-    private static final float[] PHASES = {0f, 0.25f, 0.5f, 0.75f, 1f};
+    private static final float[] PHASES = {0f, 0.25f, 0.5f, 0.75f};
 
     private PoseSamples() {}
 
@@ -65,12 +65,16 @@ public final class PoseSamples {
         }
     }
 
-    /** One clip in a one-state graph, put at a phase of its length (PulseLib's syncCycle), then evaluated. */
+    /**
+     * One clip in a one-state graph, put at a phase of its length (PulseLib's syncCycle, which only moves states marked as
+     * synchronised cycles), then evaluated. The runtime's own clock is recorded too, so a probe that did not move shows up.
+     */
     private static JsonObject sample(PBakedModel model, String clip, float phase) {
-        PAnimationGraph graph = new PAnimationGraph(List.of(new PAnimationState.Clip(clip, clip, PAnimationType.HOLD_LAST_FRAME,
-                PInterpolationType.LINEAR, 1f, false)), List.of());
+        PAnimationGraph graph = new PAnimationGraph(List.of(new PAnimationState.Clip(clip, clip, PAnimationType.CYCLE,
+                PInterpolationType.LINEAR, 1f, true)), List.of());
         PAnimationController<NpcAnimatable> c = new PAnimationController<>("probe", graph);
         c.graphRuntime().syncCycle(model, phase);
+        float clock = c.graphRuntime().time(), cyclePhase = c.graphRuntime().cyclePhase(model);
         Matrix4f[] rig = NpcPose.rigMotion(model, model.evaluate(List.of(c), Map.of(), 0f));
         JsonObject bones = new JsonObject();
         for (int i = 0; i < rig.length; i++) {
@@ -81,6 +85,8 @@ public final class PoseSamples {
         }
         JsonObject o = new JsonObject();
         o.addProperty("phase", phase);
+        o.addProperty("runtimeTime", clock);
+        o.addProperty("runtimePhase", cyclePhase);
         o.add("bones", bones);
         return o;
     }
