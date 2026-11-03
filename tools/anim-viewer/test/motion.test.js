@@ -4,23 +4,18 @@
  * Measured with test/lib/motion.js (independent of build_npc.js and gecko/strike.js); samples are not evenly spaced, so
  * rates use each sample pair's own dt. Each failure names the clip, the time and the value. */
 const test = require('node:test');
-const assert = require('node:assert/strict');
 const M = require('./lib/motion.js');
 const { point } = require('../gecko/sample.js');
 const { classLength } = require('../build_npc.js');
 const { RACES } = require('../npc_slots.js');
+const { FIST, DIR, baseName, sideOf, tipRest, tipOf, report } = require('./lib/swing.js');   // the weapon tip
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
 const all = [];   // { race, name, anim, fs }
 for (const race of RACES) for (const [name, anim] of Object.entries(built[race].animations.animations)) all.push({ race, name, anim, fs: M.frames(anim, M.RATE, `${race}/${name}`) });
 const attacks = all.filter((c) => /^attack_/.test(c.name));
 const JOINTS = [['right_elbow', 'right_arm'], ['left_elbow', 'left_arm'], ['right_knee', 'right_leg'], ['left_knee', 'left_leg']];
-const FIST = { right: [6, 12, -2], left: [-6, 12, -2] }, DIR = [0, Math.SQRT1_2, -Math.SQRT1_2];
-const baseName = (n) => n.replace(/_(l|shield)$/, '');
-const sideOf = (n) => (/_l$/.test(n) ? 'left' : 'right');
-const tipRest = (side, blocks) => FIST[side].map((x, i) => x + DIR[i] * blocks * 16 * (side === 'left' && i === 0 ? -1 : 1));
 const hitsOf = (c) => built[c.race].hits[baseName(c.name)];
-const report = (bad) => assert.deepEqual(bad.slice(0, 15), [], `${bad.length} failures`);
 
 // ---------------- bending ----------------
 test('elbows and knees are pure hinges, the only bend the game draws on a limb (≤ 2° off the hinge axis)', () => {
@@ -76,12 +71,6 @@ test('every bone moves without jumps: no rest point moves faster than 600 px/s b
 });
 
 // ---------------- the weapon ----------------
-/** The weapon tip of an attack, sample by sample. */
-const tipOf = (c) => {
-  const side = sideOf(c.name), len = classLength(baseName(c.name));
-  return { side, len, v: M.velocities(M.track(c.fs, side === 'left' ? 'weapon_l' : 'weapon_r', tipRest(side, len))) };
-};
-
 test('the weapon tip moves in clean arcs: once faded in and while fast, it never turns tighter than a quarter of the blade', () => {
   const bad = [];
   for (const c of attacks) {

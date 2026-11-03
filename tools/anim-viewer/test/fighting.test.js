@@ -9,7 +9,7 @@ const { RACES } = require('../npc_slots.js');
 const M = require('./lib/motion.js');
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
-const ATTACK = /^attack_(sword|dagger|unarmed)_\d+$/;   // one-handed: every style applies in full
+const { ATTACK, mostly } = require('./lib/pairs.js');   // race against man on the same swing
 const anim = (race, name) => built[race].animations.animations[name];
 const attacks = (race) => Object.keys(built[race].animations.animations).filter((n) => ATTACK.test(n));
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -36,18 +36,6 @@ function windup(race, n) {
 function inChest(w, p) {
   const v = [0, 1, 2].map((i) => p[i] - w.body.p[i]);
   return [0, 1, 2].map((c) => w.body.R[c] * v[0] + w.body.R[3 + c] * v[1] + w.body.R[6 + c] * v[2]);
-}
-
-/** The race's attacks that swing the same clip as a man's, with at least 60% of the race's style kept (hits.json). */
-function pairs(race, oneHanded = true) {
-  const man = built.man.hits, h = built[race].hits;
-  return Object.keys(h).filter((n) => (!oneHanded || ATTACK.test(n)) && man[n] && h[n].clip === man[n].clip && h[n].style >= 0.6);
-}
-/** At least 3 in 4 of the race's paired attacks (those `only` keeps) show the difference; names the ones that do not. */
-function mostly(race, label, holds, oneHanded = true, only = () => true) {
-  const ps = pairs(race, oneHanded).filter(only), fails = ps.filter((n) => !holds(n));
-  assert.ok(ps.length >= 3, `${race}: only ${ps.length} attacks to compare`);
-  assert.ok(fails.length <= ps.length / 4, `${race} ${label} on only ${ps.length - fails.length}/${ps.length}; not: ${fails.join(', ')}`);
 }
 
 test('every race keeps its fighting style: at least 60% of it on 80% of its attacks, and no attack ships below the quality bar', () => {
