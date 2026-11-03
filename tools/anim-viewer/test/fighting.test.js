@@ -111,9 +111,25 @@ test('elves return to their ready stance: every attack ends within 3 px of the i
   assert.deepEqual(bad, []);
 });
 
+/** How far round the body axis the weapon tip sweeps in the strike, from the apex to 0.05 s after the hit (degrees of
+ *  azimuth, hits.json apex and hit): the arc of the blow itself, not of the wind-up or the recovery. */
+function strikeArc(race, n) {
+  const h = built[race].hits[n], a = anim(race, n), tip = blade('right', classLength(n), 1), to = Math.min(a.animation_length, h.hit + 0.05);
+  const at = (t) => point(worldBones(samplePose(a, t)).weapon_r, tip);
+  const ps = [at(h.apex), ...M.track(framesOf(race, n), 'weapon_r', tip).filter((x) => x.t > h.apex + 1e-9 && x.t < to - 1e-9).map((x) => x.p), at(to)];
+  let sum = 0, lo = 0, hi = 0;
+  for (let i = 1; i < ps.length; i++) {
+    let d = M.deg(Math.atan2(ps[i][0], -ps[i][2]) - Math.atan2(ps[i - 1][0], -ps[i - 1][2]));
+    d -= 360 * Math.round(d / 360);
+    sum += d; lo = Math.min(lo, sum); hi = Math.max(hi, sum);
+  }
+  return hi - lo;
+}
+
 test('orcs strike fast and wide: on the same swing, a faster strike (10% more top speed) and a wider arc', () => {
-  mostly('orc', 'strikes faster', (n) => topSpeed('orc', n) > topSpeed('man', n) * 1.1, false);
-  mostly('orc', 'swings a wider arc', (n) => strike(anim('orc', n), classLength(n)).tipSweep > strike(anim('man', n), classLength(n)).tipSweep * 1.1, false);
+  // unarmed blows take man's tempo (ownTempo), so their speed is not the orc's to compare
+  mostly('orc', 'strikes faster', (n) => topSpeed('orc', n) > topSpeed('man', n) * 1.1, false, ownTempo);
+  mostly('orc', 'swings a wider arc', (n) => strikeArc('orc', n) > strikeArc('man', n) * 1.1, false);
 });
 
 test('dwarves swing heavy and overhead: the wind-up lifts the weapon over the head on 3 in 4 attacks, and takes longer than a man\u2019s', () => {
