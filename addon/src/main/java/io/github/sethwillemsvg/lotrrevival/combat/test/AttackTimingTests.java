@@ -13,6 +13,10 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.sevenstars.middleearth.entity.npcs.NpcEntity;
@@ -26,6 +30,15 @@ import net.sevenstars.middleearth.entity.npcs.initializer.NpcEntityBuilder;
 @PrefixGameTestTemplate(false)
 public final class AttackTimingTests {
     private AttackTimingTests() {}
+
+    /** The "empty" template is a solid 3x3x3 stone block, so test targets suffocate (and burn in daylight); only the NPC's hits may hurt them. */
+    private static final String TARGET_TAG = "attack_timing_target";
+
+    static {
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, (LivingIncomingDamageEvent e) -> {
+            if (e.getEntity().getTags().contains(TARGET_TAG) && !e.getSource().is(DamageTypes.MOB_ATTACK)) e.setCanceled(true);
+        });
+    }
 
     private static final ResourceLocation SOLDIER = ResourceLocation.fromNamespaceAndPath("middle-earth", "gondor.soldier");
 
@@ -41,6 +54,7 @@ public final class AttackTimingTests {
     private static Zombie target(GameTestHelper h) {
         Zombie z = h.spawnWithNoFreeWill(EntityType.ZOMBIE, new BlockPos(1, 1, 2));   // one block in front
         z.setSilent(true);
+        z.addTag(TARGET_TAG);
         return z;
     }
 
