@@ -4,6 +4,7 @@ import io.github.sethwillemsvg.lotrrevival.bench.BenchCommands;
 import io.github.sethwillemsvg.lotrrevival.client.anim.ClientAttack;
 import io.github.sethwillemsvg.lotrrevival.combat.AttackTiming;
 import io.github.sethwillemsvg.lotrrevival.combat.NpcAttackPayload;
+import io.github.sethwillemsvg.lotrrevival.combat.NpcHitPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -21,8 +22,9 @@ public final class LotrRevival {
     public static final String MOD_ID = "lotr_revival";
 
     public LotrRevival(IEventBus modBus) {
-        modBus.addListener((RegisterPayloadHandlersEvent e) -> e.registrar("1").playToClient(NpcAttackPayload.TYPE,
-                NpcAttackPayload.STREAM_CODEC, (p, ctx) -> ctx.enqueueWork(() -> ClientAttack.handle(p))));
+        modBus.addListener((RegisterPayloadHandlersEvent e) -> e.registrar("1")
+                .playToClient(NpcAttackPayload.TYPE, NpcAttackPayload.STREAM_CODEC, (p, ctx) -> ctx.enqueueWork(() -> ClientAttack.handle(p)))
+                .playToClient(NpcHitPayload.TYPE, NpcHitPayload.STREAM_CODEC, (p, ctx) -> ctx.enqueueWork(() -> ClientAttack.hit(p))));
         AttackTiming.register();
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> BenchCommands.register(e.getDispatcher()));
         // benchmark NPCs never come back from disk: each run (and each reload of the world) starts from the count asked for

@@ -2,6 +2,8 @@ package io.github.sethwillemsvg.lotrrevival.combat.test;
 
 import io.github.sethwillemsvg.lotrrevival.LotrRevival;
 import io.github.sethwillemsvg.lotrrevival.combat.AttackTiming;
+import io.github.sethwillemsvg.lotrrevival.combat.Hitstop;
+import io.github.sethwillemsvg.lotrrevival.combat.NpcRaces;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -70,6 +72,34 @@ public final class AttackTimingTests {
         target.teleportTo(target.getX() + 6, target.getY(), target.getZ());   // well past reach plus slack
         h.runAfterDelay(wait + 2, () -> {
             h.assertTrue(target.getHealth() == health, "a target out of reach was still hit");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 80)
+    public static void aLandedHitSendsHitstop(GameTestHelper h) {
+        NpcEntity npc = soldier(h);
+        Zombie target = target(h);
+        npc.doHurtTarget(target);
+        long wait = AttackTiming.dueTick(npc) - h.getLevel().getGameTime();
+        h.assertTrue(wait > 0, "the swing's damage was not held for the hit frame");
+        h.runAfterDelay(wait + 2, () -> {
+            int expected = Hitstop.ticks(NpcRaces.of(npc), "sword");
+            h.assertTrue(AttackTiming.lastStop(npc) == expected, "hitstop sent was " + AttackTiming.lastStop(npc) + ", expected " + expected);
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 80)
+    public static void aMissSendsNoHitstop(GameTestHelper h) {
+        NpcEntity npc = soldier(h);
+        Zombie target = target(h);
+        npc.doHurtTarget(target);
+        long wait = AttackTiming.dueTick(npc) - h.getLevel().getGameTime();
+        h.assertTrue(wait > 0, "the swing's damage was not held for the hit frame");
+        target.teleportTo(target.getX() + 6, target.getY(), target.getZ());
+        h.runAfterDelay(wait + 2, () -> {
+            h.assertTrue(AttackTiming.lastStop(npc) == -1, "a miss sent hitstop " + AttackTiming.lastStop(npc));
             h.succeed();
         });
     }

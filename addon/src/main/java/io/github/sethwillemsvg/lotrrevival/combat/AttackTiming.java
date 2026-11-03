@@ -32,9 +32,10 @@ public final class AttackTiming {
     /** Reach slack at the hit frame (blocks): the target may have moved a little. */
     private static final double REACH_SLACK = 0.75;
 
-    private record Pending(LivingEntity target, long due) {}
+    private record Pending(LivingEntity target, long due, String cls) {}
 
     private static final Map<NpcEntity, Pending> PENDING = new WeakHashMap<>();
+    private static final Map<NpcEntity, Integer> LAST_STOP = new WeakHashMap<>();
     private static final Map<NpcEntity, Integer> NEXT_VARIANT = new WeakHashMap<>();
     private static boolean replaying;
 
@@ -51,6 +52,11 @@ public final class AttackTiming {
         return p == null ? -1 : p.due();
     }
 
+    /** Hitstop ticks sent with this NPC's last landed hit, or -1 when its latest attack missed or none landed (combat.test.AttackTimingTests). */
+    public static int lastStop(NpcEntity npc) {
+        return LAST_STOP.getOrDefault(npc, -1);
+    }
+
     private static void onDamage(LivingIncomingDamageEvent e) {
         if (replaying) return;
         DamageSource src = e.getSource();
@@ -58,6 +64,7 @@ public final class AttackTiming {
                 || src.is(DamageTypeTags.IS_PROJECTILE) || !(npc.level() instanceof ServerLevel level)) return;
         e.setCanceled(true);   // dealt at the hit frame instead
         if (PENDING.containsKey(npc)) return;
+        LAST_STOP.remove(npc);
         var hand = Hands.weapon(npc);
         String cls = hand.isEmpty() ? null : Objects.requireNonNullElse(WeaponClass.of(hand), "sword");
         List<AttackClips.Clip> clips = AttackClips.of(NpcRaces.of(npc), cls);
@@ -71,7 +78,7 @@ public final class AttackTiming {
             windup = Math.max(MIN_WINDUP_TICKS, hitTicks / speed);
             slot = clip.slot();
         }
-        PENDING.put(npc, new Pending(e.getEntity(), level.getGameTime() + Math.round(windup)));
+        PENDING.put(npc, new Pending(e.getEntity(), level.getGameTime() + Math.round(windup), cls));
         if (slot != null) PacketDistributor.sendToPlayersTrackingEntity(npc, new NpcAttackPayload(npc.getId(), slot, speed));
     }
 
@@ -88,7 +95,11 @@ public final class AttackTiming {
             if (!npc.isAlive() || !target.isAlive() || target.level() != level || npc.distanceTo(target) > reach(npc) + REACH_SLACK) continue;
             replaying = true;
             try {
-                npc.doHurtTarget(target);
+                if (npc.doHurtTarget(target)) {
+                    int ticks = Hitstop.ticks(NpcRaces.of(npc), p.cls());
+                    LAST_STOP.put(npc, ticks);
+                    PacketDistributor.sendToPlayersTrackingEntity(npc, new NpcHitPayload(npc.getId(), target.getId(), ticks));
+                }
             } finally {
                 replaying = false;
             }
