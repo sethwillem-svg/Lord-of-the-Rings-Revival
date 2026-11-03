@@ -38,10 +38,16 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
   <h1>NPC clip viewer</h1>
   <div class="note">The race clip files PulseLib plays in game (<code>geckolib/animations/entity/npc_biped_&lt;race&gt;.animation.json</code>,
     built by <code>node tools/anim-viewer/build_npc.js</code>), on the test figure or an exported Middle-earth NPC. Held items are
-    scaled to their class length (<code>weapon_grips.json</code>) about the fist and follow the weapon bones.</div>
+    scaled to their class length (<code>weapon_grips.json</code>) about the fist and follow the weapon bones. The list shows the
+    clips an NPC plays with its weapon (attacks fall back between classes as in game).</div>
   <h2>Clips</h2>
   <div class="row"><label for="model">Model</label><select id="model" style="flex:1;min-width:0"><option value="">Test figure</option></select></div>
   <div class="row"><label for="race">Race</label><select id="race"></select></div>
+  <div class="row"><label for="weapon">Weapon</label><select id="weapon">
+    <option value="auto">from the model</option><option value="unarmed">unarmed</option><option>dagger</option><option>sword</option>
+    <option>longsword</option><option>axe</option><option>spear</option><option>bow</option><option>longbow</option><option>crossbow</option>
+    <option value="all">all clips</option></select></div>
+  <div class="row"><label for="showAll">Show all</label><input id="showAll" type="checkbox"> <span class="note">every clip in the list at once</span></div>
   <ul class="clips" id="clips"></ul>
   <div class="note err" id="msg"></div>
 </aside>
@@ -54,7 +60,7 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
       <input id="scrub" type="range" min="0" max="1" step="0.0001" value="0" aria-label="Time">
       <span id="time" style="min-width:150px;text-align:right">0.00 s</span>
       <select id="rate" aria-label="Playback speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select>
-      <label><input id="showSword" type="checkbox" checked> sword</label>
+      <label><input id="showSword" type="checkbox" checked> items</label>
       <label title="elbows and knees bend as PulseLib bends them in game; off: stiff limbs, as vanilla and Middle-earth's renderer draw them"><input id="showJoints" type="checkbox" checked> joints</label>
     </div>
     <canvas id="marks" title="yellow: the hit (hits.json)"></canvas>
@@ -65,9 +71,10 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
 <script src="gecko/rig.js"></script>
 <script src="gecko/sample.js"></script>
 <script src="gecko/held.js"></script>
+<script src="gecko/clips.js"></script>
 <script>
 'use strict';
-const { RIG } = window.GeckoRig, S = window.GeckoSample, H = window.GeckoHeld;
+const { RIG } = window.GeckoRig, S = window.GeckoSample, H = window.GeckoHeld, CL = window.GeckoClips;
 const RACES = ['man', 'elf', 'dwarf', 'hobbit', 'orc'];
 const ASSETS = '../../addon/src/main/resources/assets/lotr_revival/';
 const EXPORT_DIR = '../../addon/run/viewer_export/';
@@ -77,10 +84,16 @@ const getJson = async (url) => { const r = await fetch(url, { cache: 'no-store' 
 /** Mesh parts follow these bones; arms and legs bend at these joints. */
 const BONE = { head: 'head', hat: 'head', body: 'body', right_arm: 'right_arm', left_arm: 'left_arm', right_leg: 'right_leg', left_leg: 'left_leg' };
 const JOINT = { right_arm: 'right_elbow', left_arm: 'left_elbow', right_leg: 'right_knee', left_leg: 'left_knee' };
-const BAND = 2;   // px either side of a joint over which the bend blends in
+const STRAIGHT = new Set(Object.values(JOINT));
+const BAND = 2;            // px either side of a joint over which the bend blends in
+const SPACING = 40;        // px between figures in Show all
+const HOLD = 0.6;          // s a one-shot holds its last frame before it repeats
 const PIVOT = Object.fromEntries(RIG.map((b) => [b.name, b.pivot]));
 
 let grips = {}, files = {}, cur = null, t = 0, playing = true, last = performance.now();
+let source = { kind: 'test' };   // what each figure is built from: the test figure or an exported NPC ({ kind: 'npc', d })
+let figures = [];                // [{ group, meshes, name, anim, hit, label }]
+let listed = [];                 // clip names in the list now
 
 // ---------------- scene: rig space (y up, faces -z) turned to face the camera ----------------
 const canvas = $('view');
@@ -88,66 +101,30 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#16181d');
-const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 2000);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 4000);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 0.85));
 const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(30, 60, 50); scene.add(sun);
-scene.add(new THREE.GridHelper(160, 10, 0x444a55, 0x2a2e36));   // 16 px = one block
-const view = new THREE.Group(); view.rotation.y = Math.PI; scene.add(view);
-
-/** A drawn mesh: part-space vertices re-placed each frame. hand: 'right' | 'left' for held items. */
-let meshes = [], texCache = new Map(), exportIndex = null;
-function addMesh(part, pos, uv, idx, material, hand, weapon) {
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(pos.length), 3));
-  if (uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  if (idx) g.setIndex(Array.from(idx));   // a plain array: three.js takes a typed array here for a BufferAttribute
-  const mesh = new THREE.Mesh(g, material);
-  mesh.frustumCulled = false;
-  view.add(mesh);
-  const rest = new Float32Array(pos.length);
-  for (let i = 0; i < pos.length; i += 3) rest.set(H.partToRig(part, [pos[i], pos[i + 1], pos[i + 2]]), i);
-  meshes.push({ part, rest, mesh, hand, weapon });
-  return mesh;
-}
-function clearMeshes() {
-  for (const m of meshes) { view.remove(m.mesh); m.mesh.geometry.dispose(); }
-  meshes = [];
-}
-/** Each hand's items share one scale: class length over their joint longest extent. */
-function setHandScales() {
-  for (const side of ['right', 'left']) {
-    const held = meshes.filter((m) => m.hand === side);
-    if (!held.length) continue;
-    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-    for (const m of held) for (let i = 0; i < m.rest.length; i += 3) for (let j = 0; j < 3; j++) { lo[j] = Math.min(lo[j], m.rest[i + j]); hi[j] = Math.max(hi[j], m.rest[i + j]); }
-    const s = H.itemScale(held[0].weapon, grips, Math.max(...hi.map((x, j) => x - lo[j])));
-    for (const m of held) m.scale = s;
-  }
-}
-
+const grid = new THREE.GridHelper(160, 10, 0x444a55, 0x2a2e36); scene.add(grid);   // 16 px = one block
 const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
-function boxMesh(part, a, b, color, hand, weapon) {
-  const g = new THREE.BoxGeometry(b[0] - a[0], b[1] - a[1], b[2] - a[2], 1, Math.max(1, Math.round((b[1] - a[1]) * 2)), 1);
-  g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-  addMesh(part, g.attributes.position.array, null, g.index.array, mat(color), hand, weapon);
+const texCache = new Map();
+let exportIndex = null;
+
+// ---------------- what the figures hold ----------------
+/** The weapon classes of the model's hands: { main, off, leftHanded }. */
+function heldClasses() {
+  if (source.kind === 'test') return { main: 'sword', off: null, leftHanded: false };
+  const hand = (part) => (source.d.meshes.find((m) => m.hand && m.part === part && m.weapon) || {}).weapon || null;
+  const right = hand('right_arm'), left = hand('left_arm');
+  if (!right && left && left !== 'shield') return { main: left, off: null, leftHanded: true };
+  return { main: right, off: left, leftHanded: false };
 }
-function showTestFigure() {
-  clearMeshes();
-  const SKIN = '#c99a74';
-  boxMesh('head', [-4, -8, -4], [4, 0, 4], SKIN);
-  boxMesh('head', [-3, -5, -4.2], [-1, -4, -4], '#20242c'); boxMesh('head', [1, -5, -4.2], [3, -4, -4], '#20242c');   // eyes face -z
-  boxMesh('body', [-4, 0, -2], [4, 12, 2], '#4a6a8a');
-  boxMesh('right_arm', [-3, -2, -2], [1, 10, 2], SKIN); boxMesh('left_arm', [-1, -2, -2], [3, 10, 2], SKIN);
-  boxMesh('right_leg', [-2, 0, -2], [2, 12, 2], '#5a4632'); boxMesh('left_leg', [-2, 0, -2], [2, 12, 2], '#4b3b2a');
-  // a sword as Minecraft seats it: handle in the fist, blade forward (-z in part space)
-  boxMesh('right_arm', [-1.3, 9.2, -16], [-0.7, 10.8, -3.5], '#c9ced6', 'right', 'sword');
-  boxMesh('right_arm', [-1.4, 8, -3.5], [-0.6, 12, -2.5], '#8a6a2a', 'right', 'sword');
-  boxMesh('right_arm', [-1.3, 9.5, -2.5], [-0.7, 10.5, 0], '#5a3a1a', 'right', 'sword');
-  setHandScales();
-  view.scale.set(1, 1, 1);
+function weaponChoice() {
+  const w = $('weapon').value, held = heldClasses();
+  if (w === 'auto') return held;
+  return { main: w === 'unarmed' ? null : w, off: held.off, leftHanded: held.leftHanded };
 }
 
-// ---------------- exported Middle-earth NPCs (./addon/bench.sh export writes them; never committed) ----------------
+// ---------------- building figures ----------------
 function exportTexture(i) {
   if (!texCache.has(i)) {
     const tx = new THREE.TextureLoader().load(EXPORT_DIR + exportIndex.textures[i].file + '?v=' + exportIndex.stamp);
@@ -156,10 +133,39 @@ function exportTexture(i) {
   }
   return texCache.get(i);
 }
-async function showNpc(file) {
-  if (!file) { showTestFigure(); return; }
-  const d = await getJson(EXPORT_DIR + file);
-  clearMeshes();
+function addMesh(fig, part, pos, uv, idx, material, hand, weapon) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(pos.length), 3));
+  if (uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  if (idx) g.setIndex(Array.from(idx));   // a plain array: three.js takes a typed array here for a BufferAttribute
+  const mesh = new THREE.Mesh(g, material);
+  mesh.frustumCulled = false;
+  fig.group.add(mesh);
+  const rest = new Float32Array(pos.length);
+  for (let i = 0; i < pos.length; i += 3) rest.set(H.partToRig(part, [pos[i], pos[i + 1], pos[i + 2]]), i);
+  fig.meshes.push({ part, rest, mesh, hand, weapon });
+  return mesh;
+}
+function boxMesh(fig, part, a, b, color, hand, weapon) {
+  const g = new THREE.BoxGeometry(b[0] - a[0], b[1] - a[1], b[2] - a[2], 1, Math.max(1, Math.round((b[1] - a[1]) * 2)), 1);
+  g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  addMesh(fig, part, g.attributes.position.array, null, g.index.array, mat(color), hand, weapon);
+  g.dispose();
+}
+function testFigure(fig, weapon) {
+  const SKIN = '#c99a74';
+  boxMesh(fig, 'head', [-4, -8, -4], [4, 0, 4], SKIN);
+  boxMesh(fig, 'head', [-3, -5, -4.2], [-1, -4, -4], '#20242c'); boxMesh(fig, 'head', [1, -5, -4.2], [3, -4, -4], '#20242c');   // eyes face -z
+  boxMesh(fig, 'body', [-4, 0, -2], [4, 12, 2], '#4a6a8a');
+  boxMesh(fig, 'right_arm', [-3, -2, -2], [1, 10, 2], SKIN); boxMesh(fig, 'left_arm', [-1, -2, -2], [3, 10, 2], SKIN);
+  boxMesh(fig, 'right_leg', [-2, 0, -2], [2, 12, 2], '#5a4632'); boxMesh(fig, 'left_leg', [-2, 0, -2], [2, 12, 2], '#4b3b2a');
+  if (!weapon) return;
+  // an item as Minecraft seats it: handle in the fist, blade forward (-z in part space); scaled to the chosen class's length
+  boxMesh(fig, 'right_arm', [-1.3, 9.2, -16], [-0.7, 10.8, -3.5], '#c9ced6', 'right', weapon);
+  boxMesh(fig, 'right_arm', [-1.4, 8, -3.5], [-0.6, 12, -2.5], '#8a6a2a', 'right', weapon);
+  boxMesh(fig, 'right_arm', [-1.3, 9.5, -2.5], [-0.7, 10.5, 0], '#5a3a1a', 'right', weapon);
+}
+function npcFigure(fig, d) {
   d.meshes.forEach((m, order) => {
     const c = parseInt(m.color, 16), a = ((c >>> 24) & 255) / 255;
     const material = new THREE.MeshLambertMaterial({
@@ -168,12 +174,149 @@ async function showNpc(file) {
       depthFunc: THREE.LessEqualDepth,   // skin layers lie on one surface: later ones draw over earlier ones, as in game
     });
     const hand = m.hand ? (m.part === 'left_arm' ? 'left' : 'right') : null;
-    addMesh(m.part, m.pos, m.uv, m.idx, material, hand, m.weapon).renderOrder = order;
+    addMesh(fig, m.part, m.pos, m.uv, m.idx, material, hand, m.weapon).renderOrder = order;
   });
-  setHandScales();
-  const s = d.scale || 1, w = d.widthScale || 1;
-  view.scale.set(w * s, s, w * s);
-  if (d.race && RACES.includes(d.race) && $('race').value !== d.race) { $('race').value = d.race; await loadRace(); }
+}
+/** Each hand's items share one scale: class length over their joint longest extent. */
+function setHandScales(fig) {
+  for (const side of ['right', 'left']) {
+    const held = fig.meshes.filter((m) => m.hand === side);
+    if (!held.length) continue;
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const m of held) for (let i = 0; i < m.rest.length; i += 3) for (let j = 0; j < 3; j++) { lo[j] = Math.min(lo[j], m.rest[i + j]); hi[j] = Math.max(hi[j], m.rest[i + j]); }
+    const s = H.itemScale(held[0].weapon, grips, Math.max(...hi.map((x, j) => x - lo[j])));
+    for (const m of held) m.scale = s;
+  }
+}
+function labelSprite(text) {
+  const cv = document.createElement('canvas'), g = cv.getContext('2d');
+  cv.width = 256; cv.height = 40;
+  g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 0, 256, 40);
+  g.fillStyle = '#e6e6e6'; g.font = '22px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text.replace(/_/g, ' '), 128, 20);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false }));
+  sp.scale.set(24, 3.75, 1);
+  return sp;
+}
+function makeFigure(name) {
+  const f = files[race()];
+  const fig = { group: new THREE.Group(), meshes: [], name, anim: f.anim.animations[name], hit: f.hits[name] };
+  fig.group.rotation.y = Math.PI;
+  scene.add(fig.group);
+  if (source.kind === 'test') testFigure(fig, $('weapon').value === 'auto' ? 'sword' : weaponChoice().main);
+  else npcFigure(fig, source.d);
+  setHandScales(fig);
+  if (source.kind === 'npc') { const s = source.d.scale || 1, w = source.d.widthScale || 1; fig.group.scale.set(w * s, s, w * s); }
+  return fig;
+}
+function clearFigures() {
+  for (const fig of figures) {
+    for (const m of fig.meshes) { m.mesh.geometry.dispose(); }
+    if (fig.label) { fig.label.material.map.dispose(); scene.remove(fig.label); }
+    scene.remove(fig.group);
+  }
+  figures = [];
+}
+/** One figure for the selected clip, or (Show all) one per listed clip in a grid with labels. */
+function rebuildFigures() {
+  clearFigures();
+  if (!files[race()]) return;
+  const names = $('showAll').checked ? listed : cur ? [cur.name] : [];
+  const cols = Math.max(1, Math.ceil(Math.sqrt(names.length))), rows = Math.ceil(names.length / cols);
+  names.forEach((name, i) => {
+    const fig = makeFigure(name);
+    const x = ((i % cols) - (cols - 1) / 2) * SPACING, z = (Math.floor(i / cols) - (rows - 1) / 2) * SPACING;
+    fig.group.position.set(x, 0, z);
+    if (names.length > 1) { fig.label = labelSprite(name); fig.label.position.set(x, 38, z); scene.add(fig.label); }
+    figures.push(fig);
+  });
+  grid.scale.setScalar(Math.max(1, (cols * SPACING) / 140));
+  dist = names.length > 1 ? Math.max(80, cols * SPACING * 1.4) : 80;
+}
+
+// ---------------- pose ----------------
+function place(fig, time) {
+  const pose = S.samplePose(fig.anim, time);
+  if (!$('showJoints').checked) for (const j of STRAIGHT) delete pose[j];
+  const W = S.worldBones(pose);
+  const joint = (name) => ({ pivot: PIVOT[name], q: (pose[name] || {}).q || [0, 0, 0, 1], pos: (pose[name] || {}).pos || [0, 0, 0] });
+  for (const m of fig.meshes) {
+    m.mesh.visible = !m.hand || $('showSword').checked;
+    if (!m.mesh.visible) continue;
+    const out = m.mesh.geometry.attributes.position.array, r = m.rest;
+    const bone = m.hand ? (m.hand === 'right' ? 'weapon_r' : 'weapon_l') : BONE[m.part];
+    const w = W[bone], j = !m.hand && JOINT[m.part] ? joint(JOINT[m.part]) : null, fist = m.hand && H.FIST[m.hand];
+    for (let i = 0; i < r.length; i += 3) {
+      let p = [r[i], r[i + 1], r[i + 2]];
+      if (fist) p = H.scaleAbout(fist, m.scale || 1, p);
+      if (j) p = H.bendPoint(j, p, BAND);
+      out.set(S.point(w, p), i);
+    }
+    m.mesh.geometry.attributes.position.needsUpdate = true;
+    m.mesh.geometry.computeVertexNormals();
+  }
+}
+/** A figure's clip time at global time t: loops wrap; one-shots play, hold a moment, and repeat (Show all), or clamp. */
+function clipTime(fig, time, all) {
+  const L = fig.anim.animation_length;
+  if (fig.anim.loop === true) return L > 0 ? time % L : 0;
+  return all ? Math.min(time % (L + HOLD), L) : Math.min(time, L);
+}
+
+// ---------------- clips ----------------
+const race = () => $('race').value;
+async function loadRace() {
+  const r = race();
+  try {
+    if (!files[r]) {
+      files[r] = {
+        anim: await getJson(`${ASSETS}geckolib/animations/entity/npc_biped_${r}.animation.json`),
+        hits: await getJson(`${ASSETS}geckolib/animations/entity/npc_biped_${r}.hits.json`),
+      };
+    }
+    $('msg').textContent = '';
+  } catch (e) { $('msg').textContent = e.message + ' — serve the repo root (./tools/anim-viewer/view.sh npc) and run build_npc.js'; return; }
+  fillList();
+  rebuildFigures();
+}
+function fillList() {
+  const f = files[race()];
+  if (!f) return;
+  const w = weaponChoice();
+  listed = CL.clipsFor(Object.keys(f.anim.animations), $('weapon').value === 'all' ? 'all' : w.main, w.off, { leftHanded: w.leftHanded });
+  const list = $('clips'); list.innerHTML = '';
+  for (const name of listed) {
+    const a = f.anim.animations[name], hit = f.hits[name], li = document.createElement('li');
+    li.dataset.name = name;
+    li.innerHTML = `<span>${name.replace(/_/g, ' ')}</span><span class="badge">${a.loop === true ? 'loop' : hit ? 'hit ' + hit.hit.toFixed(2) + ' s' : a.animation_length.toFixed(2) + ' s'}</span>`;
+    li.onclick = () => select(name);
+    list.appendChild(li);
+  }
+  select(cur && listed.includes(cur.name) ? cur.name : listed[0] || 'idle');
+}
+function select(name) {
+  for (const li of $('clips').children) li.classList.toggle('on', li.dataset.name === name);
+  const f = files[race()];
+  cur = { name, anim: f.anim.animations[name], hit: f.hits[name] };
+  if (!$('showAll').checked || !figures.length) { t = 0; rebuildFigures(); }
+  drawMarks();
+}
+function drawMarks() {
+  const cv = $('marks'), w = cv.clientWidth, h = cv.clientHeight, g = cv.getContext('2d');
+  cv.width = w * devicePixelRatio; cv.height = h * devicePixelRatio; g.scale(devicePixelRatio, devicePixelRatio);
+  g.clearRect(0, 0, w, h);
+  if (!cur || !cur.hit || $('showAll').checked) return;
+  g.fillStyle = '#d9a441';
+  g.fillRect((cur.hit.hit / cur.hit.length) * (w - 3), 0, 3, h);
+}
+
+// ---------------- exported NPCs ----------------
+async function showModel(file) {
+  source = file ? { kind: 'npc', d: await getJson(EXPORT_DIR + file) } : { kind: 'test' };
+  if (source.kind === 'npc' && source.d.race && RACES.includes(source.d.race) && $('race').value !== source.d.race) {
+    $('race').value = source.d.race; await loadRace();
+  } else fillList();
+  rebuildFigures();
 }
 async function loadExportIndex() {
   const sel = $('model');
@@ -192,72 +335,8 @@ async function loadExportIndex() {
   }
 }
 
-// ---------------- pose ----------------
-const STRAIGHT = new Set(Object.values(JOINT));
-function place(time) {
-  const pose = S.samplePose(cur.anim, time);
-  if (!$('showJoints').checked) for (const j of STRAIGHT) delete pose[j];
-  const W = S.worldBones(pose);
-  const joint = (name) => ({ pivot: PIVOT[name], q: (pose[name] || {}).q || [0, 0, 0, 1], pos: (pose[name] || {}).pos || [0, 0, 0] });
-  for (const m of meshes) {
-    if (m.hand && !$('showSword').checked && !npcShown()) { m.mesh.visible = false; continue; }
-    m.mesh.visible = true;
-    const out = m.mesh.geometry.attributes.position.array, r = m.rest;
-    const bone = m.hand ? (m.hand === 'right' ? 'weapon_r' : 'weapon_l') : BONE[m.part];
-    const w = W[bone], j = !m.hand && JOINT[m.part] ? joint(JOINT[m.part]) : null, fist = m.hand && H.FIST[m.hand];
-    for (let i = 0; i < r.length; i += 3) {
-      let p = [r[i], r[i + 1], r[i + 2]];
-      if (fist) p = H.scaleAbout(fist, m.scale || 1, p);
-      if (j) p = H.bendPoint(j, p, BAND);
-      out.set(S.point(w, p), i);
-    }
-    m.mesh.geometry.attributes.position.needsUpdate = true;
-    m.mesh.geometry.computeVertexNormals();
-  }
-}
-const npcShown = () => !!$('model').value;
-
-// ---------------- clips ----------------
-const race = () => $('race').value;
-async function loadRace() {
-  const r = race();
-  try {
-    if (!files[r]) {
-      files[r] = {
-        anim: await getJson(`${ASSETS}geckolib/animations/entity/npc_biped_${r}.animation.json`),
-        hits: await getJson(`${ASSETS}geckolib/animations/entity/npc_biped_${r}.hits.json`),
-      };
-    }
-    $('msg').textContent = '';
-  } catch (e) { $('msg').textContent = e.message + ' — serve the repo root (./tools/anim-viewer/view.sh npc) and run build_npc.js'; return; }
-  const list = $('clips'); list.innerHTML = '';
-  for (const [name, a] of Object.entries(files[r].anim.animations)) {
-    const li = document.createElement('li');
-    li.dataset.name = name;
-    const hit = files[r].hits[name];
-    li.innerHTML = `<span>${name.replace(/_/g, ' ')}</span><span class="badge">${a.loop === true ? 'loop' : hit ? 'hit ' + hit.hit.toFixed(2) + ' s' : a.animation_length.toFixed(2) + ' s'}</span>`;
-    li.onclick = () => select(name);
-    list.appendChild(li);
-  }
-  select(cur && files[r].anim.animations[cur.name] ? cur.name : 'idle');
-}
-function select(name) {
-  for (const li of $('clips').children) li.classList.toggle('on', li.dataset.name === name);
-  const f = files[race()];
-  cur = { name, anim: f.anim.animations[name], hit: f.hits[name] };
-  t = 0; drawMarks();
-}
-function drawMarks() {
-  const cv = $('marks'), w = cv.clientWidth, h = cv.clientHeight, g = cv.getContext('2d');
-  cv.width = w * devicePixelRatio; cv.height = h * devicePixelRatio; g.scale(devicePixelRatio, devicePixelRatio);
-  g.clearRect(0, 0, w, h);
-  if (!cur || !cur.hit) return;
-  g.fillStyle = '#d9a441';
-  g.fillRect((cur.hit.hit / cur.hit.length) * (w - 3), 0, 3, h);
-}
-
 // ---------------- camera and input ----------------
-let yaw = 0.3, pitch = 0.2, dist = 80, drag = null;
+let yaw = 0.3, pitch = 0.25, dist = 80, drag = null;
 const target = new THREE.Vector3(0, 16, 0);
 function placeCamera() {
   camera.position.set(target.x + dist * Math.sin(yaw) * Math.cos(pitch), target.y + dist * Math.sin(pitch), target.z + dist * Math.cos(yaw) * Math.cos(pitch));
@@ -270,7 +349,7 @@ canvas.addEventListener('pointermove', (e) => {
   drag = { x: e.clientX, y: e.clientY };
 });
 canvas.addEventListener('pointerup', () => { drag = null; });
-canvas.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.max(25, Math.min(300, dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.max(25, Math.min(1500, dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
 function resize() {
   const r = $('stage').getBoundingClientRect();
   if (!r.width || !r.height) return;
@@ -278,33 +357,39 @@ function resize() {
   camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe($('stage'));
-const len = () => (cur && cur.anim ? cur.anim.animation_length : 0);
-$('model').onchange = () => showNpc($('model').value);
+/** The scrub bar's span: the selected clip, or the longest clip shown (Show all). */
+const span = () => (!cur || !cur.anim ? 0 : $('showAll').checked
+  ? Math.max(0.05, ...figures.map((f) => f.anim.animation_length + (f.anim.loop === true ? 0 : HOLD)))
+  : cur.anim.animation_length);
+$('model').onchange = () => showModel($('model').value);
 $('race').onchange = () => loadRace();
+$('weapon').onchange = () => { fillList(); rebuildFigures(); };
+$('showAll').onchange = () => { t = 0; rebuildFigures(); drawMarks(); };
 $('play').onclick = () => { playing = !playing; $('play').textContent = playing ? '⏸' : '▶'; };
-$('scrub').oninput = () => { t = +$('scrub').value * len(); playing = false; $('play').textContent = '▶'; };
+$('scrub').oninput = () => { t = +$('scrub').value * span(); playing = false; $('play').textContent = '▶'; };
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
   if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
     playing = false; $('play').textContent = '▶';
-    t = Math.max(0, Math.min(len(), t + (e.code === 'ArrowRight' ? 1 : -1) / 20));
+    t = Math.max(0, Math.min(span(), t + (e.code === 'ArrowRight' ? 1 : -1) / 20));
   }
 });
 
 // ---------------- loop ----------------
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  if (cur && cur.anim) {
-    const L = len();
+  const all = $('showAll').checked;
+  if (figures.length) {
+    const L = span();
     if (playing) {
       t += dt * +$('rate').value;
-      if (cur.anim.loop === true) t %= Math.max(L, 1e-3);
-      else if (t > L + 0.6) t = 0;            // one-shots hold their last frame briefly, then repeat
+      if (all || (cur.anim.loop === true)) t %= Math.max(L, 1e-3);
+      else if (t > L + HOLD) t = 0;            // one-shots hold their last frame briefly, then repeat
     }
-    place(Math.min(t, L));
+    for (const fig of figures) place(fig, clipTime(fig, t, all));
     $('scrub').value = L > 0 ? Math.min(t, L) / L : 0;
-    $('time').textContent = `${Math.min(t, L).toFixed(2)} / ${L.toFixed(2)} s`;
+    $('time').textContent = all ? `${figures.length} clips · ${t.toFixed(2)} s` : `${Math.min(t, L).toFixed(2)} / ${L.toFixed(2)} s`;
   }
   placeCamera();
   renderer.render(scene, camera);
@@ -315,13 +400,14 @@ function frame(now) {
   for (const r of RACES) { const o = document.createElement('option'); o.value = r; o.textContent = r; $('race').appendChild(o); }
   const params = new URLSearchParams(location.search);
   if (params.get('race')) $('race').value = params.get('race');
+  if (params.get('weapon')) $('weapon').value = params.get('weapon');
+  if (params.get('all')) $('showAll').checked = true;
   resize();
   try { grips = await getJson(ASSETS + 'weapon_grips.json'); } catch (e) { $('msg').textContent = e.message; }
-  showTestFigure();
   await loadExportIndex();
   await loadRace();
+  if (params.get('model')) { $('model').value = params.get('model'); await showModel(params.get('model')); }
   if (params.get('clip')) select(params.get('clip'));
-  if (params.get('model')) { $('model').value = params.get('model'); await showNpc(params.get('model')); }
   requestAnimationFrame(frame);
 })();
 </script>
