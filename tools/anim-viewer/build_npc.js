@@ -503,7 +503,9 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used) {
     return meetsBar(anim, slot) ? f : null;
   };
   let pool = POOL[cls] || [];
-  if (style.prefer === 'overhead') {   // the clips whose wind-up lifts the weapon highest first, its own clip among them
+  // weapon swings only: a shield bash or a fist is not lifted overhead, so those keep their own clip (and the style it takes)
+  const prefer = /^(shield|unarmed)$/.test(cls) ? null : style.prefer;
+  if (prefer === 'overhead') {   // the clips whose wind-up lifts the weapon highest first, its own clip among them
     const apex = (name) => {
       const a = animationJson({ c: sources.animationsplus[name] }).animations.c, h = strikeHit(a, len);
       let top = -Infinity;
@@ -512,7 +514,7 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used) {
     };
     pool = [...new Set([entry.clip, ...pool])].filter((n) => sources.animationsplus[n]).sort((x, y) => apex(y) - apex(x));
   }
-  const own = style.prefer || used.has(cls + '/' + entry.clip) ? null : tryClip(c);
+  const own = prefer || used.has(cls + '/' + entry.clip) ? null : tryClip(c);
   if (own) { used.add(cls + '/' + entry.clip); return { ...own, source: entry.clip }; }
   for (const alt of pool) {
     if (used.has(cls + '/' + alt) || !sources.animationsplus[alt]) continue;

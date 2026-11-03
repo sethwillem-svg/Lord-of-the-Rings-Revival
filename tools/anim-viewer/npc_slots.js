@@ -52,8 +52,8 @@
    * (from the lead-in's end to the apex, the last slow turn before the hit), the strike (apex to 0.05 s after the hit) and
    * the recovery; tame: seconds held at the apex before the strike; tsume (p ≥ 1, 1 is linear): the wind-up slowing into
    * the apex, the strike bursting to the hit, the recovery leaving fast and settling slowly; ready: the attack ends by
-   * easing back into the ready stance (the idle pose). prefer: 'overhead' picks, for each attack, the class's clip whose
-   * wind-up lifts the weapon highest. */
+   * easing back into the ready stance (the idle pose). prefer: 'overhead' picks, for each weapon attack (not shield bashes
+   * or unarmed blows), the class's clip whose wind-up lifts the weapon highest. */
   const STYLE = {
     man: { tempo: { windup: 1, tame: 0.05, strike: 1, recover: 1, tsume: { windup: 1.6, strike: 1.6, recover: 1.6 }, ready: false } },
     elf: { hunch: -8, armsOut: -5, fight: { overswing: -0.15, extend: 0.9, lean: 6, lead: 0.03, freeArm: { out: 45 } },
