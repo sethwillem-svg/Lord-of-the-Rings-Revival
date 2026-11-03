@@ -85,8 +85,9 @@ function fight(clip, slot, f, k) {
   const cls = slot.split('_')[1], hit = strikeHit(animationJson({ c: clip }).animations.c, classLength(slot));
   const rot = (bone) => clip.bones[bone] && clip.bones[bone].rotation;
   const at = (keys, t) => valueAt(keys, t, clip.length, false);
-  // wind-up and follow-through: away from (or toward) the strike pose, before and after the hit
-  for (const bone of ['right_arm', 'weapon_r', 'upper', 'body']) {
+  // wind-up and follow-through on the arms (a body-driven turn is `twist`): away from (or toward) the strike pose
+  const arms = TWO_HANDED.has(cls) ? ['right_arm', 'weapon_r', 'left_arm', 'weapon_l'] : ['right_arm', 'weapon_r'];
+  for (const bone of arms) {
     const keys = rot(bone);
     if (!keys) continue;
     const vHit = at(keys, hit).slice();
@@ -107,11 +108,12 @@ function fight(clip, slot, f, k) {
     scaleKeys(keys, (key) => [key.v[0] + f.lean * k * curve(key.t), key.v[1], key.v[2]]);
     clip.bones.upper.rotation = keys;
   }
-  if (f.low && rot('right_arm')) scaleKeys(rot('right_arm'), (key) => [key.v[0] + f.low * k * curve(key.t), key.v[1], key.v[2]]);
+  if (f.low && rot('right_arm')) scaleKeys(rot('right_arm'), (key) => [key.v[0] + f.low * k, key.v[1], key.v[2]]);   // lower throughout: no extra travel
   if (f.lead) {   // + the hips (upper) go first, - the arm trails the body
     const shift = (bone, d) => rot(bone) && scaleKeys(rot(bone), (key) => { if (key.t > 0) key.t = Math.max(0, Math.min(clip.length, key.t + d)); return key.v; });
     if (f.lead > 0) shift('upper', -f.lead * k);
-    else for (const b of ['right_arm', 'weapon_r']) shift(b, -f.lead * k);
+    else for (const b of TWO_HANDED.has(cls) ? ['right_arm', 'right_elbow', 'weapon_r', 'left_arm', 'left_elbow', 'weapon_l'] : ['right_arm', 'weapon_r'])
+      shift(b, -f.lead * k);   // two hands on one grip trail together
   }
   if (f.freeArm && !TWO_HANDED.has(cls)) {
     const arm = rot('right_arm') || [{ t: 0, v: [0, 0, 0] }], v0 = arm[0].v;
@@ -120,11 +122,15 @@ function fight(clip, slot, f, k) {
     const base = left.rotation || [{ t: 0, v: [0, 0, 0], lerp: 'linear' }];
     left.rotation = times.map((t) => {
       const r = at(arm, t), v = at(base, t).slice(), fl = (f.freeArm.flail || 0) * k;
-      return { t, v: [v[0] - fl * (r[0] - v0[0]), v[1] - fl * (r[1] - v0[1]), v[2] - (f.freeArm.out || 0) * k], lerp: 'linear' };
+      return { t, v: [v[0] - fl * (r[0] - v0[0]), v[1], v[2] - (f.freeArm.out || 0) * k], lerp: 'linear' };   // counter-swing front to back
     });
   }
+  // uneven, not jagged: a slow sway per bone and axis (0.5-1.5 cycles over the swing, random phase), zero at the start
   if (f.jitter) for (const bone of ['right_arm', 'weapon_r', 'left_arm', 'upper'])
-    if (rot(bone)) scaleKeys(rot(bone), (key, i) => (i === 0 ? key.v : key.v.map((x, j) => x + f.jitter * k * noise(`${slot}/${bone}/${i}/${j}`))));
+    if (rot(bone)) scaleKeys(rot(bone), (key) => key.v.map((x, j) => {
+      const cyc = 1 + 0.5 * noise(`${slot}/${bone}/${j}/f`), ph = Math.PI * noise(`${slot}/${bone}/${j}/p`), u = key.t / Math.max(clip.length, 1e-6);
+      return x + f.jitter * k * (Math.sin(2 * Math.PI * cyc * u + ph) - Math.sin(ph));
+    }));
   for (const bone of Object.keys(clip.bones)) for (const ch of Object.values(clip.bones[bone])) ch.sort((x, y) => x.t - y.t);
 }
 
@@ -140,9 +146,9 @@ function fought(clip, slot, style, idle, walk) {
     const anim = animationJson({ c: finishAttack(c, slot, style, idle, 'right', walk) }).animations.c;   // judged as written
     if (!quality(anim, classLength(slot))) continue;
     if (TWO_HANDED.has(cls) && strike(anim, classLength(slot)).leftToBlade > 8) continue;
-    return c;
+    return { clip: c, k };
   }
-  return clip;
+  return { clip, k: 0 };
 }
 
 /** Overlays (attacks, hurt, ranged releases) play over the legs' locomotion: posture must not add bones they leave alone. */
@@ -312,6 +318,7 @@ function leadIn(clip, idle, slot, side = 'right', walk = null) {
     keys.unshift({ t: 0, v: fromIdle, lerp: keys[0].lerp });
   }
   c.length += T;
+  c.lead = T;   // recorded in hits.json: where the authored swing starts
   return c;
 }
 
@@ -329,6 +336,8 @@ function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
   const len = classLength(slot), anim = () => animationJson({ c }).animations.c;
   // corners left by posture or style: up to three more smoothing passes
   for (let i = 0; i < 3 && !cleanSwing(anim(), len, fadeFor(anim(), len, side), side); i++) for (const ch of Object.values(c.bones)) for (const keys of Object.values(ch)) lowPass(keys);
+  // a lead-in from standing, judged on this swing's own first pose and hit
+  if (idle) c = leadIn(c, idle, slot, side, walk);
   // a wind-up hurried against its strike (under 3:1) is drawn out, until it is not
   for (let i = 0; i < 3; i++) {
     const ratio = spacing(anim(), len, fadeFor(anim(), len, side), side);
@@ -338,9 +347,52 @@ function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
   // a follow-through that would carry the blade into the body ends just before it
   const hit = strikeHit(anim(), len, side), into = bodyHitAfter(anim(), len, hit + 0.05, side);
   if (into !== null) trimTo(c, Math.max(hit + 0.05, into - 1 / 60));
-  // last: a lead-in from standing, judged on the finished swing's own first pose and hit
-  if (idle) c = leadIn(c, idle, slot, side, walk);
   edgeAlign(c, slot, side);
+  return tempo(c, slot, style.tempo, idle, side);
+}
+
+/**
+ * A race's tempo (STYLE.tempo) on a finished attack: a piecewise time warp around the hit (wind-up, strike, recovery each
+ * scaled; the lead-in kept), an optional hold at the top of the wind-up, and an optional ease back into the ready stance.
+ */
+function tempo(clip, slot, t, idle, side = 'right') {
+  if (!t) return clip;
+  const c = clone(clip), len = classLength(slot);
+  const hit = strikeHit(animationJson({ c }).animations.c, len, side), lead = c.lead || 0;
+  const a = Math.max(lead, hit - 0.1), b = Math.min(c.length, hit + 0.05), hold = t.hold || 0;
+  const w = t.windup || 1, st = t.strike || 1, rc = t.recover || 1;
+  const map = (x) => {
+    if (x <= lead) return x;
+    if (x <= a) return lead + (x - lead) * w;
+    const A = lead + (a - lead) * w + hold;
+    if (x <= b) return A + (x - a) * st;
+    return A + (b - a) * st + (x - b) * rc;
+  };
+  for (const ch of Object.values(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
+    const atA = valueAt(keys, a, clip.length, false).slice();
+    for (const k of keys) k.t = map(k.t);
+    if (hold > 0) {   // the pose at the top of the wind-up, held
+      const ta = lead + (a - lead) * w;
+      keys.push({ t: ta, v: atA.slice(), lerp: 'linear' }, { t: ta + hold, v: atA.slice(), lerp: 'linear' });
+      keys.sort((x, y) => x.t - y.t);
+      ch[kind] = keys.filter((k, i, arr) => i === 0 || k.t - arr[i - 1].t > 1e-6 || k.t < ta - 1e-6 || k.t > ta + hold + 1e-6);
+    }
+  }
+  c.length = map(c.length);
+  if (t.ready && idle) {   // ease back into the ready stance, no faster than a third of the swing
+    const anim = animationJson({ c }).animations.c, rest = animationJson({ i: idle }).animations.i;
+    const bone = side === 'left' ? 'weapon_l' : 'weapon_r', tipRest = bladeAt(side, len, 1);
+    const tip = (x, tt) => point(worldBones(samplePose(x, tt))[bone], tipRest);
+    let peak = 0;
+    for (let x = 1 / 120; x <= c.length; x += 1 / 120) peak = Math.max(peak, Math.hypot(...tip(anim, x).map((v, i) => v - tip(anim, x - 1 / 120)[i])) * 120);
+    const dist = Math.hypot(...tip(anim, c.length).map((v, i) => v - tip(rest, 0)[i]));
+    const T = Math.max(0.2, Math.ceil((dist / (0.33 * Math.max(peak, 1))) * 20) / 20);
+    for (const [bone2, ch] of Object.entries(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
+      const to = idle.bones[bone2] && idle.bones[bone2][kind] ? valueAt(idle.bones[bone2][kind], 0, idle.length, true).slice() : [0, 0, 0];
+      keys.push({ t: c.length + T, v: to, lerp: 'catmullrom' });
+    }
+    c.length += T;
+  }
   return c;
 }
 
@@ -348,6 +400,7 @@ function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
 function stretchWindup(clip, until, factor) {
   if (until <= 0) return;
   const added = until * (factor - 1);
+  if (clip.lead) clip.lead *= factor;
   for (const ch of Object.values(clip.bones)) for (const keys of Object.values(ch)) for (const k of keys) k.t = k.t < until ? k.t * factor : k.t + added;
   clip.length += added;
 }
@@ -390,26 +443,40 @@ function withShield(clip, arm) {
 function bestAttack(c, slot, entry, race, sources, style, clips, used) {
   const cls = slot.split('_')[1], len = classLength(slot);
   const tryClip = (raw) => {
-    const styled = style.fight ? fought(raw, slot, style, clips.idle, clips.walk) : raw;
-    const anim = animationJson({ c: finishAttack(styled, slot, style, clips.idle, 'right', clips.walk) }).animations.c;
-    return quality(anim, len) ? styled : null;
+    const f = style.fight ? fought(raw, slot, style, clips.idle, clips.walk) : { clip: raw, k: 0 };
+    const anim = animationJson({ c: finishAttack(f.clip, slot, style, clips.idle, 'right', clips.walk) }).animations.c;
+    return quality(anim, len) ? f : null;
   };
-  const own = used.has(cls + '/' + entry.clip) ? null : tryClip(c);
-  if (own) { used.add(cls + '/' + entry.clip); return own; }
-  for (const alt of POOL[cls] || []) {
+  let pool = POOL[cls] || [];
+  if (style.prefer === 'overhead') {   // the clips whose wind-up lifts the weapon highest first, its own clip among them
+    const apex = (name) => {
+      const a = animationJson({ c: sources.animationsplus[name] }).animations.c, h = strikeHit(a, len);
+      let top = -Infinity;
+      for (let t = 0; t <= h; t += 1 / 60) top = Math.max(top, point(worldBones(samplePose(a, t)).weapon_r, bladeAt('right', len, 1))[1]);
+      return top;
+    };
+    pool = [...new Set([entry.clip, ...pool])].filter((n) => sources.animationsplus[n]).sort((x, y) => apex(y) - apex(x));
+  }
+  const own = style.prefer || used.has(cls + '/' + entry.clip) ? null : tryClip(c);
+  if (own) { used.add(cls + '/' + entry.clip); return { ...own, source: entry.clip }; }
+  for (const alt of pool) {
     if (used.has(cls + '/' + alt) || !sources.animationsplus[alt]) continue;
     const got = tryClip(clipFor(slot, { source: 'animationsplus', clip: alt }, race, sources));
-    if (got) { used.add(cls + '/' + alt); if (process.env.FIGHT_DEBUG) console.log(race, slot, 'uses', alt); return got; }
+    if (got) { used.add(cls + '/' + alt); return { ...got, source: alt }; }
   }
-  if (process.env.FIGHT_DEBUG) console.log(race, slot, 'kept although it misses the bar');
-  return style.fight ? fought(c, slot, style, clips.idle, clips.walk) : c;
+  const f = style.fight ? fought(c, slot, style, clips.idle, clips.walk) : { clip: c, k: 0 };
+  return { ...f, source: entry.clip, missesBar: true };
 }
 
 function buildRace(race, sources, slots = SLOTS) {
-  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style), used = new Set(), leftOf = [];
+  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style), used = new Set(), leftOf = [], meta = {};
   for (const [slot, entry] of Object.entries(slots)) {
     let c = clipFor(slot, entry, race, sources);
-    if (/^attack_/.test(slot)) c = bestAttack(c, slot, entry, race, sources, style, clips, used);   // before mirroring
+    if (/^attack_/.test(slot)) {   // before mirroring
+      const best = bestAttack(c, slot, entry, race, sources, style, clips, used);
+      c = best.clip;
+      meta[slot] = { clip: best.source, style: best.k, ...(best.missesBar ? { missesBar: true } : {}) };
+    }
     if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
       leftOf.push(slot);   // mirrored from the finished swing below: an exact twin
     }
@@ -429,7 +496,7 @@ function buildRace(race, sources, slots = SLOTS) {
   const base = ['idle', 'walk'].map((n) => animations.animations[n]);
   for (const name of Object.keys(clips)) if (/^attack_[a-z]+_\d+$/.test(name)) {   // not the _l and _shield versions: same hit
     const a = animations.animations[name];
-    hits[name] = { length: a.animation_length, hit: hitTime(a, name), ...fades(a, name, base, classLength(name)) };
+    hits[name] = { length: a.animation_length, hit: hitTime(a, name), ...fades(a, name, base, classLength(name)), ...meta[name], ...(clips[name].lead ? { lead: +clips[name].lead.toFixed(3) } : {}) };
   }
   return { geo: geoJson(RIG), animations, hits, clips };
 }
@@ -454,5 +521,5 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack };
 if (require.main === module) main();

@@ -12,51 +12,129 @@ const ATTACK = /^attack_(sword|dagger|unarmed)_\d+$/;   // one-handed: every sty
 const anim = (race, name) => built[race].animations.animations[name];
 const attacks = (race) => Object.keys(built[race].animations.animations).filter((n) => ATTACK.test(n));
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
-const over = (race, f) => mean(attacks(race).map((n) => f(anim(race, n), n)));
 
-/** How far a rig point travels over a clip (px). */
-function path(a, bone, p) {
+/** How far a rig point travels over a clip from `from` seconds on (px). */
+function path(a, bone, p, from = 0) {
   let d = 0, prev = null;
-  for (let t = 0; t <= a.animation_length + 1e-9; t += a.animation_length / 40) {
+  for (let t = from; t <= a.animation_length + 1e-9; t += (a.animation_length - from) / 40) {
     const q = point(worldBones(samplePose(a, t))[bone], p);
     if (prev) d += Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]);
     prev = q;
   }
   return d;
 }
-/** How far back the weapon is drawn: the tip's furthest distance behind its strike position before the hit. */
-function windup(a, n) {
-  const s = strike(a, classLength(n));
-  let far = 0;
-  for (let t = 0; t < s.hit; t += 1 / 60) {
-    const q = point(worldBones(samplePose(a, t)).weapon_r, blade('right', classLength(n), 1));
-    far = Math.max(far, Math.hypot(...q.map((x, i) => x - s.tip[i])));
+/** How big the wind-up is: the length of the path the weapon tip travels from the authored swing's start (after any lead-in
+ *  from standing, hits.json lead) to the hit — a bigger wind-up carries the weapon further before it strikes. */
+function windup(a, n, race) {
+  const h = built[race].hits[n], len = classLength(n);
+  let d = 0, prev = null;
+  for (let t = h.lead || 0; t <= h.hit + 1e-9; t += 1 / 120) {
+    const q = point(worldBones(samplePose(a, t)).weapon_r, blade('right', len, 1));
+    if (prev) d += Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]);
+    prev = q;
   }
-  return far;
+  return d;
 }
 
-test('orcs swing wild: bigger windups and a free arm that flails more than men', () => {
-  assert.ok(over('orc', windup) > over('man', windup) * 1.08, `windup orc ${over('orc', windup).toFixed(1)} man ${over('man', windup).toFixed(1)}`);
-  const flail = (r) => over(r, (a) => path(a, 'weapon_l', FIST.left));
-  assert.ok(flail('orc') > flail('man') * 1.25, `free hand orc ${flail('orc').toFixed(1)} man ${flail('man').toFixed(1)}`);
+/** A posed rig point in the chest's own frame (the body bone's rest frame), so turning with the torso does not count as moving. */
+function inChest(w, p) {
+  const v = [0, 1, 2].map((i) => p[i] - w.body.p[i]);
+  return [0, 1, 2].map((c) => w.body.R[c] * v[0] + w.body.R[3 + c] * v[1] + w.body.R[6 + c] * v[2]);
+}
+
+/** The race's attacks that swing the same clip as a man's, with at least 60% of the race's style kept (hits.json). */
+function pairs(race, oneHanded = true) {
+  const man = built.man.hits, h = built[race].hits;
+  return Object.keys(h).filter((n) => (!oneHanded || ATTACK.test(n)) && man[n] && h[n].clip === man[n].clip && h[n].style >= 0.6);
+}
+/** At least 3 in 4 of the race's paired attacks show the difference; names the ones that do not. */
+function mostly(race, label, holds, oneHanded = true) {
+  const ps = pairs(race, oneHanded), fails = ps.filter((n) => !holds(n));
+  assert.ok(ps.length >= 3, `${race}: only ${ps.length} attacks to compare`);
+  assert.ok(fails.length <= ps.length / 4, `${race} ${label} on only ${ps.length - fails.length}/${ps.length}; not: ${fails.join(', ')}`);
+}
+
+test('every race keeps its fighting style: at least 60% of it on 80% of its attacks, and no attack ships below the quality bar', () => {
+  for (const race of RACES) {
+    const v = Object.entries(built[race].hits);
+    assert.deepEqual(v.filter(([, x]) => x.missesBar).map(([n]) => n), [], `${race}: attacks that miss the bar`);
+    if (race === 'man') continue;
+    const kept = v.filter(([, x]) => x.style >= 0.6).length;
+    assert.ok(kept >= 0.8 * v.length, `${race} keeps its style on ${kept}/${v.length}`);
+  }
 });
 
-test('elves strike at full stretch: the tip lands further out than a man\'s, and the free arm is held out wide', () => {
-  const reach = (r) => over(r, (a, n) => -strike(a, classLength(n)).tip[2]);
-  assert.ok(reach('elf') > reach('man') + 1, `elf ${reach('elf').toFixed(1)} man ${reach('man').toFixed(1)}`);
-  const wide = (r) => over(r, (a, n) => -point(worldBones(samplePose(a, strike(a, classLength(n)).hit)).weapon_l, FIST.left)[0]);
-  assert.ok(wide('elf') > wide('man') + 2, `free hand out elf ${wide('elf').toFixed(1)} man ${wide('man').toFixed(1)}`);
+test('orcs swing wild: on the same swing as a man, a bigger wind-up and a free arm that flails more', () => {
+  mostly('orc', 'winds up bigger', (n) => windup(anim('orc', n), n, 'orc') > windup(anim('man', n), n, 'man') * 1.15);
+  mostly('orc', 'flails the free arm more', (n) => path(anim('orc', n), 'weapon_l', FIST.left, built.orc.hits[n].lead || 0) > path(anim('man', n), 'weapon_l', FIST.left, built.man.hits[n].lead || 0) * 1.25);
 });
 
-test('dwarves drive with the body: more torso twist than men', () => {
-  const twist = (r) => over(r, (a, n) => strike(a, classLength(n)).bodyYawRange);
-  assert.ok(twist('dwarf') > twist('man') * 1.15, `dwarf ${twist('dwarf').toFixed(0)}° man ${twist('man').toFixed(0)}°`);
+test('elves strike at full stretch: on the same swing, the tip lands further out and the free arm is held out wide', () => {
+  const reach = (r, n) => -strike(anim(r, n), classLength(n)).tip[2];
+  mostly('elf', 'reaches further', (n) => reach('elf', n) > reach('man', n) + 0.5);
+  // abduction: the free arm's shoulder-to-hand line against the chest's vertical, in the chest's frontal plane (degrees)
+  const wide = (r, n) => {
+    const w = worldBones(samplePose(anim(r, n), strike(anim(r, n), classLength(n)).hit));
+    const sh = inChest(w, point(w.left_arm, [-4.5, 22.5, 0])), hand = inChest(w, point(w.weapon_l, FIST.left));
+    return (Math.atan2(sh[0] - hand[0], sh[1] - hand[1]) * 180) / Math.PI;
+  };
+  mostly('elf', 'holds the free arm out from the chest (15° more)', (n) => wide('elf', n) > wide('man', n) + 15);
 });
 
-test('hobbits strike low and compact: lower strikes and a shorter windup than men', () => {
-  const height = (r) => over(r, (a, n) => strike(a, classLength(n)).tip[1]);
-  assert.ok(height('hobbit') < height('man') - 2, `strike height hobbit ${height('hobbit').toFixed(1)} man ${height('man').toFixed(1)}`);
-  assert.ok(over('hobbit', windup) < over('man', windup) * 0.95, `windup hobbit ${over('hobbit', windup).toFixed(1)} man ${over('man', windup).toFixed(1)}`);
+test('dwarves drive with the body: on the same swing, more torso twist than a man', () => {
+  const twist = (r, n) => strike(anim(r, n), classLength(n)).bodyYawRange;
+  mostly('dwarf', 'twists more', (n) => twist('dwarf', n) > twist('man', n) * 1.1, false);
+});
+
+test('hobbits strike low and quick: on the same swing, a lower strike and a quicker wind-up than a man', () => {
+  mostly('hobbit', 'strikes lower', (n) => strike(anim('hobbit', n), classLength(n)).tip[1] < strike(anim('man', n), classLength(n)).tip[1] - 1);
+  mostly('hobbit', 'winds up quicker (in time)', (n) => windupTime('hobbit', n) < windupTime('man', n) * 0.9);
+});
+
+// ---- tempo: how each race times its swing (STYLE.tempo) ----
+/** Seconds from the authored swing's start (after any lead-in) to the hit. */
+const windupTime = (race, n) => built[race].hits[n].hit - (built[race].hits[n].lead || 0);
+/** The tip's top speed in the strike (px/s). */
+const topSpeed = (a, n) => {
+  let top = 0;
+  for (let t = 1 / 120; t <= a.animation_length; t += 1 / 120) {
+    const q = point(worldBones(samplePose(a, t)).weapon_r, blade('right', classLength(n), 1)), p = point(worldBones(samplePose(a, t - 1 / 120)).weapon_r, blade('right', classLength(n), 1));
+    top = Math.max(top, Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) * 120);
+  }
+  return top;
+};
+
+test('elves swing swiftly: on the same swing, the wind-up to the hit takes under 90% of a man\u2019s time', () => {
+  mostly('elf', 'winds up swiftly', (n) => windupTime('elf', n) < windupTime('man', n) * 0.9, false);
+});
+
+test('elves return to their ready stance: every attack ends within 3 px of the idle pose (weapon tip and both hands)', () => {
+  const idle = worldBones(samplePose(built.elf.animations.animations.idle, 0));
+  const pts = (w) => [point(w.weapon_r, blade('right', 1, 1)), point(w.weapon_r, FIST.right), point(w.weapon_l, FIST.left)];
+  const bad = [];
+  for (const n of Object.keys(built.elf.hits)) {
+    const a = anim('elf', n), w = worldBones(samplePose(a, a.animation_length)), p0 = pts(idle), p1 = pts(w);
+    const far = Math.max(...p1.map((p, i) => Math.hypot(...p.map((x, j) => x - p0[i][j]))));
+    if (far > 3) bad.push(`${n}: ends ${far.toFixed(1)} px from the ready stance`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test('orcs strike fast and wide: on the same swing, a faster strike (10% more top speed) and a wider arc', () => {
+  mostly('orc', 'strikes faster', (n) => topSpeed(anim('orc', n), n) > topSpeed(anim('man', n), n) * 1.1, false);
+  mostly('orc', 'swings a wider arc', (n) => strike(anim('orc', n), classLength(n)).tipSweep > strike(anim('man', n), classLength(n)).tipSweep * 1.1, false);
+});
+
+test('dwarves swing heavy and overhead: the wind-up lifts the weapon over the head on 3 in 4 attacks, and takes longer than a man\u2019s', () => {
+  const v = Object.keys(built.dwarf.hits).filter((n) => !/^attack_(unarmed|shield)/.test(n));
+  const overhead = v.filter((n) => {
+    const a = anim('dwarf', n), h = built.dwarf.hits[n];
+    let top = -Infinity;
+    for (let t = h.lead || 0; t <= h.hit; t += 1 / 60) top = Math.max(top, point(worldBones(samplePose(a, t)).weapon_r, blade('right', classLength(n), 1))[1]);
+    return top > 32;   // above the top of the head
+  });
+  assert.ok(overhead.length >= 0.75 * v.length, `overhead on ${overhead.length}/${v.length}: not ${v.filter((n) => !overhead.includes(n)).join(', ')}`);
+  mostly('dwarf', 'winds up slower', (n) => windupTime('dwarf', n) > windupTime('man', n) * 1.15, false);
 });
 
 // ---- shields ----
@@ -65,12 +143,6 @@ const SHIELDED = ['idle', 'walk', 'run', 'guard', 'march', 'attack_sword_1', 'at
 test('every movement clip and attack has a shield version', () => {
   for (const race of RACES) for (const n of SHIELDED) assert.ok(anim(race, n + '_shield'), `${race} ${n}_shield`);
 });
-
-/** A posed rig point in the chest's own frame (the body bone's rest frame), so turning with the torso does not count as moving. */
-function inChest(w, p) {
-  const v = [0, 1, 2].map((i) => p[i] - w.body.p[i]);
-  return [0, 1, 2].map((c) => w.body.R[c] * v[0] + w.body.R[3 + c] * v[1] + w.body.R[6 + c] * v[2]);
-}
 
 test('with a shield the off arm holds it up in front of the chest and steady, whatever the other arm does', () => {
   for (const race of RACES) for (const n of SHIELDED) {
