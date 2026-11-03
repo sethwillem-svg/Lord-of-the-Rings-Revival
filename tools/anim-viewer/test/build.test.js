@@ -1,11 +1,10 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { isDeepStrictEqual } = require('node:util');
 const { SLOTS, RACES } = require('../npc_slots.js');
-const { buildRace, loadSources } = require('../build_npc.js');
-
-const sources = loadSources();
-const built = Object.fromEntries(RACES.map((r) => [r, buildRace(r, sources)]));
+const { buildRace } = require('../build_npc.js');
+const { built, sources } = require('./lib/built.js');   // every race as the build makes it today (cached by its inputs)
 
 for (const race of ['man', 'elf', 'dwarf', 'hobbit', 'orc']) test(race + ' has every slot', () => {
   const r = built[race];
@@ -13,9 +12,9 @@ for (const race of ['man', 'elf', 'dwarf', 'hobbit', 'orc']) test(race + ' has e
 });
 
 test('a race override replaces only its slot; the rest come from the base table', () => {
-  const r = buildRace('orc', sources, { ...SLOTS, walk: { ...SLOTS.walk, races: { orc: { source: 'animationsplus', clip: 'crouchwalk' } } } });
-  assert.equal(r.clips.walk.length, sources.animationsplus.crouchwalk.length);
-  assert.ok(Math.abs(r.clips.run.length - sources.animationsplus.sprint.length / 3) < 1e-6);   // run keeps one stride
+  const r = buildRace('orc', sources(), { ...SLOTS, walk: { ...SLOTS.walk, races: { orc: { source: 'animationsplus', clip: 'crouchwalk' } } } });
+  assert.equal(r.clips.walk.length, sources().animationsplus.crouchwalk.length);
+  assert.ok(Math.abs(r.clips.run.length - sources().animationsplus.sprint.length / 3) < 1e-6);   // run keeps one stride
 });
 
 test('every hit entry names an attack in the same file, hit inside the clip', () => {
@@ -57,7 +56,7 @@ const LEGS = ['right_leg', 'left_leg', 'right_knee', 'left_knee'];
 test('posture never adds leg keys to overlays, so legs keep walking under an attack', () => {
   for (const race of RACES) for (const [name, c] of Object.entries(built[race].clips)) {
     if (!/^attack_|^bow_release$|^crossbow_shoot$/.test(name)) continue;
-    const base = buildRace('man', sources).clips[name];
+    const base = built.man.clips[name];
     for (const leg of LEGS) assert.equal(!!c.bones[leg], !!base.bones[leg], `${race} ${name} ${leg}`);
   }
 });
@@ -66,7 +65,7 @@ test('run is one stride starting on the same leg as walk, so the blend stays in 
   const legAt0 = (c) => c.bones.right_leg.rotation[0].v[0];
   const minLeg = (c) => Math.min(...c.bones.right_leg.rotation.map((k) => k.v[0]));
   const run = built.man.clips.run, walk = built.man.clips.walk;
-  assert.ok(Math.abs(run.length - sources.animationsplus.sprint.length / 3) < 1e-6, String(run.length));
+  assert.ok(Math.abs(run.length - sources().animationsplus.sprint.length / 3) < 1e-6, String(run.length));
   assert.ok(Math.abs(legAt0(walk) - minLeg(walk)) < 1e-6);
   assert.ok(Math.abs(legAt0(run) - minLeg(run)) < 1, `${legAt0(run)} vs ${minLeg(run)}`);
 });
@@ -87,9 +86,15 @@ test('every state the in-game graph names is in each race file (client.anim.NpcG
 
 test('the shipped race files are what the build makes today (run node tools/anim-viewer/build_npc.js after changing it)', () => {
   const { shipped } = require('./lib/shipped.js');
+  const json = (x) => JSON.parse(JSON.stringify(x));   // as written to disk (-0 and 0 are the same there)
+  const names = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])];
+  // compared clip by clip and named, not diffed whole: a diff of two whole race files runs out of memory
+  const stale = [];
   for (const race of RACES) {
-    const json = (x) => JSON.parse(JSON.stringify(x));   // as written to disk (-0 and 0 are the same there)
-    assert.deepEqual(json(built[race].animations), shipped[race].animations, `${race}.animation.json is stale`);
-    assert.deepEqual(json(built[race].hits), shipped[race].hits, `${race}.hits.json is stale`);
+    const a = json(built[race].animations), s = shipped[race].animations, h = json(built[race].hits), sh = shipped[race].hits;
+    if (!isDeepStrictEqual({ ...a, animations: null }, { ...s, animations: null })) stale.push(`${race}.animation.json header`);
+    for (const n of names(a.animations, s.animations)) if (!isDeepStrictEqual(a.animations[n], s.animations[n])) stale.push(`${race}.animation.json ${n}`);
+    for (const n of names(h, sh)) if (!isDeepStrictEqual(h[n], sh[n])) stale.push(`${race}.hits.json ${n}`);
   }
+  assert.equal(stale.length, 0, `${stale.length} stale: ${stale.slice(0, 20).join(', ')}`);
 });
