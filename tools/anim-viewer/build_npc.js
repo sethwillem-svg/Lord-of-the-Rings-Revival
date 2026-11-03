@@ -348,8 +348,11 @@ function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
   const hit = strikeHit(anim(), len, side), into = bodyHitAfter(anim(), len, hit + 0.05, side);
   if (into !== null) trimTo(c, Math.max(hit + 0.05, into - 1 / 60));
   edgeAlign(c, slot, side);
-  return tempo(c, slot, style.tempo, idle, side);
+  return tempo(c, slot, tempoFor(slot, style), idle, side);
 }
+
+/** The tempo an attack takes: its race's, except unarmed blows, which every race throws on man's table with a 0.03 s tame. */
+const tempoFor = (slot, style) => (/^attack_unarmed_/.test(slot) ? { ...STYLE.man.tempo, tame: 0.03 } : style.tempo);
 
 /**
  * The end of a swing's wind-up (s): the last moment between lead + 0.05 s and hit − 0.05 s at which the weapon tip's speed
@@ -390,7 +393,7 @@ function warp(x, { lead, apex, hit, end, t }) {
 
 /**
  * A race's tempo (STYLE.tempo) on a finished attack: the tame-tsume warp around its apex and hit (warp), the apex pose
- * held for the tame, and an optional ease back into the ready stance. Sets c.apex (s, new time), c.tame and c.ready (s).
+ * held for the tame (none on a wind-up under 0.05 s), and an optional ease back into the ready stance. Sets c.apex (s, new time), c.tame and c.ready (s).
  * fixed = { apex, hit } stands in for the measured ones (tests).
  */
 function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
@@ -399,7 +402,9 @@ function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
   const src = fixed ? null : animationJson({ c: clip }).animations.c;
   const hit = fixed ? fixed.hit : strikeHit(src, len, side);
   const apex = Math.min(hit, Math.max(lead, fixed ? fixed.apex : apexOf(src, len, side, hit, lead)));
-  const at = { lead, apex, hit, end: clip.length, t }, tame = t.tame || 0, top = warp(apex, at);
+  // a tame only on a wind-up of 0.05 s or more: on a shorter one the hold would swallow the hit
+  const tame = apex - lead >= 0.05 - 1e-9 ? t.tame || 0 : 0;
+  const at = { lead, apex, hit, end: clip.length, t: { ...t, tame } }, top = warp(apex, at);
   for (const ch of Object.values(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
     const atApex = valueAt(keys, apex, clip.length, false).slice();
     for (const k of keys) k.t = warp(k.t, at);

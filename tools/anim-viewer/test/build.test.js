@@ -158,3 +158,16 @@ test('every hit entry records apex before the hit, tame ≥ 0 and ready ≥ 0', 
     assert.ok(h.apex > (h.lead || 0) - 1e-9 && h.apex < h.hit, `${r} ${n}`); assert.ok(h.tame >= 0 && h.ready >= 0, `${r} ${n}`);
   }
 });
+test('every hit lands after the tame: hit ≥ apex + tame', () => {
+  const bad = [];
+  for (const r of RACES) for (const [n, h] of Object.entries(built[r].hits)) if (h.hit < h.apex + h.tame - 1e-3) bad.push(`${r} ${n}: apex ${h.apex} + tame ${h.tame} > hit ${h.hit}`);
+  assert.deepEqual(bad, []);
+});
+test('unarmed attacks take the man table with tame 0.03 (0 only when the wind-up is under 0.05 s)', () => {
+  assert.ok([0, 0.03].includes(built.orc.hits.attack_unarmed_1.tame), String(built.orc.hits.attack_unarmed_1.tame));
+  for (const r of RACES) for (const [n, h] of Object.entries(built[r].hits)) if (/^attack_unarmed_/.test(n)) {
+    // man's windup scale is 1, so apex − lead is the source wind-up
+    assert.equal(h.tame, h.apex - (h.lead || 0) >= 0.05 - 1e-3 ? 0.03 : 0, `${r} ${n}`);
+    assert.equal(h.ready, 0, `${r} ${n}`);
+  }
+});
