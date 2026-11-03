@@ -56,17 +56,17 @@
    * easing back into the ready stance (the idle pose). prefer: 'overhead' picks, for each weapon attack (not shield bashes
    * or unarmed blows), the class's clip whose wind-up lifts the weapon highest. */
   const STYLE = {
-    man: { tempo: { windup: 1, tame: 0.05, strike: 1, recover: 1, tsume: { windup: 1.6, strike: 1.6, recover: 1.6 }, ready: false } },
+    man: { tempo: { windup: 1, tame: 0.05, strike: 1, recover: 1.3, tsume: { windup: 1.6, strike: 1.6, recover: 2.0 }, ready: false } },
     elf: { hunch: -8, armsOut: -5, fight: { overswing: -0.15, extend: 0.9, lean: 6, lead: 0.03, freeArm: { out: 45 } },
-      tempo: { windup: 0.82, tame: 0, strike: 0.85, recover: 1, tsume: { windup: 1.3, strike: 1.3, recover: 1.2 }, ready: true } },
+      tempo: { windup: 0.82, tame: 0, strike: 0.85, recover: 1.3, tsume: { windup: 1.3, strike: 1.3, recover: 1.6 }, ready: true } },
     dwarf: { hunch: 9, armsOut: 11, kneeBend: 15, fight: { windup: 0.3, twist: 0.45, lean: 8, extend: -0.2 },
-      tempo: { windup: 1.35, tame: 0.15, strike: 1.3, recover: 1.3, tsume: { windup: 2.2, strike: 3.0, recover: 2.6 }, ready: false },
+      tempo: { windup: 1.35, tame: 0.15, strike: 1.3, recover: 1.7, tsume: { windup: 2.6, strike: 3.0, recover: 4.0 }, ready: false },
       prefer: 'overhead' },
     hobbit: { kneeBend: 9, stride: 0.65, fight: { windup: -0.6, low: 14, extend: -0.3, freeArm: { out: -6 } },
-      tempo: { windup: 0.75, tame: 0.03, strike: 0.85, recover: 0.9, tsume: { windup: 1.4, strike: 1.5, recover: 1.5 }, ready: false } },
+      tempo: { windup: 0.75, tame: 0.03, strike: 0.85, recover: 1.2, tsume: { windup: 1.4, strike: 1.5, recover: 1.9 }, ready: false } },
     orc: { hunch: 12, armsForward: 8, armsOut: 12, kneeBend: 14,
-      fight: { windup: 0.75, windupAfter: 0.8, overswing: 0.7, lean: 10, lead: -0.05, freeArm: { out: 15, flail: 1.5 }, jitter: 5 },
-      tempo: { windup: 0.9, tame: 0.02, strike: 0.78, recover: 0.9, tsume: { windup: 1.1, strike: 2.4, recover: 2.0 }, ready: false } },
+      fight: { windup: 0.75, windupAfter: 0.8, overswing: 0.7, lean: 10, lead: -0.05, freeArm: { out: 15, flail: 2.5 }, jitter: 5 },
+      tempo: { windup: 0.9, tame: 0.02, strike: 0.78, recover: 1.2, tsume: { windup: 1.25, strike: 2.4, recover: 2.4 }, ready: false } },
   };
   /** Substitutes per class, tried in order when a race's version of a slot's clip misses the quality bar (build_npc.js). */
   const POOL = {
