@@ -134,11 +134,22 @@ function fight(clip, slot, f, k) {
   for (const bone of Object.keys(clip.bones)) for (const ch of Object.values(clip.bones[bone])) ch.sort((x, y) => x.t - y.t);
 }
 
-/** A finished attack the game can ship: it meets the quality bar (gecko/strike.js quality) and, for two-handed weapons,
- *  keeps the free hand on the grip at the strike (within 8 px of the shaft). */
+/** The blade is clear of the torso and head at every key time after the fade-in as well: quality samples on a 60 Hz grid,
+ *  and keys the tempo warp moved off it can carry the blade through the body between two samples. */
+function clearAtKeys(anim, len) {
+  const fade = fadeFor(anim, len), L = anim.animation_length, ts = new Set();
+  for (const b of Object.values(anim.bones || {})) for (const ch of Object.values(b)) {
+    if (ch && typeof ch === 'object' && !Array.isArray(ch)) for (const k of Object.keys(ch)) ts.add(Number(k));
+  }
+  return [...ts].filter((t) => t >= fade && t <= L).every((t) => clearOfBody({ ...anim, animation_length: Math.min(L, t + 1e-6) }, len, t));
+}
+
+/** A finished attack the game can ship: it meets the quality bar (gecko/strike.js quality) with the blade clear of the
+ *  body at its keys too (clearAtKeys) and, for two-handed weapons, keeps the free hand on the grip at the strike (within
+ *  8 px of the shaft). */
 function meetsBar(anim, slot) {
   const len = classLength(slot);
-  return quality(anim, len) && !(TWO_HANDED.has(slot.split('_')[1]) && strike(anim, len).leftToBlade > 8);
+  return quality(anim, len) && clearAtKeys(anim, len) && !(TWO_HANDED.has(slot.split('_')[1]) && strike(anim, len).leftToBlade > 8);
 }
 
 /**
@@ -491,11 +502,18 @@ function withShield(clip, arm) {
   return c;
 }
 
+/** The share of a race's style an attack must keep to count as fought in that style (test/fighting.test.js). */
+const KEEP = 0.6;
+
 /**
- * An attack that meets the bar (meetsBar) as finished for this race: its own clip with the race's style (stepped down if
- * need be), else the next clip of its class's pool (npc_slots.js POOL) not already used by another slot.
+ * An attack that meets the bar (meetsBar) as finished for this race, with the race's style stepped down if need be: its own
+ * clip, if that keeps at least KEEP of the style (or meets the bar, for a race with no style). Otherwise the clip of its
+ * class's pool (npc_slots.js POOL), its own among them, not already used by another slot, that keeps the most of the
+ * style; on a tie its own clip first, then pool order, with clips that are another slot's own last (a race with no style
+ * takes the first in pool order). A race that prefers a kind of clip (STYLE prefer) takes the first in that order that
+ * meets the bar.
  */
-function bestAttack(c, slot, entry, race, sources, style, clips, used) {
+function bestAttack(c, slot, entry, race, sources, style, clips, used, slots = SLOTS) {
   const cls = slot.split('_')[1], len = classLength(slot);
   const tryClip = (raw) => {
     const f = style.fight ? fought(raw, slot, style, clips.idle, clips.walk) : { clip: raw, k: 0 };
@@ -514,12 +532,23 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used) {
     };
     pool = [...new Set([entry.clip, ...pool])].filter((n) => sources.animationsplus[n]).sort((x, y) => apex(y) - apex(x));
   }
-  const own = prefer || used.has(cls + '/' + entry.clip) ? null : tryClip(c);
-  if (own) { used.add(cls + '/' + entry.clip); return { ...own, source: entry.clip }; }
-  for (const alt of pool) {
-    if (used.has(cls + '/' + alt) || !sources.animationsplus[alt]) continue;
-    const got = tryClip(clipFor(slot, { source: 'animationsplus', clip: alt }, race, sources));
-    if (got) { used.add(cls + '/' + alt); return { ...got, source: alt }; }
+  const free = (n) => !used.has(cls + '/' + n) && sources.animationsplus[n];
+  const take = (n, got) => { used.add(cls + '/' + n); return { ...got, source: n }; };
+  const tryName = (n) => tryClip(n === entry.clip ? c : clipFor(slot, { source: 'animationsplus', clip: n }, race, sources));
+  if (prefer) {
+    for (const n of pool.filter(free)) { const got = tryName(n); if (got) return take(n, got); }
+  } else {
+    const own = free(entry.clip) ? tryClip(c) : null;
+    if (own && (!style.fight || own.k >= KEEP)) return take(entry.clip, own);
+    const others = new Set(Object.entries(slots).filter(([s]) => s !== slot && /^attack_/.test(s) && s.split('_')[1] === cls).map(([, e]) => e.clip));
+    const names = [...new Set(pool)].filter((n) => n !== entry.clip && free(n));
+    let best = own ? { n: entry.clip, got: own } : null;
+    for (const n of style.fight ? [...names.filter((x) => !others.has(x)), ...names.filter((x) => others.has(x))] : names) {
+      const got = tryName(n);
+      if (got && (!best || got.k > best.got.k)) best = { n, got };
+      if (best && !style.fight) break;   // no style to keep: the first that meets the bar
+    }
+    if (best) return take(best.n, best.got);
   }
   const f = style.fight ? fought(c, slot, style, clips.idle, clips.walk) : { clip: c, k: 0 };
   return { ...f, source: entry.clip, missesBar: true };
@@ -530,7 +559,7 @@ function buildRace(race, sources, slots = SLOTS) {
   for (const [slot, entry] of Object.entries(slots)) {
     let c = clipFor(slot, entry, race, sources);
     if (/^attack_/.test(slot)) {   // before mirroring
-      const best = bestAttack(c, slot, entry, race, sources, style, clips, used);
+      const best = bestAttack(c, slot, entry, race, sources, style, clips, used, slots);
       c = best.clip;
       meta[slot] = { clip: best.source, style: best.k, ...(best.missesBar ? { missesBar: true } : {}) };
     }
