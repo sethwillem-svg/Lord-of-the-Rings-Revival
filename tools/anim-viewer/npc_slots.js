@@ -49,9 +49,10 @@
    *              arm throws the other way } — not for two-handed weapons, whose free hand stays on the grip
    *   jitter     degrees every key wobbles by: no two swings alike
    * A swing that would no longer strike in front, would spin, or would lose a two-handed grip gets less of it. */
-  /* tempo (attacks only; specs/addon/npc-attack-tempo.md, checked in test/fighting.test.js): time scales for the wind-up
-   * (from the lead-in's end to the apex, the last slow turn before the hit), the strike (apex to 0.05 s after the hit) and
-   * the recovery; tame: seconds held at the apex before the strike; tsume (p ≥ 1, 1 is linear): the wind-up slowing into
+  /* tempo (attacks only; specs/addon/npc-attack-tempo.md, checked in test/fighting.test.js and test/timing.test.js): time
+   * scales for the wind-up (from the lead-in's end to the apex, the slowest turn of the tip before the hit), the strike (apex
+   * to 0.05 s after the hit) and the recovery; tame: seconds held at the apex before the strike, dropped where the tip is
+   * still fast at the apex or the wind-up is under 0.05 s; tsume (p ≥ 1, 1 is linear): the wind-up slowing into
    * the apex, the strike bursting to the hit, the recovery leaving fast and settling slowly; ready: the attack ends by
    * easing back into the ready stance (the idle pose). prefer: 'overhead' picks, for each weapon attack (not shield bashes
    * or unarmed blows), the class's clip whose wind-up lifts the weapon highest. */

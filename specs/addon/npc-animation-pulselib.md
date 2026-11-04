@@ -57,7 +57,7 @@ Weapons then sit where the animation puts them in every frame.
 
 - **Bends:** clips that bend elbows, knees and the waist (AnimationsPlus, Mo' Bends, mocap) drive the bend deformers through those bones; clips without bends keep straight limbs.
 - **Classes:** sword, axe (tool swings), spear (thrusts), bow, crossbow and shield from the table; dagger uses the quick sword swings and the assassin multi-hit; longsword uses the Mo' Bends combo and the warrior bash and uppercut. Left-handed play is the L clips (AnimationsPlus) or mirroring.
-- **Hit frames:** each attack's hit time goes in `geckolib/animations/entity/npc_biped_<race>.hits.json` (`{"<animation>": {"length": s, "hit": s}}`), written by the same tool that writes the animation file. The server reads it for `combat.AttackTiming` and picks the clip, so client and server use one number and one clip list.
+- **Hit frames:** each attack's hit time goes in `geckolib/animations/entity/npc_biped_<race>.hits.json` (`{"<animation>": { length, hit, fadeIn, fadeOut, clip, style, missesBar?, lead?, apex, tame, ready }}`: times in s; see `specs/addon/npc-attack-tempo.md` Data and APIs), written by the same tool that writes the animation file. The server reads it for `combat.AttackTiming` and picks the clip, so client and server use one number and one clip list.
 
 ### 3. Runtime: a PulseLib animatable per NPC
 

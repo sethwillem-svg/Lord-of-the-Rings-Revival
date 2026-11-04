@@ -7,7 +7,7 @@
  * it covers), never with the build's own helpers. Times come from hits.json: lead (end of the lead-in), apex, tame, hit,
  * length and ready; the swing runs from lead to the end, length − ready (the ease back to the ready stance is not swing).
  * Unarmed blows are thrown on man's tempo by every race (spec, edge cases), so they are held to man's limits.
- * T8 (race tempo order on the wind-up time) is not repeated here: fighting.test.js checks it on hit − lead
+ * T8 (race tempo order on the wind-up time) is not repeated here: fighting.test.js checks it on hit − lead, in game time
  * ("dwarves ... take longer than a man's", "elves swing swiftly", "hobbits ... a quicker wind-up").
  * T4 and T7 only judge attacks with a wind-up (apex − lead) of 0.1 s or more: a share of a near-zero phase is noise; each
  * prints how many attacks per race that leaves.

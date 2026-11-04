@@ -2,8 +2,12 @@
 /* Builds the NPC rig and each race's clip set for PulseLib's GeckoLib loader.
  *   node tools/anim-viewer/build_npc.js     writes, under addon/src/main/resources/assets/lotr_revival/geckolib/,
  *     models/entity/npc_biped_<race>.geo.json, animations/entity/npc_biped_<race>.animation.json and .hits.json
- * hits.json: { "<attack>": { "length": s, "hit": s } } — the hit is where, in the fast part of the swing, the weapon's tip is
- * most directly in front of the NPC (gecko/strike.js); the server times damage by it (combat.AttackTiming). */
+ * hits.json: { "<attack>": { length, hit, fadeIn, fadeOut, clip, style, missesBar?, lead?, apex, tame, ready } } — times in
+ * seconds of clip time: length; hit, where in the fast part of the swing the weapon's tip is most directly in front of the
+ * NPC (gecko/strike.js), which the server times damage by (combat.AttackTiming); fadeIn/fadeOut, the blend over the
+ * stance; lead (only with a lead-in from standing), its end; apex, the end of the wind-up; tame, the hold there (0 where
+ * dropped); ready, the ease back to the ready stance (0 if none). clip is the source clip picked, style the share of the
+ * race's fighting style kept, missesBar (only when set) that no clip met the quality bar. */
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');

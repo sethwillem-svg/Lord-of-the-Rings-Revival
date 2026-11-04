@@ -27,8 +27,9 @@ Toru's "ドン vs ドーン", koma-uchi, Sakurai hitstop; all in our own words).
 4. The follow-through leaves the hit fast and **settles slowly** into the end pose (ato-zume); dwarves settle longest (the
    "doooon"), orcs overshoot and recover off balance, elves flow straight back to the ready stance.
 
-In the viewer (`tools/anim-viewer/npc.html`) a speed trace under each figure shows the tip speed over time with the tame,
-hit and settle marked, so the tempo can be checked by eye without the game.
+In the viewer (`tools/anim-viewer/npc.html`) a speed trace under the selected clip's figure shows the tip speed over time
+with the tame, hit and settle marked, so the tempo can be checked by eye without the game. It is drawn for the selected
+clip only, not in "Show all".
 
 ## Rules and numbers
 
@@ -56,8 +57,12 @@ Orcs also draw the wind-up back after posture (`fight.windupAfter`): bounded at 
 
 - `g` maps **new** phase progress `u ∈ [0,1]` to **source** progress; the warp applied to key times is its inverse
   (`u^(1/p)` and `1 − (1 − v)^(1/p)`, closed form). `p = 1` is today's linear scale.
-- The **apex** is the end of the wind-up: the last moment before the hit at which the tip speed is a local minimum (today
-  `hit − 0.1 s`). `tempo()` finds it from the clip instead of assuming 0.1 s.
+- The **apex** is the end of the wind-up: the slowest local minimum of the tip speed in [lead + 0.02 s, hit − 0.05 s]
+  (the last of equally slow ones) when it is under 50 % of the strike's peak speed; otherwise `hit − 0.1 s`.
+  `tempo()` finds it from the clip instead of assuming 0.1 s.
+- The **tame** is inserted only where the wind-up (apex − lead) is 0.05 s or more and the tip is slow at the apex (under
+  50 % of the peak); elsewhere the clip's `tame` is 0 (a fast blade would freeze mid-swing, a short wind-up would swallow
+  the hit).
 - The warp runs on the 60 fps resampled clip (after `hingeify`), so there are keys for it to move; it never adds keys
   except the two that bracket the tame.
 - Build order in `finishAttack` is unchanged; `tempo` stays last. `stretchWindup` (the 3:1 spacing fix) runs before it as
@@ -79,7 +84,9 @@ Orcs also draw the wind-up back after posture (`fight.windupAfter`): bounded at 
 - Client: `NpcAnimatable.hitstop(stopTicks)` sets the running attack overlay's speed to 0 and, after `stopTicks` client
   ticks, restores the speed it had (`pendingSpeeds` machinery; guarded like `trigger`). If the target is an animated NPC,
   its `hurt` overlay is frozen for the same ticks. A player victim gets nothing new (vanilla hurt shake is enough).
-- A frozen overlay that ends (fade-out) or is restarted drops the freeze; nothing waits on it.
+- A freeze ends in one of three ways: its countdown runs out, a new attack starts (the frozen overlay's speed is restored,
+  or the restarted overlay gets its new speed), or the NPC dies (the speed is restored). PulseLib 1.2.0 never ends a
+  speed-0 overlay by itself, so nothing else may be relied on to end one.
 
 ### Tests (new file `tools/anim-viewer/test/timing.test.js`, shipped files, 60 Hz exact-at-keys sampling)
 
@@ -96,7 +103,7 @@ excluding the ready ease.
 | T6 | tsume, recovery | share of the recovery's tip path in its first 30 % of time (fast leave, slow settle) | dwarf ≥ 60 %, orc ≥ 55 %, others ≥ 45 % |
 | T7 | weight by contrast (Yoshida) | recovery time ÷ wind-up time | dwarf ≥ 1.1 (the long "doooon"), elf ≤ 0.9 (snaps back), others 0.8..1.2; only attacks with apex − lead ≥ 0.1 s (coverage below) |
 | T8 | race tempo order | wind-up time per clip, in game time (see Edge cases) | dwarf > man > elf, hobbit < man (3 in 4 on shared clips, as `mostly()` does) |
-| T9 | off balance (orc) | at the end of recovery the `upper`/`body` bone is ≥ 8° from the idle pose, and the free hand ≥ 6 px further from rest than a man's on the same clip | orcs, 3 in 4 (parked: see Parked / known gaps) |
+| T9 | off balance (orc) | at the end of recovery the `upper`/`body` bone is ≥ 8° from the idle pose, and the free hand ≥ 6 px further from rest than a man's on the same clip | orcs, 3 in 4 on weapon attacks (unarmed pairs excluded: the free hand may be the striking one); parked, see Parked / known gaps |
 | T10 | hitstop numbers | `Hitstop.ticks(race, cls)` table above | GameTest `HitstopTests` in `combat/test` |
 | T11 | hitstop fires | a landed held hit sends one `NpcHitPayload` with `ticks == Hitstop.ticks(...)`; a missed one (target stepped out) sends none | GameTest, extends `AttackTimingTests` with a captured `PacketDistributor` sink or a static listener hook on `AttackTiming` |
 
@@ -145,7 +152,8 @@ clips on these lists. The maintainer has not yet decided whether to author them 
 ## Edge cases
 
 - Multiplayer: hitstop goes only to players tracking the NPC; late joiners miss it (fine). Server timing unaffected.
-- Death: an NPC that dies during a freeze plays the death animation normally (the overlay fade drops the freeze).
+- Death: an NPC that dies during a freeze has both freezes (swing and hurt) ended and their speeds restored, then plays the
+  death animation normally (PulseLib would otherwise hold a speed-0 overlay forever).
 - Shield and `_l` twins: built from the finished (already tempo'd) swing, so they inherit the timing; T1–T9 run on them too
   (they must give the same numbers as the plain clip within 1 %).
 - Speed > 1 from `AttackTiming` (long clips compressed into the 18-tick window: speed = max(1, length ticks / 18, hit
@@ -162,12 +170,17 @@ clips on these lists. The maintainer has not yet decided whether to author them 
 
 - `tools/anim-viewer/npc_slots.js` `STYLE.<race>.tempo` as above (`hold` renamed `tame`; `tsume` object).
 - `tools/anim-viewer/build_npc.js` `tempo(clip, slot, t, idle, side)` implements the warp; exports `_tempo` for unit
-  tests; `hits.json` entries gain `apex` (s, after lead-in) and `tame` (s) so the game and the viewer know the pose times.
+  tests; `hits.json` entries gain `apex` (s, clip time), `tame` (s) and `ready` (s, the ease back to the ready stance at
+  the end; 0 if none) so the game and the viewer know the pose times. The full entry is
+  `{ length, hit, fadeIn, fadeOut, clip, style, missesBar?, lead?, apex, tame, ready }`: clip times in s, fades in s, `clip` the source clip picked, `style` the share of
+  the race's fighting style kept, `missesBar` only when no clip met the quality bar, `lead` only when a lead-in from
+  standing was added (its end).
 - `addon/.../combat/Hitstop.java`: `static int ticks(String race, String cls)`; pure, table above.
 - `addon/.../combat/NpcHitPayload(int entityId, int targetId, int ticks)`: `CustomPacketPayload`, registered beside
   `NpcAttackPayload`, handled on the client by `ClientAttack.hit(...)` → `NpcAnimatable.hitstop(ticks)`.
 - `addon/.../client/anim/NpcAnimatable`: `hitstop(int ticks)`; `tick()` counts the freeze down and restores the speed.
-- Viewer: `npc.html` draws the tip-speed trace per figure from `hits.json` (`hit`, `apex`, `tame`) and the sampled clip.
+- Viewer: `npc.html` draws the tip-speed trace for the selected clip (not in "Show all") from `hits.json` (`hit`, `apex`,
+  `tame`) and the sampled clip.
 
 ## Out of scope
 
@@ -189,5 +202,5 @@ The branch currently fails these; they are fixed first (or by the new tempo, ver
 
 - [ ] `node --test tools/anim-viewer/test/*.test.js` green, including `timing.test.js` T1–T9, in under 2 minutes without a rebuild.
 - [ ] GameTests `HitstopTests` (T10) and `AttackTimingTests` (T11) green: `cd addon && ./gradlew runGameTestServer -PmeJar=...`.
-- [ ] Viewer: `./tools/anim-viewer/view.sh npc`, "Show all" with a longsword: dwarf figures visibly pause at the top and settle slowly; orc figures lurch; elf figures flow back to ready; speed traces match.
+- [ ] Viewer: `./tools/anim-viewer/view.sh npc`, "Show all" with a longsword: dwarf figures visibly pause at the top and settle slowly; orc figures lurch; elf figures flow back to ready. Then each race's longsword selected on its own: the speed trace matches.
 - [ ] Playtest (maintainer): dwarf axe hit on a player freezes for 4 ticks and reads heavy; orc dagger hits feel quick; no NPC ever sticks frozen (watch a fight for a minute, including a kill mid-swing).
