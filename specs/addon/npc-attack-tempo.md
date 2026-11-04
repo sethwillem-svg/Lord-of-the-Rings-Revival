@@ -138,14 +138,17 @@ a list can only shrink. Counts on 80 plain attacks (16 per race) unless noted:
 
 | Check | Fail | man | elf | dwarf | hobbit | orc | Why |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T1 | 54/80 | 10 | 16 | 8 | 12 | 8 | no slow apex to hold: elves have no tame, and the build drops it on a fast apex or a wind-up under 0.05 s |
-| T2 | 44 pose pairs | 11 | 9 | 5 | 12 | 7 | nearly all hit–end: the follow-through ends close to the hit |
-| T3 | 5/80 | 2 | 1 | 0 | 2 | 0 | Sword_Swing_3R has no slow stretch |
-| T5 | 52/80 | 10 | 8 | 7 | 12 | 15 | the strike takes too much of the swing's time or too little of its path |
-| T6 | 5/80 | 1 | 1 | 1 | 1 | 1 | Warrior_bashR (`attack_shield_1`): its recovery pauses, then pulls back |
-| T7 | 2/12 judged | 1 | 0 | 0 | 0 | 1 | wind-up too short against the recovery (see above) |
-| T9 | 2/4 | – | – | – | – | 2 | Wand_Wave_1R and Sword_Swing_3R do not end off balance enough |
-| Orcs strike wide | 3/7 | – | – | – | – | 3 | the arc is no wider than a man's on these swings |
+| T1 | 55/80 | 11 | 15 | 9 | 10 | 10 | no slow apex to hold: elves have no tame, and the build drops it on a fast apex or a wind-up under 0.05 s |
+| T2 | 45 pose pairs | 10 | 8 | 7 | 12 | 8 | nearly all hit–end: the follow-through ends close to the hit |
+| T3 | 7/80 | 2 | 2 | 0 | 2 | 1 | Sword_Swing_3R has no slow stretch (orc: Sword_Swing_2R) |
+| T5 | 54/80 | 11 | 8 | 9 | 11 | 15 | the strike takes too much of the swing's time or too little of its path |
+| T6 | 6/80 | 1 | 1 | 1 | 1 | 2 | Warrior_bashR (`attack_shield_1`): its recovery pauses, then pulls back; orc Sword_Swing_2R settles too evenly |
+| T7 | 2/11 judged | 1 | 0 | 0 | 0 | 1 | wind-up too short against the recovery (see above) |
+| T9 | 1/3 | – | – | – | – | 1 | Sword_Swing_3R does not end off balance enough |
+| Orcs strike wide | 4/7 | – | – | – | – | 4 | the arc is no wider than a man's on these swings |
+
+The counts are after the class lengths became the drawn weapon (weapon_grips.json: dagger 0.85, sword 1.5, longsword
+1.9, axe 1.65, spear 2.8): longer blades re-picked several clips and moved entries both ways (the list was rebuilt then).
 
 Before the dwarf `windup`/`recover` retune (see Time warp) T2 had 46 failing pairs and T5 54 attacks; the retune fixed two
 dwarf T2 pairs and two dwarf T5 attacks and broke none.

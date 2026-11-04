@@ -597,7 +597,8 @@ function withShield(clip, arm) {
  * clip, if that keeps at least KEEP of the style (or meets the bar, for a race with no style). Otherwise the clip of its
  * class's pool (npc_slots.js POOL), its own among them, not already used by another slot, that keeps the most of the
  * style; on a tie its own clip first, then pool order, with clips that are another slot's own last (a race with no style
- * takes the first in pool order). A race that prefers a kind of clip (STYLE prefer) takes the first in that order that
+ * takes the first that meets the bar in that order, so it does not take another slot's own clip while a free one fits:
+ * that would push the other slot off its clip in turn). A race that prefers a kind of clip (STYLE prefer) takes the first in that order that
  * meets the bar.
  */
 function bestAttack(c, slot, entry, race, sources, style, clips, used, slots = SLOTS) {
@@ -630,7 +631,7 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used, slots = S
     const others = new Set(Object.entries(slots).filter(([s]) => s !== slot && /^attack_/.test(s) && s.split('_')[1] === cls).map(([, e]) => e.clip));
     const names = [...new Set(pool)].filter((n) => n !== entry.clip && free(n));
     let best = own ? { n: entry.clip, got: own } : null;
-    for (const n of style.fight ? [...names.filter((x) => !others.has(x)), ...names.filter((x) => others.has(x))] : names) {
+    for (const n of [...names.filter((x) => !others.has(x)), ...names.filter((x) => others.has(x))]) {
       const got = tryName(n);
       if (got && (!best || got.k > best.got.k)) best = { n, got };
       if (best && !style.fight) break;   // no style to keep: the first that meets the bar
