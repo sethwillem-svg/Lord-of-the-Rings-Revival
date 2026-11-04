@@ -9,7 +9,8 @@
  * Unarmed blows are thrown on man's tempo by every race (spec, edge cases), so they are held to man's limits.
  * T8 (race tempo order on the wind-up time) is not repeated here: fighting.test.js checks it on hit − lead
  * ("dwarves ... take longer than a man's", "elves swing swiftly", "hobbits ... a quicker wind-up").
- * T4 and T7 only judge attacks with a wind-up (apex − lead) of 0.1 s or more: a share of a near-zero phase is noise.
+ * T4 and T7 only judge attacks with a wind-up (apex − lead) of 0.1 s or more: a share of a near-zero phase is noise; each
+ * prints how many attacks per race that leaves.
  * T1, T2, T3, T5, T6, T7 and T9 are parked as ratchets (test/lib/known.js): the attacks known to fail each are listed, any
  * other failure fails the check, and so does a listed attack that now passes. */
 const test = require('node:test');
@@ -46,6 +47,8 @@ function phases(c) {
 const tipV = (c) => c.tip.v;
 /** The wind-up is long enough to share out (T4, T7). */
 const windsUp = (c) => { const p = phases(c); return p.apex - p.lead >= 0.1 - 1e-9; };
+/** Prints how many plain attacks per race have a wind-up to judge (T4, T7, twins): the windsUp filter leaves few. */
+const coverage = (t) => t.diagnostic(`attacks with a wind-up of 0.1 s or more: ${RACES.map((r) => `${r} ${plain.filter((c) => c.race === r && windsUp(c)).length}/${plain.filter((c) => c.race === r).length}`).join(', ')}`);
 
 // ---- the measures (each returns the value the test judges) ----
 /** T1: the longest stretch in [lead, hit] with the tip at most 10% of the swing's peak speed (s). */
@@ -121,7 +124,8 @@ test('T3 meri-hari: the peak speed is many times the swing’s median (man, hobb
   ratchet('T3', bad);
 });
 
-test('T4 tsume: the wind-up slows into the apex, its last 30% of time carrying little of its path (dwarf 15%, man/hobbit 22%, elf 26%, orc 30%)', () => {
+test('T4 tsume: the wind-up slows into the apex, its last 30% of time carrying little of its path (dwarf 15%, man/hobbit 22%, elf 26%, orc 30%)', (t) => {
+  coverage(t);
   const bad = [];
   for (const c of plain.filter(windsUp)) {
     const r = windupTsume(c), lim = T4[tempoRace(c)];
@@ -148,7 +152,8 @@ test('T6 tsume: the recovery leaves the hit fast and settles slowly, its first 3
   ratchet('T6', bad);
 });
 
-test('T7 weight: recovery time over wind-up time — dwarves settle long (≥ 1.1), elves snap back (≤ 0.9), others 0.8..1.2', () => {
+test('T7 weight: recovery time over wind-up time — dwarves settle long (≥ 1.1), elves snap back (≤ 0.9), others 0.8..1.2', (t) => {
+  coverage(t);
   const bad = [];
   for (const c of plain.filter(windsUp)) {
     const r = weight(c), [lo, hi] = T7[tempoRace(c)];
@@ -175,7 +180,8 @@ test('T9 orcs end off balance: on the same swing as a man, the torso ends ≥ 8�
   ratchet('T9', bad);
 });
 
-test('twins: the _l and _shield versions give the plain attack’s meri-hari (T3) and weight (T7) within 1%', () => {
+test('twins: the _l and _shield versions give the plain attack’s meri-hari (T3) and weight (T7) within 1%', (t) => {
+  coverage(t);
   const bad = [];
   const byName = new Map(plain.map((c) => [`${c.race}/${c.name}`, c]));
   for (const c of clips.filter(twin)) {
