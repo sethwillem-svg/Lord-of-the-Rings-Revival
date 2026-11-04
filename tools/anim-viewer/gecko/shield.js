@@ -84,12 +84,12 @@
   }
 
   /** The held-item layer's seat in the arm (PulseNpcRenderer item(): Rx -90, Ry 180, translate ±1, 2, -10 px). */
-  const seat = (left) => chain(R('x', -90), R('y', 180), T(left ? -1 : 1, 2, -10));
+  const handSeat = (left) => chain(R('x', -90), R('y', 180), T(left ? -1 : 1, 2, -10));
 
   /** Model space to arm part space, as item() then Minecraft's item renderer draw it: the seat, the display transform, the
    *  block's centring (-8 px), and for a custom renderer the vanilla shield's flip. */
   function modelToArm(model, left) {
-    return chain(seat(left), displayMatrix(model.display[left ? 'left' : 'right'], left), T(-8, -8, -8), model.custom ? Sc(1, -1, -1) : I4());
+    return chain(handSeat(left), displayMatrix(model.display[left ? 'left' : 'right'], left), T(-8, -8, -8), model.custom ? Sc(1, -1, -1) : I4());
   }
 
   function armQuads(model, left) {
@@ -150,16 +150,45 @@
     return { out, up, centre, back: ro[0], front: ro[1], faces: plate.map((f) => f.q) };
   }
 
-  /** Where item() moves a shield: as drawn (no placement). */
-  function place(quads, left) {   // eslint-disable-line no-unused-vars
-    return null;
+  /** The forearm in part space (px): its back (the outside of the arm's box, x 3 on the left arm, -3 on the right), the
+   *  plate's middle this far out from it, and the fist's height down the arm. */
+  const ARM_BACK = 3, GAP = 1, FIST_Y = 10;
+
+  /**
+   * Where item() moves a shield (client.render.WeaponGrip.strap): strapped to the forearm, whatever the item's display
+   * transform did with it. Its face looks along the back of the forearm (the outside of the arm, +x on the left arm, -x
+   * on the right), its up along the front of the arm (-z: up when the forearm is held across the chest with its back to
+   * the front), the plate's middle GAP px out from the forearm's back, level with the fist and centred on the arm. A 4x4
+   * (part space, px, row-major), null for an item with nothing drawn.
+   */
+  function place(quads, left) {
+    const p = plateOf(quads);
+    if (!p) return null;
+    const out = [left ? 1 : -1, 0, 0], up = [0, 0, -1], at = [(left ? 1 : -1) * (ARM_BACK + GAP), FIST_Y, 0];
+    const from = [p.out, p.up, cross(p.out, p.up)], to = [out, up, cross(out, up)];
+    const m = I4();
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) m[r * 4 + c] = from.reduce((s, f, k) => s + to[k][r] * f[c], 0);
+    const moved = applyDir(m, p.centre);
+    for (let r = 0; r < 3; r++) m[r * 4 + 3] = at[r] - moved[r];
+    return m;
   }
 
   /** Part space to rig space for an arm (held.js partToRig), and a direction (x and y flip). */
   const toRig = (side, p) => H.partToRig(side === 'left' ? 'left_arm' : 'right_arm', p);
   const dirToRig = (v) => [-v[0], -v[1], v[2]];
+  const fromRig = (side, r) => { const o = toRig(side, [0, 0, 0]); return [o[0] - r[0], o[1] - r[1], r[2] - o[2]]; };
 
-  const api = { MODELS, displayMatrix, modelToArm, armQuads, plateOf, place, placed, toRig, dirToRig, box, faceOf,
+  /** The viewer's seat for a shield held on `side` (quads in rig space, as the viewer keeps them): place() worked in the
+   *  arm's part space and carried into rig space, as { m } for held.js seatPoint; null with nothing drawn. */
+  function seat(quads, side) {
+    const m = place(quads.map((q) => q.map((p) => fromRig(side, p))), side === 'left');
+    if (!m) return null;
+    const o = toRig(side, [0, 0, 0]), F = [-1, 0, 0, o[0], 0, -1, 0, o[1], 0, 0, 1, o[2], 0, 0, 0, 1];   // part -> rig
+    const Finv = [-1, 0, 0, o[0], 0, -1, 0, o[1], 0, 0, 1, -o[2], 0, 0, 0, 1];   // rig -> part
+    return { m: chain(F, m, Finv) };
+  }
+
+  const api = { MODELS, displayMatrix, modelToArm, armQuads, plateOf, place, placed, seat, toRig, fromRig, dirToRig, box, faceOf, ARM_BACK, GAP, FIST_Y,
     mat: { I4, mul, chain, T, Sc, R, apply, applyDir } };
   if (isNode) module.exports = api;
   else root.GeckoShield = api;
