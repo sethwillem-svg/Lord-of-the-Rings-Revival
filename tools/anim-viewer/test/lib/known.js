@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 
 const KNOWN = {
   T1: {
-    why: 'T1: 53/80 fail; man 11, elf 15, dwarf 9, hobbit 10, orc 8 — no slow apex to hold (elves have no tame; the build drops it on a fast apex or a wind-up under 0.05 s): needs authored anticipation/settle key poses',
+    why: 'T1: 52/80 fail; man 11, elf 15, dwarf 9, hobbit 10, orc 7 — no slow apex to hold (elves have no tame; the build drops it on a fast apex or a wind-up under 0.05 s): needs authored anticipation/settle key poses',
     fails: {
       man: ['attack_sword_1', 'attack_sword_2', 'attack_sword_3', 'attack_longsword_1', 'attack_longsword_3',
         'attack_spear_1', 'attack_dagger_1', 'attack_dagger_2', 'attack_axe_2', 'attack_unarmed_1', 'attack_unarmed_2'],
@@ -19,8 +19,8 @@ const KNOWN = {
         'attack_dagger_2', 'attack_axe_1', 'attack_unarmed_1', 'attack_unarmed_2'],
       hobbit: ['attack_sword_2', 'attack_sword_3', 'attack_sword_4', 'attack_longsword_1', 'attack_longsword_3',
         'attack_dagger_1', 'attack_dagger_2', 'attack_axe_2', 'attack_unarmed_1', 'attack_unarmed_2'],
-      orc: ['attack_sword_1', 'attack_longsword_1', 'attack_longsword_3', 'attack_spear_1', 'attack_spear_2',
-        'attack_axe_1', 'attack_axe_2', 'attack_unarmed_1'],
+      orc: ['attack_sword_1', 'attack_longsword_1', 'attack_longsword_3', 'attack_spear_1', 'attack_axe_1', 'attack_axe_2',
+        'attack_unarmed_1'],
     },
   },
   T2: {
