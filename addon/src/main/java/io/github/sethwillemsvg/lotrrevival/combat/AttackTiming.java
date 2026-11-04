@@ -13,6 +13,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.sevenstars.middleearth.entity.npcs.NpcEntity;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,8 @@ public final class AttackTiming {
     /** Reach slack at the hit frame (blocks): the target may have moved a little. */
     private static final double REACH_SLACK = 0.75;
 
-    private record Pending(LivingEntity target, long due, String cls) {}
+    /** A held attack: its target, the tick it lands on, the weapon class, and the clip played for it (null when the race has none). */
+    private record Pending(LivingEntity target, long due, @Nullable String cls, @Nullable String slot) {}
 
     private static final Map<NpcEntity, Pending> PENDING = new WeakHashMap<>();
     private static final Map<NpcEntity, Integer> LAST_STOP = new WeakHashMap<>();
@@ -78,7 +81,7 @@ public final class AttackTiming {
             windup = Math.max(MIN_WINDUP_TICKS, hitTicks / speed);
             slot = clip.slot();
         }
-        PENDING.put(npc, new Pending(e.getEntity(), level.getGameTime() + Math.round(windup), cls));
+        PENDING.put(npc, new Pending(e.getEntity(), level.getGameTime() + Math.round(windup), cls, slot));
         if (slot != null) PacketDistributor.sendToPlayersTrackingEntity(npc, new NpcAttackPayload(npc.getId(), slot, speed));
     }
 
@@ -95,7 +98,8 @@ public final class AttackTiming {
             if (!npc.isAlive() || !target.isAlive() || target.level() != level || npc.distanceTo(target) > reach(npc) + REACH_SLACK) continue;
             replaying = true;
             try {
-                if (npc.doHurtTarget(target)) {
+                // a hit with no clip played has no swing to freeze
+                if (npc.doHurtTarget(target) && p.slot() != null) {
                     int ticks = Hitstop.ticks(NpcRaces.of(npc), p.cls());
                     LAST_STOP.put(npc, ticks);
                     PacketDistributor.sendToPlayersTrackingEntity(npc, new NpcHitPayload(npc.getId(), target.getId(), ticks));

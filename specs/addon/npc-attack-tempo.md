@@ -79,10 +79,12 @@ Orcs also draw the wind-up back after posture (`fight.windupAfter`): bounded at 
 | cap | 4 |
 
 - Server: when `AttackTiming.onLevelTick` lands a held hit (`doHurtTarget` returned true), it sends
-  `NpcHitPayload(npcId, targetId, stopTicks)` to players tracking the NPC. Server timing (`due`, the 20-tick rhythm) is
+  `NpcHitPayload(npcId, targetId, stopTicks)` to players tracking the NPC, only when the attack played a clip (a race
+  without attack clips has no swing to freeze). Server timing (`due`, the 20-tick rhythm) is
   untouched: the freeze is cosmetic and client-only.
 - Client: `NpcAnimatable.hitstop(stopTicks)` sets the running attack overlay's speed to 0 and, after `stopTicks` client
-  ticks, restores the speed it had (`pendingSpeeds` machinery; guarded like `trigger`). If the target is an animated NPC,
+  ticks, restores the speed it had (`pendingSpeeds` machinery; guarded like `trigger`; PulseLib's "overlay not active"
+  for an overlay that has ended just drops the freeze, unlogged). If the target is an animated NPC,
   its `hurt` overlay is frozen for the same ticks. A player victim gets nothing new (vanilla hurt shake is enough).
 - A freeze ends in one of three ways: its countdown runs out, a new attack starts (the frozen overlay's speed is restored,
   or the restarted overlay gets its new speed), or the NPC dies (the speed is restored). PulseLib 1.2.0 never ends a
@@ -151,7 +153,9 @@ clips on these lists. The maintainer has not yet decided whether to author them 
 
 ## Edge cases
 
-- Multiplayer: hitstop goes only to players tracking the NPC; late joiners miss it (fine). Server timing unaffected.
+- Multiplayer: hitstop goes only to players tracking the NPC; late joiners miss it (fine). A client that never got the
+  attack (it started tracking the NPC mid-swing) ignores a hitstop more than 20 ticks after its last attack, so it never
+  freezes an old overlay. Server timing unaffected.
 - Death: an NPC that dies during a freeze has both freezes (swing and hurt) ended and their speeds restored, then plays the
   death animation normally (PulseLib would otherwise hold a speed-0 overlay forever).
 - Shield and `_l` twins: built from the finished (already tempo'd) swing, so they inherit the timing; T1–T9 run on them too

@@ -40,6 +40,8 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private static final String SHIELD = "_shield";
     /** Overlay speed during a hitstop: PulseLib holds a speed-0 overlay's pose and never ends it, so every freeze is undone here. */
     private static final float FREEZE = 0f;
+    /** How long after attack() a hitstop may still freeze its swing (ticks): the server's hit lands within 12 ticks of it. */
+    private static final int HITSTOP_WINDOW = 20;
     private static boolean logged;
 
     final String race;
@@ -198,10 +200,11 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         trigger(c, handed, speed);
     }
 
-    /** This NPC's hit landed (combat.Hitstop): the swing last started by attack() holds still for ticks. */
-    public void hitstop(int ticks) {
+    /** This NPC's hit landed (combat.Hitstop): the swing last started by attack() holds still for ticks. Ignored when no
+     *  attack() came in the last HITSTOP_WINDOW ticks (a player who started tracking the NPC after its attack payload). */
+    public void hitstop(LivingEntity entity, int ticks) {
         PAnimationController<NpcAnimatable> c = controller();
-        if (c == null || lastAttack == null || ticks <= 0) return;
+        if (c == null || lastAttack == null || ticks <= 0 || entity.tickCount - serverAttackAt > HITSTOP_WINDOW) return;
         freeze = setSpeed(c, lastAttack, FREEZE) ? ticks : 0;
     }
 
@@ -234,6 +237,8 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             if (runtime == null) return false;
             runtime.setOverlaySpeed(animation, speed);
             return true;
+        } catch (IllegalStateException e) {
+            return false;   // expected: PulseLib's "overlay not active" for one that has already ended
         } catch (RuntimeException e) {
             warnOnce(animation, e);
             return false;

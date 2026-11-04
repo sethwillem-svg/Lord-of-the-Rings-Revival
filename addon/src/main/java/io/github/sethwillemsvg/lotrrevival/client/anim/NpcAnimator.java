@@ -101,7 +101,7 @@ public final class NpcAnimator {
 
     /** The NPC's held hit landed (combat.Hitstop): its swing freezes for ticks. */
     public static void hitstop(LivingEntity entity, int ticks) {
-        if (isNpc(entity)) NpcAnimatable.of(entity).hitstop(ticks);
+        if (isNpc(entity)) NpcAnimatable.of(entity).hitstop(entity, ticks);
     }
 
     /** An NPC took a held hit: its hurt flinch freezes for ticks. Players get nothing (vanilla's hurt shake is enough). */
