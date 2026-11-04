@@ -21,7 +21,7 @@ const { importMoBends } = require('./import/mobends.js');
 const { importSeriousPlayer } = require('./import/seriousplayer.js');
 const { importEmote } = require('./import/emotecraft.js');
 const { RACES, SLOTS, STYLE, POOL, KEEP } = require('./npc_slots.js');
-const { hingeify, lowPass } = require('./hinge.js');
+const { hingeify, lowPass, limitTwist, peakTwist, TWIST } = require('./hinge.js');
 
 const LIB = path.join(__dirname, 'library');
 const OUT = path.join(__dirname, '../../addon/src/main/resources/assets/lotr_revival/geckolib');
@@ -82,6 +82,9 @@ function noise(key) {
 }
 
 const TWO_HANDED = new Set(['longsword', 'spear', 'axe']);
+/** The most a free arm's counter-swing (STYLE fight.freeArm.flail) turns it from where it was, degrees: 2.5 times a big swing
+ *  would wind it right round the shoulder (an orc's free arm reached 600°), which no twist of the arm can make look whole. */
+const FLAIL_MAX = 120;
 const scaleKeys = (keys, f) => keys.forEach((k, i) => { k.v = f(k, i); });
 
 /** A race's way of swinging (STYLE.fight), at strength k (0..1), on an attack in Blockbench values before mirroring. */
@@ -127,7 +130,9 @@ function fight(clip, slot, f, k) {
     const base = left.rotation || [{ t: 0, v: [0, 0, 0], lerp: 'linear' }];
     left.rotation = times.map((t) => {
       const r = at(arm, t), v = at(base, t).slice(), fl = (f.freeArm.flail || 0) * k;
-      return { t, v: [v[0] - fl * (r[0] - v0[0]), v[1], v[2] - (f.freeArm.out || 0) * k], lerp: 'linear' };   // counter-swing front to back
+      // counter-swing front to back, at most FLAIL_MAX either way: thrown back, not wound round the shoulder
+      const swing = Math.max(-FLAIL_MAX, Math.min(FLAIL_MAX, fl * (r[0] - v0[0])));
+      return { t, v: [v[0] - swing, v[1], v[2] - (f.freeArm.out || 0) * k], lerp: 'linear' };
     });
   }
   // uneven, not jagged: a slow sway per bone and axis (0.5-1.5 cycles over the swing, random phase), zero at the start
@@ -283,26 +288,53 @@ function hipsFollow(clip, share = 0.4) {
   });
 }
 
+/** Edged classes. A double-edged blade (a sword's, a dagger's, a spearhead) cuts the same with either edge, so a half turn
+ *  about it is the same cut; an axe has one edge. Shields and fists have none. */
+const DOUBLE_EDGED = new Set(['sword', 'longsword', 'dagger', 'spear']), SINGLE_EDGED = new Set(['axe']);
+/** Seconds either side of the hit (on the clip's clock before tempo) through which an edge keeps the roll that leads it. */
+const EDGE_HOLD = 0.025;
+
 /**
- * Rolls an edged weapon about its own length so its edge, not its flat, leads at the strike: the flat faces the arm's x
- * in the weapon frame (Minecraft seats a sword's flat sideways), turned by the roll that puts it square to the swing.
+ * Rolls an edged weapon about its own length so its edge, not its flat, leads at the strike (at `hit`, s on this clip's
+ * clock): the flat faces the arm's x in the weapon frame (Minecraft seats a sword's flat sideways), turned by the shortest
+ * roll that puts it square to the swing. The roll moves the wrist's twist, so the limbs are then brought back within
+ * their twist range (hinge.js limitTwist). A double-edged blade may take the roll half a turn the other way instead,
+ * whichever leaves less twist; an axe keeps its edge, and keeps the source roll when rolling would twist the wrist past its
+ * range. Returns the clip (a new one when anything changed).
  */
-function edgeAlign(clip, slot, side) {
-  const bone = side === 'left' ? 'weapon_l' : 'weapon_r', ch = clip.bones[bone];
-  if (!ch || !ch.rotation) return;
-  const len = classLength(slot), anim = animationJson({ c: clip }).animations.c, hit = strikeHit(anim, len, side);
+function edgeAlign(clip, slot, side, hit) {
+  const bone = side === 'left' ? 'weapon_l' : 'weapon_r', ch = clip.bones[bone], cls = slot.split('_')[1];
+  // the hands may roll what they hold about its length where no swivel keeps the wrist in range; an edge keeps its roll
+  // through the strike
+  const roll = { weapon_r: STRIKE_DIR, weapon_l: [-STRIKE_DIR[0], STRIKE_DIR[1], STRIKE_DIR[2]] };
+  const edged = DOUBLE_EDGED.has(cls) || SINGLE_EDGED.has(cls);
+  const limit = (c) => limitTwist(c, { roll, held: [bone], keep: edged ? { [bone]: [hit - EDGE_HOLD, hit + EDGE_HOLD] } : {} });
+  if (!ch || !ch.rotation || !edged) return limit(clip);
+  const len = classLength(slot), anim = animationJson({ c: clip }).animations.c;
   const dt = 1 / 120, tipAt = (t) => point(worldBones(samplePose(anim, Math.max(0, Math.min(clip.length, t))))[bone], bladeAt(side, len, 1));
   const v = tipAt(hit + dt).map((x, i) => x - tipAt(hit - dt)[i]);
   const R = worldBones(samplePose(anim, hit))[bone].R, axis = STRIKE_DIR.map((x, i) => (i === 0 && side === 'left' ? -x : x));
   let best = 0, bestCost = Infinity;
-  for (let a = -90; a <= 90; a += 1) {   // a roll of ±90° covers every flat orientation
+  for (let a = -90; a <= 90; a += 1) {   // a roll of ±90° covers every flat orientation: the shorter way round
     const Rr = eulerAxis(axis, (a * Math.PI) / 180), n = mulVec(R, mulVec(Rr, [1, 0, 0]));
     const cost = Math.abs(n[0] * v[0] + n[1] * v[1] + n[2] * v[2]) + 1e-4 * Math.abs(a);
     if (cost < bestCost) { bestCost = cost; best = a; }
   }
-  if (!best) return;
-  const Rr = eulerAxis(axis, (best * Math.PI) / 180);
-  for (const k of ch.rotation) k.v = fromTrue(mul3(trueRotation(k.v), Rr));   // about the weapon pivot: positions stay
+  const rolled = (a) => {
+    if (!a) return limit(clip);
+    const c = clone(clip), Rr = eulerAxis(axis, (a * Math.PI) / 180);
+    for (const k of c.bones[bone].rotation) k.v = fromTrue(mul3(trueRotation(k.v), Rr));   // about the weapon pivot: positions stay
+    return limit(c);
+  };
+  const rolls = DOUBLE_EDGED.has(cls) ? [best, best > 0 ? best - 180 : best + 180] : [best];
+  const tried = rolls.map((a) => ({ a, c: rolled(a) })).map((x) => ({ ...x, tw: peakTwist(x.c) }));
+  // least past range first, then the wrist twisted least, then the shorter roll
+  const pick = tried.reduce((b, x) => ((x.tw.past < b.tw.past - 1e-6 || (Math.abs(x.tw.past - b.tw.past) <= 1e-6 && x.tw.end < b.tw.end - 1e-6)) ? x : b));
+  if (SINGLE_EDGED.has(cls) && pick.tw.end > TWIST.end) {   // an axe rolled past the wrist's range keeps its source roll
+    const own = rolled(0), tw = peakTwist(own);
+    if (tw.end < pick.tw.end) return own;
+  }
+  return pick.c;
 }
 const mulVec = (R, v) => [0, 1, 2].map((r) => R[r * 3] * v[0] + R[r * 3 + 1] * v[1] + R[r * 3 + 2] * v[2]);
 function eulerAxis(u, a) {
@@ -452,8 +484,26 @@ function finishPostured(c, slot, style, idle, side, walk) {
   // a follow-through that would carry the blade into the body ends just before it
   const hit = strikeHit(anim(), len, side), into = bodyHitAfter(anim(), len, hit + 0.05, side);
   if (into !== null) trimTo(c, Math.max(hit + 0.05, into - 1 / 60));
-  edgeAlign(c, slot, side);
-  return tempo(c, slot, tempoFor(slot, style), idle, side);
+  // the edge leads on the pose the finished attack strikes with: the tempo moves the hit. The tempo is timed on the swing
+  // as it stands: the roll and the twist limit after it leave the weapon's path where it is, but Euler keys can stray from
+  // it between them by a fraction of a pixel, enough to move a slow apex
+  const t = tempoFor(slot, style), at = t ? warpOf(c, slot, t, side) : null;
+  c = edgeAlign(c, slot, side, strikePose(c, slot, t, at, idle, side));
+  return tempo(c, slot, t, idle, side, null, at);
+}
+
+/**
+ * The time, on this clip's own clock (before its race's tempo t, warp `at`), of the pose the finished attack strikes with.
+ * The tempo warps the swing's timing unevenly, so the hit, found again on the warped swing, can land on another pose than
+ * the one found before it; the warp is undone to find which (the poses themselves do not change).
+ */
+function strikePose(c, slot, t, at, idle, side) {
+  const len = classLength(slot);
+  if (!t) return strikeHit(animationJson({ c }).animations.c, len, side);
+  const hit = strikeHit(animationJson({ c: tempo(c, slot, t, idle, side, null, at) }).animations.c, len, side);
+  let lo = 0, hi = c.length;   // warp only moves forward: halve the span holding the source time that lands on the hit
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (warp(mid, at) < hit) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
 }
 
 /**
@@ -508,19 +558,12 @@ function warp(x, { lead, apex, hit, end, t }) {
  * A race's tempo (STYLE.tempo) on a finished attack: the tame-tsume warp around its apex and hit (warp), the apex pose
  * held for the tame (none where the tip is still fast there or the wind-up is under 0.05 s), and an optional ease back into
  * the ready stance. Sets c.apex (s, new time), c.tame and c.ready (s).
- * fixed = { apex, hit } stands in for the measured ones (tests).
+ * fixed = { apex, hit } stands in for the measured ones (tests); timed, a warp (warpOf) already measured on this swing.
  */
-function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
+function tempo(clip, slot, t, idle, side = 'right', fixed = null, timed = null) {
   if (!t) return clip;
-  const c = clone(clip), len = classLength(slot), lead = c.lead || 0;
-  const src = fixed ? null : animationJson({ c: clip }).animations.c;
-  const hit = fixed ? fixed.hit : strikeHit(src, len, side);
-  const scan = fixed ? { apex: fixed.apex, slow: true } : apexScan(src, len, side, hit, lead);
-  const apex = Math.min(hit, Math.max(lead, scan.apex));
-  // a tame only where the tip is slow at the apex (a fast blade would freeze mid-swing) and on a wind-up of 0.05 s or more
-  // (on a shorter one the hold would swallow the hit)
-  const tame = scan.slow && apex - lead >= 0.05 - 1e-9 ? t.tame || 0 : 0;
-  const at = { lead, apex, hit, end: clip.length, t: { ...t, tame } }, top = warp(apex, at);
+  const c = clone(clip), len = classLength(slot);
+  const at = timed || warpOf(clip, slot, t, side, fixed), { apex, t: { tame } } = at, top = warp(apex, at);
   for (const ch of Object.values(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
     const atApex = valueAt(keys, apex, clip.length, false).slice();
     for (const k of keys) k.t = warp(k.t, at);
@@ -550,6 +593,20 @@ function tempo(clip, slot, t, idle, side = 'right', fixed = null) {
     c.ready = T;
   }
   return c;
+}
+
+/** The warp a race's tempo t puts on a clip (warp's second argument): its lead-in's end, apex, hit, end and the tempo with
+ *  the tame it gets (fixed = { apex, hit } stands in for the measured ones, as in tempo). */
+function warpOf(clip, slot, t, side = 'right', fixed = null) {
+  const len = classLength(slot), lead = clip.lead || 0;
+  const src = fixed ? null : animationJson({ c: clip }).animations.c;
+  const hit = fixed ? fixed.hit : strikeHit(src, len, side);
+  const scan = fixed ? { apex: fixed.apex, slow: true } : apexScan(src, len, side, hit, lead);
+  const apex = Math.min(hit, Math.max(lead, scan.apex));
+  // a tame only where the tip is slow at the apex (a fast blade would freeze mid-swing) and on a wind-up of 0.05 s or more
+  // (on a shorter one the hold would swallow the hit)
+  const tame = scan.slow && apex - lead >= 0.05 - 1e-9 ? t.tame || 0 : 0;
+  return { lead, apex, hit, end: clip.length, t: { ...t, tame } };
 }
 
 /** Slows everything before `until` by `factor` (keys there spread out; later keys move back by the added time). */

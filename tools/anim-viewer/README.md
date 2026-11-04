@@ -25,7 +25,9 @@ node --test tools/anim-viewer/test/*.test.js # converters, race files, hit times
 The weapon checks (`test/weapons.test.js`) hold every attack to: the strike lands in front of the NPC, nothing spins,
 two-handed classes keep the free hand on the grip, longer weapons reach further, the left-handed twins mirror the right,
 and the blade stays out of the body and above the floor. The body checks (`test/posture.test.js`) keep heads level,
-feet on the floor, elbows and knees bending the right way and loops seamless. `test/fighting.test.js` holds each race to
+feet on the floor, elbows and knees bending the right way and loops seamless; `test/joints.test.js` keeps every arm, wrist
+and thigh within a person's twist about its own length (upper arm and held item 95°, thigh 45°: `hinge.js` swivels the arm
+about its shoulder-to-hand line, and rolls the item about its blade only where that is not enough). `test/fighting.test.js` holds each race to
 its own way of fighting (`npc_slots.js` STYLE.fight: orcs wild, elves at full stretch, dwarves body-driven, hobbits low and
 compact) and checks the shield versions (`<clip>_shield`: the off arm keeps the shield up in front). With an export (`./addon/bench.sh export`) they also check every
 real Middle-earth item sits with its handle in the hand and its drawn weapon at its class length, and shields face forward, and `test/parity.test.js` checks the
