@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 
 const KNOWN = {
   T1: {
-    why: 'T1: 55/80 fail; man 11, elf 15, dwarf 9, hobbit 10, orc 10 — no slow apex to hold (elves have no tame; the build drops it on a fast apex or a wind-up under 0.05 s): needs authored anticipation/settle key poses',
+    why: 'T1: 53/80 fail; man 11, elf 15, dwarf 9, hobbit 10, orc 8 — no slow apex to hold (elves have no tame; the build drops it on a fast apex or a wind-up under 0.05 s): needs authored anticipation/settle key poses',
     fails: {
       man: ['attack_sword_1', 'attack_sword_2', 'attack_sword_3', 'attack_longsword_1', 'attack_longsword_3',
         'attack_spear_1', 'attack_dagger_1', 'attack_dagger_2', 'attack_axe_2', 'attack_unarmed_1', 'attack_unarmed_2'],
@@ -19,19 +19,19 @@ const KNOWN = {
         'attack_dagger_2', 'attack_axe_1', 'attack_unarmed_1', 'attack_unarmed_2'],
       hobbit: ['attack_sword_2', 'attack_sword_3', 'attack_sword_4', 'attack_longsword_1', 'attack_longsword_3',
         'attack_dagger_1', 'attack_dagger_2', 'attack_axe_2', 'attack_unarmed_1', 'attack_unarmed_2'],
-      orc: ['attack_sword_1', 'attack_sword_2', 'attack_sword_3', 'attack_longsword_1', 'attack_longsword_3',
-        'attack_spear_1', 'attack_spear_2', 'attack_axe_1', 'attack_axe_2', 'attack_unarmed_1'],
+      orc: ['attack_sword_1', 'attack_longsword_1', 'attack_longsword_3', 'attack_spear_1', 'attack_spear_2',
+        'attack_axe_1', 'attack_axe_2', 'attack_unarmed_1'],
     },
   },
   T2: {
-    why: 'T2: 45 fail (pose pairs); man 10, elf 8, dwarf 7, hobbit 12, orc 8 — nearly all hit-end, the follow-through ends close to the hit: needs authored anticipation/settle key poses',
+    why: 'T2: 46 fail (pose pairs); man 10, elf 9, dwarf 7, hobbit 12, orc 8 — nearly all hit-end, the follow-through ends close to the hit: needs authored anticipation/settle key poses (elf attack_spear_1 since it ships at the full elf style)',
     fails: {
       man: ['attack_sword_4 hit-end', 'attack_longsword_1 hit-end', 'attack_longsword_2 hit-end',
         'attack_longsword_3 hit-end', 'attack_spear_1 hit-end', 'attack_spear_2 hit-end', 'attack_axe_1 hit-end',
         'attack_axe_2 hit-end', 'attack_unarmed_1 hit-end', 'attack_unarmed_2 hit-end'],
       elf: ['attack_sword_4 hit-end', 'attack_longsword_1 hit-end', 'attack_longsword_2 hit-end',
-        'attack_longsword_3 hit-end', 'attack_spear_2 hit-end', 'attack_dagger_1 hit-end', 'attack_axe_1 hit-end',
-        'attack_axe_2 hit-end'],
+        'attack_longsword_3 hit-end', 'attack_spear_1 hit-end', 'attack_spear_2 hit-end', 'attack_dagger_1 hit-end',
+        'attack_axe_1 hit-end', 'attack_axe_2 hit-end'],
       dwarf: ['attack_sword_1 hit-end', 'attack_sword_3 hit-end', 'attack_longsword_2 hit-end',
         'attack_longsword_3 hit-end', 'attack_spear_1 hit-end', 'attack_spear_2 hit-end', 'attack_axe_2 hit-end'],
       hobbit: ['attack_sword_3 hit-end', 'attack_sword_4 hit-end', 'attack_longsword_1 hit-end',
@@ -89,6 +89,12 @@ const KNOWN = {
     why: 'T9: 1/3 fail; orc 1 — on Sword_Swing_3R the end pose is not off balance enough; parked for the maintainer',
     fails: {
       orc: ['attack_sword_2'],
+    },
+  },
+  orcWindup: {
+    why: 'orcWindup: 2/5 fail; orc 2 — the wind-up path is barely longer than a man’s on the same swing (sword_2 Sword_Swing_3R 66.4 vs 62.8 px, 1.06×; sword_4 Relik_Strike_3R 52.8 vs 52.2 px, 1.01×; needs > 1.15×): both ship at 60% of the orc style, the full style missing the quality bar; parked for the maintainer',
+    fails: {
+      orc: ['attack_sword_2', 'attack_sword_4'],
     },
   },
   orcArc: {

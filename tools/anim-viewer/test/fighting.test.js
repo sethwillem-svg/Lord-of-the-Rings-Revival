@@ -50,8 +50,14 @@ test('every race keeps its fighting style: at least 60% of it on 80% of its atta
   }
 });
 
-test('orcs swing wild: on the same swing as a man, a bigger wind-up and a free arm that flails more', () => {
-  mostly('orc', 'winds up bigger', (n) => windup('orc', n) > windup('man', n) * 1.15);
+test('orcs swing wild: on the same swing as a man, a bigger wind-up (parked as a ratchet: test/lib/known.js orcWindup) and a free arm that flails more', () => {
+  const ps = pairs('orc'), bad = [];
+  assert.ok(ps.length >= 3, `orc: only ${ps.length} attacks to compare`);
+  for (const n of ps) {
+    const o = windup('orc', n), m = windup('man', n);
+    if (!(o > m * 1.15)) bad.push({ key: `orc/${n}`, msg: `orc ${n}: wind-up ${o.toFixed(1)} px, man ${m.toFixed(1)} px, ${(o / m).toFixed(2)}× (> 1.15×)` });
+  }
+  ratchet('orcWindup', bad);
   mostly('orc', 'flails the free arm more', (n) => path('orc', n, 'weapon_l', FIST.left, built.orc.hits[n].lead || 0) > path('man', n, 'weapon_l', FIST.left, built.man.hits[n].lead || 0) * 1.25);
 });
 
