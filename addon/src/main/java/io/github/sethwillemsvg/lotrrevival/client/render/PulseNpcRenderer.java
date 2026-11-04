@@ -73,6 +73,8 @@ import java.util.WeakHashMap;
  *  - Held items: what Minecraft's item renderer draws for an item in hand, recorded once per item look, attached to the posed
  *    hand. Not drawn: glint; items whose look changes every frame (compass, clock) keep their first look. Items with their own
  *    renderer (banners, banner shields) are drawn the normal way: their pattern layers share one surface and need draw order.
+ *    Both ways the item is first placed in the arm (WeaponGrip, measured from what HeldItems draws): weapons sized and
+ *    seated on the fist, shields strapped to the forearm, face out from its back.
  */
 public class PulseNpcRenderer extends VanillaNpcRenderer {
     private static final Logger LOG = LogUtils.getLogger();
@@ -376,7 +378,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             model.translateToHand(arm, poseStack);   // the hand frame Minecraft's held-item layer uses
         }
         ItemKey key = new ItemKey(ItemStack.hashItemAndComponents(stack), context, left);
-        Matrix4f place = place(entity, stack, key);   // its drawn weapon at its class's length, handle on the fist (WeaponGrip)
+        Matrix4f place = place(entity, stack, key);   // a weapon at its class's length, handle on the fist; a shield strapped to the forearm (WeaponGrip)
         if (place != NONE_PLACE) poseStack.mulPose(place);
         poseStack.mulPose(Axis.XP.rotationDegrees(-90f));
         poseStack.mulPose(Axis.YP.rotationDegrees(180f));

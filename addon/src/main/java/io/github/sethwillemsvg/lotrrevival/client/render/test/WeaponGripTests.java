@@ -95,9 +95,77 @@ public final class WeaponGripTests {
 
     @GameTest(template = "empty")
     public static void classesWithoutLengthKeepTheirSeat(GameTestHelper h) {
-        h.assertTrue(WeaponGrip.place("shield", false, generatedItem(false)) == null, "a shield was placed");
         h.assertTrue(WeaponGrip.place(null, false, generatedItem(false)) == null, "an item without a class was placed");
         h.assertTrue(WeaponGrip.place("sword", false, List.of()) == null, "an item without quads was placed");
+        h.assertTrue(WeaponGrip.place("shield", false, List.of()) == null, "a shield without quads was placed");
+        h.succeed();
+    }
+
+    // ---- shields ----
+    /** A box's six faces (px), each wound counter-clockwise seen from outside. */
+    private static List<float[]> box(Vector3f a, Vector3f b) {
+        Vector3f[] c = new Vector3f[8];
+        for (int i = 0; i < 8; i++) c[i] = new Vector3f((i & 1) == 0 ? a.x : b.x, (i & 2) == 0 ? a.y : b.y, (i & 4) == 0 ? a.z : b.z);
+        return List.of(quad(c[0], c[2], c[3], c[1]), quad(c[4], c[5], c[7], c[6]), quad(c[0], c[4], c[6], c[2]),
+                quad(c[1], c[3], c[7], c[5]), quad(c[0], c[1], c[5], c[4]), quad(c[2], c[6], c[7], c[3]));
+    }
+
+    /**
+     * A shield as Middle-earth's block-element shields are shaped (a 14 x 14 x 1 px plate, its face looking away from a
+     * 2 x 6 x 6 px handle behind it), held as their display transform holds it: the face looking out sideways from the arm
+     * (-x on the right arm, +x on the left), the plate's middle 7 px up the arm from the fist. faceSign: which way the face
+     * looks along z instead (+1 or -1; 0 for the display's own sideways look), to show the strap does not depend on it.
+     */
+    private static List<float[]> shield(boolean left, int faceSign) {
+        // built facing -z (its handle behind it, toward +z), then turned so the face looks where asked
+        List<float[]> local = new ArrayList<>(box(new Vector3f(-7, -7, -0.5f), new Vector3f(7, 7, 0.5f)));
+        local.addAll(box(new Vector3f(-1, -3, 0.5f), new Vector3f(1, 3, 6.5f)));
+        Matrix4f turn = new Matrix4f().translate(left ? 5 : -5, 3, 1);
+        if (faceSign == 0) turn.rotateY((float) Math.toRadians(left ? -90 : 90));   // -z to +x (left) or -x (right)
+        else if (faceSign > 0) turn.rotateY((float) Math.PI);
+        List<float[]> out = new ArrayList<>();
+        for (float[] q : local) {
+            float[] r = new float[q.length];
+            for (int i = 0; i < q.length; i += 3) {
+                Vector3f p = turn.transformPosition(new Vector3f(q[i], q[i + 1], q[i + 2]));
+                r[i] = p.x; r[i + 1] = p.y; r[i + 2] = p.z;
+            }
+            out.add(r);
+        }
+        return out;
+    }
+
+    /** The plate's face (the first face of the plate box, looking -z before the turn) as placed: its normal and middle. */
+    private static Vector3f[] placedFace(List<float[]> quads, Matrix4f m) {
+        float[] q = quads.get(0);
+        Vector3f[] v = new Vector3f[4];
+        for (int i = 0; i < 4; i++) v[i] = m.transformPosition(new Vector3f(q[i * 3], q[i * 3 + 1], q[i * 3 + 2]));
+        Vector3f n = new Vector3f(v[1]).sub(v[0]).cross(new Vector3f(v[2]).sub(v[0])).normalize();
+        Vector3f mid = new Vector3f(v[0]).add(v[1]).add(v[2]).add(v[3]).div(4);
+        return new Vector3f[] {n, mid};
+    }
+
+    @GameTest(template = "empty")
+    public static void shieldIsStrappedToTheForearm(GameTestHelper h) {
+        for (boolean left : new boolean[] {false, true}) {
+            for (int faceSign : new int[] {0, 1, -1}) {
+                List<float[]> quads = shield(left, faceSign);
+                Matrix4f m = WeaponGrip.place("shield", left, quads);
+                String what = (left ? "left" : "right") + " arm, face " + faceSign;
+                h.assertTrue(m != null, what + ": no placement");
+                Vector3f[] face = placedFace(quads, m);
+                Vector3f back = new Vector3f(left ? 1 : -1, 0, 0);   // the back of the forearm, where the shield's face looks
+                h.assertTrue(face[0].dot(back) > 0.999f, what + ": the face looks along " + face[0] + ", not the forearm's back " + back);
+                // the plate's face 1.5 px out from the forearm's back (its middle 1 px out), level with the fist, on the arm
+                Vector3f want = new Vector3f(left ? 4.5f : -4.5f, 10, 0);
+                h.assertTrue(face[1].distance(want) < 1e-3f, what + ": the plate's face is at " + face[1] + ", not " + want);
+                // the handle stays behind the plate: every point at or behind its face
+                float front = face[1].dot(back);
+                for (float[] q : quads)
+                    for (int i = 0; i < q.length; i += 3)
+                        h.assertTrue(m.transformPosition(new Vector3f(q[i], q[i + 1], q[i + 2])).dot(back) <= front + 1e-3f, what + ": the handle is in front of the plate");
+            }
+        }
         h.succeed();
     }
 }

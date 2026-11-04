@@ -7,6 +7,7 @@ import com.mojang.logging.LogUtils;
 import io.github.sethwillemsvg.lotrrevival.combat.WeaponClass;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
@@ -32,6 +33,9 @@ import java.util.Map;
  * measures the texture square, and weapons fill 55-100% of their pictures. So faces over a quarter of the largest face
  * and over about 4 texels² (4 px²: a texel is about 1 px once held) are dropped; if that leaves nothing (a real 3D model),
  * every face counts. Its length is the farthest pair of the kept points; its grip is the kept point nearest the fist.
+ *
+ * <p>Shields have no length: they are strapped to the forearm instead (strap), measured from their own faces the same way,
+ * so every Middle-earth shield, block-element model or builtin entity model, sits face out from the back of the forearm.
  */
 public final class WeaponGrip {
     private WeaponGrip() {}
@@ -64,11 +68,12 @@ public final class WeaponGrip {
 
     /**
      * Where a held item goes: its drawn weapon scaled to the class length about its grip, the grip moved onto the fist, then
-     * the class's turn and offset. quads: the item's faces as Minecraft draws it in the arm (px), x, y, z per vertex. Null
-     * for classes without a length, and for items with nothing drawn.
+     * the class's turn and offset; a shield strapped to the forearm (strap). quads: the item's faces as Minecraft draws it
+     * in the arm (px), x, y, z per vertex. Null for other classes without a length, and for items with nothing drawn.
      */
     @Nullable
     public static Matrix4f place(@Nullable String cls, boolean left, List<float[]> quads) {
+        if ("shield".equals(cls)) return strap(left, quads);
         Grip g = cls == null ? null : grips().get(cls);
         if (g == null) return null;
         List<Vector3f> drawn = drawn(quads);
@@ -82,6 +87,123 @@ public final class WeaponGrip {
         return new Matrix4f().translate(f).translate(sign * g.offset().x, g.offset().y, g.offset().z)
                 .rotateZYX((float) Math.toRadians(sign * g.rotate().z), (float) Math.toRadians(sign * g.rotate().y), (float) Math.toRadians(g.rotate().x))
                 .scale(s).translate(-grip.x, -grip.y, -grip.z);
+    }
+
+    // ---- shields ----
+    /** The forearm in the arm's part space (px): its back (the outside of the arm's box, x 3 on the left arm, -3 on the
+     *  right), the plate's middle this far out from it, and the fist's height down the arm. */
+    private static final float ARM_BACK = 3f, GAP = 1f, FIST_Y = 10f;
+    /** How far from the plate's end a face still counts as the plate (px): the plate's two faces, one px apart. */
+    private static final float PLATE_DEPTH = 1.5f;
+
+    /**
+     * Where a shield goes: strapped to the forearm, whatever the item's own display transform did with it (Middle-earth's
+     * shields display edge-on to the front of the arm). Its face looks along the back of the forearm (the outside of the arm,
+     * +x on the left arm, -x on the right), its up along the front of the arm (-z: up when the forearm is held across the
+     * chest with its back to the front), the plate's middle GAP px out from the forearm's back, level with the fist and
+     * centred on the arm. quads: the item's faces as drawn in the arm (px), as for place. Null for an item with nothing
+     * drawn. The same strap is in tools/anim-viewer/gecko/shield.js (place), and the clips' shield arm holds the forearm
+     * across the chest with its back to the front.
+     */
+    @Nullable
+    public static Matrix4f strap(boolean left, List<float[]> quads) {
+        Plate p = plate(quads);
+        if (p == null) return null;
+        Vector3f out = new Vector3f(left ? 1 : -1, 0, 0), up = new Vector3f(0, 0, -1);
+        Matrix3f to = new Matrix3f(out, up, new Vector3f(out).cross(up));
+        Matrix3f from = new Matrix3f(p.out, p.up, new Vector3f(p.out).cross(p.up));
+        Matrix3f r = to.mul(from.transpose());
+        Vector3f at = new Vector3f((left ? 1 : -1) * (ARM_BACK + GAP), FIST_Y, 0);
+        Vector3f moved = r.transform(new Vector3f(p.centre));
+        return new Matrix4f().set(r).setTranslation(at.sub(moved));
+    }
+
+    /** A shield's plate in the arm (px): its face normal (away from the handle), its up, and its middle. */
+    record Plate(Vector3f out, Vector3f up, Vector3f centre, float back, float front) {}
+
+    private record Face(float[] q, Vector3f n, float area) {}
+
+    /**
+     * The plate of a shield's faces. Its axis: the direction the faces' area mostly looks along (the top eigenvector of the
+     * area-weighted normal tensor), which a flat plate's two big faces decide. Its outside: the end of that axis where the
+     * faces square to it gather most area within PLATE_DEPTH (the plate), away from the handle behind it; a flat item with
+     * nothing behind its plate keeps the axis' own sign. Its up: in the plate, the item's up as displayed (arm space -z, or
+     * -y when the plate is square to z), unless the plate is a quarter longer the other way, then that long axis (pointing
+     * up or forward). Null with nothing drawn.
+     */
+    @Nullable
+    static Plate plate(List<float[]> quads) {
+        List<Face> faces = new ArrayList<>();
+        for (float[] q : quads) {
+            Vector3f n = new Vector3f();
+            int count = q.length / 3;
+            for (int i = 0; i < count; i++) {   // Newell's method: twice the area along the normal
+                int j = (i + 1) % count;
+                float ax = q[i * 3], ay = q[i * 3 + 1], az = q[i * 3 + 2], bx = q[j * 3], by = q[j * 3 + 1], bz = q[j * 3 + 2];
+                n.add((ay - by) * (az + bz), (az - bz) * (ax + bx), (ax - bx) * (ay + by));
+            }
+            float len = n.length();
+            if (len / 2 > 1e-9f) faces.add(new Face(q, n.div(len), len / 2));
+        }
+        if (faces.isEmpty()) return null;
+        Matrix3f tensor = new Matrix3f().zero();
+        Face largest = faces.get(0);
+        for (Face f : faces) {
+            for (int r = 0; r < 3; r++) for (int c = 0; c < 3; c++) tensor.set(c, r, tensor.get(c, r) + f.area() * f.n().get(r) * f.n().get(c));
+            if (f.area() > largest.area()) largest = f;
+        }
+        Vector3f v = new Vector3f(largest.n());
+        for (int k = 0; k < 60; k++) tensor.transform(v).normalize();
+        float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
+        for (Face f : faces) for (int i = 0; i + 2 < f.q().length; i += 3) {
+            float s = v.x * f.q()[i] + v.y * f.q()[i + 1] + v.z * f.q()[i + 2];
+            lo = Math.min(lo, s);
+            hi = Math.max(hi, s);
+        }
+        float aLo = 0, aHi = 0;
+        for (Face f : faces) {
+            if (Math.abs(f.n().dot(v)) <= 0.9f) continue;
+            float s = along(f, v);
+            if (Math.abs(s - lo) <= PLATE_DEPTH) aLo += f.area();
+            if (Math.abs(s - hi) <= PLATE_DEPTH) aHi += f.area();
+        }
+        boolean atLo = aLo > aHi * 1.001f;
+        Vector3f out = atLo ? new Vector3f(v).negate() : new Vector3f(v);
+        float end = atLo ? lo : hi;
+        List<Vector3f> pts = new ArrayList<>();
+        for (Face f : faces) {
+            if (Math.abs(f.n().dot(v)) <= 0.9f || Math.abs(along(f, v) - end) > PLATE_DEPTH) continue;
+            for (int i = 0; i + 2 < f.q().length; i += 3) pts.add(new Vector3f(f.q()[i], f.q()[i + 1], f.q()[i + 2]));
+        }
+        Vector3f forward = new Vector3f(0, 0, -1), e1 = inPlane(forward, out);
+        if (new Vector3f(forward).sub(new Vector3f(out).mul(forward.dot(out))).length() < 0.5f) e1 = inPlane(new Vector3f(0, -1, 0), out);
+        Vector3f e2 = new Vector3f(out).cross(e1);
+        float[] r1 = range(pts, e1), r2 = range(pts, e2), ro = range(pts, out);
+        Vector3f up = e1;
+        if (r2[1] - r2[0] > 1.25f * (r1[1] - r1[0])) up = e2.dot(0, -1, -1) < 0 ? new Vector3f(e2).negate() : e2;
+        Vector3f centre = new Vector3f(e1).mul((r1[0] + r1[1]) / 2).add(new Vector3f(e2).mul((r2[0] + r2[1]) / 2)).add(new Vector3f(out).mul((ro[0] + ro[1]) / 2));
+        return new Plate(out, new Vector3f(up), centre, ro[0], ro[1]);
+    }
+
+    private static float along(Face f, Vector3f v) {
+        float s = 0;
+        int count = f.q().length / 3;
+        for (int i = 0; i < count; i++) s += v.x * f.q()[i * 3] + v.y * f.q()[i * 3 + 1] + v.z * f.q()[i * 3 + 2];
+        return s / count;
+    }
+
+    private static Vector3f inPlane(Vector3f d, Vector3f normal) {
+        return new Vector3f(d).sub(new Vector3f(normal).mul(d.dot(normal))).normalize();
+    }
+
+    private static float[] range(List<Vector3f> pts, Vector3f d) {
+        float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
+        for (Vector3f p : pts) {
+            float s = p.dot(d);
+            lo = Math.min(lo, s);
+            hi = Math.max(hi, s);
+        }
+        return new float[] {lo, hi};
     }
 
     /** The drawn weapon's points: every face's but a generated model's big faces (see the class comment). */
