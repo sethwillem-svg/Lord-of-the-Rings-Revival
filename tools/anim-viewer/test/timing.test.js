@@ -9,14 +9,18 @@
  * Unarmed blows are thrown on man's tempo by every race (spec, edge cases), so they are held to man's limits.
  * T8 (race tempo order on the wind-up time) is not repeated here: fighting.test.js checks it on hit − lead
  * ("dwarves ... take longer than a man's", "elves swing swiftly", "hobbits ... a quicker wind-up").
- * T4 and T7 only judge attacks with a wind-up (apex − lead) of 0.1 s or more: a share of a near-zero phase is noise. */
+ * T4 and T7 only judge attacks with a wind-up (apex − lead) of 0.1 s or more: a share of a near-zero phase is noise.
+ * T1, T2, T3, T5, T6, T7 and T9 are parked as ratchets (test/lib/known.js): the attacks known to fail each are listed, any
+ * other failure fails the check, and so does a listed attack that now passes. */
 const test = require('node:test');
+const assert = require('node:assert/strict');
 const M = require('./lib/motion.js');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { RACES, STYLE } = require('../npc_slots.js');
 const { shipped } = require('./lib/shipped.js');
 const { FIST, baseName, tipRest, tipOf, report, pathIn, within, peak, median } = require('./lib/swing.js');
-const { mostly } = require('./lib/pairs.js');
+const { pairs } = require('./lib/pairs.js');
+const { ratchet } = require('./lib/known.js');
 
 const clips = [];   // every attack and its twins: { race, name, anim, fs, h, tip }
 for (const race of RACES) for (const [name, anim] of Object.entries(shipped[race].animations.animations)) {
@@ -30,6 +34,8 @@ const plain = clips.filter((c) => !twin(c));
 /** Whose tempo limits an attack answers to: its race's, or man's for an unarmed blow. */
 const tempoRace = (c) => (/^attack_unarmed_/.test(c.name) ? 'man' : c.race);
 const f2 = (x) => x.toFixed(2);
+/** A failure of one attack, keyed for the ratchet lists (test/lib/known.js). */
+const fail = (c, what) => ({ key: `${c.race}/${c.name}`, msg: `${c.race} ${c.name}: ${what}` });
 
 /** The swing's phase times (s): lead-in end, apex, end of the tame, hit, end of the strike, end of the recovery. */
 function phases(c) {
@@ -80,38 +86,39 @@ const T5 = { dwarf: 0.55, orc: 0.55, man: 0.45, hobbit: 0.45, elf: 0.45 };
 const T6 = { dwarf: 0.6, orc: 0.55, man: 0.45, hobbit: 0.45, elf: 0.45 };
 const T7 = { dwarf: [1.1, Infinity], elf: [0, 0.9], man: [0.8, 1.2], hobbit: [0.8, 1.2], orc: [0.8, 1.2] };
 
-/** T1's hold: the race's tame (STYLE tempo), not the clip's own hits.json tame, which the build drops on short wind-ups;
- *  unarmed blows take 0.03 s (spec, edge cases) and elves at least 0.03 s (the turnaround still reads). */
+/** T1's hold: the race's own tame (STYLE tempo; spec T1, "≥ race tame"), not the clip's hits.json tame, which the build
+ *  drops on a fast apex or a short wind-up; unarmed blows take 0.03 s (spec, edge cases) and elves at least 0.03 s (the
+ *  turnaround still reads). */
 const tameOf = (c) => Math.max(/^attack_unarmed_/.test(c.name) ? 0.03 : STYLE[c.race].tempo.tame, c.race === 'elf' ? 0.03 : 0);
 
-test('T1 kime: the wind-up apex reads as a held beat, the tip under 10% of its peak for at least the race\u2019s tame (elves 0.03 s)', { todo: 'elves have tame 0 and no slow turnaround at the apex; tempo() drops the tame for wind-ups < 0.05 s' }, () => {
+test('T1 kime: the wind-up apex reads as a held beat, the tip under 10% of its peak for at least the race\u2019s tame (elves 0.03 s)', () => {
   const bad = [];
   for (const c of plain) {
     const need = tameOf(c), d = dwell(c);
-    if (d < need - 1e-6) bad.push(`${c.race} ${c.name}: held ${d.toFixed(3)} s, tame ${need} s`);
+    if (d < need - 1e-6) bad.push(fail(c, `held ${d.toFixed(3)} s, tame ${need} s`));
   }
-  report(bad);
+  ratchet('T1', bad);
 });
 
-test('T2 kime: the tip at the apex, the hit and the end are three poses, each at least half a blade from the others', { todo: 'needs authored anticipation/settle key poses (spec follow-up)' }, () => {
+test('T2 kime: the tip at the apex, the hit and the end are three poses, each at least half a blade from the others', () => {
   const bad = [];
   for (const c of plain) {
     const p = phases(c), pts = [['apex', p.apex], ['hit', p.hit], ['end', p.end]].map(([k, t]) => [k, tipAt(c, t)]), min = 8 * c.tip.len;
     for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
-      const d = M.len(M.sub(pts[i][1], pts[j][1]));
-      if (d < min) bad.push(`${c.race} ${c.name}: ${pts[i][0]}–${pts[j][0]} ${d.toFixed(1)} px (half a blade ${min} px)`);
+      const d = M.len(M.sub(pts[i][1], pts[j][1])), pair = `${pts[i][0]}-${pts[j][0]}`;
+      if (d < min) bad.push({ key: `${c.race}/${c.name} ${pair}`, msg: `${c.race} ${c.name}: ${pair} ${d.toFixed(1)} px (half a blade ${min} px)` });
     }
   }
-  report(bad);
+  ratchet('T2', bad);
 });
 
-test('T3 meri-hari: the peak speed is many times the swing’s median (man, hobbit 4; elf 3; orc 5; dwarf 6)', { todo: 'Sword_Swing_3R has no slow stretch' }, () => {
+test('T3 meri-hari: the peak speed is many times the swing’s median (man, hobbit 4; elf 3; orc 5; dwarf 6)', () => {
   const bad = [];
   for (const c of plain) {
     const r = meriHari(c), lim = T3[tempoRace(c)];
-    if (!(r >= lim)) bad.push(`${c.race} ${c.name}: ${f2(r)} (≥ ${lim})`);
+    if (!(r >= lim)) bad.push(fail(c, `${f2(r)} (≥ ${lim})`));
   }
-  report(bad);
+  ratchet('T3', bad);
 });
 
 test('T4 tsume: the wind-up slows into the apex, its last 30% of time carrying little of its path (dwarf 15%, man/hobbit 22%, elf 26%, orc 30%)', () => {
@@ -123,34 +130,34 @@ test('T4 tsume: the wind-up slows into the apex, its last 30% of time carrying l
   report(bad);
 });
 
-test('T5 tsume: the strike is a burst, at least 45% of the swing’s path (dwarf, orc 55%) in at most 30% of its time', { todo: 'needs authored anticipation/settle key poses (spec follow-up)' }, () => {
+test('T5 tsume: the strike is a burst, at least 45% of the swing’s path (dwarf, orc 55%) in at most 30% of its time', () => {
   const bad = [];
   for (const c of plain) {
     const r = strikeTsume(c), lim = T5[tempoRace(c)];
-    if (!(r.path >= lim) || !(r.time <= 0.3)) bad.push(`${c.race} ${c.name}: path ${f2(r.path)} (≥ ${lim}), time ${f2(r.time)} (≤ 0.3)`);
+    if (!(r.path >= lim) || !(r.time <= 0.3)) bad.push(fail(c, `path ${f2(r.path)} (≥ ${lim}), time ${f2(r.time)} (≤ 0.3)`));
   }
-  report(bad);
+  ratchet('T5', bad);
 });
 
-test('T6 tsume: the recovery leaves the hit fast and settles slowly, its first 30% of time carrying most of its path (dwarf 60%, orc 55%, others 45%)', { todo: 'Warrior_bashR recovery pauses then pulls back' }, () => {
+test('T6 tsume: the recovery leaves the hit fast and settles slowly, its first 30% of time carrying most of its path (dwarf 60%, orc 55%, others 45%)', () => {
   const bad = [];
   for (const c of plain) {
     const r = recoverTsume(c), lim = T6[tempoRace(c)];
-    if (!(r >= lim)) bad.push(`${c.race} ${c.name}: ${f2(r)} (≥ ${lim})`);
+    if (!(r >= lim)) bad.push(fail(c, `${f2(r)} (≥ ${lim})`));
   }
-  report(bad);
+  ratchet('T6', bad);
 });
 
-test('T7 weight: recovery time over wind-up time — dwarves settle long (≥ 1.1), elves snap back (≤ 0.9), others 0.8..1.2', { todo: 'man longsword_3, orc sword_4: wind-up too short against the recovery' }, () => {
+test('T7 weight: recovery time over wind-up time — dwarves settle long (≥ 1.1), elves snap back (≤ 0.9), others 0.8..1.2', () => {
   const bad = [];
   for (const c of plain.filter(windsUp)) {
     const r = weight(c), [lo, hi] = T7[tempoRace(c)];
-    if (!(r >= lo && r <= hi)) bad.push(`${c.race} ${c.name}: ${f2(r)} (${lo}..${hi})`);
+    if (!(r >= lo && r <= hi)) bad.push(fail(c, `${f2(r)} (${lo}..${hi})`));
   }
-  report(bad);
+  ratchet('T7', bad);
 });
 
-test('T9 orcs end off balance: on the same swing as a man, the torso ends ≥ 8° from idle and the free hand ≥ 6 px further from rest', { todo: 'orc off-balance end: 2/4 weapon attacks' }, () => {
+test('T9 orcs end off balance: on the same swing as a man, the torso ends ≥ 8° from idle and the free hand ≥ 6 px further from rest', () => {
   const pose = (race, name, t) => worldBones(samplePose(shipped[race].animations.animations[name], t));
   const idle = (race) => pose(race, 'idle', 0);
   const end = (race, n) => { const h = shipped[race].hits[n]; return pose(race, n, h.length - (h.ready || 0)); };
@@ -158,10 +165,14 @@ test('T9 orcs end off balance: on the same swing as a man, the torso ends ≥ 8�
   const handOff = (race, n) => M.len(M.sub(hand(end(race, n)), hand(idle(race))));
   // an unarmed blow may strike with the left hand, so its "free" hand is not free: weapon attacks only
   const armed = (n) => !/^attack_unarmed_/.test(n);
-  mostly('orc', 'ends off balance', (n) => {
+  const ps = pairs('orc').filter(armed), bad = [];
+  assert.ok(ps.length >= 3, `orc: only ${ps.length} attacks to compare`);
+  for (const n of ps) {
     const a = M.waist(end('orc', n)), b = M.waist(idle('orc'));
-    return (Math.abs(a.twist - b.twist) >= 8 || Math.abs(a.flex - b.flex) >= 8) && handOff('orc', n) >= handOff('man', n) + 6;
-  }, true, armed);
+    const torso = Math.max(Math.abs(a.twist - b.twist), Math.abs(a.flex - b.flex)), hand = handOff('orc', n) - handOff('man', n);
+    if (!(torso >= 8 && hand >= 6)) bad.push({ key: `orc/${n}`, msg: `orc ${n}: torso ${f2(torso)}° (≥ 8), free hand +${f2(hand)} px (≥ 6)` });
+  }
+  ratchet('T9', bad);
 });
 
 test('twins: the _l and _shield versions give the plain attack’s meri-hari (T3) and weight (T7) within 1%', () => {

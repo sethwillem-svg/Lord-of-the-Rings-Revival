@@ -9,7 +9,8 @@ const { RACES } = require('../npc_slots.js');
 const M = require('./lib/motion.js');
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
-const { ATTACK, mostly } = require('./lib/pairs.js');   // race against man on the same swing
+const { ATTACK, pairs, mostly } = require('./lib/pairs.js');   // race against man on the same swing
+const { ratchet } = require('./lib/known.js');   // parked checks
 const { playSpeed } = require('./lib/game.js');   // tempo is judged as the game plays the clip
 const anim = (race, name) => built[race].animations.animations[name];
 const attacks = (race) => Object.keys(built[race].animations.animations).filter((n) => ATTACK.test(n));
@@ -122,8 +123,14 @@ test('orcs strike fast: on the same swing, a faster strike (10% more top speed)'
   mostly('orc', 'strikes faster', (n) => topSpeed('orc', n) > topSpeed('man', n) * 1.1, false, ownTempo);
 });
 
-test('orcs strike wide: on the same swing, a wider arc', { todo: 'parked for the maintainer: 4/7' }, () => {
-  mostly('orc', 'swings a wider arc', (n) => strikeArc('orc', n) > strikeArc('man', n) * 1.1, false);
+test('orcs strike wide: on the same swing, a wider arc (parked as a ratchet: test/lib/known.js orcArc)', () => {
+  const ps = pairs('orc', false), bad = [];
+  assert.ok(ps.length >= 3, `orc: only ${ps.length} attacks to compare`);
+  for (const n of ps) {
+    const o = strikeArc('orc', n), m = strikeArc('man', n);
+    if (!(o > m * 1.1)) bad.push({ key: `orc/${n}`, msg: `orc ${n}: arc ${o.toFixed(1)}°, man ${m.toFixed(1)}° (> 1.1×)` });
+  }
+  ratchet('orcArc', bad);
 });
 
 test('dwarves swing heavy and overhead: the wind-up lifts the weapon over the head on 3 in 4 attacks, and takes longer than a man\u2019s', () => {

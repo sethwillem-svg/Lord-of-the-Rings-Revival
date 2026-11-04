@@ -96,7 +96,7 @@ excluding the ready ease.
 | T6 | tsume, recovery | share of the recovery's tip path in its first 30 % of time (fast leave, slow settle) | dwarf ≥ 60 %, orc ≥ 55 %, others ≥ 45 % |
 | T7 | weight by contrast (Yoshida) | recovery time ÷ wind-up time | dwarf ≥ 1.1 (the long "doooon"), elf ≤ 0.9 (snaps back), others 0.8..1.2 |
 | T8 | race tempo order | wind-up time per clip, in game time (see Edge cases) | dwarf > man > elf, hobbit < man (3 in 4 on shared clips, as `mostly()` does) |
-| T9 | off balance (orc) | at the end of recovery the `upper`/`body` bone is ≥ 8° from the idle pose, and the free hand ≥ 6 px further from rest than a man's on the same clip | orcs, 3 in 4 |
+| T9 | off balance (orc) | at the end of recovery the `upper`/`body` bone is ≥ 8° from the idle pose, and the free hand ≥ 6 px further from rest than a man's on the same clip | orcs, 3 in 4 (parked: see Parked / known gaps) |
 | T10 | hitstop numbers | `Hitstop.ticks(race, cls)` table above | GameTest `HitstopTests` in `combat/test` |
 | T11 | hitstop fires | a landed held hit sends one `NpcHitPayload` with `ticks == Hitstop.ticks(...)`; a missed one (target stepped out) sends none | GameTest, extends `AttackTimingTests` with a captured `PacketDistributor` sink or a static listener hook on `AttackTiming` |
 
@@ -110,6 +110,30 @@ orc `attack_sword_4` 2.74 → 3.78.
   the 60 Hz grid, instead of a blind 120 Hz grid; velocities between consecutive samples. Pose tracks per shipped file are
   cached in `tools/anim-viewer/test/.cache/<sha1 of file>.json` (git-ignored) so a run without a rebuild takes seconds.
   Target: the whole suite under 2 minutes on the maintainer's machine.
+
+### Parked / known gaps
+
+T1, T2, T3, T5, T6, T7 and T9 (`timing.test.js`) and "orcs strike wide" (`fighting.test.js`) do not pass on every attack
+yet. Each is parked as a ratchet (`tools/anim-viewer/test/lib/known.js`): the attacks known to fail it are listed by race
+(T2 also names the pose pair). The check fails on an attack that is not listed and on a listed attack that now passes, so
+a list can only shrink. Counts on 80 plain attacks (16 per race) unless noted:
+
+| Check | Fail | man | elf | dwarf | hobbit | orc | Why |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| T1 | 54/80 | 10 | 16 | 8 | 12 | 8 | no slow apex to hold: elves have no tame, and the build drops it on a fast apex or a wind-up under 0.05 s |
+| T2 | 44 pose pairs | 11 | 9 | 5 | 12 | 7 | nearly all hit–end: the follow-through ends close to the hit |
+| T3 | 5/80 | 2 | 1 | 0 | 2 | 0 | Sword_Swing_3R has no slow stretch |
+| T5 | 52/80 | 10 | 8 | 7 | 12 | 15 | the strike takes too much of the swing's time or too little of its path |
+| T6 | 5/80 | 1 | 1 | 1 | 1 | 1 | Warrior_bashR (`attack_shield_1`): its recovery pauses, then pulls back |
+| T7 | 2/12 judged | 1 | 0 | 0 | 0 | 1 | wind-up too short against the recovery (see above) |
+| T9 | 2/4 | – | – | – | – | 2 | Wand_Wave_1R and Sword_Swing_3R do not end off balance enough |
+| Orcs strike wide | 3/7 | – | – | – | – | 3 | the arc is no wider than a man's on these swings |
+
+Before the dwarf `windup`/`recover` retune (see Time warp) T2 had 46 failing pairs and T5 54 attacks; the retune fixed two
+dwarf T2 pairs and two dwarf T5 attacks and broke none.
+
+Follow-up: authored anticipation and settle key poses (a readable apex pose and an end pose away from the hit) for the
+clips on these lists. The maintainer has not yet decided whether to author them or to accept the gaps.
 
 ## Edge cases
 
