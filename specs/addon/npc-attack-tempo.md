@@ -38,17 +38,20 @@ hit and settle marked, so the tempo can be checked by eye without the game.
 
 | Field | Meaning | man | elf | dwarf | hobbit | orc |
 | --- | --- | --- | --- | --- | --- | --- |
-| `windup` | phase scale, lead-in end → apex | 1 | 0.82 | 1.35 | 0.75 | 0.9 |
+| `windup` | phase scale, lead-in end → apex | 1 | 0.82 | 2.0 | 0.75 | 0.9 |
 | `tame` | hold at the apex, seconds (was `hold`) | 0.05 | 0 | 0.15 | 0.03 | 0.02 |
 | `strike` | phase scale, apex → hit + 0.05 s | 1 | 0.85 | 1.3 | 0.85 | 0.78 |
-| `recover` | phase scale, hit + 0.05 s → end | 1.3 | 1.3 | 1.7 | 1.2 | 1.2 |
+| `recover` | phase scale, hit + 0.05 s → end | 1.3 | 1.3 | 1.6 | 1.2 | 1.2 |
 | `tsume.windup` | p ≥ 1: slows into the apex, `g(u) = 1 − (1 − u)^p` | 1.6 | 1.3 | 2.6 | 1.4 | 1.25 |
 | `tsume.strike` | p ≥ 1: accelerates out of the apex to the hit, `g(u) = u^p` | 1.6 | 1.3 | 3.0 | 1.5 | 2.4 |
 | `tsume.recover` | p ≥ 1: leaves the hit fast, settles slowly, `g(u) = 1 − (1 − u)^p` | 2.0 | 1.6 | 4.0 | 1.9 | 2.4 |
 | `ready` | ease back to the idle pose at the end | false | true | false | false | false |
 
 Tuned in Task 3 against fighting.test.js and in Task 4 against timing.test.js (longer, more front-loaded recoveries; the
-orc free arm flails 2.5× its swing); relative race behaviour is the binding part.
+orc free arm flails 2.5× its swing); relative race behaviour is the binding part. The dwarf `windup` (1.35 → 2.0) and
+`recover` (1.7 → 1.6) were retuned when the race tempo checks moved to game time (see Edge cases): at 1.35/1.7 the 18-tick
+squeeze left dwarves slower than a man on only 5/7 shared clips; 2.0/1.6 gives 6/7 and no new failure elsewhere (a shorter
+`recover` alone pushed two more dwarf sword clips over T5's time share).
 Orcs also draw the wind-up back after posture (`fight.windupAfter`): bounded at 150° from the front, never moving the swing's start forward, judged on the finished clip.
 
 - `g` maps **new** phase progress `u ∈ [0,1]` to **source** progress; the warp applied to key times is its inverse
@@ -92,7 +95,7 @@ excluding the ready ease.
 | T5 | tsume, strike | the strike phase holds ≥ 45 % of the swing's tip path while taking ≤ 30 % of its time | all races; dwarf and orc ≥ 55 % |
 | T6 | tsume, recovery | share of the recovery's tip path in its first 30 % of time (fast leave, slow settle) | dwarf ≥ 60 %, orc ≥ 55 %, others ≥ 45 % |
 | T7 | weight by contrast (Yoshida) | recovery time ÷ wind-up time | dwarf ≥ 1.1 (the long "doooon"), elf ≤ 0.9 (snaps back), others 0.8..1.2 |
-| T8 | race tempo order | wind-up time per clip | dwarf > man > elf, hobbit < man (3 in 4 on shared clips, as `mostly()` does) |
+| T8 | race tempo order | wind-up time per clip, in game time (see Edge cases) | dwarf > man > elf, hobbit < man (3 in 4 on shared clips, as `mostly()` does) |
 | T9 | off balance (orc) | at the end of recovery the `upper`/`body` bone is ≥ 8° from the idle pose, and the free hand ≥ 6 px further from rest than a man's on the same clip | orcs, 3 in 4 |
 | T10 | hitstop numbers | `Hitstop.ticks(race, cls)` table above | GameTest `HitstopTests` in `combat/test` |
 | T11 | hitstop fires | a landed held hit sends one `NpcHitPayload` with `ticks == Hitstop.ticks(...)`; a missed one (target stepped out) sends none | GameTest, extends `AttackTimingTests` with a captured `PacketDistributor` sink or a static listener hook on `AttackTiming` |
@@ -114,8 +117,12 @@ orc `attack_sword_4` 2.74 → 3.78.
 - Death: an NPC that dies during a freeze plays the death animation normally (the overlay fade drops the freeze).
 - Shield and `_l` twins: built from the finished (already tempo'd) swing, so they inherit the timing; T1–T9 run on them too
   (they must give the same numbers as the plain clip within 1 %).
-- Speed > 1 from `AttackTiming` (long clips compressed into the 18-tick window) scales tame too; a dwarf longsword at speed
-  1.4 holds ~0.1 s. Acceptable; if a tame drops under 1 tick it simply reads as a turnaround.
+- Speed > 1 from `AttackTiming` (long clips compressed into the 18-tick window: speed = max(1, length ticks / 18, hit
+  ticks / 12)) scales tame too; a dwarf longsword at speed 1.4 holds ~0.1 s. Acceptable; if a tame drops under 1 tick it
+  simply reads as a turnaround. The same squeeze can erase a race's tempo difference: a slow dwarf clip longer than 18
+  ticks is played faster, back toward a man's. So the race-vs-man tempo checks in `fighting.test.js` (dwarves slower,
+  elves swifter, hobbits quicker, orcs faster at the top) measure in game time, dividing times by that speed and
+  multiplying speeds by it (`test/lib/game.js`, whose constants follow `AttackTiming.java`).
 - Ranged and unarmed: unarmed attacks get the man table with `tame 0.03`; ranged releases are untouched.
 - Koma-uchi (holding on twos/threes) is **not** shipped; the viewer gets a "Step: 1/2/3" toggle that quantises playback
   time so the look can be judged. If it reads well for orcs it becomes a later spec.

@@ -10,6 +10,7 @@ const M = require('./lib/motion.js');
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
 const { ATTACK, mostly } = require('./lib/pairs.js');   // race against man on the same swing
+const { playSpeed } = require('./lib/game.js');   // tempo is judged as the game plays the clip
 const anim = (race, name) => built[race].animations.animations[name];
 const attacks = (race) => Object.keys(built[race].animations.animations).filter((n) => ATTACK.test(n));
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -76,12 +77,14 @@ test('hobbits strike low and quick: on the same swing, a lower strike and a quic
 });
 
 // ---- tempo: how each race times its swing (STYLE.tempo) ----
+// Judged in game time: combat.AttackTiming plays a clip longer than 18 ticks (or hitting after 12) faster to fit the melee
+// rhythm (test/lib/game.js playSpeed), which can squeeze a race's slower tempo back toward a man's.
 /** Unarmed blows take man's tempo in every race (spec), so race-vs-man tempo checks leave them out. */
 const ownTempo = (n) => !/^attack_unarmed_/.test(n);
-/** Seconds from the authored swing's start (after any lead-in) to the hit. */
-const windupTime = (race, n) => built[race].hits[n].hit - (built[race].hits[n].lead || 0);
-/** The tip's top speed in the strike (px/s). */
-const topSpeed = (race, n) => Math.max(...M.velocities(M.track(framesOf(race, n), 'weapon_r', blade('right', classLength(n), 1))).map((x) => x.speed));
+/** Seconds from the authored swing's start (after any lead-in) to the hit, as the game plays it. */
+const windupTime = (race, n) => { const h = built[race].hits[n]; return (h.hit - (h.lead || 0)) / playSpeed(h); };
+/** The tip's top speed in the strike (px/s), as the game plays it. */
+const topSpeed = (race, n) => playSpeed(built[race].hits[n]) * Math.max(...M.velocities(M.track(framesOf(race, n), 'weapon_r', blade('right', classLength(n), 1))).map((x) => x.speed));
 
 test('elves swing swiftly: on the same swing, the wind-up to the hit takes under 90% of a man\u2019s time', () => {
   mostly('elf', 'winds up swiftly', (n) => windupTime('elf', n) < windupTime('man', n) * 0.9, false, ownTempo);
