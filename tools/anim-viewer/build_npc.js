@@ -304,16 +304,17 @@ const EDGE_HOLD = 0.05;
  * roll that puts it square to the swing. A double-edged blade may take that roll half a turn the other way instead,
  * whichever leaves less twist; a single-edged one takes whichever of the two leads with its edge (EDGE). The roll moves the
  * wrist's twist, so the limbs are then brought back within their twist range (hinge.js limitTwist), the weapon keeping
- * its roll through `hold` ([from, to] s on this clip's clock: the game tick either side of the hit as played). Returns the
- * clip (a new one when anything changed).
+ * its roll through `hold` ([from, to] s on this clip's clock: the game tick either side of the hit as played) and, with
+ * `anatomy`, within the shoulder's range and out of the body as far as a swivel can bring them. Returns the clip (a new
+ * one when anything changed).
  */
-function edgeAlign(clip, slot, side, hit, hold = [hit, hit]) {
+function edgeAlign(clip, slot, side, hit, hold = [hit, hit], anatomy = false) {
   const bone = side === 'left' ? 'weapon_l' : 'weapon_r', ch = clip.bones[bone], cls = slot.split('_')[1];
   // the hands may roll what they hold about its length where no swivel keeps the wrist in range; an edge keeps its roll
   // through the strike
   const roll = { weapon_r: STRIKE_DIR, weapon_l: [-STRIKE_DIR[0], STRIKE_DIR[1], STRIKE_DIR[2]] };
   const edged = DOUBLE_EDGED.has(cls) || SINGLE_EDGED.has(cls);
-  const limit = (c, a = 0) => limitTwist(c, { roll, held: [bone], keep: edged ? { [bone]: hold } : {}, preRoll: { [bone]: a } });
+  const limit = (c, a = 0) => limitTwist(c, { roll, held: [bone], keep: edged ? { [bone]: hold } : {}, preRoll: { [bone]: a }, anatomy });
   if (!ch || !ch.rotation || !edged) return limit(clip);
   const len = classLength(slot), anim = animationJson({ c: clip }).animations.c;
   const dt = 1 / 120, tipAt = (t) => point(worldBones(samplePose(anim, Math.max(0, Math.min(clip.length, t))))[bone], bladeAt(side, len, 1));
@@ -332,9 +333,13 @@ function edgeAlign(clip, slot, side, hit, hold = [hit, hit]) {
     const edge = mulVec(R, mulVec(eulerAxis(axis, (best * Math.PI) / 180), side === 'left' ? [-EDGE[0], EDGE[1], EDGE[2]] : EDGE));
     return rolled(edge[0] * v[0] + edge[1] * v[1] + edge[2] * v[2] >= 0 ? best : flip);
   }
-  const tried = [best, flip].map((a) => ({ a, c: rolled(a) })).map((x) => ({ ...x, tw: peakTwist(x.c) }));
-  // least past range first, then the wrist twisted least, then the shorter roll
-  return tried.reduce((b, x) => ((x.tw.past < b.tw.past - 1e-6 || (Math.abs(x.tw.past - b.tw.past) <= 1e-6 && x.tw.end < b.tw.end - 1e-6)) ? x : b)).c;
+  const tried = [best, flip].map((a) => ({ a, c: rolled(a) })).map((x) => ({ ...x, tw: peakTwist(x.c, anatomy) }));
+  // least past range first, then (with `anatomy`) the arms least past theirs, then the wrist twisted least, then the
+  // shorter roll
+  const near = (x, y) => Math.abs(x - y) <= 1e-6;
+  const better = (x, b) => x.tw.past < b.tw.past - 1e-6 || (near(x.tw.past, b.tw.past)
+    && ((anatomy && x.tw.anatomy < b.tw.anatomy - 1e-6) || ((!anatomy || near(x.tw.anatomy, b.tw.anatomy)) && x.tw.end < b.tw.end - 1e-6)));
+  return tried.reduce((b, x) => (better(x, b) ? x : b)).c;
 }
 const mulVec = (R, v) => [0, 1, 2].map((r) => R[r * 3] * v[0] + R[r * 3 + 1] * v[1] + R[r * 3 + 2] * v[2]);
 function eulerAxis(u, a) {
@@ -451,22 +456,25 @@ function drawBack(clip, slot, w) {
 /**
  * The finishing steps every attack goes through after its race's fighting style: posture, a lead-in from standing, the
  * hips following the torso, smooth curves, true hinges resampled evenly, and the edge leading. The style check (fought)
- * judges this exact output.
+ * judges this exact output, without `anatomy`: that (the arms swivelled within the shoulder's range and out of the body,
+ * hinge.js limitTwist opts.anatomy) is added once the clip is chosen, on the clip that ships (buildRace checks it still
+ * meets the bar). It only swivels the arms, the hands and weapon left where they are, and is slow enough to build that
+ * the many clips tried while choosing would take minutes more.
  */
-function finishAttack(clip, slot, style, idle, side = 'right', walk = null) {
+function finishAttack(clip, slot, style, idle, side = 'right', walk = null, anatomy = false) {
   const c = clone(clip);
   applyStyle(c, slot, style);
   const w = style.fight && style.fight.windupAfter && c.fightK ? style.fight.windupAfter * c.fightK : 0;
   const back = w ? drawBack(c, slot, w) : c;
-  if (back === c) return finishPostured(c, slot, style, idle, side, walk);
+  if (back === c) return finishPostured(c, slot, style, idle, side, walk, anatomy);
   // the drawn-back wind-up, kept only if the finished swing still starts further back than it would without it
   const len = classLength(slot), at = (x) => { const a = animationJson({ c: x }).animations.c; return startOf(a, len, strikeHit(a, len, side), x.lead || 0); };
-  const pushed = finishPostured(back, slot, style, idle, side, walk), plain = finishPostured(c, slot, style, idle, side, walk);
+  const pushed = finishPostured(back, slot, style, idle, side, walk, anatomy), plain = finishPostured(c, slot, style, idle, side, walk, anatomy);
   return furtherBack(at(pushed), at(plain)) ? pushed : plain;
 }
 
 /** finishAttack's steps after posture (and any drawn-back wind-up). */
-function finishPostured(c, slot, style, idle, side, walk) {
+function finishPostured(c, slot, style, idle, side, walk, anatomy = false) {
   hipsFollow(c);
   smooth(c);
   c = hingeify(c, { rate: 60, filter: true });
@@ -488,7 +496,7 @@ function finishPostured(c, slot, style, idle, side, walk) {
   // as it stands: the roll and the twist limit after it leave the weapon's path where it is, but Euler keys can stray from
   // it between them by a fraction of a pixel, enough to move a slow apex
   const t = tempoFor(slot, style), at = t ? warpOf(c, slot, t, side) : null, s = strikePose(c, slot, t, at, idle, side);
-  c = edgeAlign(c, slot, side, s.hit, s.hold);
+  c = edgeAlign(c, slot, side, s.hit, s.hold, anatomy);
   return tempo(c, slot, t, idle, side, null, at);
 }
 
@@ -726,8 +734,16 @@ function buildRace(race, sources, slots = SLOTS) {
     if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
       leftOf.push(slot);   // mirrored from the finished swing below: an exact twin
     }
-    if (/^attack_/.test(slot)) c = finishAttack(c, slot, style, clips.idle, 'right', clips.walk);
-    else {
+    if (/^attack_/.test(slot)) {
+      // chosen without the arms' anatomy (finishAttack), which should leave it at the bar: where it would not, the attack
+      // ships without it (test/anatomy.test.js lists it)
+      const kept = finishAttack(c, slot, style, clips.idle, 'right', clips.walk, true);
+      if (meta[slot].missesBar || meetsBar(animationJson({ c: kept }).animations.c, slot)) c = kept;
+      else {
+        console.log(`${race}: ${slot} misses the bar with the arms' anatomy: shipped without it`);
+        c = finishAttack(c, slot, style, clips.idle, 'right', clips.walk);
+      }
+    } else {
       applyStyle(c, slot, style);
       if (slot === 'run') groundFeet(c);   // the sprint's long airborne phase floats both feet
       hipsFollow(c);   // the hips take part of every torso twist
@@ -778,5 +794,5 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo, unwarpSpan } };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: (c, slot, style, idle, side, walk) => finishAttack(c, slot, style, idle, side, walk, true), _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo, unwarpSpan } };
 if (require.main === module) main();

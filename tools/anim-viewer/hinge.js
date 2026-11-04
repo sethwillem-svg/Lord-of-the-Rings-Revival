@@ -83,6 +83,7 @@ const W_PAST = 1, W_HARD = 1e4, W_SWIVEL = 0.002, W_ROLL = 0.004, W_TURN = 0.2;
 const fullTurn = (step) => Array.from({ length: Math.round(360 / step) }, (_, i) => -180 + i * step);
 const SWIVELS = fullTurn(SWIVEL_STEP), ROLLS = fullTurn(ROLL_STEP);
 const COARSE = fullTurn(2 * SWIVEL_STEP), ROLL_NEAR = 45;   // swivels tried for each roll: within 45° of the first pick
+const COARSE_SWIVELS = fullTurn(10);   // untwist's first look at an arm's anatomy: every 10th degree
 const apart = (a, b) => Math.abs(((((a - b) % 360) + 540) % 360) - 180);   // degrees between two angles
 /** Turns v about unit axis n by an angle with cosine c and sine s (Rodrigues). */
 const turnVec = (v, n, c, s) => { const k = dot(n, v) * (1 - c), x = cross(n, v); return [0, 1, 2].map((i) => v[i] * c + x[i] * s + n[i] * k); };
@@ -105,14 +106,169 @@ function twistOf(x0, z0, x1, z1) {
  * the elbow's place on its circle, and so the twists, change.
  */
 function swivelTwists(g, d, e = g.w) {
-  const t = (v) => turnBy(v, g.n, d);
-  const out = [twistOf(g.p0, g.p2, t(g.a0), t(g.a2))];
-  if (e) out.push(twistOf(t(g.j0), t(g.j2), e[0], e[1]));
+  // each dot product twistOf takes is a sum of a constant, a cosine and a sine of the swivel: worked out once per frame
+  // (and per end-bone roll), then each swivel costs a handful of products
+  if (!g.tu) g.tu = twistTerms(g.p0, g.p2, g.a0, g.a2, g.n, false);
+  if (e && g.teFor !== e) { g.te = twistTerms(e[0], e[1], g.j0, g.j2, g.n, true); g.teFor = e; }
+  const c = Math.cos((d * Math.PI) / 180), sn = Math.sin((d * Math.PI) / 180);
+  const out = [twistAt(g.tu, c, sn)];
+  if (e) out.push(twistAt(g.te, c, sn));
   return out;
+}
+/** dot(u, v turned about n by d) = k0 + k1 cos d + k2 sin d: [k0, k1, k2]. */
+const turnedDot = (u, v, n) => { const k = dot(n, v), par = n.map((x) => x * k); return [dot(u, par), dot(u, sub(v, par)), dot(u, cross(n, v))]; };
+/** twistOf's two sums as turnedDot terms: from fixed columns (x0, z0) to turned (x1, z1), or (turned: the end bone)
+ *  from turned (x1, z1) to fixed (x0, z0). [s terms, c terms]. */
+function twistTerms(x0, z0, x1, z1, n, turned) {
+  const xz = turnedDot(x0, z1, n), zx = turnedDot(z0, x1, n), xx = turnedDot(x0, x1, n), zz = turnedDot(z0, z1, n);
+  // turned: twistOf(t(x1), t(z1), x0, z0): s = x1t·z0 − z1t·x0 = zx − xz
+  const sgn = turned ? -1 : 1;
+  return [[0, 1, 2].map((i) => sgn * (xz[i] - zx[i])), [0, 1, 2].map((i) => xx[i] + zz[i])];
+}
+function twistAt([S, C], c, sn) {
+  const s = S[0] + S[1] * c + S[2] * sn, k = C[0] + C[1] * c + C[2] * sn;
+  return Math.hypot(s, k) < POLE_LEN ? NaN : (Math.atan2(s, k) * 180) / Math.PI;
 }
 
 /** The limb's twist limits: [upper, end]. */
 const limitsOf = (limb) => [limb.upper.endsWith('arm') ? TWIST.arm : TWIST.leg, TWIST.end];
+
+/**
+ * Shoulder range: where an upper arm may point in torso space (the body bone's frame; the arm's long axis, rest -y), from
+ * the clinical ranges (flexion and abduction 180°, extension 60°, horizontal adduction 45° past straight ahead): not into
+ * the cap of 60° about the direction 30° above straight back (BACK_CAP: straight up and 60° behind hanging lie on its rim),
+ * nor into the cap of 45° about straight across the chest. Measured as the figure each equals in its own plane: back, 120°
+ * less the angle to BACK_CAP (an arm swung straight back: its extension); across, 90° less the angle to straight across
+ * (a level arm: how far past straight ahead it reaches). The hard limit is the range plus SHOULDER_SLACK (the tables
+ * differ by about that much, and the rig has no shoulder blade to glide): untwist aims TWIST_MARGIN under it and holds
+ * at TWIST_HARD under, as for twist.
+ */
+const SHOULDER = { back: 60, across: 45 }, SHOULDER_SLACK = 10;
+const BACK_CAP = [0, 0.5, Math.sqrt(3) / 2];
+/**
+ * Body clearance: an arm's forearm and fist, and its upper arm's lower half, kept out of the torso box (8×12×4 px, under
+ * the body bone) and the forearm out of the head box (8×8×8): capsules LIMB_R round (the arms are 4 px thick) along the
+ * arm box's axis (x ±6, z 0), each stopping LIMB_R short of where its part ends so its round end lands there (the forearm
+ * from the elbow pivot to y 14, the fist's end at 12; the upper arm from y 19 to the elbow pivot, its middle at 21). At most
+ * DEPTH px may sink in. Weighed with the angles as PX_DEG degrees a pixel (a pixel at the fist, 6 px from the elbow, is
+ * some 10° of the forearm's turn).
+ */
+const BODY_BOXES = { torso: { bone: 'body', min: [-4, 12, -2], max: [4, 24, 2] }, head: { bone: 'head', min: [-4, 24, -4], max: [4, 32, 4] } };
+const LIMB_R = 2, DEPTH = 0.5, PX_DEG = 10;
+/** Arm capsules in the arm's rest frame, per side (s: +1 right, -1 left): [bone, a, b, boxes]. */
+const armCapsules = (limb, s) => [
+  [limb.joint, [6 * s, 18, 0], [6 * s, 14, 0], ['torso', 'head']],
+  [limb.upper, [6 * s, 19, 0], [6 * s, 18, 0], ['torso']],
+];
+const isArm = (limb) => limb.upper.endsWith('arm');
+/** Signed distance (px) from a point in a box's frame to the box: negative inside. */
+function boxDist(q, min, max) {
+  let out = 0, inMax = -Infinity;
+  for (let i = 0; i < 3; i++) {
+    const d = Math.abs(q[i] - (min[i] + max[i]) / 2) - (max[i] - min[i]) / 2;
+    if (d > 0) out += d * d;
+    if (d > inMax) inMax = d;
+  }
+  return out > 0 ? Math.sqrt(out) : Math.min(inMax, 0);
+}
+/** The least signed distance from segment a-b (in the box's frame) to the box: convex along it, so a golden-section
+ *  search (to some 0.01 px on a 4 px segment). */
+const GOLD = (Math.sqrt(5) - 1) / 2;
+function segBoxDist(a, b, box) {
+  const q = [0, 0, 0];
+  const at = (f) => { for (let i = 0; i < 3; i++) q[i] = a[i] + (b[i] - a[i]) * f; return boxDist(q, box.min, box.max); };
+  let lo = 0, hi = 1, x1 = hi - GOLD, x2 = GOLD, f1 = at(x1), f2 = at(x2);
+  for (let k = 0; k < 12; k++) {
+    if (f1 <= f2) { hi = x2; x2 = x1; f2 = f1; x1 = hi - GOLD * (hi - lo); f1 = at(x1); }
+    else { lo = x1; x1 = x2; f1 = f2; x2 = lo + GOLD * (hi - lo); f2 = at(x2); }
+  }
+  return Math.min(at(0), at(1), f1, f2);
+}
+/** Bᵀ v: a world vector in a bone's rest frame. */
+const into = (W, v) => [W.R[0] * v[0] + W.R[3] * v[1] + W.R[6] * v[2], W.R[1] * v[0] + W.R[4] * v[1] + W.R[7] * v[2], W.R[2] * v[0] + W.R[5] * v[1] + W.R[8] * v[2]];
+/** v split for a turn by d about the unit axis n: v(d) = v∥ + v⊥ cos d + (n × v) sin d; returns [v∥, v⊥, n × v]. */
+const splitAbout = (v, n) => { const k = dot(n, v), par = n.map((x) => x * k); return [par, sub(v, par), cross(n, v)]; };
+
+/** An arm at one frame, in the world, for anatomyPrep: its side (s), shoulder S, unit shoulder-to-hand line n (the swivel's
+ *  axis), the body bone B, its long axis (y) and its capsules' ends with the boxes each is judged against. */
+function armFrame(f, limb) {
+  const s = limb.shoulder[0] > 0 ? 1 : -1, S = point(f[limb.upper], limb.shoulder);
+  return {
+    s, S, n: norm(sub(point(f[limb.joint], limb.foot), S)), B: f[PARENT[limb.upper]], ay: col(f[limb.upper].R, 1),
+    segs: armCapsules(limb, s).flatMap(([bone, a, b, boxes]) => boxes.map((k) => ({ box: BODY_BOXES[k], W: f[BODY_BOXES[k].bone], a: point(f[bone], a), b: point(f[bone], b) }))),
+  };
+}
+/** Depths more than this far clear (degrees as PX_DEG a pixel) are not worked out exactly (anatomyPast). */
+const CLEAR = 10;
+/**
+ * An arm (armFrame) ready to be judged at any swivel d about its shoulder-to-hand line: its long axis (negated: where the
+ * arm points) in the torso's frame, and each capsule's ends in its box's frame, as [c0, c1, c2] with value(d) = c0 +
+ * c1 cos d + c2 sin d. A capsule that stays clear of its box whatever the swivel (each end's circle about the line kept off
+ * by more than CLEAR) carries that bound (far).
+ */
+function anatomyPrep(arm) {
+  const dir = splitAbout(arm.ay, arm.n).map((v) => into(arm.B, v).map((x) => -x));
+  const clear = LIMB_R - DEPTH + CLEAR / PX_DEG;
+  const segs = arm.segs.map((g) => {
+    const s0 = into(g.W, sub(arm.S, g.W.p));
+    const end = (p) => { const [a0, a1, a2] = splitAbout(sub(p, arm.S), arm.n).map((v) => into(g.W, v)); return [add(s0, a0), a1, a2]; };
+    const a = end(g.a), b = end(g.b);
+    const far = Math.min(boxDist(a[0], g.box.min, g.box.max), boxDist(b[0], g.box.min, g.box.max)) - Math.hypot(...sub(a[0], b[0])) / 2 - Math.max(Math.hypot(...a[1]), Math.hypot(...b[1]));
+    return { box: g.box, a, b, far: far > clear ? far : null };
+  });
+  return { s: arm.s, dir, segs };
+}
+/**
+ * The most an arm (anatomyPrep) can be past each of its anatomy's limits at any swivel, as anatomyPast lists them (a
+ * bound: the shoulder's exactly, from the circle the arm's direction runs round; a capsule not known to stay clear (far)
+ * as touching its box right through).
+ */
+function anatomyWorst(p) {
+  const [c0, c1, c2] = p.dir;
+  // the least angle (degrees) between the arm and t over the circle: dot = c0·t + (c1·t) cos d + (c2·t) sin d
+  const least = (t) => {
+    const l = Math.hypot(...c0) ** 2 + Math.hypot(...c1) ** 2, top = (dot(c0, t) + Math.hypot(dot(c1, t), dot(c2, t))) / Math.sqrt(l || 1);
+    return (Math.acos(Math.max(-1, Math.min(1, top))) * 180) / Math.PI;
+  };
+  const out = [120 - least(BACK_CAP) - SHOULDER.back - SHOULDER_SLACK, 90 - least([-p.s, 0, 0]) - SHOULDER.across - SHOULDER_SLACK];
+  for (const g of p.segs) out.push(g.far === null ? Infinity : (LIMB_R - g.far - DEPTH) * PX_DEG);
+  return out;
+}
+/**
+ * How far an arm (anatomyPrep) is past its anatomy at a swivel of d degrees: [back, across] past the shoulder's hard limit
+ * (degrees), then each capsule's depth in its box past DEPTH (as PX_DEG degrees a pixel). Negative is within. A capsule
+ * well clear (by more than CLEAR) is reported at a bound: at least as deep as it is, and still clear by CLEAR.
+ */
+function anatomyPast(p, d = 0) {
+  const c = Math.cos((d * Math.PI) / 180), sn = Math.sin((d * Math.PI) / 180);
+  const at = (k) => [k[0][0] + k[1][0] * c + k[2][0] * sn, k[0][1] + k[1][1] * c + k[2][1] * sn, k[0][2] + k[1][2] * c + k[2][2] * sn];
+  const dir = at(p.dir), l = Math.hypot(dir[0], dir[1], dir[2]) || 1;
+  const ang = (x) => (Math.acos(Math.max(-1, Math.min(1, x / l))) * 180) / Math.PI;
+  const out = [120 - ang(dot(dir, BACK_CAP)) - SHOULDER.back - SHOULDER_SLACK, 90 - ang(-p.s * dir[0]) - SHOULDER.across - SHOULDER_SLACK];
+  const clear = LIMB_R - DEPTH + CLEAR / PX_DEG;
+  for (const g of p.segs) {
+    let dist = g.far;
+    if (dist === null) {
+      const a = at(g.a), b = at(g.b), mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+      const bound = boxDist(mid, g.box.min, g.box.max) - Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / 2;
+      dist = bound > clear ? bound : segBoxDist(a, b, g.box);
+    }
+    out.push((LIMB_R - dist - DEPTH) * PX_DEG);
+  }
+  return out;
+}
+/** How far under each of anatomyPast's limits untwist aims and holds (degrees; depths as PX_DEG a pixel): the shoulder as
+ *  twist (TWIST_MARGIN, TWIST_HARD), depths at 0.5 and 0.2 px under (a limb resting against the body, 0.5 px under, costs
+ *  nothing: the arm hangs touching the torso's side). */
+const ANAT_MARGIN = [TWIST_MARGIN, TWIST_MARGIN, 5], ANAT_HARD = [TWIST_HARD, TWIST_HARD, 2];
+const marginOf = (m, i) => m[Math.min(i, 2)];
+/** Past the hard limit, per degree²: a hundredth of twist's (W_HARD), so where a swivel cannot meet both the arm keeps its
+ *  twist (a wrung arm reads as broken) and gives way here. */
+const W_HARD_ANAT = W_HARD / 100;
+/** The cost of being past: per degree² past the aim and again past the hard limit. */
+const pastCost = (xs) => xs.reduce((e, x, i) => e + W_PAST * Math.max(0, x + marginOf(ANAT_MARGIN, i)) ** 2 + W_HARD_ANAT * Math.max(0, x + marginOf(ANAT_HARD, i)) ** 2, 0);
+/** Within the aim everywhere: nothing to pay. */
+const anatomyFits = (xs) => xs.every((x, i) => x <= -marginOf(ANAT_MARGIN, i));
 
 /**
  * The least-cost path through a grid of values over the frames: cost[i][k] for value values[k] at frame i (weighed by the
@@ -164,15 +320,17 @@ function cheapest(cost, values, times, loop, scale = null, rate = SWIVEL_RATE) {
  * quick turns. Where no swivel is enough (the arm and wrist together twisted past both ranges) and opts.roll names the end
  * bones' own axes ({ weapon_r: axis, ... }, about their pivots), the end bone also rolls about that axis, its direction and
  * place kept, except at times in opts.keep ({ weapon_r: [from, to] } s: where its roll is set, such as an edge leading at
- * the hit).
- * Limbs already within range, less a 5° margin, are left as they are. frames: world bones per time (worldBones); returns
- * { frames, changed }.
+ * the hit). With opts.anatomy the swivels also keep each arm within the shoulder's range and out of the body (anatomyPast,
+ * aimed ANAT_MARGIN and held ANAT_HARD under its limits, giving way to twist where the two cannot both be met).
+ * Limbs already within range, less a 5° margin (and arms within their anatomy's aim), are left as they are. frames: world
+ * bones per time (worldBones); returns { frames, changed }.
  */
 function untwist(frames, times, limbs, loop, opts = {}) {
   let out = frames, changed = false;
   for (const limb of limbs) {
     if (!frames[0][limb.upper] || !frames[0][limb.joint] || !frames[0][PARENT[limb.upper]]) continue;
     const lim = limitsOf(limb), end = limb.end && frames[0][limb.end] ? limb.end : null;
+    const anat = opts.anatomy && isArm(limb) && frames[0].body && frames[0].head;
     const geo = frames.map((f) => {
       const A = f[limb.upper], J = f[limb.joint], P = f[PARENT[limb.upper]];
       const S = point(A, limb.shoulder), E = point(A, limb.knee), H = point(J, limb.foot), n = norm(sub(H, S)), u = sub(E, S);
@@ -181,42 +339,91 @@ function untwist(frames, times, limbs, loop, opts = {}) {
       const off = Math.hypot(...sub(u, n.map((x) => x * dot(u, n)))) / (Math.hypot(...u) || 1);
       const g = { S, n, out: Math.max(0.05, off), p0: col(P.R, 0), p2: col(P.R, 2), a0: col(A.R, 0), a2: col(A.R, 2), j0: col(J.R, 0), j2: col(J.R, 2) };
       if (end) g.w = [col(f[end].R, 0), col(f[end].R, 2)];
+      if (anat) g.anat = g.prep = anatomyPrep(armFrame(f, limb));
       return g;
     });
     const pastBy = (tw, m) => tw.reduce((e, x, i) => e + (Number.isNaN(x) ? 0 : Math.max(0, Math.abs(x) - lim[i] + m) ** 2), 0);
     const tame = (tw) => tw.every((x, i) => Number.isNaN(x) || Math.abs(x) <= lim[i] - 5);
-    if (geo.every((g) => tame(swivelTwists(g, 0)))) continue;
-    const swivelCost = (g, d, e) => {
-      const tw = swivelTwists(g, d, e);
-      // an undefined twist (at the pole) costs as much as one at the aim's edge (TWIST_MARGIN past it): never free, so no
-      // swivel hides a twist there, but no worse than a twist the limb can show
-      const pole = tw.filter((x) => Number.isNaN(x)).length * W_PAST * TWIST_MARGIN * TWIST_MARGIN;
-      return W_PAST * pastBy(tw, TWIST_MARGIN) + W_HARD * pastBy(tw, TWIST_HARD) + pole + W_SWIVEL * d * d * g.out * g.out;
+    // an arm's anatomy (opts.anatomy): within the shoulder's range and out of the body, inside the aim
+    const fit = (g) => !g.anat || anatomyFits(anatomyPast(g.anat));
+    const tameAsIs = geo.every((g) => tame(swivelTwists(g, 0)));
+    if (tameAsIs && geo.every(fit)) continue;
+    // a frame costs nothing for its arm's anatomy where it stays within the aim at every swivel: so where anatomyWorst bounds
+    // it there, or where every 10th degree of swivel stays inside the aim by a further 5° (between them the arm's direction
+    // moves at most 5°, and a capsule's end, at most some 5 px off the line, under half a pixel). Nor where no swivel brings
+    // it within the hard limits without wringing the upper arm past its own (every 10th degree past one or the other by 5°
+    // more): the hand itself is out of reach there, and swivelling for a part of the way would only change the clip
+    for (const g of geo) {
+      if (!g.anat) continue;
+      if (anatomyFits(anatomyWorst(g.anat))) { g.anat = null; continue; }
+      const coarse = COARSE_SWIVELS.map((d) => anatomyPast(g.anat, d));
+      if (coarse.every((xs) => xs.every((x, i) => x <= -marginOf(ANAT_MARGIN, i) - 5))) { g.anat = null; continue; }
+      const wrung = (d) => { const tw = swivelTwists(g, d, null)[0]; return Number.isNaN(tw) ? -Infinity : Math.abs(tw) - lim[0] + TWIST_HARD; };
+      if (coarse.every((xs, k) => Math.max(wrung(COARSE_SWIVELS[k]), ...xs.map((x, i) => x + marginOf(ANAT_HARD, i))) > 5)) g.outOfReach = true;
+    }
+    // an arm holding the item (opts.held, default every one) and out of reach anywhere is left to its twist alone:
+    // swivelling it for part of the clip would not bring it within, and every swivel strays the weapon's path a little
+    // between keys (END_STRAY) and adds keys, enough to move a swing's timing measures. A free hand swivels where it can
+    const holds = !opts.held || opts.held.includes(end);
+    if (holds && geo.some((g) => g.outOfReach)) for (const g of geo) g.anat = null;
+    if (tameAsIs && !geo.some((g) => g.anat)) continue;   // nothing left to swivel for
+    const w0 = geo.map((g) => g.w);
+    // each frame's anatomy cost at every swivel, worked out once (the roll search below asks again)
+    const anatCost = (g, d) => {
+      if (!g.anat) return 0;
+      if (!g.anatCost) g.anatCost = new Float64Array(SWIVELS.length).fill(NaN);
+      const k = Math.round((d + 180) / SWIVEL_STEP) % SWIVELS.length;
+      if (Number.isNaN(g.anatCost[k])) g.anatCost[k] = pastCost(anatomyPast(g.anat, SWIVELS[k]));
+      return g.anatCost[k];
     };
     const outs = geo.map((g) => g.out);
-    let swivel = cheapest(geo.map((g) => SWIVELS.map((d) => swivelCost(g, d))), SWIVELS, times, loop, outs);
-    let roll = geo.map(() => 0);
-    const axis = end && opts.roll && opts.roll[end];
-    if (axis && geo.some((g, i) => !tame(swivelTwists(g, swivel[i])))) {
-      // the end bone's axis in the world, and its frame's x and z rolled about it by each roll
-      const rolled = (g, i, r) => {
-        const R = frames[i][end].R, ax = norm([0, 1, 2].map((j) => R[j * 3] * axis[0] + R[j * 3 + 1] * axis[1] + R[j * 3 + 2] * axis[2]));
-        return g.w.map((v) => turnBy(v, ax, r));
+    /** The swivels (and end-bone rolls) over the clip, weighing the arm's anatomy or not. */
+    const solveLimb = (withAnat) => {
+      geo.forEach((g, i) => { g.w = w0[i]; });
+      const swivelCost = (g, d, e) => {
+        const tw = swivelTwists(g, d, e);
+        // an undefined twist (at the pole) costs as much as one at the aim's edge (TWIST_MARGIN past it): never free, so
+        // no swivel hides a twist there, but no worse than a twist the limb can show
+        const pole = tw.filter((x) => Number.isNaN(x)).length * W_PAST * TWIST_MARGIN * TWIST_MARGIN;
+        return W_PAST * pastBy(tw, TWIST_MARGIN) + W_HARD * pastBy(tw, TWIST_HARD) + pole + (withAnat ? anatCost(g, d) : 0) + W_SWIVEL * d * d * g.out * g.out;
       };
-      const keep = opts.keep && opts.keep[end], kept = (i) => keep && times[i] >= keep[0] - 1e-9 && times[i] <= keep[1] + 1e-9;
-      // each roll judged with the best swivel near the one already chosen (a far one may not be reachable in time)
-      const rollCost = geo.map((g, i) => {
-        const near = COARSE.filter((d) => apart(d, swivel[i]) <= ROLL_NEAR);
-        return ROLLS.map((r) => {
-          if (r && kept(i)) return Infinity;
-          const e = rolled(g, i, r);
-          return Math.min(...near.map((d) => swivelCost(g, d, e))) + W_ROLL * r * r;
+      let swivel = cheapest(geo.map((g) => SWIVELS.map((d) => swivelCost(g, d))), SWIVELS, times, loop, outs);
+      let roll = geo.map(() => 0);
+      const axis = end && opts.roll && opts.roll[end];
+      if (axis && geo.some((g, i) => !tame(swivelTwists(g, swivel[i])))) {
+        // the end bone's axis in the world, and its frame's x and z rolled about it by each roll
+        const rolled = (g, i, r) => {
+          const R = frames[i][end].R, ax = norm([0, 1, 2].map((j) => R[j * 3] * axis[0] + R[j * 3 + 1] * axis[1] + R[j * 3 + 2] * axis[2]));
+          return g.w.map((v) => turnBy(v, ax, r));
+        };
+        const keep = opts.keep && opts.keep[end], kept = (i) => keep && times[i] >= keep[0] - 1e-9 && times[i] <= keep[1] + 1e-9;
+        // each roll judged with the best swivel near the one already chosen (a far one may not be reachable in time)
+        const rollCost = geo.map((g, i) => {
+          const near = COARSE.filter((d) => apart(d, swivel[i]) <= ROLL_NEAR);
+          return ROLLS.map((r) => {
+            if (r && kept(i)) return Infinity;
+            const e = rolled(g, i, r);
+            return Math.min(...near.map((d) => swivelCost(g, d, e))) + W_ROLL * r * r;
+          });
         });
-      });
-      roll = cheapest(rollCost, ROLLS, times, loop, null, ROLL_RATE);
-      geo.forEach((g, i) => { if (roll[i]) g.w = rolled(g, i, roll[i]); });
-      swivel = cheapest(geo.map((g) => SWIVELS.map((d) => swivelCost(g, d))), SWIVELS, times, loop, outs);
+        roll = cheapest(rollCost, ROLLS, times, loop, null, ROLL_RATE);
+        geo.forEach((g, i) => { if (roll[i]) g.w = rolled(g, i, roll[i]); });
+        swivel = cheapest(geo.map((g) => SWIVELS.map((d) => swivelCost(g, d))), SWIVELS, times, loop, outs);
+      }
+      return { swivel, roll, axis };
+    };
+    let sol = solveLimb(true);
+    if (geo.some((g) => g.anat)) {
+      // the arm's anatomy taken only where it is a gain: an arm holding the item brought within at every frame (else
+      // swivelling it is no use, as above), a free hand made no worse past its limits anywhere than twist alone leaves it
+      // (which leaves a limb within its twist range as it is)
+      const plain = tameAsIs ? { swivel: geo.map(() => 0), roll: geo.map(() => 0), axis: null } : solveLimb(false);
+      const worst = (sw, i) => Math.max(...anatomyPast(geo[i].prep, sw[i]));
+      const gain = holds ? geo.every((g, i) => worst(sol.swivel, i) <= 0)
+        : geo.every((g, i) => worst(sol.swivel, i) <= Math.max(0, worst(plain.swivel, i)) + 1e-6);
+      if (!gain) sol = plain;
     }
+    const { swivel, roll, axis } = sol;
     if (swivel.every((d) => d === 0) && roll.every((r) => r === 0)) continue;
     if (!changed) { out = frames.map((f) => ({ ...f })); changed = true; }
     out.forEach((f, i) => {
@@ -349,6 +556,9 @@ function pastOf(poses, limbs) {
   return past;
 }
 
+/** The most an arm is past its anatomy at a frame (anatomyPast; -Infinity for a leg or a rig without body and head). */
+const anatomyOver = (f, l) => (isArm(l) && f.body && f.head ? Math.max(...anatomyPast(anatomyPrep(armFrame(f, l)))) : -Infinity);
+
 /** How far written keys may let an end bone (a held weapon) stray between them from where it was solved: its pivot by
  *  0.25 px, its turn by 0.5° (a 1.5-block blade's tip by about 0.2 px more). */
 const END_STRAY = { px: 0.25, deg: 0.5 };
@@ -373,7 +583,10 @@ function strayed(a, b, pivot) {
  * their own way, and can take it the long way round. So the clip keeps its timing and its weapon's path; every other bone, and every limb already in range, is left as it was. For a clip changed after
  * hingeify. opts as untwist's, and opts.held: the end bones that hold an item (default every one), the only ones kept
  * from straying; opts.preRoll: { bone: degrees } to roll an end bone about its opts.roll axis first (an edge put to lead),
- * exactly at every sample.
+ * exactly at every sample. With opts.anatomy the arms' swivels also keep them within the shoulder's range and out of the
+ * body (untwist), and keys are added between where the written ones would carry an arm past its anatomy that the solved
+ * pose is within. A swivel leaves the hand where it is, so a held weapon keeps its path: an arm the swivel cannot bring
+ * in (the hand itself behind the back or against the body) is left so.
  */
 function limitTwist(clip, opts = {}) {
   const s0 = sampled(clip), { moving, times, isKey, held } = s0;
@@ -407,6 +620,7 @@ function limitTwist(clip, opts = {}) {
       if (use[i]) return false;
       const w = worldBones(samplePose(anim, Math.min(times[i], clip.length)));
       if (pastOf([w], turned) > -1 && pastOf([r.frames[i]], turned) <= -1) return true;
+      if (opts.anatomy && turned.some((l) => anatomyOver(w, l) > -1 && anatomyOver(r.frames[i], l) <= -1)) return true;
       if (turned.some((l) => turnBetween(w[l.upper].R, r.frames[i][l.upper].R) > UPPER_STRAY)) return true;
       return turned.some((l) => l.end && w[l.end] && (!opts.held || opts.held.includes(l.end)) && strayed(w[l.end], r.frames[i][l.end], PIVOT[l.end]));
     });
@@ -454,8 +668,9 @@ function rollEnd(W, axis, pivot, deg) {
 }
 
 /** How far a clip's limbs twist (degrees, over its keys and every 1/120 s between): past, the most any twists past its range
- *  (TWIST; 0 when all are within it), and end, the most any end bone (a held weapon) twists against its joint. */
-function peakTwist(clip) {
+ *  (TWIST; 0 when all are within it), and end, the most any end bone (a held weapon) twists against its joint; with
+ *  `anatomy`, also anatomy, the most any arm is past its anatomy (anatomyPast; 0 when within). */
+function peakTwist(clip, anatomy = false) {
   const { moving, poses } = sampled(clip);
   let end = 0;
   for (const f of poses) for (const l of moving) {
@@ -464,7 +679,9 @@ function peakTwist(clip) {
       if (!Number.isNaN(te)) end = Math.max(end, Math.abs(te));
     }
   }
-  return { past: Math.max(0, pastOf(poses, moving)), end };
+  let past = 0;
+  if (anatomy) for (const f of poses) for (const l of moving) past = Math.max(past, anatomyOver(f, l));
+  return { past: Math.max(0, pastOf(poses, moving)), end, anatomy: past };
 }
 
 module.exports = { hingeify, solve, lowPass, untwist, limitTwist, peakTwist, TWIST, LIMBS, PIVOT,

@@ -28,7 +28,10 @@ and the blade stays out of the body and above the floor. The body checks (`test/
 feet on the floor, elbows and knees bending the right way and loops seamless; `test/joints.test.js` keeps every arm, wrist
 and thigh within a person's twist about its own length (upper arm and held item 95°, thigh 45°, judged every millisecond:
 `hinge.js` swivels the arm about its shoulder-to-hand line, and rolls the item about its blade only where that is not
-enough), and keeps arms and held items from snapping round (at most 60° in 1/120 s). `test/fighting.test.js` holds each race to
+enough), and keeps arms and held items from snapping round (at most 60° in 1/120 s). `test/anatomy.test.js` keeps every
+attack's upper arms within a shoulder's range (extension 60°, horizontal adduction 45° past straight ahead, 10° slack) and
+its forearms and elbows out of the torso and head boxes (0.5 px); `hinge.js` swivels the elbow out where it can, and the
+attacks whose hand itself is out of reach are listed in `test/lib/known.js`. `test/fighting.test.js` holds each race to
 its own way of fighting (`npc_slots.js` STYLE.fight: orcs wild, elves at full stretch, dwarves body-driven, hobbits low and
 compact) and checks the shield versions (`<clip>_shield`: the off arm keeps the shield up in front). With an export (`./addon/bench.sh export`) they also check every
 real Middle-earth item sits with its handle in the hand and its drawn weapon at its class length, and shields face forward, and `test/parity.test.js` checks the
