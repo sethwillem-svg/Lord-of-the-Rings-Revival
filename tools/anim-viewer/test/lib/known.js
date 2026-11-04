@@ -103,6 +103,14 @@ const KNOWN = {
       orc: ['attack_sword_4', 'attack_dagger_1', 'attack_axe_2', 'attack_shield_1'],
     },
   },
+  shoulder: {
+    why: 'shoulder: 0/240 fail',
+    fails: {},
+  },
+  body: {
+    why: 'body: 0/240 fail',
+    fails: {},
+  },
 };
 
 /** The listed failures of a check as keys: race/attack (T2: race/attack pair). */
