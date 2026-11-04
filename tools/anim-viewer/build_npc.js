@@ -12,7 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { RIG } = require('./gecko/rig.js');
-const { geoJson, animationJson } = require('./gecko/write.js');
+const { geoJson, animationJson, eulerMatrix, fromTrue, trueRotation, mul3 } = require('./gecko/write.js');
 const { hitTime: strikeHit, speeds: tipSpeeds, acceptable, strike, hingesOk, cleanSwing, waistOk, clearOfBody, spacing, bodyHitAfter, fadeFor, quality, blade: bladeAt, DIR: STRIKE_DIR } = require('./gecko/strike.js');
 const { samplePose, worldBones, point } = require('./gecko/sample.js');
 const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
@@ -648,18 +648,204 @@ function trimTo(clip, t) {
 const SHIELD_SLOTS = /^(idle(_\d)?|walk|run|march|guard|attack_[a-z]+_\d+)$/;
 const SHIELD_BONES = ['left_arm', 'left_elbow', 'weapon_l'];
 
-/** The off arm holding a shield up in front: AnimationsPlus' left-hand block, with the race's arm posture. */
-function shieldArm(sources, style) {
-  let hold = holdAt(clone(sources.animationsplus.blockL), 0);
-  applyStyle(hold, 'shield_brace', style);
-  hold = hingeify(hold);
-  return Object.fromEntries(SHIELD_BONES.map((b) => [b, hold.bones[b] || { rotation: [{ t: 0, v: [0, 0, 0], lerp: 'linear' }] }]));
+/**
+ * The off arm holding a shield up in front, strapped to the forearm (gecko/shield.js place, client.render.WeaponGrip): the
+ * upper arm raised forward, the elbow bent so the forearm lies level across the chest 4 px in front of it, and the forearm
+ * turned about its length (weapon_l, about the forearm's own axis, not the bone's pivot 2 px in front of it) so its back,
+ * where the shield's face looks, is to the front and the plate sits over the chest's centre. Found by search on the rig
+ * (XYZ degrees as PulseLib plays them). No race posture: the guard is set by where the shield must be.
+ */
+const SHIELD_POSE = { arm: [-60.4, -61.4, -104.1], elbow: 110, twist: 42.5 };
+const RAD = Math.PI / 180;
+const PIVOTS = Object.fromEntries(RIG.map((b) => [b.name, b.pivot]));
+const FOREARM_AXIS = [0, 0, 2];   // the forearm's axis from weapon_l's pivot (rig px)
+const bbKey = (xyz) => fromTrue(eulerMatrix(xyz, 'XYZ'));   // a PulseLib rotation as the clip's (Blockbench) key
+/** weapon_l turned tw degrees about the forearm's axis: its rotation key, the position (rig px) that keeps the axis put,
+ *  and that position as the clip's key. */
+function forearmTwist(tw) {
+  const p = FOREARM_AXIS.map((x, i) => x - mulVec(eulerMatrix([0, tw, 0], 'XYZ'), FOREARM_AXIS)[i]);
+  return { rotation: bbKey([0, tw, 0]), pos: p, position: [-p[0], p[1], p[2]] };
+}
+function shieldArm() {
+  const key = (v) => [{ t: 0, v, lerp: 'linear' }], w = forearmTwist(SHIELD_POSE.twist);
+  return {
+    left_arm: { rotation: key(bbKey(SHIELD_POSE.arm)) },
+    left_elbow: { rotation: key(bbKey([SHIELD_POSE.elbow, 0, 0])) },
+    weapon_l: { rotation: key(w.rotation), position: key(w.position) },
+  };
 }
 
-/** The same clip with the off arm replaced by the held shield. */
+/** The rotation (row-major 3x3) by a degrees about the unit axis k (Rodrigues). */
+function axisAngle(k, a) {
+  const c = Math.cos(a * RAD), s = Math.sin(a * RAD), t = 1 - c, [x, y, z] = k;
+  return [t * x * x + c, t * x * y - s * z, t * x * z + s * y, t * x * y + s * z, t * y * y + c, t * y * z - s * x, t * x * z - s * y, t * y * z + s * x, t * z * z + c];
+}
+const transpose = (m) => [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]];
+const vadd = (a, b) => a.map((x, i) => x + b[i]), vsub = (a, b) => a.map((x, i) => x - b[i]);
+/** A rotation's twist about its rest y axis (degrees; the swing-twist split, as test/lib/motion.js twist measures it). */
+function twistOf(m) {
+  const tr = m[0] + m[4] + m[8];
+  let y, w;
+  if (tr > 0) { const s = Math.sqrt(tr + 1) * 2; w = s / 4; y = (m[2] - m[6]) / s; }
+  else if (m[0] > m[4] && m[0] > m[8]) { const s = Math.sqrt(1 + m[0] - m[4] - m[8]) * 2; w = (m[7] - m[5]) / s; y = (m[1] + m[3]) / s; }
+  else if (m[4] > m[8]) { const s = Math.sqrt(1 + m[4] - m[0] - m[8]) * 2; w = (m[2] - m[6]) / s; y = s / 4; }
+  else { const s = Math.sqrt(1 + m[8] - m[0] - m[4]) * 2; w = (m[3] - m[1]) / s; y = (m[5] + m[7]) / s; }
+  if (w < 0) { w = -w; y = -y; }
+  return Math.hypot(y, w) < 1e-9 ? 0 : (2 * Math.atan2(y, w)) / RAD;
+}
+
+/** Every key time of a clip (s), with its start and end. */
+const keyTimes = (clip) => [...new Set([0, clip.length, ...Object.values(clip.bones).flatMap((ch) => Object.values(ch).flatMap((ks) => ks.map((k) => k.t)))])]
+  .filter((t) => t >= 0 && t <= clip.length + 1e-9).sort((a, b) => a - b);
+
+/**
+ * The shield arm, worked in the chest's own frame (rig px at rest; the chest's posed turn taken out): the forearm, and the
+ * shield strapped to it, held at frame G; the elbow bent by e and the forearm turned by tw about its axis (weapon_l); the
+ * upper arm is then the one rotation G Ry(-tw) Rx(-e), and the forearm G Ry(-tw). Returns the upper arm (left_arm's local
+ * rotation), the forearm's axis below the elbow, and the shift that places the plate's points (strapped) and its middle, all
+ * in the chest's frame.
+ */
+const TORSO = [[-4, 12, -2], [4, 24, 2]];   // the chest's box (rig px)
+const FOREARM_PTS = [17, 15, 13, 11].map((y) => [-6, y, 0]);   // the forearm's axis below the elbow (rig px, rest)
+/** Points over the plate's back face (rig px, rest, weapon_l's frame): the strap (gecko/shield.js place) puts its middle 4 px
+ *  out from the arm's pivot, level with the fist; 14 px along the forearm by 22 px up covers both kinds of shield. */
+const PLATE_PTS = [];
+for (const a of [-7, -3.5, 0, 3.5, 7]) for (const u of [-11, -5.5, 0, 5.5, 11]) PLATE_PTS.push([-8.5, 12 + a, u]);
+const PLATE_MID = [-9, 12, 0];
+const SHIELD_OUT = [-1, 0, 0];   // the shield's face in weapon_l's frame (rig): the back of the left forearm
+const rotY = (deg) => { const c = Math.cos(deg * RAD), s = Math.sin(deg * RAD); return [c, 0, s, 0, 1, 0, -s, 0, c]; };
+const rotX = (deg) => { const c = Math.cos(deg * RAD), s = Math.sin(deg * RAD); return [1, 0, 0, 0, c, -s, 0, s, c]; };
+const FOREARM_REL = FOREARM_PTS.map((x) => vsub(x, PIVOTS.left_elbow));
+const UPPER_REL = vsub(PIVOTS.left_elbow, PIVOTS.left_arm), WRIST_REL = vsub(vadd(PIVOTS.weapon_l, FOREARM_AXIS), PIVOTS.left_elbow);
+/** What armFor needs of the forearm's frame G that does not change with the bend or the turn: the plate's points about
+ *  weapon_l's pivot, and the forearm's axis, turned by G. */
+function strapped(G) {
+  const about = (x) => mulVec(G, vsub(x, PIVOTS.weapon_l));
+  return { G, plate: PLATE_PTS.map(about), mid: about(PLATE_MID), axis: mulVec(G, FOREARM_AXIS) };
+}
+function armFor(pre, e, tw) {
+  const AE = mul3(pre.G, rotY(-tw)), arm = mul3(AE, rotX(-e));
+  const Pe = vadd(mulVec(arm, UPPER_REL), PIVOTS.left_arm);
+  const fore = FOREARM_REL.map((x) => vadd(mulVec(AE, x), Pe));
+  // weapon_l: turned tw about the forearm's axis (forearmTwist), so x -> G (x - pivot) + AE (pivot + axis - elbow) - G axis + Pe
+  const off = vsub(vadd(mulVec(AE, WRIST_REL), Pe), pre.axis);
+  return { arm, fore, off, mid: vadd(pre.mid, off) };
+}
+/** How far a point (the chest's frame) is from the chest's box (px). */
+function toTorso3(x, y, z) {
+  const dx = Math.max(TORSO[0][0] - x, 0, x - TORSO[1][0]), dy = Math.max(TORSO[0][1] - y, 0, y - TORSO[1][1]);
+  const dz = Math.max(TORSO[0][2] - z, 0, z - TORSO[1][2]);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+const toTorso = (q) => toTorso3(q[0], q[1], q[2]);
+
+/**
+ * The shield keeps to the front while the torso turns or leans. At every key of the plain clip (so the twin is sampled at
+ * the same moments, and its weapon arm measures the same: test/timing.test.js twins), the shield's forearm is turned back
+ * against the chest's turn away from the front (the chest's forward against -z), all of it but a soft FACE_SLACK degrees
+ * (slack·tanh(turn/slack)), so a twist or a lean still carries the shield a little. A chest turned far round leaves no room
+ * in front of it for the left arm, so the shield may then be turned back less, as long as it faces within FACE_CAP of the
+ * front (the shield checks allow 35°: test/shield.test.js), or turned in its own plane (the forearm then no longer level),
+ * whichever is cheaper, each no faster than LESS_RATE and ROLL_RATE. The arm holding it is found by a search over the
+ * elbow's bend and the forearm's turn about its length (armFor), from the key before and from the guard's own pose: the forearm a
+ * forearm's half-width (2 px) and the plate SHIELD_CLEAR px clear of the chest, the upper arm's twist against the body
+ * within SHOULDER_MAX and the forearm's within WRIST_MAX (test/joints.test.js), the plate near where it would be had the
+ * chest not turned (turned back about the chest's centre with the shield), and each key near the one before, by its rate.
+ * Returns the arm's bones, or null for a clip whose chest never turns enough to need it.
+ */
+const FACE_SLACK = 20, FACE_CAP = 33, SHOULDER_MAX = 80, WRIST_MAX = 85, SHIELD_CLEAR = 0.5;
+/** The fastest the elbow may bend and the forearm turn between keys (degrees per second): under the elbow's 1500°/s
+ *  (test/motion.test.js) and well under a twist's 60° in 1/120 s (test/joints.test.js). */
+const ELBOW_RATE = 1200, TURN_RATE = 2400;
+const ELBOW_RANGE = [20, 150], HELD_LESS = [0, 5, 10, 15, 20, 25, 30, 40, 50, 60], ROLLS = [0, 15, -15, 30, -30, 45, -45, 60, -60, 75, -75, 90, -90];
+/** How fast the shield may be turned back less, and turned in its plane (degrees per second); how many ways a key tries. */
+const LESS_RATE = 300, ROLL_RATE = 600, WAYS_TRIED = 24;
+function faceFront(c, keyed) {
+  const anim = animationJson({ c }).animations.c;
+  const F = mul3(mul3(eulerMatrix(SHIELD_POSE.arm, 'XYZ'), eulerMatrix([SHIELD_POSE.elbow, 0, 0], 'XYZ')), eulerMatrix([0, SHIELD_POSE.twist, 0], 'XYZ'));
+  const rest = armFor(strapped(F), SHIELD_POSE.elbow, SHIELD_POSE.twist).mid, centre = [0, 18, 0];
+  const turn = keyTimes(keyed).map((t) => {
+    const B = worldBones(samplePose(anim, t)).body.R, f = mulVec(B, [0, 0, -1]);
+    const axis = [-f[1], f[0], 0], len = Math.hypot(...axis);   // f x (0, 0, -1): turns f toward the front
+    const away = Math.acos(Math.max(-1, Math.min(1, -f[2]))) / RAD;
+    return { t, B, axis: len > 1e-9 ? axis.map((x) => x / len) : [1, 0, 0], back: away - FACE_SLACK * Math.tanh(away / FACE_SLACK) };
+  });
+  if (turn.every((x) => x.back < 0.5)) return null;
+  let prev = { e: SHIELD_POSE.elbow, tw: SHIELD_POSE.twist, roll: 0, less: 0, t: null };
+  const keys = turn.map((k) => {
+    const Bt = transpose(k.B), dt = prev.t === null ? Infinity : Math.max(1e-4, k.t - prev.t), rate = prev.t === null ? 1 : (1 / 60) / dt;
+    const reach = (from, to, max) => from + Math.max(-max * dt, Math.min(max * dt, to - from));   // as near to as a key can get
+    // the ways to make room, cheapest first: the shield turned back less (by `less` degrees), or turned in its own plane
+    // (roll), each changing from the key before no faster than its rate; the first that keeps the arm clear of the chest is
+    // taken, and the cheapest of the first WAYS_TRIED if none does
+    const ways = [], seen = new Set();
+    for (const l0 of HELD_LESS) for (const r0 of ROLLS) {
+      const less = Math.min(k.back, reach(prev.less, l0, LESS_RATE)), roll = reach(prev.roll, r0, ROLL_RATE);
+      const id = `${less.toFixed(3)} ${roll.toFixed(3)}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const turnBack = axisAngle(k.axis, k.back - less), G0 = mul3(mul3(Bt, turnBack), mul3(k.B, F));   // in the chest's frame
+      const n = mulVec(mul3(k.B, G0), SHIELD_OUT), facing = Math.acos(Math.max(-1, Math.min(1, -n[2]))) / RAD;
+      if (less > 1e-9 && facing > FACE_CAP) continue;
+      ways.push({ less, roll, turnBack, G0, price: 2 * less + 0.3 * Math.abs(roll) + 0.05 * rate * ((roll - prev.roll) ** 2 + (less - prev.less) ** 2) });
+    }
+    ways.sort((x, y) => x.price - y.price);
+    ways.splice(WAYS_TRIED);
+    let best = null;
+    for (const w of ways) {
+      const pre = strapped(mul3(w.G0, rotX(w.roll)));   // the shield turned in its own plane, the forearm with it
+      const want = vadd(centre, mulVec(mul3(mul3(Bt, w.turnBack), k.B), vsub(rest, centre)));
+      const at = (e, tw) => {
+        if (e < ELBOW_RANGE[0] || e > ELBOW_RANGE[1] || Math.abs(tw) > WRIST_MAX) return null;
+        if (Math.abs(e - prev.e) > ELBOW_RATE * dt + 1e-9 || Math.abs(tw - prev.tw) > TURN_RATE * dt + 1e-9) return null;
+        const a = armFor(pre, e, tw);
+        let clash = 0;
+        for (const p of a.fore) clash += Math.max(0, 2 - toTorso(p)) ** 2;
+        for (const x of pre.plate) clash += Math.max(0, SHIELD_CLEAR - toTorso3(x[0] + a.off[0], x[1] + a.off[1], x[2] + a.off[2])) ** 2;
+        clash += Math.max(0, a.mid[2] + 5) ** 2;   // the plate in front of the chest, never round behind it
+        let s = 50 * clash + vsub(a.mid, want).reduce((x, v) => x + v * v, 0) + w.price;
+        s += 1e4 * Math.max(0, Math.abs(twistOf(a.arm)) - SHOULDER_MAX) ** 2;
+        s += 0.05 * rate * ((e - prev.e) ** 2 + (tw - prev.tw) ** 2);
+        return { s, clash, e, tw, roll: w.roll, less: w.less, a };
+      };
+      const descend = (from) => {
+        let b = at(from.e, from.tw);
+        for (let step = 8; step >= 0.25; step /= 2) {
+          for (let moved = true; moved;) {
+            moved = false;
+            for (const [de, dw] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+              const r = at(b.e + de * step, b.tw + dw * step);
+              if (r && r.s < b.s - 1e-9) { b = r; moved = true; }
+            }
+          }
+        }
+        return b;
+      };
+      let got = descend(prev);
+      if (got.clash > 1e-6) {
+        const g = descend({ e: reach(prev.e, SHIELD_POSE.elbow, ELBOW_RATE), tw: reach(prev.tw, SHIELD_POSE.twist, TURN_RATE) });
+        if (g.s < got.s - 1e-9) got = g;
+      }
+      if (!best || got.s < best.s - 1e-9) best = got;
+      if (got.clash < 1e-6) break;
+    }
+    prev = { e: best.e, tw: best.tw, roll: best.roll, less: best.less, t: k.t };
+    return { t: k.t, arm: fromTrue(best.a.arm), elbow: bbKey([best.e, 0, 0]), wrist: forearmTwist(best.tw), roll: best.roll };
+  });
+  const ch = (f) => keys.map((k) => ({ t: k.t, v: f(k), lerp: 'linear' }));
+  return {
+    left_arm: { rotation: ch((k) => k.arm) },
+    left_elbow: { rotation: ch((k) => k.elbow) },
+    weapon_l: { rotation: ch((k) => k.wrist.rotation), position: ch((k) => k.wrist.position) },
+  };
+}
+
+/** The same clip with the off arm replaced by the held shield, kept to the front. */
 function withShield(clip, arm) {
   const c = clone(clip);
   for (const b of SHIELD_BONES) c.bones[b] = clone(arm[b]);
+  const turned = faceFront(c, clip);
+  if (turned) Object.assign(c.bones, turned);
   return c;
 }
 
@@ -715,7 +901,7 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used, slots = S
 }
 
 function buildRace(race, sources, slots = SLOTS) {
-  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(sources, style), used = new Set(), leftOf = [], meta = {};
+  const clips = {}, style = STYLE[race] || {}, shield = shieldArm(), used = new Set(), leftOf = [], meta = {};
   for (const [slot, entry] of Object.entries(slots)) {
     let c = clipFor(slot, entry, race, sources);
     if (/^attack_/.test(slot)) {   // before mirroring
@@ -732,6 +918,7 @@ function buildRace(race, sources, slots = SLOTS) {
       if (slot === 'run') groundFeet(c);   // the sprint's long airborne phase floats both feet
       hipsFollow(c);   // the hips take part of every torso twist
       c = hingeify(c);   // elbows and knees as the hinges the game draws (hinge.js)
+      if (slot === 'shield_brace') c = withShield(c, shield);   // the brace holds the strapped shield like every shield clip
     }
     clips[slot] = c;
     if (leftOf.includes(slot)) clips[slot + '_l'] = mirror(c);
@@ -778,5 +965,5 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo, unwarpSpan } };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo, unwarpSpan }, _shield: { SHIELD_POSE, armFor, twistOf, faceFront } };
 if (require.main === module) main();
