@@ -1,14 +1,15 @@
 'use strict';
 /* Weapon-in-hand checks. Race files: strikes in front, no spins, two-handed grips, the left-handed twins, no clipping.
- * Exported Middle-earth NPCs (addon/run/viewer_export, from ./addon/bench.sh export; skipped when absent): every real item's
- * grip and length, and shields facing forward. */
+ * Exported Middle-earth NPCs (addon/run/viewer_export, from ./addon/bench.sh export; skipped when absent): every real item
+ * seated as the game and viewer seat it (gecko/held.js seatItem: drawn length to the class length, handle on the fist),
+ * and shields facing forward. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { strike, blade, FIST } = require('../gecko/strike.js');
-const { partToRig, itemScale, scaleAbout, exportClass } = require('../gecko/held.js');
+const { partToRig, quadsOf, drawnItem, seatItem, seatPoint, exportClass } = require('../gecko/held.js');
 const { classLength } = require('../build_npc.js');
 const { RACES } = require('../npc_slots.js');
 
@@ -104,33 +105,42 @@ const exported = fs.existsSync(path.join(EXPORT, 'index.json'))
 const hands = () => exported.flatMap((d) => ['right_arm', 'left_arm'].map((part) => {
   const ms = d.meshes.filter((m) => m.hand && m.part === part);
   if (!ms.length) return null;
-  const pts = [];
+  const pts = [], quads = [];
   for (const m of ms) for (let i = 0; i < m.pos.length; i += 3) pts.push(partToRig(part, [m.pos[i], m.pos[i + 1], m.pos[i + 2]]));
-  return { label: `${d.label} (${part})`, side: part === 'left_arm' ? 'left' : 'right', weapon: exportClass(ms[0].weapon, d.label), pts };
+  for (const m of ms) for (const q of quadsOf(m.pos, m.idx)) quads.push(q.map((p) => partToRig(part, p)));
+  return { label: `${d.label} (${part})`, side: part === 'left_arm' ? 'left' : 'right', weapon: exportClass(ms[0].weapon, d.label), pts, quads };
 }).filter(Boolean));
-const extent = (pts) => Math.max(...[0, 1, 2].map((i) => Math.max(...pts.map((p) => p[i])) - Math.min(...pts.map((p) => p[i]))));
+/** The drawn weapon's points (gecko/held.js drawnItem), placed as the viewer places them. */
+const SEATED = (h) => {
+  const seat = seatItem(h.weapon, GRIPS, h.quads, FIST[h.side]);
+  return drawnItem(h.quads).pts.map((p) => seatPoint(seat, p));
+};
+const dedupe = (pts) => [...new Map(pts.map((p) => [p.map((x) => x.toFixed(4)).join(), p])).values()];
+/** The farthest pair's distance, every pair (the measure's own two-pass search only approximates it). */
+const diameter = (pts) => { let d = 0; for (const a of pts) for (const b of pts) d = Math.max(d, Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])); return d; };
 
 /** The hand: the bottom of the arm (part space x -3..1, y 7..12, z -2.5..2.5 for the right arm) in rig space. */
 const HAND = { right: [[4, 10, -2.5], [8, 15, 2.5]], left: [[-8, 10, -2.5], [-4, 15, 2.5]] };
 const toBox = (b, p) => Math.hypot(...[0, 1, 2].map((i) => Math.max(b[0][i] - p[i], 0, p[i] - b[1][i])));
 
-test('real items: the handle is in the hand (within 2.5 px of it once scaled: Minecraft seats items just in front of the knuckles)', { skip: !exported && 'no export (./addon/bench.sh export)' }, () => {
+test('real items: the handle is in the hand (the drawn weapon within 2.5 px of it once seated)', { skip: !exported && 'no export (./addon/bench.sh export)' }, () => {
   const bad = [];
   for (const h of hands()) {
     if (!GRIPS[h.weapon]) continue;
-    const s = itemScale(h.weapon, GRIPS, extent(h.pts));
-    const d = Math.min(...h.pts.map((p) => toBox(HAND[h.side], scaleAbout(FIST[h.side], s, p))));
+    const d = Math.min(...SEATED(h).map((p) => toBox(HAND[h.side], p)));
     if (d > 2.5) bad.push(`${h.label} ${h.weapon}: ${d.toFixed(1)} px from the hand`);
   }
   assert.deepEqual(bad, []);
 });
 
-test('real items: scaled to their class length (±5%)', { skip: !exported && 'no export (./addon/bench.sh export)' }, () => {
+test('real items: the drawn weapon is its class length once seated (±5%, pommel to tip)', { skip: !exported && 'no export (./addon/bench.sh export)' }, () => {
+  const bad = [];
   for (const h of hands()) {
     if (!GRIPS[h.weapon]) continue;
-    const s = itemScale(h.weapon, GRIPS, extent(h.pts)), len = extent(h.pts.map((p) => scaleAbout(FIST[h.side], s, p))) / 16;
-    assert.ok(Math.abs(len / GRIPS[h.weapon].length - 1) <= 0.05, `${h.label}: ${len.toFixed(2)} blocks for ${h.weapon}`);
+    const len = diameter(dedupe(SEATED(h))) / 16;
+    if (Math.abs(len / GRIPS[h.weapon].length - 1) > 0.05) bad.push(`${h.label}: ${len.toFixed(2)} blocks for ${h.weapon} (${GRIPS[h.weapon].length})`);
   }
+  assert.deepEqual(bad, []);
 });
 
 test('real shields face forward when braced: their face points along the facing within 35°', { skip: !exported && 'no export (./addon/bench.sh export)' }, () => {

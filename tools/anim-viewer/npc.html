@@ -38,7 +38,8 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
   <h1>NPC clip viewer</h1>
   <div class="note">The race clip files PulseLib plays in game (<code>geckolib/animations/entity/npc_biped_&lt;race&gt;.animation.json</code>,
     built by <code>node tools/anim-viewer/build_npc.js</code>), on the test figure or an exported Middle-earth NPC. Held items are
-    scaled to their class length (<code>weapon_grips.json</code>) about the fist and follow the weapon bones. The list shows the
+    sized by the drawn weapon to their class length (<code>weapon_grips.json</code>, pommel to tip), seated with the handle on
+    the fist, and follow the weapon bones. The list shows the
     clips an NPC plays with its weapon (attacks fall back between classes as in game).</div>
   <h2>Clips</h2>
   <div class="row"><label for="model">Model</label><select id="model" style="flex:1;min-width:0"><option value="">Test figure</option></select></div>
@@ -151,7 +152,7 @@ function addMesh(fig, part, pos, uv, idx, material, hand, weapon) {
   fig.group.add(mesh);
   const rest = new Float32Array(pos.length);
   for (let i = 0; i < pos.length; i += 3) rest.set(H.partToRig(part, [pos[i], pos[i + 1], pos[i + 2]]), i);
-  fig.meshes.push({ part, rest, mesh, hand, weapon });
+  fig.meshes.push({ part, rest, idx: idx ? Array.from(idx) : null, mesh, hand, weapon });
   return mesh;
 }
 function boxMesh(fig, part, a, b, color, hand, weapon) {
@@ -192,15 +193,14 @@ function npcFigure(fig, d) {
     addMesh(fig, m.part, m.pos, m.uv, m.idx, material, hand, H.exportClass(m.weapon, d.label)).renderOrder = order;
   });
 }
-/** Each hand's items share one scale: class length over their joint longest extent. */
-function setHandScales(fig) {
+/** Each hand's items share one seat (gecko/held.js seatItem): their drawn weapon at the class length, handle on the fist. */
+function setHandSeats(fig) {
   for (const side of ['right', 'left']) {
     const held = fig.meshes.filter((m) => m.hand === side);
     if (!held.length) continue;
-    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-    for (const m of held) for (let i = 0; i < m.rest.length; i += 3) for (let j = 0; j < 3; j++) { lo[j] = Math.min(lo[j], m.rest[i + j]); hi[j] = Math.max(hi[j], m.rest[i + j]); }
-    const s = H.itemScale(held[0].weapon, grips, Math.max(...hi.map((x, j) => x - lo[j])));
-    for (const m of held) m.scale = s;
+    const quads = held.flatMap((m) => (m.idx ? H.quadsOf(m.rest, m.idx) : []));
+    const seat = H.seatItem(held[0].weapon, grips, quads, H.FIST[side]);
+    for (const m of held) m.seat = seat;
   }
 }
 function labelSprite(text) {
@@ -220,7 +220,7 @@ function makeFigure(name) {
   scene.add(fig.group);
   if (source.kind === 'test') testFigure(fig, $('weapon').value === 'auto' ? 'sword' : weaponChoice().main);
   else npcFigure(fig, source.d);
-  setHandScales(fig);
+  setHandSeats(fig);
   if (source.kind === 'npc') { const s = source.d.scale || 1, w = source.d.widthScale || 1; fig.group.scale.set(w * s, s, w * s); }
   return fig;
 }
@@ -260,10 +260,10 @@ function place(fig, time) {
     if (!m.mesh.visible) continue;
     const out = m.mesh.geometry.attributes.position.array, r = m.rest;
     const bone = m.hand ? (m.hand === 'right' ? 'weapon_r' : 'weapon_l') : BONE[m.part];
-    const w = W[bone], j = !m.hand && JOINT[m.part] ? joint(JOINT[m.part]) : null, fist = m.hand && H.FIST[m.hand];
+    const w = W[bone], j = !m.hand && JOINT[m.part] ? joint(JOINT[m.part]) : null;
     for (let i = 0; i < r.length; i += 3) {
       let p = [r[i], r[i + 1], r[i + 2]];
-      if (fist) p = H.scaleAbout(fist, m.scale || 1, p);
+      if (m.hand) p = H.seatPoint(m.seat, p);
       if (j) p = H.bendPoint(j, p, BAND);
       out.set(S.point(w, p), i);
     }
