@@ -92,8 +92,8 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     private final Map<ModelPart, List<Quad>> armourQuads = new WeakHashMap<>();
     private final Map<ModelPart, Map<Object, PGeometryData>> armourMeshes = new WeakHashMap<>();
     private final Map<ItemKey, List<Piece>> itemPieces = new HashMap<>();
-    /** Each held item's points in arm space (px), and where it sits per stance (arm space, blocks; NONE_PLACE: as drawn). */
-    private final Map<ItemKey, float[]> itemPoints = new HashMap<>();
+    /** Each held item's faces in arm space (px), and where it sits per stance (arm space, blocks; NONE_PLACE: as drawn). */
+    private final Map<ItemKey, List<float[]>> itemQuads = new HashMap<>();
     private final Map<ItemKey, Matrix4f> itemPlace = new HashMap<>();
     private static final Matrix4f NONE_PLACE = new Matrix4f();
     private final java.util.Set<Class<?>> warned = new java.util.HashSet<>();
@@ -138,7 +138,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
                     armourQuads.clear();
                     armourMeshes.clear();
                     itemPieces.clear();
-                    itemPoints.clear();
+                    itemQuads.clear();
                     itemPlace.clear();
                     meArmour.clear();
                     atlasSeen = atlas;
@@ -376,7 +376,7 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
             model.translateToHand(arm, poseStack);   // the hand frame Minecraft's held-item layer uses
         }
         ItemKey key = new ItemKey(ItemStack.hashItemAndComponents(stack), context, left);
-        Matrix4f place = place(entity, stack, key);   // its class's length about the fist (WeaponGrip)
+        Matrix4f place = place(entity, stack, key);   // its drawn weapon at its class's length, handle on the fist (WeaponGrip)
         if (place != NONE_PLACE) poseStack.mulPose(place);
         poseStack.mulPose(Axis.XP.rotationDegrees(-90f));
         poseStack.mulPose(Axis.YP.rotationDegrees(180f));
@@ -397,14 +397,14 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     /** Where a held item sits in the arm (WeaponGrip), cached per item. */
     private Matrix4f place(NpcEntity entity, ItemStack stack, ItemKey key) {
         return itemPlace.computeIfAbsent(key, k -> {
-            float[] pts = itemPoints.computeIfAbsent(key, kk -> armPoints(entity, stack, key.context(), key.left()));
-            Matrix4f grip = WeaponGrip.place(WeaponGrip.classOf(stack), key.left(), pts);
+            List<float[]> quads = itemQuads.computeIfAbsent(key, kk -> armQuads(entity, stack, key.context(), key.left()));
+            Matrix4f grip = WeaponGrip.place(WeaponGrip.classOf(stack), key.left(), quads);
             return grip == null ? NONE_PLACE : WeaponGrip.toBlocks(grip);
         });
     }
 
-    /** The item's vertices as Minecraft's held-item layer places them in the arm (arm space, px). */
-    private float[] armPoints(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left) {
+    /** The item's faces as Minecraft's held-item layer places them in the arm (arm space, px; x, y, z per vertex). */
+    private List<float[]> armQuads(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left) {
         PoseStack ps = new PoseStack();
         ps.mulPose(Axis.XP.rotationDegrees(-90f));
         ps.mulPose(Axis.YP.rotationDegrees(180f));
@@ -412,14 +412,19 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
         HeldItems.render(itemInHand, entity, stack, context, left, ps, buffers, 0xF000F0);
         buffers.flush();
-        List<Float> out = new ArrayList<>();
+        List<float[]> out = new ArrayList<>();
         buffers.byType.forEach((rt, rec) -> {
             if (rt.toString().contains("glint")) return;
-            for (Quad q : rec.quads) for (org.joml.Vector3f p : q.pos()) { out.add(p.x * 16f); out.add(p.y * 16f); out.add(p.z * 16f); }
+            for (Quad q : rec.quads) {
+                float[] face = new float[q.pos().length * 3];
+                for (int k = 0; k < q.pos().length; k++) {
+                    org.joml.Vector3f p = q.pos()[k];
+                    face[k * 3] = p.x * 16f; face[k * 3 + 1] = p.y * 16f; face[k * 3 + 2] = p.z * 16f;
+                }
+                out.add(face);
+            }
         });
-        float[] pts = new float[out.size()];
-        for (int i = 0; i < pts.length; i++) pts[i] = out.get(i);
-        return pts;
+        return out;
     }
 
     /** Draws the item once into a recorder (hand space), then packs one mesh per (texture, colour). */
