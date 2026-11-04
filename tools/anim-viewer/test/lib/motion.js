@@ -148,6 +148,25 @@ function hinge(w, joint, parent) {
   return { bend: -bend, off };
 }
 
+/**
+ * A bone's turn about its own rest axis (rig y: limbs hang along it) relative to its parent, degrees within ±180: the twist
+ * of a swing-twist split, the same whichever order the two are taken in. For an upper arm against the body it is the
+ * humeral rotation; for the weapon bone against the elbow, the forearm's pronation and supination.
+ */
+function twist(w, bone, parent) {
+  let q = localQuat(w, bone, parent);
+  if (q[3] < 0) q = q.map((x) => -x);   // the same turn; keeps the twist within ±180°
+  const n = Math.hypot(q[1], q[3]);
+  return n < 1e-9 ? 0 : deg(2 * Math.atan2(q[1] / n, q[3] / n));   // no twist to speak of at a 180° swing
+}
+
+/** How far a bone swings off its own rest axis (rig y) relative to its parent, degrees (0..180): the swing of the split
+ *  twist() makes. Near 180° the limb points back along that axis and its twist is not defined. */
+function swing(w, bone, parent) {
+  const q = localQuat(w, bone, parent);
+  return deg(2 * Math.acos(Math.min(1, Math.hypot(q[1], q[3]))));
+}
+
 /** The upper body's turn over the hips: twist (about y), flex (forward +), side bend; degrees. */
 function waist(w) {
   const L = w.lower.R, U = w.upper.R, R = [];
@@ -156,4 +175,4 @@ function waist(w) {
   return { twist: deg(Math.atan2(-f[0], -f[2])), flex: deg(Math.asin(Math.max(-1, Math.min(1, -f[1])))), side: deg(Math.atan2(u[0], u[1])) };
 }
 
-module.exports = { RATE, times, frames, track, velocities, localQuat, hinge, waist, sub, len, dot, deg };
+module.exports = { RATE, times, frames, track, velocities, localQuat, hinge, twist, swing, waist, sub, len, dot, deg };
