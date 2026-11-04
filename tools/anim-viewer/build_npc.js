@@ -16,7 +16,7 @@ const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
 const { importMoBends } = require('./import/mobends.js');
 const { importSeriousPlayer } = require('./import/seriousplayer.js');
 const { importEmote } = require('./import/emotecraft.js');
-const { RACES, SLOTS, STYLE, POOL } = require('./npc_slots.js');
+const { RACES, SLOTS, STYLE, POOL, KEEP } = require('./npc_slots.js');
 const { hingeify, lowPass } = require('./hinge.js');
 
 const LIB = path.join(__dirname, 'library');
@@ -586,9 +586,6 @@ function withShield(clip, arm) {
   return c;
 }
 
-/** The share of a race's style an attack must keep to count as fought in that style (test/fighting.test.js). */
-const KEEP = 0.6;
-
 /**
  * An attack that meets the bar (meetsBar) as finished for this race, with the race's style stepped down if need be: its own
  * clip, if that keeps at least KEEP of the style (or meets the bar, for a race with no style). Otherwise the clip of its
@@ -672,6 +669,15 @@ function buildRace(race, sources, slots = SLOTS) {
   return { geo: geoJson(RIG), animations, hits, clips };
 }
 
+/** The attacks whose source clip differs from the race's hits.json on disk, as "attack: old -> new" (none if no file).
+ *  Clips are picked after the race's tempo is applied, so a STYLE change can swap them (npc_slots.js). */
+function clipChanges(race, hits) {
+  let old;
+  try { old = JSON.parse(fs.readFileSync(path.join(OUT, `animations/entity/npc_biped_${race}.hits.json`), 'utf8')); } catch { return []; }
+  const clip = (h, n) => (h[n] && h[n].clip) || 'none';
+  return [...new Set([...Object.keys(old), ...Object.keys(hits)])].filter((n) => clip(old, n) !== clip(hits, n)).map((n) => `${n}: ${clip(old, n)} -> ${clip(hits, n)}`);
+}
+
 function main() {
   const sources = loadSources();
   const write = (rel, data, text) => {
@@ -684,7 +690,8 @@ function main() {
     write(`animations/licenses/${src}.txt`, null, fs.readFileSync(path.join(LIB, src, 'LICENSE.txt'), 'utf8'));
   }
   for (const race of RACES) {
-    const r = buildRace(race, sources);
+    const r = buildRace(race, sources), changed = clipChanges(race, r.hits);
+    console.log(changed.length ? `${race}: attacks that changed clip: ${changed.join(', ')}` : `${race}: no attack changed clip`);
     write(`models/entity/npc_biped_${race}.geo.json`, r.geo);
     write(`animations/entity/npc_biped_${race}.animation.json`, r.animations);
     write(`animations/entity/npc_biped_${race}.hits.json`, r.hits);

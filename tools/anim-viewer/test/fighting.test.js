@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { strike, blade, FIST } = require('../gecko/strike.js');
 const { classLength } = require('../build_npc.js');
-const { RACES } = require('../npc_slots.js');
+const { RACES, KEEP } = require('../npc_slots.js');
 const M = require('./lib/motion.js');
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
@@ -45,7 +45,7 @@ test('every race keeps its fighting style: at least 60% of it on 80% of its atta
     const v = Object.entries(built[race].hits);
     assert.deepEqual(v.filter(([, x]) => x.missesBar).map(([n]) => n), [], `${race}: attacks that miss the bar`);
     if (race === 'man') continue;
-    const kept = v.filter(([, x]) => x.style >= 0.6).length;
+    const kept = v.filter(([, x]) => x.style >= KEEP).length;
     assert.ok(kept >= 0.8 * v.length, `${race} keeps its style on ${kept}/${v.length}`);
   }
 });

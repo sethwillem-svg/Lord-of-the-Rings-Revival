@@ -55,6 +55,10 @@
    * the apex, the strike bursting to the hit, the recovery leaving fast and settling slowly; ready: the attack ends by
    * easing back into the ready stance (the idle pose). prefer: 'overhead' picks, for each weapon attack (not shield bashes
    * or unarmed blows), the class's clip whose wind-up lifts the weapon highest. */
+  /* Coupling: man.tempo is also every race's unarmed tempo (build_npc.js tempoFor), and each attack's clip is picked from
+   * its class's POOL by judging the finished swing, tempo included (build_npc.js bestAttack). So any STYLE change, even to
+   * one race's tempo, can swap clips: after it, check the `clip` fields in hits.json (the build prints the changes against
+   * the files on disk) and the race-vs-man pairs the tests compare (test/lib/pairs.js). */
   const STYLE = {
     man: { tempo: { windup: 1, tame: 0.05, strike: 1, recover: 1.3, tsume: { windup: 1.6, strike: 1.6, recover: 2.0 }, ready: false } },
     elf: { hunch: -8, armsOut: -5, fight: { overswing: -0.15, extend: 0.9, lean: 6, lead: 0.03, freeArm: { out: 45 } },
@@ -78,7 +82,10 @@
     shield: ['Warrior_bashR', 'Warrior_uppercutR'],
     unarmed: ['attackR', 'Wand_Wave_3R', 'attackL', 'Warrior_uppercutR'],
   };
-  const api = { RACES, SLOTS, STYLE, POOL };
+  /** The share of a race's fighting style an attack must keep to count as fought in that style: build_npc.js bestAttack
+   *  prefers a clip keeping it, and the tests compare races only on attacks that keep it (test/lib/pairs.js). */
+  const KEEP = 0.6;
+  const api = { RACES, SLOTS, STYLE, POOL, KEEP };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NpcSlots = api;
 })(typeof window !== 'undefined' ? window : globalThis);
