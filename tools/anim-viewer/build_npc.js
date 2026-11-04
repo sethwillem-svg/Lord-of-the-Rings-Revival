@@ -14,14 +14,13 @@ const path = require('node:path');
 const { RIG } = require('./gecko/rig.js');
 const { geoJson, animationJson } = require('./gecko/write.js');
 const { hitTime: strikeHit, speeds: tipSpeeds, acceptable, strike, hingesOk, cleanSwing, waistOk, clearOfBody, spacing, bodyHitAfter, fadeFor, quality, blade: bladeAt, DIR: STRIKE_DIR } = require('./gecko/strike.js');
-const { trueRotation, fromTrue, mul3 } = require('./gecko/write.js');
 const { samplePose, worldBones, point } = require('./gecko/sample.js');
 const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
 const { importMoBends } = require('./import/mobends.js');
 const { importSeriousPlayer } = require('./import/seriousplayer.js');
 const { importEmote } = require('./import/emotecraft.js');
 const { RACES, SLOTS, STYLE, POOL, KEEP } = require('./npc_slots.js');
-const { hingeify, lowPass, limitTwist, peakTwist, TWIST } = require('./hinge.js');
+const { hingeify, lowPass, limitTwist, peakTwist } = require('./hinge.js');
 
 const LIB = path.join(__dirname, 'library');
 const OUT = path.join(__dirname, '../../addon/src/main/resources/assets/lotr_revival/geckolib');
@@ -288,27 +287,33 @@ function hipsFollow(clip, share = 0.4) {
   });
 }
 
-/** Edged classes. A double-edged blade (a sword's, a dagger's, a spearhead) cuts the same with either edge, so a half turn
- *  about it is the same cut; an axe has one edge. Shields and fists have none. */
-const DOUBLE_EDGED = new Set(['sword', 'longsword', 'dagger', 'spear']), SINGLE_EDGED = new Set(['axe']);
-/** Seconds either side of the hit (on the clip's clock before tempo) through which an edge keeps the roll that leads it. */
-const EDGE_HOLD = 0.025;
+/** Edged classes. A double-edged blade (a longsword's, a dagger's, a spearhead) cuts the same with either edge, so a half
+ *  turn about it is the same cut. A sword clip may hold a scimitar (Middle-earth files them as swords: combat.WeaponClass),
+ *  curved with one edge, so swords count as single-edged, like axes. Shields and fists have none. */
+const DOUBLE_EDGED = new Set(['longsword', 'dagger', 'spear']), SINGLE_EDGED = new Set(['sword', 'axe']);
+/** A single edge, in the weapon frame: Minecraft seats a held item blade forward and up from the fist with its edge below
+ *  it, toward the front, square to the blade (STRIKE_DIR) in the flat's plane. */
+const EDGE = [0, -Math.SQRT1_2, -Math.SQRT1_2];
+/** Seconds either side of the hit, as played (after the tempo), through which an edge keeps the roll that leads it: the
+ *  game tick before and after it. */
+const EDGE_HOLD = 0.05;
 
 /**
  * Rolls an edged weapon about its own length so its edge, not its flat, leads at the strike (at `hit`, s on this clip's
  * clock): the flat faces the arm's x in the weapon frame (Minecraft seats a sword's flat sideways), turned by the shortest
- * roll that puts it square to the swing. The roll moves the wrist's twist, so the limbs are then brought back within
- * their twist range (hinge.js limitTwist). A double-edged blade may take the roll half a turn the other way instead,
- * whichever leaves less twist; an axe keeps its edge, and keeps the source roll when rolling would twist the wrist past its
- * range. Returns the clip (a new one when anything changed).
+ * roll that puts it square to the swing. A double-edged blade may take that roll half a turn the other way instead,
+ * whichever leaves less twist; a single-edged one takes whichever of the two leads with its edge (EDGE). The roll moves the
+ * wrist's twist, so the limbs are then brought back within their twist range (hinge.js limitTwist), the weapon keeping
+ * its roll through `hold` ([from, to] s on this clip's clock: the game tick either side of the hit as played). Returns the
+ * clip (a new one when anything changed).
  */
-function edgeAlign(clip, slot, side, hit) {
+function edgeAlign(clip, slot, side, hit, hold = [hit, hit]) {
   const bone = side === 'left' ? 'weapon_l' : 'weapon_r', ch = clip.bones[bone], cls = slot.split('_')[1];
   // the hands may roll what they hold about its length where no swivel keeps the wrist in range; an edge keeps its roll
   // through the strike
   const roll = { weapon_r: STRIKE_DIR, weapon_l: [-STRIKE_DIR[0], STRIKE_DIR[1], STRIKE_DIR[2]] };
   const edged = DOUBLE_EDGED.has(cls) || SINGLE_EDGED.has(cls);
-  const limit = (c) => limitTwist(c, { roll, held: [bone], keep: edged ? { [bone]: [hit - EDGE_HOLD, hit + EDGE_HOLD] } : {} });
+  const limit = (c, a = 0) => limitTwist(c, { roll, held: [bone], keep: edged ? { [bone]: hold } : {}, preRoll: { [bone]: a } });
   if (!ch || !ch.rotation || !edged) return limit(clip);
   const len = classLength(slot), anim = animationJson({ c: clip }).animations.c;
   const dt = 1 / 120, tipAt = (t) => point(worldBones(samplePose(anim, Math.max(0, Math.min(clip.length, t))))[bone], bladeAt(side, len, 1));
@@ -320,21 +325,16 @@ function edgeAlign(clip, slot, side, hit) {
     const cost = Math.abs(n[0] * v[0] + n[1] * v[1] + n[2] * v[2]) + 1e-4 * Math.abs(a);
     if (cost < bestCost) { bestCost = cost; best = a; }
   }
-  const rolled = (a) => {
-    if (!a) return limit(clip);
-    const c = clone(clip), Rr = eulerAxis(axis, (a * Math.PI) / 180);
-    for (const k of c.bones[bone].rotation) k.v = fromTrue(mul3(trueRotation(k.v), Rr));   // about the weapon pivot: positions stay
-    return limit(c);
-  };
-  const rolls = DOUBLE_EDGED.has(cls) ? [best, best > 0 ? best - 180 : best + 180] : [best];
-  const tried = rolls.map((a) => ({ a, c: rolled(a) })).map((x) => ({ ...x, tw: peakTwist(x.c) }));
-  // least past range first, then the wrist twisted least, then the shorter roll
-  const pick = tried.reduce((b, x) => ((x.tw.past < b.tw.past - 1e-6 || (Math.abs(x.tw.past - b.tw.past) <= 1e-6 && x.tw.end < b.tw.end - 1e-6)) ? x : b));
-  if (SINGLE_EDGED.has(cls) && pick.tw.end > TWIST.end) {   // an axe rolled past the wrist's range keeps its source roll
-    const own = rolled(0), tw = peakTwist(own);
-    if (tw.end < pick.tw.end) return own;
+  // rolled in the world at every sample (limitTwist preRoll), about the weapon pivot: its place and its path between keys stay
+  const rolled = (a) => limit(clip, a);
+  const flip = best > 0 ? best - 180 : best + 180;
+  if (SINGLE_EDGED.has(cls)) {   // the roll, or the half turn from it, that leads with the edge
+    const edge = mulVec(R, mulVec(eulerAxis(axis, (best * Math.PI) / 180), side === 'left' ? [-EDGE[0], EDGE[1], EDGE[2]] : EDGE));
+    return rolled(edge[0] * v[0] + edge[1] * v[1] + edge[2] * v[2] >= 0 ? best : flip);
   }
-  return pick.c;
+  const tried = [best, flip].map((a) => ({ a, c: rolled(a) })).map((x) => ({ ...x, tw: peakTwist(x.c) }));
+  // least past range first, then the wrist twisted least, then the shorter roll
+  return tried.reduce((b, x) => ((x.tw.past < b.tw.past - 1e-6 || (Math.abs(x.tw.past - b.tw.past) <= 1e-6 && x.tw.end < b.tw.end - 1e-6)) ? x : b)).c;
 }
 const mulVec = (R, v) => [0, 1, 2].map((r) => R[r * 3] * v[0] + R[r * 3 + 1] * v[1] + R[r * 3 + 2] * v[2]);
 function eulerAxis(u, a) {
@@ -487,23 +487,37 @@ function finishPostured(c, slot, style, idle, side, walk) {
   // the edge leads on the pose the finished attack strikes with: the tempo moves the hit. The tempo is timed on the swing
   // as it stands: the roll and the twist limit after it leave the weapon's path where it is, but Euler keys can stray from
   // it between them by a fraction of a pixel, enough to move a slow apex
-  const t = tempoFor(slot, style), at = t ? warpOf(c, slot, t, side) : null;
-  c = edgeAlign(c, slot, side, strikePose(c, slot, t, at, idle, side));
+  const t = tempoFor(slot, style), at = t ? warpOf(c, slot, t, side) : null, s = strikePose(c, slot, t, at, idle, side);
+  c = edgeAlign(c, slot, side, s.hit, s.hold);
   return tempo(c, slot, t, idle, side, null, at);
 }
 
 /**
- * The time, on this clip's own clock (before its race's tempo t, warp `at`), of the pose the finished attack strikes with.
- * The tempo warps the swing's timing unevenly, so the hit, found again on the warped swing, can land on another pose than
- * the one found before it; the warp is undone to find which (the poses themselves do not change).
+ * When, on this clip's own clock (before its race's tempo t, warp `at`), the finished attack strikes: { hit, the pose it
+ * strikes with; hold, [from, to], the span played as the game tick (EDGE_HOLD) either side of that hit }. The tempo warps
+ * the swing's timing unevenly, so the hit, found again on the warped swing, can land on another pose than the one found
+ * before it; the warp is undone to find which (the poses themselves do not change).
  */
 function strikePose(c, slot, t, at, idle, side) {
   const len = classLength(slot);
-  if (!t) return strikeHit(animationJson({ c }).animations.c, len, side);
+  if (!t) {
+    const hit = strikeHit(animationJson({ c }).animations.c, len, side);
+    return { hit, hold: [hit - EDGE_HOLD, hit + EDGE_HOLD] };
+  }
   const hit = strikeHit(animationJson({ c: tempo(c, slot, t, idle, side, null, at) }).animations.c, len, side);
-  let lo = 0, hi = c.length;   // warp only moves forward: halve the span holding the source time that lands on the hit
-  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (warp(mid, at) < hit) lo = mid; else hi = mid; }
-  return (lo + hi) / 2;
+  const [from, to] = unwarpSpan(at, hit - EDGE_HOLD, hit + EDGE_HOLD);
+  return { hit: unwarpSpan(at, hit, hit)[0], hold: [from, to] };
+}
+
+/** The source span [x0, x1] the warp `at` plays from time y0 to y1 (y in played seconds); a time in the tame's hold maps to
+ *  the apex, the pose held there. warp only moves forward, so each end is found by halving. */
+function unwarpSpan(at, y0, y1) {
+  const back = (y) => {
+    let lo = 0, hi = at.end;
+    for (let i = 0; i < 50; i++) { const mid = (lo + hi) / 2; if (warp(mid, at) < y) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  };
+  return [back(y0), back(y1)];
 }
 
 /**
@@ -764,5 +778,5 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo } };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: finishAttack, _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo, unwarpSpan } };
 if (require.main === module) main();
