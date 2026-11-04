@@ -120,6 +120,23 @@ public final class WeaponGripTests {
         // built facing -z (its handle behind it, toward +z), then turned so the face looks where asked
         List<float[]> local = new ArrayList<>(box(new Vector3f(-7, -7, -0.5f), new Vector3f(7, 7, 0.5f)));
         local.addAll(box(new Vector3f(-1, -3, 0.5f), new Vector3f(1, 3, 6.5f)));
+        return turned(local, left, faceSign);
+    }
+
+    /**
+     * A shield built of one-px strips, as Middle-earth's Goblin Town, Gundabad heavy and Moria shields are: 20 upright strips
+     * 1 px wide and 1 px deep side by side, each a whole box, with the handle behind them; held as shield(left, 0) holds its
+     * plate. Each strip's two sides have the area of its front and back, so by area the faces look across the plate as much
+     * as out of it. Its first face is the first strip's front.
+     */
+    private static List<float[]> stripShield(boolean left) {
+        List<float[]> local = new ArrayList<>();
+        for (int i = 0; i < 20; i++) local.addAll(box(new Vector3f(-10 + i, -10, -0.5f), new Vector3f(-9 + i, 10, 0.5f)));
+        local.addAll(box(new Vector3f(-1, -3, 0.5f), new Vector3f(1, 3, 6.5f)));
+        return turned(local, left, 0);
+    }
+
+    private static List<float[]> turned(List<float[]> local, boolean left, int faceSign) {
         Matrix4f turn = new Matrix4f().translate(left ? 5 : -5, 3, 1);
         if (faceSign == 0) turn.rotateY((float) Math.toRadians(left ? -90 : 90));   // -z to +x (left) or -x (right)
         else if (faceSign > 0) turn.rotateY((float) Math.PI);
@@ -165,6 +182,27 @@ public final class WeaponGripTests {
                     for (int i = 0; i < q.length; i += 3)
                         h.assertTrue(m.transformPosition(new Vector3f(q[i], q[i + 1], q[i + 2])).dot(back) <= front + 1e-3f, what + ": the handle is in front of the plate");
             }
+        }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void stripShieldIsStrappedToTheForearm(GameTestHelper h) {
+        for (boolean left : new boolean[] {false, true}) {
+            List<float[]> quads = stripShield(left);
+            Matrix4f m = WeaponGrip.place("shield", left, quads);
+            String what = left ? "left arm" : "right arm";
+            h.assertTrue(m != null, what + ": no placement");
+            Vector3f n = placedFace(quads, m)[0], back = new Vector3f(left ? 1 : -1, 0, 0);
+            h.assertTrue(n.dot(back) > 0.999f, what + ": the strip shield's face looks along " + n + ", not the forearm's back " + back);
+            float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;   // the plate's strips: one px through along the face
+            for (float[] q : quads.subList(0, 120))
+                for (int i = 0; i < q.length; i += 3) {
+                    float s = m.transformPosition(new Vector3f(q[i], q[i + 1], q[i + 2])).dot(back);
+                    lo = Math.min(lo, s);
+                    hi = Math.max(hi, s);
+                }
+            h.assertTrue(Math.abs(hi - lo - 1) < 1e-3f, what + ": the plate is " + (hi - lo) + " px through");
         }
         h.succeed();
     }

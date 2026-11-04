@@ -112,11 +112,16 @@
 
   /** How far from the plate's end a face still counts as the plate (px): the plate's two faces, one px apart. */
   const PLATE_DEPTH = 1.5;
+  /** Extents (px) this close count as the same when picking the plate's axis. */
+  const THIN_TIE = 0.25;
 
   /**
-   * The plate of a shield's faces. Its axis: the direction the faces' area mostly looks along (the top eigenvector of the
-   * area-weighted normal tensor), which a flat plate's two big faces decide. Its outside: the end of that axis where the
-   * faces square to it gather most area within PLATE_DEPTH (the plate), away from the handle behind it; a flat item with
+   * The plate of a shield's faces. Its axis: of the directions its faces look along, the one the whole item is thinnest
+   * along (the plate and the handle behind it, a few px deep, against 10 px and more across), a tie going to the one more
+   * face area looks along. Face area alone cannot tell: shields built of one-px strips (Middle-earth's Goblin Town,
+   * Gundabad heavy and Moria shields) have as much side area across the plate as face area out of it. Its outside: the end
+   * of that axis where the faces square to it gather most area within PLATE_DEPTH (the plate), away from the handle behind
+   * it; a flat item with
    * nothing behind its plate keeps the axis' own sign. Its up: in the plate, the item's up as displayed (arm space -z, or -y
    * when the plate is square to z), unless the plate is a quarter longer the other way, then that long axis (pointing up
    * or forward). centre: the middle of the plate's faces; back and front: the plate's two faces along out.
@@ -124,12 +129,19 @@
   function plateOf(quads) {
     const faces = quads.map((q) => ({ q, ...faceOf(q) })).filter((f) => f.area > 1e-9);
     if (!faces.length) return null;
-    const Tn = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    for (const f of faces) for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) Tn[r * 3 + c] += f.area * f.n[r] * f.n[c];
-    let v = faces.reduce((a, f) => (f.area > a.area ? f : a)).n;
-    for (let k = 0; k < 60; k++) v = norm([0, 1, 2].map((r) => Tn[r * 3] * v[0] + Tn[r * 3 + 1] * v[1] + Tn[r * 3 + 2] * v[2]));
+    // the axis: of the directions the faces look along, the one the shield is thinnest along (a plate and the handle behind
+    // it: a few px, against 10 px and more across); a tie (within THIN_TIE) goes to the direction more face area looks along
+    const dirs = [];
+    for (const f of faces) {
+      const d = dirs.find((x) => Math.abs(dot(x.n, f.n)) > 0.999);
+      if (d) d.area += f.area;
+      else dirs.push({ n: f.n, area: f.area });
+    }
+    const pts0 = faces.flatMap((f) => f.q);
+    for (const d of dirs) { const s = pts0.map((p) => dot(p, d.n)); d.extent = Math.max(...s) - Math.min(...s); }
+    const v = dirs.reduce((b, d) => (d.extent < b.extent - THIN_TIE || (Math.abs(d.extent - b.extent) <= THIN_TIE && d.area > b.area) ? d : b)).n;
     const along = (f) => f.q.reduce((s, p) => s + dot(p, v), 0) / f.q.length;
-    const all = faces.flatMap((f) => f.q.map((p) => dot(p, v)));
+    const all = pts0.map((p) => dot(p, v));
     const lo = Math.min(...all), hi = Math.max(...all);
     const square = faces.filter((f) => Math.abs(dot(f.n, v)) > 0.9);
     const areaNear = (end) => square.filter((f) => Math.abs(along(f) - end) <= PLATE_DEPTH).reduce((s, f) => s + f.area, 0);

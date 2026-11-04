@@ -95,6 +95,8 @@ public final class WeaponGrip {
     private static final float ARM_BACK = 3f, GAP = 1f, FIST_Y = 10f;
     /** How far from the plate's end a face still counts as the plate (px): the plate's two faces, one px apart. */
     private static final float PLATE_DEPTH = 1.5f;
+    /** Extents (px) this close count as the same when picking the plate's axis. */
+    private static final float THIN_TIE = 0.25f;
 
     /**
      * Where a shield goes: strapped to the forearm, whatever the item's own display transform did with it (Middle-earth's
@@ -124,12 +126,14 @@ public final class WeaponGrip {
     private record Face(float[] q, Vector3f n, float area) {}
 
     /**
-     * The plate of a shield's faces. Its axis: the direction the faces' area mostly looks along (the top eigenvector of the
-     * area-weighted normal tensor), which a flat plate's two big faces decide. Its outside: the end of that axis where the
-     * faces square to it gather most area within PLATE_DEPTH (the plate), away from the handle behind it; a flat item with
-     * nothing behind its plate keeps the axis' own sign. Its up: in the plate, the item's up as displayed (arm space -z, or
-     * -y when the plate is square to z), unless the plate is a quarter longer the other way, then that long axis (pointing
-     * up or forward). Null with nothing drawn.
+     * The plate of a shield's faces. Its axis: of the directions its faces look along, the one the whole item is thinnest
+     * along (the plate and the handle behind it, a few px deep, against 10 px and more across), a tie going to the one more
+     * face area looks along. Face area alone cannot tell: shields built of one-px strips (Middle-earth's Goblin Town,
+     * Gundabad heavy and Moria shields) have as much side area across the plate as face area out of it. Its outside: the
+     * end of that axis where the faces square to it gather most area within PLATE_DEPTH (the plate), away from the handle
+     * behind it; a flat item with nothing behind its plate keeps the axis' own sign. Its up: in the plate, the item's up as
+     * displayed (arm space -z, or -y when the plate is square to z), unless the plate is a quarter longer the other way,
+     * then that long axis (pointing up or forward). Null with nothing drawn.
      */
     @Nullable
     static Plate plate(List<float[]> quads) {
@@ -146,14 +150,30 @@ public final class WeaponGrip {
             if (len / 2 > 1e-9f) faces.add(new Face(q, n.div(len), len / 2));
         }
         if (faces.isEmpty()) return null;
-        Matrix3f tensor = new Matrix3f().zero();
-        Face largest = faces.get(0);
+        // the axis: of the directions the faces look along, the one the shield is thinnest along (a plate and the handle
+        // behind it: a few px, against 10 px and more across); a tie (within THIN_TIE) goes to the one more face area looks along
+        List<Vector3f> dirs = new ArrayList<>();
+        List<float[]> dirAreaExtent = new ArrayList<>();
         for (Face f : faces) {
-            for (int r = 0; r < 3; r++) for (int c = 0; c < 3; c++) tensor.set(c, r, tensor.get(c, r) + f.area() * f.n().get(r) * f.n().get(c));
-            if (f.area() > largest.area()) largest = f;
+            int found = -1;
+            for (int i = 0; i < dirs.size() && found < 0; i++) if (Math.abs(dirs.get(i).dot(f.n())) > 0.999f) found = i;
+            if (found >= 0) dirAreaExtent.get(found)[0] += f.area();
+            else { dirs.add(f.n()); dirAreaExtent.add(new float[] {f.area(), 0}); }
         }
-        Vector3f v = new Vector3f(largest.n());
-        for (int k = 0; k < 60; k++) tensor.transform(v).normalize();
+        int best = 0;
+        for (int i = 0; i < dirs.size(); i++) {
+            Vector3f d = dirs.get(i);
+            float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
+            for (Face f : faces) for (int k = 0; k + 2 < f.q().length; k += 3) {
+                float s = d.x * f.q()[k] + d.y * f.q()[k + 1] + d.z * f.q()[k + 2];
+                lo = Math.min(lo, s);
+                hi = Math.max(hi, s);
+            }
+            dirAreaExtent.get(i)[1] = hi - lo;
+            float[] a = dirAreaExtent.get(i), b = dirAreaExtent.get(best);
+            if (a[1] < b[1] - THIN_TIE || (Math.abs(a[1] - b[1]) <= THIN_TIE && a[0] > b[0])) best = i;
+        }
+        Vector3f v = new Vector3f(dirs.get(best));
         float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
         for (Face f : faces) for (int i = 0; i + 2 < f.q().length; i += 3) {
             float s = v.x * f.q()[i] + v.y * f.q()[i + 1] + v.z * f.q()[i + 2];

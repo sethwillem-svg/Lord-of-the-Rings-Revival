@@ -109,3 +109,23 @@ test('the plate measure finds both kinds of Middle-earth shield: the face away f
     assert.ok(behind, `${kind}: points in front of the plate`);
   }
 });
+
+/* A shield built of one-px strips, as Middle-earth's Goblin Town, Gundabad heavy and Moria shields are: 20 upright strips
+ * 1 px wide and 1 px deep side by side, each a whole box. Each strip's two sides have the area of its front and back, so by
+ * area the faces look across the plate as much as out of it, and with the handle's sides the plate's own axis loses. */
+const STRIPS = {
+  quads: [...Array.from({ length: 20 }, (_, i) => SH.box([-2 + i, 0, 8], [-1 + i, 20, 9])).flat(), ...SH.box([7, 8, 9], [9, 14, 15])],
+  display: SH.MODELS.element.display,
+  custom: false,
+};
+
+test('a shield built of one-px strips: its plate is found (face away from the handle, one px thick) and strapped face out from the forearm', () => {
+  for (const left of [true, false]) {
+    const side = left ? 'left' : 'right', drawn = SH.armQuads(STRIPS, left), p = SH.plateOf(drawn);
+    const sideways = [left ? 1 : -1, 0, 0];   // the common display turns the face out of the arm's side
+    assert.ok(p.out.every((x, i) => Math.abs(x - sideways[i]) < 1e-6), `${side}: face ${p.out.map((x) => x.toFixed(2))}`);
+    assert.ok(Math.abs(p.front - p.back - 1) < 1e-6, `${side}: plate ${(p.front - p.back).toFixed(2)} px thick`);
+    const n = SH.mat.applyDir(SH.place(drawn, left), p.out);
+    assert.ok(Math.abs(n[0] - (left ? 1 : -1)) < 1e-6, `${side}: strapped face ${n.map((x) => x.toFixed(2))}`);
+  }
+});
