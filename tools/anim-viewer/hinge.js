@@ -73,9 +73,11 @@ function solve(w, limb, state) {
 const TWIST = { arm: 95, end: 95, leg: 45 };
 const TWIST_MARGIN = 12, TWIST_HARD = 3;
 /** untwist's grids (degrees, each a full turn): swivels about the shoulder-to-hand line and rolls of the end bone about its
- *  own axis; and its weights: per degree² past the aim, and again past the hard limit, per degree² of swivel (the
- *  animator's elbow) and of roll (the animator's grip), per (degree per 60th of a second)² of change. */
-const SWIVEL_STEP = 2.5, ROLL_STEP = 5;
+ *  own axis; the fastest either may turn (degrees per second: 1200°/s, 10° in 1/120 s, so on top of the fastest turn the
+ *  animation has, about 51° in 1/120 s, a limb stays under the 60° that would read as a snap); and its weights: per degree²
+ *  past the aim, and again past the hard limit, per degree² of swivel (the animator's elbow) and of roll (the animator's
+ *  grip), per (degree per 60th of a second)² of change. */
+const SWIVEL_STEP = 2.5, ROLL_STEP = 5, SWIVEL_RATE = 1200, ROLL_RATE = 1200;
 const W_PAST = 1, W_HARD = 1e4, W_SWIVEL = 0.002, W_ROLL = 0.004, W_TURN = 0.2;
 /** One full turn of angles, -180 up to 180 less a step. */
 const fullTurn = (step) => Array.from({ length: Math.round(360 / step) }, (_, i) => -180 + i * step);
@@ -88,12 +90,12 @@ const turnBy = (v, n, deg) => turnVec(v, n, Math.cos((deg * Math.PI) / 180), Mat
 const col = (R, j) => [R[j], R[3 + j], R[6 + j]];
 /** Twist about y (degrees, ±180) of the turn taking frame (columns x0, z0) to frame (x1, z1), from the entries of
  *  F0ᵀ F1 that carry it: atan2(m02 − m20, m00 + m22), whose length is 2 cos²(swing / 2). Within POLE of a half-turn swing
- *  (the limb pointing back along its rest axis) the twist is not defined, and counts as none. */
-const POLE = 5;
+ *  (the limb pointing back along its rest axis) the twist is not defined: NaN. */
+const POLE = 3;
 const POLE_LEN = 2 * Math.cos((((180 - POLE) / 2) * Math.PI) / 180) ** 2;
 function twistOf(x0, z0, x1, z1) {
   const s = dot(x0, z1) - dot(z0, x1), c = dot(x0, x1) + dot(z0, z1);
-  return Math.hypot(s, c) < POLE_LEN ? 0 : (Math.atan2(s, c) * 180) / Math.PI;
+  return Math.hypot(s, c) < POLE_LEN ? NaN : (Math.atan2(s, c) * 180) / Math.PI;
 }
 
 /**
@@ -114,25 +116,28 @@ const limitsOf = (limb) => [limb.upper.endsWith('arm') ? TWIST.arm : TWIST.leg, 
 
 /**
  * The least-cost path through a grid of values over the frames: cost[i][k] for value values[k] at frame i (weighed by the
- * time the frame stands for), plus W_TURN per (change per 60th of a second)²; scale[i] (0..1) counts a change into frame
- * i at that share (a swivel of a near-straight limb hardly moves the elbow). No change is ruled out: a quick one costs
- * more, and is worth it only to keep a limb in range. A loop ends on the value it starts with; a single frame takes its
- * cheapest value. Returns the value per frame. Values are one full turn of angles (fullTurn), so a change may go round
- * past ±180°.
+ * time the frame stands for), plus W_TURN per (change per 60th of a second)², changing by at most `rate` degrees per
+ * second (or one step per sample 0.2 ms or more apart, whichever is more); scale[i] (0..1) counts a change into frame i at that share (a swivel of a near-straight limb hardly moves the
+ * elbow). A loop ends on the value it starts with; a single frame takes its cheapest value. Where no value can be reached
+ * at a finite cost, every frame takes 0 (no turn). Returns the value per frame. Values are one full turn of angles
+ * (fullTurn), so a change may go round past ±180°.
  */
-function cheapest(cost, values, times, loop, scale = null) {
-  const K = values.length, step = 360 / K;
-  if (cost.length === 1) { const c = cost[0]; return [values[c.indexOf(Math.min(...c))]]; }
+function cheapest(cost, values, times, loop, scale = null, rate = SWIVEL_RATE) {
+  const K = values.length, step = 360 / K, none = cost.map(() => 0);
+  if (cost.length === 1) { const c = cost[0], m = Math.min(...c); return m < Infinity ? [values[c.indexOf(m)]] : none; }
   const run = (pin) => {
     let acc = cost[0].map((c, k) => (pin === undefined || k === pin ? c : Infinity));
     const from = [null];
     for (let i = 1; i < cost.length; i++) {
-      const dt = Math.max(1e-6, times[i] - times[i - 1]), sc = scale ? scale[i] : 1, reach = Math.floor(K / 2);
+      const dt = Math.max(1e-6, times[i] - times[i - 1]), sc = scale ? scale[i] : 1;
+      // at least a step per sample, so the densest samples (near the pole, a quarter to half a millisecond apart) still let
+      // it move; samples closer than 0.2 ms (a key and its twin a sliver apart) hold it
+      const reach = dt < 0.0002 ? 0 : Math.min(Math.floor((K - 1) / 2), Math.max(1, Math.floor((rate * dt) / step + 1e-9)));
       const next = new Array(K), back = new Array(K);
       for (let k = 0; k < K; k++) {
         let best = Infinity, bj = k;
-        for (let o = -reach; o < K - reach; o++) {   // round the circle: values are angles
-          const j = (k - o + K) % K, rate = (((o * step) / 60) / dt) * sc, v = acc[j] + W_TURN * rate * rate * dt * 60;
+        for (let o = -reach; o <= reach; o++) {   // round the circle: values are angles
+          const j = (k - o + K) % K, r = (((o * step) / 60) / dt) * sc, v = acc[j] + W_TURN * r * r * dt * 60;
           if (v < best) { best = v; bj = j; }
         }
         next[k] = best + cost[i][k] * dt * 60; back[k] = bj;
@@ -140,14 +145,15 @@ function cheapest(cost, values, times, loop, scale = null) {
       acc = next; from.push(back);
     }
     if (pin !== undefined) acc = acc.map((v, k) => (k === pin ? v : Infinity));
+    if (Math.min(...acc) === Infinity) return null;
     let k = acc.indexOf(Math.min(...acc));
     const pick = new Array(cost.length);
     for (let i = cost.length - 1; i >= 0; i--) { pick[i] = k; if (i) k = from[i][k]; }
     return pick;
   };
   let pick = run();
-  if (loop) pick = run(pick[pick.length - 1]);   // a loop starts where it ends
-  return pick.map((k) => values[k]);
+  if (pick && loop) pick = run(pick[pick.length - 1]);   // a loop starts where it ends
+  return pick ? pick.map((k) => values[k]) : none;
 }
 
 /**
@@ -177,17 +183,21 @@ function untwist(frames, times, limbs, loop, opts = {}) {
       if (end) g.w = [col(f[end].R, 0), col(f[end].R, 2)];
       return g;
     });
-    const pastBy = (tw, m) => tw.reduce((e, x, i) => e + Math.max(0, Math.abs(x) - lim[i] + m) ** 2, 0);
-    if (geo.every((g) => pastBy(swivelTwists(g, 0), 5) === 0)) continue;
+    const pastBy = (tw, m) => tw.reduce((e, x, i) => e + (Number.isNaN(x) ? 0 : Math.max(0, Math.abs(x) - lim[i] + m) ** 2), 0);
+    const tame = (tw) => tw.every((x, i) => Number.isNaN(x) || Math.abs(x) <= lim[i] - 5);
+    if (geo.every((g) => tame(swivelTwists(g, 0)))) continue;
     const swivelCost = (g, d, e) => {
       const tw = swivelTwists(g, d, e);
-      return W_PAST * pastBy(tw, TWIST_MARGIN) + W_HARD * pastBy(tw, TWIST_HARD) + W_SWIVEL * d * d * g.out * g.out;
+      // an undefined twist (at the pole) costs as much as one at the aim's edge (TWIST_MARGIN past it): never free, so no
+      // swivel hides a twist there, but no worse than a twist the limb can show
+      const pole = tw.filter((x) => Number.isNaN(x)).length * W_PAST * TWIST_MARGIN * TWIST_MARGIN;
+      return W_PAST * pastBy(tw, TWIST_MARGIN) + W_HARD * pastBy(tw, TWIST_HARD) + pole + W_SWIVEL * d * d * g.out * g.out;
     };
     const outs = geo.map((g) => g.out);
     let swivel = cheapest(geo.map((g) => SWIVELS.map((d) => swivelCost(g, d))), SWIVELS, times, loop, outs);
     let roll = geo.map(() => 0);
     const axis = end && opts.roll && opts.roll[end];
-    if (axis && geo.some((g, i) => pastBy(swivelTwists(g, swivel[i]), 5) > 0)) {
+    if (axis && geo.some((g, i) => !tame(swivelTwists(g, swivel[i])))) {
       // the end bone's axis in the world, and its frame's x and z rolled about it by each roll
       const rolled = (g, i, r) => {
         const R = frames[i][end].R, ax = norm([0, 1, 2].map((j) => R[j * 3] * axis[0] + R[j * 3 + 1] * axis[1] + R[j * 3 + 2] * axis[2]));
@@ -203,18 +213,14 @@ function untwist(frames, times, limbs, loop, opts = {}) {
           return Math.min(...near.map((d) => swivelCost(g, d, e))) + W_ROLL * r * r;
         });
       });
-      roll = cheapest(rollCost, ROLLS, times, loop);
+      roll = cheapest(rollCost, ROLLS, times, loop, null, ROLL_RATE);
       geo.forEach((g, i) => { if (roll[i]) g.w = rolled(g, i, roll[i]); });
       swivel = cheapest(geo.map((g) => SWIVELS.map((d) => swivelCost(g, d))), SWIVELS, times, loop, outs);
     }
     if (swivel.every((d) => d === 0) && roll.every((r) => r === 0)) continue;
     if (!changed) { out = frames.map((f) => ({ ...f })); changed = true; }
     out.forEach((f, i) => {
-      if (roll[i]) {   // about the end bone's pivot: the item's place and direction stay
-        const W = f[end], R0 = W.R, ax = norm([0, 1, 2].map((j) => R0[j * 3] * axis[0] + R0[j * 3 + 1] * axis[1] + R0[j * 3 + 2] * axis[2]));
-        const R = axisAngle(ax, (roll[i] * Math.PI) / 180), pv = add(apply(W.R, PIVOT[end]), W.p);
-        f[end] = { R: mul3(R, W.R), p: add(apply(R, sub(W.p, pv)), pv) };
-      }
+      if (roll[i]) f[end] = rollEnd(f[end], axis, PIVOT[end], roll[i]);   // about its pivot: the item's place and direction stay
       if (!swivel[i]) return;
       const R = axisAngle(geo[i].n, (swivel[i] * Math.PI) / 180), S = geo[i].S;
       const turn = (B) => ({ R: mul3(R, B.R), p: add(apply(R, sub(B.p, S)), S) });
@@ -306,8 +312,26 @@ function sampled(clip) {
     times.push(keys[i]); isKey.push(true);
   }
   const held = Object.values(clip.bones).every((ch) => Object.values(ch).every((ks) => ks.every((k) => k.t === 0)));
-  return { moving, times, isKey, held, poses: times.map((t) => worldBones(samplePose(anim, Math.min(t, L)))) };
+  const pose = (t) => worldBones(samplePose(anim, Math.min(t, L)));
+  let poses = times.map(pose);
+  // and every 0.5 ms where an upper limb comes within NEAR_POLE of a half-turn swing: there its twist swings round fast
+  // however little the limb moves, and the swivel has to follow it closely
+  const near = (w) => moving.some((l) => w[l.upper] && w[PARENT[l.upper]] && swingOf(w[PARENT[l.upper]].R, w[l.upper].R) > 180 - NEAR_POLE);
+  const T = [], K = [], P = [];
+  for (let i = 0; i < times.length; i++) {
+    if (i && (near(poses[i - 1]) || near(poses[i]))) {
+      const n = Math.ceil((times[i] - times[i - 1]) / 0.0005 - 1e-6);
+      for (let j = 1; j < n; j++) { const t = times[i - 1] + ((times[i] - times[i - 1]) * j) / n; T.push(t); K.push(false); P.push(pose(t)); }
+    }
+    T.push(times[i]); K.push(isKey[i]); P.push(poses[i]);
+  }
+  return { moving, times: T, isKey: K, held, poses: P };
 }
+
+/** Within this many degrees of a half-turn swing, sampled more densely (sampled). */
+const NEAR_POLE = 20;
+/** How far a bone (frame B) swings off its parent's (frame A) y axis, degrees. */
+const swingOf = (A, B) => (Math.acos(Math.max(-1, Math.min(1, dot(col(A, 1), col(B, 1))))) * 180) / Math.PI;
 
 /** The most any limb of `limbs` twists past its range (TWIST) over these poses, degrees (0 or less when all are within). */
 function pastOf(poses, limbs) {
@@ -315,10 +339,11 @@ function pastOf(poses, limbs) {
   for (const f of poses) for (const l of limbs) {
     if (!f[l.upper] || !f[l.joint] || !f[PARENT[l.upper]]) continue;
     const P = f[PARENT[l.upper]].R, A = f[l.upper].R, lim = limitsOf(l);
-    past = Math.max(past, Math.abs(twistOf(col(P, 0), col(P, 2), col(A, 0), col(A, 2))) - lim[0]);
+    const tu = twistOf(col(P, 0), col(P, 2), col(A, 0), col(A, 2));   // NaN (at the pole) is not judged
+    if (!Number.isNaN(tu)) past = Math.max(past, Math.abs(tu) - lim[0]);
     if (l.end && f[l.end]) {
-      const J = f[l.joint].R, W = f[l.end].R;
-      past = Math.max(past, Math.abs(twistOf(col(J, 0), col(J, 2), col(W, 0), col(W, 2))) - lim[1]);
+      const J = f[l.joint].R, W = f[l.end].R, te = twistOf(col(J, 0), col(J, 2), col(W, 0), col(W, 2));
+      if (!Number.isNaN(te)) past = Math.max(past, Math.abs(te) - lim[1]);
     }
   }
   return past;
@@ -327,28 +352,44 @@ function pastOf(poses, limbs) {
 /** How far written keys may let an end bone (a held weapon) stray between them from where it was solved: its pivot by
  *  0.25 px, its turn by 0.5° (a 1.5-block blade's tip by about 0.2 px more). */
 const END_STRAY = { px: 0.25, deg: 0.5 };
+/** How far an upper limb's keys may stray between them from its solved turn (degrees): keyed more densely there, Euler
+ *  interpolation cannot take a turn the long way round. */
+const UPPER_STRAY = 2;
+/** The angle between two rotation matrices (degrees). */
+function turnBetween(a, b) {
+  const tr = [0, 1, 2].reduce((t, j) => t + dot(col(a, j), col(b, j)), 0);   // trace of aᵀb: 1 + 2 cos(angle)
+  return Math.acos(Math.max(-1, Math.min(1, (tr - 1) / 2))) * (180 / Math.PI);
+}
 function strayed(a, b, pivot) {
   const pa = point(a, pivot), pb = point(b, pivot);
-  if (Math.hypot(...sub(pa, pb)) > END_STRAY.px) return true;
-  const tr = [0, 1, 2].reduce((t, j) => t + dot(col(a.R, j), col(b.R, j)), 0);   // trace of aᵀb: 1 + 2 cos(angle)
-  return Math.acos(Math.max(-1, Math.min(1, (tr - 1) / 2))) * (180 / Math.PI) > END_STRAY.deg;
+  return Math.hypot(...sub(pa, pb)) > END_STRAY.px || turnBetween(a.R, b.R) > END_STRAY.deg;
 }
 
 /**
  * A finished clip's limbs brought within their twist range (untwist), judged at every key and every 1/120 s between
  * (sampled). A limb it turns has its upper bone and end bone written at the clip's own key times (the joint keeps its
  * keys: a swivel leaves the bend alone), and at a time between only where the keys alone would pass out of range there or
- * let a held item stray (END_STRAY: Euler keys interpolate a turn their own way), so the clip keeps its timing and its
- * weapon's path; every other bone, and every limb already in range, is left as it was. For a clip changed after
- * hingeify, such as a weapon rolled about its blade. opts as untwist's, and opts.held: the end bones that hold an item
- * (default every one), the only ones kept from straying.
+ * let the upper limb (UPPER_STRAY) or a held item (END_STRAY) stray from the solved pose: Euler keys interpolate a turn
+ * their own way, and can take it the long way round. So the clip keeps its timing and its weapon's path; every other bone, and every limb already in range, is left as it was. For a clip changed after
+ * hingeify. opts as untwist's, and opts.held: the end bones that hold an item (default every one), the only ones kept
+ * from straying; opts.preRoll: { bone: degrees } to roll an end bone about its opts.roll axis first (an edge put to lead),
+ * exactly at every sample.
  */
 function limitTwist(clip, opts = {}) {
-  const { moving, times, isKey, held, poses } = sampled(clip);
+  const s0 = sampled(clip), { moving, times, isKey, held } = s0;
   if (!moving.length) return clip;
+  // an end bone rolled first (opts.preRoll: degrees about its opts.roll axis), in the world at every sample: so between its
+  // keys it rolls exactly too, rather than as Euler keys rolled one by one would interpolate
+  const pre = opts.preRoll || {};
+  const poses = s0.poses.map((w) => {
+    const f = { ...w };
+    for (const [b, a] of Object.entries(pre)) if (a && f[b]) f[b] = rollEnd(f[b], opts.roll[b], PIVOT[b], a);
+    return f;
+  });
   const r = untwist(poses, times, moving, clip.loop === true || held, opts);
-  if (!r.changed) return clip;
-  const turned = moving.filter((l) => !poses.every((w, i) => r.frames[i][l.upper] === w[l.upper] && (!l.end || r.frames[i][l.end] === w[l.end])));
+  const rolledFirst = (l) => l.end && pre[l.end];
+  if (!r.changed && !moving.some(rolledFirst)) return clip;
+  const turned = moving.filter((l) => rolledFirst(l) || !poses.every((w, i) => r.frames[i][l.upper] === w[l.upper] && (!l.end || r.frames[i][l.end] === w[l.end])));
   const use = isKey.slice();
   let c = clip;
   for (let pass = 0; pass < 6; pass++) {
@@ -366,12 +407,50 @@ function limitTwist(clip, opts = {}) {
       if (use[i]) return false;
       const w = worldBones(samplePose(anim, Math.min(times[i], clip.length)));
       if (pastOf([w], turned) > -1 && pastOf([r.frames[i]], turned) <= -1) return true;
+      if (turned.some((l) => turnBetween(w[l.upper].R, r.frames[i][l.upper].R) > UPPER_STRAY)) return true;
       return turned.some((l) => l.end && w[l.end] && (!opts.held || opts.held.includes(l.end)) && strayed(w[l.end], r.frames[i][l.end], PIVOT[l.end]));
     });
     if (!more.length) break;
     for (const i of more) use[i] = true;
   }
+  return startInReach(c, moving);
+}
+
+/** The most of a clip's start (s) that startInReach may hold. */
+const START_HOLD = 0.05;
+/**
+ * A clip that starts out of reach: where a limb is still past its twist range in the first START_HOLD s after untwist (no
+ * swivel within its rate can reach the start pose: an orc's shield bash begins with the arm overhead, wrung 2° past range),
+ * every bone holds the first pose after that stretch from the clip's start. It lies inside the attack's fade-in (0.1 s), so
+ * the swing seen is the same; a clip still out of range later is left as it is.
+ */
+function startInReach(clip, moving) {
+  const anim = animationJson({ c: clip }).animations.c, L = clip.length;
+  let last = -1;
+  for (let t = 0; t <= Math.min(L, START_HOLD) + 1e-9; t += 0.001) if (pastOf([worldBones(samplePose(anim, t))], moving) > 0) last = t;
+  if (last < 0 || last + 0.002 >= Math.min(L, START_HOLD)) return clip;
+  const t0 = +(last + 0.002).toFixed(4), c = JSON.parse(JSON.stringify(clip));
+  for (const ch of Object.values(c.bones)) for (const [kind, keys] of Object.entries(ch)) {
+    const v = valueAt(keys, t0);
+    ch[kind] = [{ t: 0, v: v.slice(), lerp: 'linear' }, { t: t0, v: v.slice(), lerp: 'linear' }, ...keys.filter((k) => k.t > t0 + 1e-6)];
+  }
   return c;
+}
+
+/** A channel's value at t, linear between its keys (as written). */
+function valueAt(keys, t) {
+  if (t <= keys[0].t) return keys[0].v;
+  for (let i = 1; i < keys.length; i++) if (t <= keys[i].t) {
+    const a = keys[i - 1], b = keys[i], f = b.t > a.t ? (t - a.t) / (b.t - a.t) : 1;
+    return a.v.map((x, j) => x + f * (b.v[j] - x));
+  }
+  return keys[keys.length - 1].v;
+}
+
+/** An end bone's world turned by `deg` degrees about its own axis (`axis`, in its frame) through its pivot. */
+function rollEnd(W, axis, pivot, deg) {
+  const ax = norm(apply(W.R, axis)), R = axisAngle(ax, (deg * Math.PI) / 180), pv = add(apply(W.R, pivot), W.p);
+  return { R: mul3(R, W.R), p: add(apply(R, sub(W.p, pv)), pv) };
 }
 
 /** How far a clip's limbs twist (degrees, over its keys and every 1/120 s between): past, the most any twists past its range
@@ -381,11 +460,12 @@ function peakTwist(clip) {
   let end = 0;
   for (const f of poses) for (const l of moving) {
     if (l.end && f[l.end] && f[l.joint]) {
-      const J = f[l.joint].R, W = f[l.end].R;
-      end = Math.max(end, Math.abs(twistOf(col(J, 0), col(J, 2), col(W, 0), col(W, 2))));
+      const J = f[l.joint].R, W = f[l.end].R, te = twistOf(col(J, 0), col(J, 2), col(W, 0), col(W, 2));
+      if (!Number.isNaN(te)) end = Math.max(end, Math.abs(te));
     }
   }
   return { past: Math.max(0, pastOf(poses, moving)), end };
 }
 
-module.exports = { hingeify, solve, lowPass, untwist, limitTwist, peakTwist, TWIST, LIMBS, PIVOT };
+module.exports = { hingeify, solve, lowPass, untwist, limitTwist, peakTwist, TWIST, LIMBS, PIVOT,
+  _internal: { cheapest, twistOf, SWIVELS, SWIVEL_RATE } };
