@@ -217,3 +217,26 @@ test('the orc wind-up drawn back after posture (fight.windupAfter) never starts 
   }
   assert.deepEqual(bad, []);
 });
+
+test('limitTwist brings a wrung arm within its twist range by swivelling it, the weapon and the bend left where they were', () => {
+  const { limitTwist } = require('../hinge.js');
+  const key = (t, v) => ({ t, v, lerp: 'linear' });
+  // a bent arm wrung 40° then 150° about its own length, the weapon held still against the forearm
+  const clip = { length: 0.5, loop: false, bones: {
+    right_arm: { rotation: [key(0, [-20, 40, 0]), key(0.5, [-20, 150, 0])] },
+    right_elbow: { rotation: [key(0, [-60, 0, 0]), key(0.5, [-60, 0, 0])] },
+    weapon_r: { rotation: [key(0, [0, 0, 0]), key(0.5, [0, 0, 0])] },
+  } };
+  const pose = (c, t) => worldBones(samplePose(animationJson({ c }).animations.c, t));
+  const before = pose(clip, 0.5);
+  assert.ok(Math.abs(M.twist(before, 'right_arm', 'body')) > 95, 'the arm starts out of range');
+  const out = limitTwist(clip);
+  for (let t = 0; t <= 0.5 + 1e-9; t += 1 / 60) {
+    const a = pose(clip, t), b = pose(out, t);
+    assert.ok(Math.abs(M.twist(b, 'right_arm', 'body')) <= 95, `t=${t.toFixed(2)}: upper arm ${M.twist(b, 'right_arm', 'body').toFixed(0)}°`);
+    assert.ok(Math.abs(M.twist(b, 'weapon_r', 'right_elbow')) <= 95, `t=${t.toFixed(2)}: wrist ${M.twist(b, 'weapon_r', 'right_elbow').toFixed(0)}°`);
+    assert.ok(Math.abs(M.hinge(b, 'right_elbow', 'right_arm').bend - M.hinge(a, 'right_elbow', 'right_arm').bend) < 1e-3, `t=${t.toFixed(2)}: the bend stays`);
+    const tip = (w) => point(w.weapon_r, [6, 12 + 17, -2 - 17]);
+    assert.ok(M.len(M.sub(tip(a), tip(b))) < 0.3, `t=${t.toFixed(2)}: the weapon tip moved ${M.len(M.sub(tip(a), tip(b))).toFixed(2)} px`);
+  }
+});
