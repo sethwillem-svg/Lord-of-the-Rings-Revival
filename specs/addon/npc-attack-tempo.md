@@ -113,7 +113,9 @@ coverage (`t.diagnostic`); there is no assertion on it.
   tempo must pass them; nothing is loosened.
 - **Sampling:** `motion.js` gains `atKeys(anim)`, which evaluates each bone exactly at the union of its key times plus
   the 60 Hz grid, instead of a blind 120 Hz grid; velocities between consecutive samples. Pose tracks per shipped file are
-  cached in `tools/anim-viewer/test/.cache/<sha1 of file>.json` (git-ignored) so a run without a rebuild takes seconds.
+  cached in `tools/anim-viewer/test/.cache/poses-<sha1 of the shipped animation files>/` (git-ignored; a new directory
+  clears the older ones, unreadable files are posed again, temp files over an hour old are swept) so a run without a
+  rebuild takes seconds.
   Target: the whole suite under 2 minutes on the maintainer's machine.
 
 ### Parked / known gaps

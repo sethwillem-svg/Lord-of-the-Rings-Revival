@@ -2,7 +2,9 @@
 /* Motion measurements for the tests: clips sampled densely and points followed through time. Kept apart from the build
  * (build_npc.js never uses it), so the tests judge the build's output with their own yardstick. Rig space: px, y up,
  * facing -z; times in seconds. Clips are sampled on a 60 Hz grid and exactly at every key, so samples are not evenly
- * spaced: rates use each sample pair's own dt. Posed frames of shipped clips are cached in test/.cache (gitignored). */
+ * spaced: rates use each sample pair's own dt. Posed frames of shipped clips are cached in test/.cache (gitignored), in a
+ * subdirectory named by a hash of the shipped animation files and the player's source: a rebuild starts a new one and
+ * clears the others, so stale poses do not pile up. */
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,6 +14,8 @@ const RATE = 60;
 const CACHE = path.join(__dirname, '../.cache');
 /** The player's own source salts the cache, so a change to how clips are played or posed is never served stale. */
 const PLAYER = ['sample.js', 'rig.js'].map((f) => fs.readFileSync(path.join(__dirname, '../../gecko', f), 'utf8')).join('\n');
+/** A temp file a test process left behind (killed between write and rename) is swept after this long (ms). */
+const STALE_TMP = 60 * 60 * 1000;
 const sub = (a, b) => a.map((x, i) => x - b[i]);
 const len = (v) => Math.hypot(...v);
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
@@ -43,15 +47,48 @@ function times(anim, rate = RATE) {
   return [...exact, ...free].sort((a, b) => a - b);
 }
 
+let poseDir = null;
+/** This run's pose cache directory, test/.cache/poses-<sha1 of the shipped animation files and the player's source>. The
+ *  first use in a process sweeps stale temp files; creating the directory removes older pose directories (and the flat
+ *  <sha1>.json pose files of earlier versions). */
+function poses() {
+  if (poseDir) return poseDir;
+  const { DIR } = require('./shipped.js');
+  const h = crypto.createHash('sha1').update(PLAYER);
+  for (const f of fs.readdirSync(DIR).filter((x) => x.endsWith('.animation.json')).sort()) h.update(`${f}\0`).update(fs.readFileSync(path.join(DIR, f))).update('\0');
+  const name = `poses-${h.digest('hex')}`;
+  poseDir = path.join(CACHE, name);
+  fs.mkdirSync(CACHE, { recursive: true });
+  const now = Date.now();
+  const sweep = (dir) => {
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.tmp')) continue;
+      try { if (now - fs.statSync(path.join(dir, f)).mtimeMs > STALE_TMP) fs.rmSync(path.join(dir, f), { force: true }); } catch { /* gone already */ }
+    }
+  };
+  sweep(CACHE);
+  if (fs.existsSync(poseDir)) sweep(poseDir);
+  else {
+    fs.mkdirSync(poseDir, { recursive: true });
+    for (const f of fs.readdirSync(CACHE)) {
+      if ((/^poses-[0-9a-f]+$/.test(f) && f !== name) || /^[0-9a-f]{40}\.json$/.test(f)) fs.rmSync(path.join(CACHE, f), { recursive: true, force: true });
+    }
+  }
+  return poseDir;
+}
+
 /** The posed skeleton at every time: [{ t, w }]. Given a key (such as 'man/attack_sword_1'), read from and written to the
- *  cache, named by a hash of the key, the clip, the rate and the player's source. */
+ *  cache (poses()), named by a hash of the key, the clip, the rate and the player's source; an unreadable cache file is
+ *  posed again. */
 function frames(anim, rate = RATE, key = null) {
   const file = key === null ? null
-    : path.join(CACHE, `${crypto.createHash('sha1').update(key + JSON.stringify(anim) + rate + PLAYER).digest('hex')}.json`);
-  if (file && fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8'));
+    : path.join(poses(), `${crypto.createHash('sha1').update(key + JSON.stringify(anim) + rate + PLAYER).digest('hex')}.json`);
+  if (file) {
+    try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* not cached yet, or unreadable: pose it */ }
+  }
   const out = times(anim, rate).map((t) => ({ t, w: worldBones(samplePose(anim, t)) }));
   if (file) {
-    fs.mkdirSync(CACHE, { recursive: true });
+    fs.mkdirSync(path.dirname(file), { recursive: true });   // another process may have just cleared it
     const tmp = `${file}.${process.pid}.tmp`;   // test files run in parallel: write aside, then rename into place
     fs.writeFileSync(tmp, JSON.stringify(out));
     fs.renameSync(tmp, file);
