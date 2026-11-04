@@ -28,13 +28,15 @@ and the blade stays out of the body and above the floor. The body checks (`test/
 feet on the floor, elbows and knees bending the right way and loops seamless. `test/fighting.test.js` holds each race to
 its own way of fighting (`npc_slots.js` STYLE.fight: orcs wild, elves at full stretch, dwarves body-driven, hobbits low and
 compact) and checks the shield versions (`<clip>_shield`: the off arm keeps the shield up in front). With an export (`./addon/bench.sh export`) they also check every
-real Middle-earth item sits in the hand at its class length and shields face forward, and `test/parity.test.js` checks the
+real Middle-earth item sits with its handle in the hand and its drawn weapon at its class length, and shields face forward, and `test/parity.test.js` checks the
 viewer poses clips exactly as the game does. The server's hit timing has game tests:
 `cd addon && ./gradlew runGameTestServer -PmeJar=/path/to/middle-earth.jar`.
 
 - Which clip plays in which slot, and each race's posture, are in `npc_slots.js`.
 - `npc.html` plays those files on the test figure or on Middle-earth NPCs exported from the game (`./addon/bench.sh export`), with
-  held items scaled to their class length from `addon/src/main/resources/assets/lotr_revival/weapon_grips.json`. Serve the repo
+  held items sized by their drawn weapon (not the whole texture square of Middle-earth's flat item models) to their class
+  length, pommel to tip, from `addon/src/main/resources/assets/lotr_revival/weapon_grips.json`, with the handle seated on the
+  fist (`gecko/held.js` seatItem, the same as `client.render.WeaponGrip` in game). Serve the repo
   root (`./tools/anim-viewer/view.sh npc`) and open it.
 
 ## Quick start: `animview` and `animgen`

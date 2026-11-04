@@ -1,6 +1,7 @@
 /* Where a held weapon is during a clip, for hit times and weapon checks. The weapon is a straight blade seated the way
  * Minecraft holds a handheld item: handle in the fist (the weapon bone's pivot), pointing up and forward at 45° in the arm
- * frame, as long as its class (weapon_grips.json). Rig space: px, y up, facing -z (gecko/rig.js).
+ * frame, as long as its class (weapon_grips.json: the drawn weapon, pommel to tip, taken here from the fist to the tip).
+ * Rig space: px, y up, facing -z (gecko/rig.js).
  *   blade(side, blocks, f)        a rest point a fraction f along the blade (0 fist, 1 tip)
  *   frontAngle(p)                 degrees between straight ahead and p's direction from the body axis (180 when behind)
  *   hitTime(anim, blocks)         when the strike lands: in the fast part of the swing, where the tip is most directly ahead

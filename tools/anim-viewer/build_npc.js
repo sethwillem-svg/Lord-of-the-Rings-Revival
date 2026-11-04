@@ -252,7 +252,9 @@ function applyStyle(clip, slot, style) {
   }
 }
 
-/** Class lengths (blocks) for hit times: weapon_grips.json, fists and shields as short reaches. */
+/** Class lengths (blocks) for hit times: weapon_grips.json, fists and shields as short reaches. The file gives the weapon as
+ *  drawn, pommel to tip (client.render.WeaponGrip seats the drawn handle on the fist); here the blade runs that length from
+ *  the fist (gecko/strike.js blade). */
 const GRIPS = JSON.parse(fs.readFileSync(path.join(__dirname, '../../addon/src/main/resources/assets/lotr_revival/weapon_grips.json'), 'utf8'));
 function classLength(attack) {
   const cls = attack.split('_')[1];
