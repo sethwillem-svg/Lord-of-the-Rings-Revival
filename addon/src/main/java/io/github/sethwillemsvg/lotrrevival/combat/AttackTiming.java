@@ -34,11 +34,12 @@ public final class AttackTiming {
     /** Reach slack at the hit frame (blocks): the target may have moved a little. */
     private static final double REACH_SLACK = 0.75;
 
-    /** A held attack: its target, the tick it lands on, the weapon class, and the clip played for it (null when the race has none). */
-    private record Pending(LivingEntity target, long due, @Nullable String cls, @Nullable String slot) {}
+    /** A held attack: its target, the tick it lands on, and the clip played for it (null when the race has none). */
+    private record Pending(LivingEntity target, long due, @Nullable String slot) {}
 
     private static final Map<NpcEntity, Pending> PENDING = new WeakHashMap<>();
     private static final Map<NpcEntity, Integer> LAST_STOP = new WeakHashMap<>();
+    private static final Map<NpcEntity, Integer> HITS_SENT = new WeakHashMap<>();
     private static final Map<NpcEntity, Integer> NEXT_VARIANT = new WeakHashMap<>();
     private static boolean replaying;
 
@@ -58,6 +59,11 @@ public final class AttackTiming {
     /** Hitstop ticks sent with this NPC's last landed hit, or -1 when its latest attack missed or none landed (combat.test.AttackTimingTests). */
     public static int lastStop(NpcEntity npc) {
         return LAST_STOP.getOrDefault(npc, -1);
+    }
+
+    /** How many NpcHitPayloads this NPC's landed hits have sent (combat.test.AttackTimingTests). */
+    public static int hitsSent(NpcEntity npc) {
+        return HITS_SENT.getOrDefault(npc, 0);
     }
 
     private static void onDamage(LivingIncomingDamageEvent e) {
@@ -81,7 +87,7 @@ public final class AttackTiming {
             windup = Math.max(MIN_WINDUP_TICKS, hitTicks / speed);
             slot = clip.slot();
         }
-        PENDING.put(npc, new Pending(e.getEntity(), level.getGameTime() + Math.round(windup), cls, slot));
+        PENDING.put(npc, new Pending(e.getEntity(), level.getGameTime() + Math.round(windup), slot));
         if (slot != null) PacketDistributor.sendToPlayersTrackingEntity(npc, new NpcAttackPayload(npc.getId(), slot, speed));
     }
 
@@ -100,8 +106,9 @@ public final class AttackTiming {
             try {
                 // a hit with no clip played has no swing to freeze
                 if (npc.doHurtTarget(target) && p.slot() != null) {
-                    int ticks = Hitstop.ticks(NpcRaces.of(npc), p.cls());
+                    int ticks = Hitstop.ticks(NpcRaces.of(npc), AttackClips.classOf(p.slot()));
                     LAST_STOP.put(npc, ticks);
+                    HITS_SENT.merge(npc, 1, Integer::sum);
                     PacketDistributor.sendToPlayersTrackingEntity(npc, new NpcHitPayload(npc.getId(), target.getId(), ticks));
                 }
             } finally {

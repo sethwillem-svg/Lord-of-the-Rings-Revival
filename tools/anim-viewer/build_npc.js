@@ -632,6 +632,7 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used, slots = S
       const got = tryName(n);
       if (got && (!best || got.k > best.got.k)) best = { n, got };
       if (best && !style.fight) break;   // no style to keep: the first that meets the bar
+      if (best && best.got.k >= 1) break;   // the full style: no later clip can beat it (a tie keeps the earlier one)
     }
     if (best) return take(best.n, best.got);
   }

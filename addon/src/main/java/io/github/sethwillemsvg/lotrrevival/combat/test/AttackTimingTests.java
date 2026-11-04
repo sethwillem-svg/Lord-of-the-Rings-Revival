@@ -43,9 +43,13 @@ public final class AttackTimingTests {
     private static final ResourceLocation SOLDIER = ResourceLocation.fromNamespaceAndPath("middle-earth", "gondor.soldier");
 
     private static NpcEntity soldier(GameTestHelper h) {
+        return soldier(h, new ItemStack(Items.IRON_SWORD));
+    }
+
+    private static NpcEntity soldier(GameTestHelper h, ItemStack weapon) {
         NpcEntity npc = new NpcEntityBuilder(h.getLevel(), h.absolutePos(new BlockPos(1, 1, 1))).withNpcType(SOLDIER).build();
         if (npc == null) throw new IllegalStateException("Middle-earth could not build " + SOLDIER);
-        npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+        npc.setItemSlot(EquipmentSlot.MAINHAND, weapon);
         npc.setNoAi(true);
         h.getLevel().addFreshEntity(npc);
         return npc;
@@ -99,7 +103,24 @@ public final class AttackTimingTests {
         h.assertTrue(wait > 0, "the swing's damage was not held for the hit frame");
         h.runAfterDelay(wait + 2, () -> {
             int expected = Hitstop.ticks(NpcRaces.of(npc), "sword");
+            h.assertTrue(AttackTiming.hitsSent(npc) == 1, "a landed hit sent " + AttackTiming.hitsSent(npc) + " hit payloads, expected 1");
             h.assertTrue(AttackTiming.lastStop(npc) == expected, "hitstop sent was " + AttackTiming.lastStop(npc) + ", expected " + expected);
+            h.succeed();
+        });
+    }
+
+    /** The stop follows the clip played, not the item held: a bow-holder's melee blow is an unarmed clip and stops like one. */
+    @GameTest(template = "empty", timeoutTicks = 80)
+    public static void aBowHoldersPunchStopsLikeUnarmed(GameTestHelper h) {
+        NpcEntity npc = soldier(h, new ItemStack(Items.BOW));
+        Zombie target = target(h);
+        npc.doHurtTarget(target);
+        long wait = AttackTiming.dueTick(npc) - h.getLevel().getGameTime();
+        h.assertTrue(wait > 0, "the swing's damage was not held for the hit frame");
+        h.runAfterDelay(wait + 2, () -> {
+            int expected = Hitstop.ticks(NpcRaces.of(npc), "unarmed");
+            h.assertTrue(AttackTiming.hitsSent(npc) == 1, "a landed hit sent " + AttackTiming.hitsSent(npc) + " hit payloads, expected 1");
+            h.assertTrue(AttackTiming.lastStop(npc) == expected, "a bow-holder's punch stopped " + AttackTiming.lastStop(npc) + " ticks, expected " + expected);
             h.succeed();
         });
     }
@@ -114,6 +135,7 @@ public final class AttackTimingTests {
         target.teleportTo(target.getX() + 6, target.getY(), target.getZ());
         h.runAfterDelay(wait + 2, () -> {
             h.assertTrue(AttackTiming.lastStop(npc) == -1, "a miss sent hitstop " + AttackTiming.lastStop(npc));
+            h.assertTrue(AttackTiming.hitsSent(npc) == 0, "a miss sent " + AttackTiming.hitsSent(npc) + " hit payloads");
             h.succeed();
         });
     }
@@ -135,6 +157,7 @@ public final class AttackTimingTests {
             target.teleportTo(target.getX() + 6, target.getY(), target.getZ());
             h.runAfterDelay(second + 2, () -> {
                 h.assertTrue(AttackTiming.lastStop(npc) == -1, "a miss after a hit sent hitstop " + AttackTiming.lastStop(npc));
+                h.assertTrue(AttackTiming.hitsSent(npc) == 1, "a hit then a miss sent " + AttackTiming.hitsSent(npc) + " hit payloads, expected 1");
                 h.succeed();
             });
         });

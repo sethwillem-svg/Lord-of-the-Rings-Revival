@@ -50,6 +50,12 @@ public final class AttackClips {
         });
     }
 
+    /** The weapon class an attack is for, from its name (attack_<class>_N, and its _l and _shield versions). */
+    public static String classOf(String slot) {
+        String[] parts = slot.split("_");
+        return parts.length > 1 ? parts[1] : "sword";
+    }
+
     /** An attack by name, including its _l and _shield versions (they share the plain attack's timing), or null. */
     @Nullable
     public static Clip clip(String race, String name) {

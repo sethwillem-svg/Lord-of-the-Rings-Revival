@@ -22,7 +22,7 @@ public final class LotrRevival {
     public static final String MOD_ID = "lotr_revival";
 
     public LotrRevival(IEventBus modBus) {
-        modBus.addListener((RegisterPayloadHandlersEvent e) -> e.registrar("1")
+        modBus.addListener((RegisterPayloadHandlersEvent e) -> e.registrar("2")
                 .playToClient(NpcAttackPayload.TYPE, NpcAttackPayload.STREAM_CODEC, (p, ctx) -> ctx.enqueueWork(() -> ClientAttack.handle(p)))
                 .playToClient(NpcHitPayload.TYPE, NpcHitPayload.STREAM_CODEC, (p, ctx) -> ctx.enqueueWork(() -> ClientAttack.hit(p))));
         AttackTiming.register();

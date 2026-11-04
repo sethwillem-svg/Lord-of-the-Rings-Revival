@@ -79,7 +79,9 @@ Orcs also draw the wind-up back after posture (`fight.windupAfter`): bounded at 
 | cap | 4 |
 
 - Server: when `AttackTiming.onLevelTick` lands a held hit (`doHurtTarget` returned true), it sends
-  `NpcHitPayload(npcId, targetId, stopTicks)` to players tracking the NPC, only when the attack played a clip (a race
+  `NpcHitPayload(npcId, targetId, stopTicks)` to players tracking the NPC, with `stopTicks` from the class of the clip
+  played (`attack_<class>_N`), not the item held (a bow-holder's melee blow is an unarmed clip and stops like one), and
+  only when the attack played a clip (a race
   without attack clips has no swing to freeze). Server timing (`due`, the 20-tick rhythm) is
   untouched: the freeze is cosmetic and client-only.
 - Client: `NpcAnimatable.hitstop(stopTicks)` sets the running attack overlay's speed to 0 and, after `stopTicks` client
@@ -107,7 +109,7 @@ excluding the ready ease.
 | T8 | race tempo order | wind-up time per clip, in game time (see Edge cases) | dwarf > man > elf, hobbit < man (3 in 4 on shared clips, as `mostly()` does) |
 | T9 | off balance (orc) | at the end of recovery the `upper`/`body` bone is ≥ 8° from the idle pose, and the free hand ≥ 6 px further from rest than a man's on the same clip | orcs, 3 in 4 on weapon attacks (unarmed pairs excluded: the free hand may be the striking one); parked, see Parked / known gaps |
 | T10 | hitstop numbers | `Hitstop.ticks(race, cls)` table above | GameTest `HitstopTests` in `combat/test` |
-| T11 | hitstop fires | a landed held hit sends one `NpcHitPayload` with `ticks == Hitstop.ticks(...)`; a missed one (target stepped out) sends none | GameTest, extends `AttackTimingTests` with a captured `PacketDistributor` sink or a static listener hook on `AttackTiming` |
+| T11 | hitstop fires | a landed held hit sends one `NpcHitPayload` with `ticks == Hitstop.ticks(...)`; a missed one (target stepped out) sends none | GameTest, extends `AttackTimingTests`: `AttackTiming.hitsSent(npc)` counts the payloads sent (incremented beside the send) and `lastStop(npc)` their ticks |
 
 On clips whose wind-up is shorter than about 1.06× the strike, T5's time share (≤ 0.30) and T7's upper bound (1.2) can't both hold;
 revisit with the key-pose follow-up. The Task 4 `recover` increase made T7 worse on two clips: man `attack_longsword_3` 1.29 → 1.66,
