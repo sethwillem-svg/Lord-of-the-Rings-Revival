@@ -163,7 +163,8 @@ clips on these lists. The maintainer has not yet decided whether to author them 
 - Shield and `_l` twins: built from the finished (already tempo'd) swing, so they inherit the timing; T1–T9 run on them too
   (they must give the same numbers as the plain clip within 1 %).
 - Speed > 1 from `AttackTiming` (long clips compressed into the 18-tick window: speed = max(1, length ticks / 18, hit
-  ticks / 12)) scales tame too; a dwarf longsword at speed 1.4 holds ~0.1 s. Acceptable; if a tame drops under 1 tick it
+  ticks / 12)) scales tame too; dwarf `attack_longsword_2` (22 ticks) plays at speed 1.24 and holds its 0.15 s tame for
+  ~0.12 s. Acceptable; if a tame drops under 1 tick it
   simply reads as a turnaround. The same squeeze can erase a race's tempo difference: a slow dwarf clip longer than 18
   ticks is played faster, back toward a man's. So the race-vs-man tempo checks in `fighting.test.js` (dwarves slower,
   elves swifter, hobbits quicker, orcs faster at the top) measure in game time, dividing times by that speed and
