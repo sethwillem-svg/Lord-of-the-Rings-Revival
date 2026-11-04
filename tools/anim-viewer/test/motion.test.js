@@ -130,6 +130,24 @@ test('edged weapons cut with the edge: at the strike the flat faces across the s
   report(bad);
 });
 
+/* A single-edged or curved blade has its edge on one side: Minecraft seats a held item with its blade forward and up from
+ * the fist and the edge below it, toward the front, so in the weapon frame the edge faces (0, -√½, -√½), square to the blade
+ * (0, √½, -√½) in the flat's plane. Middle-earth files its scimitars as swords (combat.WeaponClass), so every sword clip
+ * must strike with that side; axes too. Double-edged classes (longsword, dagger, spear) cut with either side. */
+const EDGE = [0, -Math.SQRT1_2, -Math.SQRT1_2];
+test('single-edged and curved blades strike with the edge, not the back: at the hit the edge faces the swing (≥ 0.5)', () => {
+  const bad = [];
+  for (const c of attacks.filter((x) => /^attack_(sword|axe)_\d+$/.test(x.name))) {
+    const { v } = tipOf(c), hit = hitsOf(c).hit;
+    const s = v.reduce((b, x) => (Math.abs(x.t - hit) < Math.abs(b.t - hit) ? x : b));
+    const R = c.fs.reduce((b, x) => (Math.abs(x.t - hit) < Math.abs(b.t - hit) ? x : b)).w.weapon_r.R;
+    const edge = [0, 1, 2].map((i) => R[i * 3] * EDGE[0] + R[i * 3 + 1] * EDGE[1] + R[i * 3 + 2] * EDGE[2]);
+    const lead = M.dot(edge, s.v) / s.speed;
+    if (lead < 0.5) bad.push(`${c.race} ${c.name}: the edge faces the swing by ${lead.toFixed(2)}${lead < 0 ? ' (the back leads)' : ''}`);
+  }
+  report(bad);
+});
+
 /** Is a rig point inside a bone's rest box once posed (no margin)? */
 function inside(w, box, p) {
   const v = [0, 1, 2].map((i) => p[i] - w.p[i]);

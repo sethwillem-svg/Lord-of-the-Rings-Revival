@@ -240,3 +240,54 @@ test('limitTwist brings a wrung arm within its twist range by swivelling it, the
     assert.ok(M.len(M.sub(tip(a), tip(b))) < 0.3, `t=${t.toFixed(2)}: the weapon tip moved ${M.len(M.sub(tip(a), tip(b))).toFixed(2)} px`);
   }
 });
+
+test('the edge holds its roll over the game tick either side of the hit as played: the window is undone through the warp', () => {
+  // a tame hold and a strike burst: played ±0.05 s maps to a source span the warp lands exactly on (or the apex, in the hold)
+  const t = { windup: 0.9, tame: 0.02, strike: 0.78, recover: 1.2, tsume: { windup: 1.25, strike: 2.4, recover: 2.4 } };
+  const at = { ...P, t }, hit = _tempo.warp(0.4, at);
+  const [from, to] = _tempo.unwarpSpan(at, hit - 0.05, hit + 0.05);
+  const top = _tempo.warp(P.apex, at);
+  assert.ok(Math.abs(_tempo.warp(to, at) - (hit + 0.05)) < 1e-6, `to ${to} plays at ${_tempo.warp(to, at)}`);
+  if (hit - 0.05 > top + 0.02) assert.ok(Math.abs(_tempo.warp(from, at) - (hit - 0.05)) < 1e-6);
+  else assert.ok(Math.abs(from - P.apex) < 1e-6, 'inside the hold: the apex pose');
+  assert.ok(from < 0.4 && to > 0.4, `the span ${from}..${to} holds the hit`);
+});
+
+test('hinge.js internals: no cost reachable picks no swivel, a swivel turns no faster than its rate, twist is undefined at the pole', () => {
+  const { _internal: H } = require('../hinge.js');
+  const vals = H.SWIVELS, times = [0, 1 / 120, 2 / 120];
+  assert.deepEqual(H.cheapest(times.map(() => vals.map(() => Infinity)), vals, times, false), [0, 0, 0]);
+  // a cost that wants -90° then +90° a frame later: the swivel moves at most its rate
+  const want = (d) => vals.map((v) => Math.abs(v - d));
+  const got = H.cheapest([want(-90), want(90), want(90)], vals, times, false);
+  for (let i = 1; i < got.length; i++) assert.ok(Math.abs(got[i] - got[i - 1]) <= H.SWIVEL_RATE / 120 + 1e-9, `${got}`);
+  // frames for a turn about z then y: x and z columns of the identity and of the turned frame
+  const turned = (sw, tw) => {
+    const r = (a) => (a * Math.PI) / 180, c = Math.cos, s = Math.sin;
+    const Rz = [c(r(sw)), -s(r(sw)), 0, s(r(sw)), c(r(sw)), 0, 0, 0, 1], Ry = [c(r(tw)), 0, s(r(tw)), 0, 1, 0, -s(r(tw)), 0, c(r(tw))];
+    const m = [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => Rz[i * 3] * Ry[j] + Rz[i * 3 + 1] * Ry[3 + j] + Rz[i * 3 + 2] * Ry[6 + j]));
+    return [[m[0], m[3], m[6]], [m[2], m[5], m[8]]];
+  };
+  const [x1, z1] = turned(170, 40), [x2, z2] = turned(178, 40);
+  assert.ok(Math.abs(H.twistOf([1, 0, 0], [0, 0, 1], x1, z1) - 40) < 1e-6);
+  assert.ok(Number.isNaN(H.twistOf([1, 0, 0], [0, 0, 1], x2, z2)), 'within 5° of a half-turn swing: undefined, not 0');
+});
+
+test('limitTwist keeps a held item’s roll where it is told to (opts.keep), and rolls it elsewhere only as far as the wrist needs', () => {
+  const { limitTwist } = require('../hinge.js');
+  const key = (t, v) => ({ t, v, lerp: 'linear' });
+  // a straight arm wrung 90° and the item a further 150° round the forearm: more than arm and wrist can take between them
+  const clip = { length: 0.5, loop: false, bones: {
+    right_arm: { rotation: [key(0, [0, 90, 0]), key(0.5, [0, 90, 0])] },
+    right_elbow: { rotation: [key(0, [-1, 0, 0]), key(0.5, [-1, 0, 0])] },
+    weapon_r: { rotation: [key(0, [0, 150, 0]), key(0.5, [0, 150, 0])] },
+  } };
+  const out = limitTwist(clip, { roll: { weapon_r: [0, Math.SQRT1_2, -Math.SQRT1_2] }, held: ['weapon_r'], keep: { weapon_r: [0.2, 0.3] } });
+  const pose = (c, t) => worldBones(samplePose(animationJson({ c }).animations.c, t));
+  for (let t = 0; t <= 0.5 + 1e-9; t += 0.005) {
+    const a = pose(clip, t).weapon_r, b = pose(out, t).weapon_r;
+    const off = Math.max(...a.R.map((x, i) => Math.abs(x - b.R[i])));
+    if (t >= 0.2 && t <= 0.3) assert.ok(off < 1e-3, `t=${t.toFixed(3)}: the kept item turned (${off.toFixed(4)})`);
+    else if (t < 0.1 || t > 0.4) assert.ok(Math.abs(M.twist(pose(out, t), 'weapon_r', 'right_elbow')) <= 95, `t=${t.toFixed(3)}: wrist out of range`);
+  }
+});
