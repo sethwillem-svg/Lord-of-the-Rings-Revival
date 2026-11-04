@@ -15,6 +15,7 @@ import net.sevenstars.middleearth.item.items.weapons.CustomLongswordWeaponItem;
 import net.sevenstars.middleearth.item.items.weapons.CustomSpearWeaponItem;
 import net.sevenstars.middleearth.item.items.weapons.CustomSwordWeaponItem;
 import net.sevenstars.middleearth.item.items.weapons.ReachWeaponItem;
+import net.sevenstars.middleearth.item.items.weapons.TrollWeaponItem;
 import net.sevenstars.middleearth.item.items.weapons.ranged.CustomBowWeaponItem;
 import net.sevenstars.middleearth.item.items.weapons.ranged.CustomCrossbowWeaponItem;
 import net.sevenstars.middleearth.item.items.weapons.ranged.CustomLongbowWeaponItem;
@@ -31,6 +32,7 @@ public final class WeaponClass {
         if (item instanceof CustomDaggerWeaponItem) return "dagger";
         // Middle-earth files its scimitars with the longswords; they are one-handed curved swords
         if (item instanceof CustomLongswordWeaponItem) return BuiltInRegistries.ITEM.getKey(item).getPath().contains("scimitar") ? "sword" : "longsword";
+        if (item instanceof TrollWeaponItem) return "axe";   // a troll's mace (a SwordItem to Minecraft): a heavy overhead swing
         if (item instanceof CustomSpearWeaponItem || item instanceof ReachWeaponItem || item instanceof TridentItem) return "spear";
         if (item instanceof CustomAxeWeaponItem || item instanceof AxeItem) return "axe";
         if (item instanceof CustomSwordWeaponItem || item instanceof SwordItem) return "sword";
