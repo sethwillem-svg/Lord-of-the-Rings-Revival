@@ -2,7 +2,8 @@
 /* Weapon-in-hand checks. Race files: strikes in front, no spins, two-handed grips, the left-handed twins, no clipping.
  * Exported Middle-earth NPCs (addon/run/viewer_export, from ./addon/bench.sh export; skipped when absent): every real item
  * seated as the game and viewer seat it (gecko/held.js seatItem: drawn length to the class length, handle on the fist),
- * and shields facing forward. */
+ * and shields facing forward (strapped to the forearm, gecko/shield.js; test/shield.test.js checks every shield clip without an
+ * export). */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -11,6 +12,7 @@ const { samplePose, worldBones, point } = require('../gecko/sample.js');
 const { strike, blade, FIST } = require('../gecko/strike.js');
 const { partToRig, quadsOf, drawnItem, seatItem, seatPoint, exportClass } = require('../gecko/held.js');
 const { classLength } = require('../build_npc.js');
+const SH = require('../gecko/shield.js');
 const { RACES } = require('../npc_slots.js');
 
 const { shipped: built } = require('./lib/shipped.js');   // the files the game ships
@@ -147,7 +149,8 @@ test('real shields face forward when braced: their face points along the facing 
   const bad = [];
   for (const h of hands().filter((x) => x.weapon === 'shield')) {
     const a = anim('man', 'shield_brace'), w = worldBones(samplePose(a, 0))[h.side === 'left' ? 'weapon_l' : 'weapon_r'];
-    const P = h.pts.map((p) => point(w, p));
+    const seat = SH.seat(h.quads, h.side);   // strapped to the forearm as the game and viewer strap it
+    const P = h.pts.map((p) => point(w, seatPoint(seat, p)));
     // the face normal: the direction of least spread (smallest extent of the three world axes is enough for a flat plate)
     const ext = [0, 1, 2].map((i) => Math.max(...P.map((p) => p[i])) - Math.min(...P.map((p) => p[i])));
     if (ext[2] > Math.min(ext[0], ext[1]) * Math.tan((35 * Math.PI) / 180) * 2 + 2) bad.push(`${h.label}: extents [${ext.map((x) => x.toFixed(1))}]`);

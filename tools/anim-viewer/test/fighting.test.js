@@ -158,16 +158,30 @@ test('every movement clip and attack has a shield version', () => {
   for (const race of RACES) for (const n of SHIELDED) assert.ok(anim(race, n + '_shield'), `${race} ${n}_shield`);
 });
 
-test('with a shield the off arm holds it up in front of the chest and steady, whatever the other arm does', () => {
-  for (const race of RACES) for (const n of SHIELDED) {
-    const a = anim(race, n + '_shield'), pts = [];
-    for (let t = 0; t <= a.animation_length + 1e-9; t += a.animation_length / 12) {
-      const w = worldBones(samplePose(a, t));
-      pts.push(inChest(w, point(w.weapon_l, FIST.left)));
-    }
+/** The shield hand (the left fist) in the chest's frame, 13 times over a race's shield version of a clip. */
+function shieldHand(race, n) {
+  const a = anim(race, n + '_shield'), pts = [];
+  for (let t = 0; t <= a.animation_length + 1e-9; t += a.animation_length / 12) {
+    const w = worldBones(samplePose(a, t));
+    pts.push(inChest(w, point(w.weapon_l, FIST.left)));
+  }
+  return pts;
+}
+
+test('with a shield, standing and moving, the off arm holds it up in front of the chest and steady', () => {
+  for (const race of RACES) for (const n of SHIELDED.filter((x) => !x.startsWith('attack_'))) {
+    const pts = shieldHand(race, n);
     for (const p of pts) assert.ok(p[2] < -3 && p[1] > 12 && p[1] < 26, `${race} ${n}_shield: shield hand not up in front (${p.map((x) => x.toFixed(1))})`);
     const spread = Math.max(...[0, 1, 2].map((i) => Math.max(...pts.map((p) => p[i])) - Math.min(...pts.map((p) => p[i]))));
     assert.ok(spread < 1, `${race} ${n}_shield: shield hand wanders ${spread.toFixed(1)} px`);
+  }
+});
+
+test('in a shield attack the shield hand stays up at the chest and in front of it, whatever the other arm does', () => {
+  // the shield arm turns against the torso's twist to keep the shield to the front (test/shield.test.js), so the hand moves
+  // over the chest; it stays at chest height and never goes round behind it
+  for (const race of RACES) for (const n of SHIELDED.filter((x) => x.startsWith('attack_'))) {
+    for (const p of shieldHand(race, n)) assert.ok(p[2] < 0 && p[1] > 12 && p[1] < 30, `${race} ${n}_shield: shield hand not up in front (${p.map((x) => x.toFixed(1))})`);
   }
 });
 

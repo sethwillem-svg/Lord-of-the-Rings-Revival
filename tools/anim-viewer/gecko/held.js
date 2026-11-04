@@ -6,7 +6,8 @@
  *   seatItem(cls, grips, quads, fist)   { scale, grip, fist }: scale the drawn length to the class length (weapon_grips.json,
  *                                       blocks, pommel to tip as drawn) about the grip (the drawn point nearest the fist),
  *                                       then move the grip onto the fist; null for classes without a length
- *   seatPoint(seat, p)                  p as seated (p itself for a null seat)
+ *   seatPoint(seat, p)                  p as seated (p itself for a null seat; a shield's seat, gecko/shield.js seat, is a
+ *                                       strap matrix { m })
  *   itemScale(cls, grips, length)       class length (blocks) over the item's drawn length (px)
  *   scaleAbout(c, s, p)                 p scaled by s about c
  *   bendPoint(joint, r, band)           a limb point turned by its elbow or knee: fully below the joint, blended across ±band px
@@ -84,7 +85,12 @@
     return { scale: itemScale(cls, grips, d.length), grip, fist };
   }
 
-  const seatPoint = (seat, p) => (seat ? scaleAbout(seat.grip, seat.scale, p).map((x, i) => x + seat.fist[i] - seat.grip[i]) : p);
+  /** A seat is a weapon's (scale about the grip, grip onto the fist) or a shield's strap, a 4x4 m (gecko/shield.js seat). */
+  function seatPoint(seat, p) {
+    if (!seat) return p;
+    if (seat.m) return [0, 1, 2].map((r) => seat.m[r * 4] * p[0] + seat.m[r * 4 + 1] * p[1] + seat.m[r * 4 + 2] * p[2] + seat.m[r * 4 + 3]);
+    return scaleAbout(seat.grip, seat.scale, p).map((x, i) => x + seat.fist[i] - seat.grip[i]);
+  }
 
   function bendPoint(joint, r, band) {
     const w = Math.max(0, Math.min(1, (joint.pivot[1] + band - r[1]) / (2 * band)));

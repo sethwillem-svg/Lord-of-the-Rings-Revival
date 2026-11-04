@@ -39,7 +39,8 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
   <div class="note">The race clip files PulseLib plays in game (<code>geckolib/animations/entity/npc_biped_&lt;race&gt;.animation.json</code>,
     built by <code>node tools/anim-viewer/build_npc.js</code>), on the test figure or an exported Middle-earth NPC. Held items are
     sized by the drawn weapon to their class length (<code>weapon_grips.json</code>, pommel to tip), seated with the handle on
-    the fist, and follow the weapon bones. The list shows the
+    the fist, and follow the weapon bones; shields are strapped to the forearm, face out from its back (<code>gecko/shield.js</code>,
+    as in game). The list shows the
     clips an NPC plays with its weapon (attacks fall back between classes as in game).</div>
   <h2>Clips</h2>
   <div class="row"><label for="model">Model</label><select id="model" style="flex:1;min-width:0"><option value="">Test figure</option></select></div>
@@ -48,7 +49,7 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
     <option value="auto">from the model</option><option value="unarmed">unarmed</option><option>dagger</option><option>sword</option>
     <option>longsword</option><option>axe</option><option>spear</option><option>bow</option><option>longbow</option><option>crossbow</option>
     <option value="all">all clips</option></select></div>
-  <div class="row"><label for="shield">Shield</label><input id="shield" type="checkbox"> <span class="note">off arm holds a shield up (the clips' shield versions)</span></div>
+  <div class="row"><label for="shield">Shield</label><input id="shield" type="checkbox"> <span class="note">off arm holds a shield up (the clips' shield versions; the test figure holds a Middle-earth element shield)</span></div>
   <div class="row"><label for="showAll">Show all</label><input id="showAll" type="checkbox"> <span class="note">every clip in the list at once</span></div>
   <ul class="clips" id="clips"></ul>
   <div class="note err" id="msg"></div>
@@ -74,10 +75,11 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
 <script src="gecko/rig.js"></script>
 <script src="gecko/sample.js"></script>
 <script src="gecko/held.js"></script>
+<script src="gecko/shield.js"></script>
 <script src="gecko/clips.js"></script>
 <script>
 'use strict';
-const { RIG } = window.GeckoRig, S = window.GeckoSample, H = window.GeckoHeld, CL = window.GeckoClips;
+const { RIG } = window.GeckoRig, S = window.GeckoSample, H = window.GeckoHeld, SH = window.GeckoShield, CL = window.GeckoClips;
 const RACES = ['man', 'elf', 'dwarf', 'hobbit', 'orc'];
 const ASSETS = '../../addon/src/main/resources/assets/lotr_revival/';
 const EXPORT_DIR = '../../addon/run/viewer_export/';
@@ -168,11 +170,20 @@ function testFigure(fig, weapon) {
   boxMesh(fig, 'body', [-4, 0, -2], [4, 12, 2], '#4a6a8a');
   boxMesh(fig, 'right_arm', [-3, -2, -2], [1, 10, 2], SKIN); boxMesh(fig, 'left_arm', [-1, -2, -2], [3, 10, 2], SKIN);
   boxMesh(fig, 'right_leg', [-2, 0, -2], [2, 12, 2], '#5a4632'); boxMesh(fig, 'left_leg', [-2, 0, -2], [2, 12, 2], '#4b3b2a');
+  if (weaponChoice().off === 'shield') testShield(fig);
   if (!weapon) return;
   // an item as Minecraft seats it: handle in the fist, blade forward (-z in part space); scaled to the chosen class's length
   boxMesh(fig, 'right_arm', [-1.3, 9.2, -16], [-0.7, 10.8, -3.5], '#c9ced6', 'right', weapon);
   boxMesh(fig, 'right_arm', [-1.4, 8, -3.5], [-0.6, 12, -2.5], '#8a6a2a', 'right', weapon);
   boxMesh(fig, 'right_arm', [-1.3, 9.5, -2.5], [-0.7, 10.5, 0], '#5a3a1a', 'right', weapon);
+}
+/** A Middle-earth element shield in the left hand, as Minecraft's held-item layer draws it (gecko/shield.js armQuads); its
+ *  seat (setHandSeats) straps it to the forearm as the game does. */
+function testShield(fig) {
+  const quads = SH.armQuads(SH.MODELS.element, true), pos = [], idx = [];
+  quads.forEach((q, i) => { for (const p of q) pos.push(...p); idx.push(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3); });
+  const material = new THREE.MeshLambertMaterial({ color: '#8a5a2b', side: THREE.DoubleSide });
+  addMesh(fig, 'left_arm', pos, null, idx, material, 'left', 'shield');
 }
 function npcFigure(fig, d) {
   const swapped = heldClasses().swapped;
@@ -193,13 +204,14 @@ function npcFigure(fig, d) {
     addMesh(fig, m.part, m.pos, m.uv, m.idx, material, hand, H.exportClass(m.weapon, d.label)).renderOrder = order;
   });
 }
-/** Each hand's items share one seat (gecko/held.js seatItem): their drawn weapon at the class length, handle on the fist. */
+/** Each hand's items share one seat (gecko/held.js seatItem): their drawn weapon at the class length, handle on the fist; a
+ *  shield strapped to the forearm (gecko/shield.js seat, as client.render.WeaponGrip). */
 function setHandSeats(fig) {
   for (const side of ['right', 'left']) {
     const held = fig.meshes.filter((m) => m.hand === side);
     if (!held.length) continue;
     const quads = held.flatMap((m) => (m.idx ? H.quadsOf(m.rest, m.idx) : []));
-    const seat = H.seatItem(held[0].weapon, grips, quads, H.FIST[side]);
+    const seat = held[0].weapon === 'shield' ? SH.seat(quads, side) : H.seatItem(held[0].weapon, grips, quads, H.FIST[side]);
     for (const m of held) m.seat = seat;
   }
 }
