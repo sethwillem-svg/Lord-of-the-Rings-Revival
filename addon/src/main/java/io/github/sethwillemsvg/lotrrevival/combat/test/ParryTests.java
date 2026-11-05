@@ -16,6 +16,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.animal.horse.Horse;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.sevenstars.middleearth.entity.npcs.NpcEntity;
@@ -298,23 +299,58 @@ public final class ParryTests {
     @GameTest(template = "empty", timeoutTicks = 160)
     public static void mountedAttackerParried(GameTestHelper h) {
         CombatTestKit.Run run = new CombatTestKit.Run(h, "mountedAttackerParried");
+        // Deterministic: no AI on mount or rider, fixed positions re-asserted every tick from the swing to the end (a ridden
+        // horse can drift, which once left the target out of reach: "result= dist=3.13"), heavy and NPC parry forced to 0.
         Horse horse = h.spawnWithNoFreeWill(EntityType.HORSE, new BlockPos(1, 1, 0));
+        horse.setNoAi(true);
         NpcEntity npc = run.soldier(1, 1, 0, 0f);
+        AttackTiming.heavyChanceOverride(npc, 0.0);
+        NpcParry.chanceOverride(npc, 0.0);
         run.check(npc.startRiding(horse, true), "the soldier could not mount the horse");
         ServerPlayer p = run.player(1, 1, 2, 180f);
         shield(p);
+        Vec3 horseAt = h.absoluteVec(new Vec3(1.5, 1, 0.5)), playerAt = h.absoluteVec(new Vec3(1.5, 1, 2.2));
+        Runnable pin = () -> {
+            horse.moveTo(horseAt.x, horseAt.y, horseAt.z, 0f, 0f);
+            horse.setYHeadRot(0f);
+            horse.setYBodyRot(0f);
+            horse.setDeltaMovement(Vec3.ZERO);
+            npc.setYRot(0f);
+            npc.setYHeadRot(0f);
+            npc.setYBodyRot(0f);
+            npc.setDeltaMovement(Vec3.ZERO);
+            horse.positionRider(npc);
+            p.moveTo(playerAt.x, playerAt.y, playerAt.z, 180f, 0f);
+            p.setYHeadRot(180f);
+            p.setDeltaMovement(Vec3.ZERO);
+        };
+        String[] state = {"no swing"};
         run.at(run.warmup(), () -> {
+            pin.run();
             long t0 = run.now();
+            double reach = AttackTiming.reachFor(npc, p), dist0 = npc.distanceTo(p);
             npc.doHurtTarget(p);
             AttackTiming.Pending pend = AttackTiming.pending(npc);
-            run.check(pend != null && pend.mounted, "swing not held as mounted");
+            run.check(pend != null && pend.mounted, "swing not held as mounted (pending=" + describe(pend) + ")");
             long due = AttackTiming.dueTick(npc);
+            state[0] = "reach=" + String.format("%.2f", reach) + " dist@swing=" + String.format("%.2f", dist0) + " t0=" + t0 + " due=" + due
+                    + " pending@swing=" + describe(pend);
+            for (long d = 1; d <= due + 2 - t0; d++) run.at(d, pin);
             run.at(due - 3 - t0, () -> raise(p));
+            run.at(due - 1 - t0, () -> state[0] += " dist@due-1=" + String.format("%.2f", npc.distanceTo(p))
+                    + " reach@due-1=" + String.format("%.2f", AttackTiming.reachFor(npc, p)) + " pending@due-1=" + describe(AttackTiming.pending(npc)));
             run.finish(due + 2 - t0, () -> {
-                run.note("result=" + Parry.lastResult(p) + " dist=" + npc.distanceTo(p));
+                run.note("result=" + Parry.lastResult(p) + " dist=" + String.format("%.2f", npc.distanceTo(p)) + " " + state[0]
+                        + " pending@end=" + describe(AttackTiming.pending(npc)) + " riding=" + (npc.getVehicle() == horse));
                 run.check(p.getHealth() == p.getMaxHealth(), "player lost " + lost(p) + " to rider or mount");
                 run.check("parry ok".equals(Parry.lastResult(p)), "result " + Parry.lastResult(p));
             });
         });
+    }
+
+    private static String describe(AttackTiming.Pending p) {
+        if (p == null) return "none";
+        return "{start=" + p.startTick + " due=" + p.due + " resolve=" + p.resolveTick + " heavy=" + p.heavy + " mounted=" + p.mounted
+                + " slot=" + p.slot + "}";
     }
 }
