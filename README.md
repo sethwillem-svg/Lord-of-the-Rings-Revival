@@ -17,9 +17,8 @@ What is kept:
 | `tools/anim-viewer/` | Mocap to Blockbench rig pipeline: browser viewer, retargeter, clip library (Quaternius UAL, CMU mocap, local Unity packs), Kimodo and HY-Motion generation, PulseLib export. See its README. |
 | `tools/anim/` | Python reference retargeter and the parity check against the viewer. |
 | `src/main/art/blockbench/` | 104 orc, olog and troll faction models (eight factions, plus low-detail copies), the muster-pack rig. |
-| `specs/core/rendering-animation.md` | PulseLib decision, one rig per race, clip names, animation LOD, render budgets. |
-| `specs/world/waypoints-travel.md` | Waypoints, fast travel and roads: the starting point for the node-based map. |
-| `specs/npc/npc-base.md`, `specs/npc/hiring-trading.md` | NPC behaviour a nemesis system would build on. |
+| `specs/addon/` | Add-on specs: hiring and formations, combat (parry, attack warning), node map and travel, nemesis and world events, structures, animation, debug logging. |
+| `specs/archive/` | Retired specs from the standalone mod, for reference only. |
 
 ## The add-on (`addon/`)
 

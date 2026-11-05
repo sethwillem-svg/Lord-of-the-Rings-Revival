@@ -1,10 +1,8 @@
 # AGENTS.md
 
-> **Regrouping (2026-11-01).** The from-scratch mod, pods and ticket workflow below are paused: the repo was cleared
-> down to the animation tools, the orc models and a few specs, to build an add-on for the Middle-earth mod (Jukoz,
-> NeoForge 1.21.1 backport). Sections 2-7 describe the old setup and will be rewritten when we regroup; section 1
-> (clean-room) still applies, and now also covers the Middle-earth mod: it is All Rights Reserved, so never copy its
-> code, textures, models or lang files here. An add-on depends on its jar; it does not contain it.
+> **Add-on (since 2026-11-01).** This repo builds an add-on for the Middle-earth mod (Jukoz, NeoForge 1.21.1, branch
+> `neoforge-fixes`). The from-scratch mod, pods and ticket workflow are retired; their specs are in `specs/archive/` for
+> reference only. Never build from an archived spec.
 
 Rules for every AI agent (and human) working in this repo. Read this before touching anything.
 
@@ -16,58 +14,40 @@ Rules for every AI agent (and human) working in this repo. Read this before touc
 - **No original textures, models, sounds, structures or lang strings.** All assets are made new for this repo.
 - Never commit decompiled sources, original jars or extracted assets. Keep them outside the repo.
 
-- **Behavior notes** about the original live in [`docs/reference/`](docs/reference/), written in our own words. Everyone may read them; only leads add to them.
+- **Middle-earth mod** is All Rights Reserved too: never copy its code, textures, models, structures or lang files here. Its public classes (and the Seven Stars API) are integration points: call them, never copy them. The add-on depends on its jar; it does not contain it.
 
-If you're unsure whether something crosses the line, stop and ask in the ticket.
+If you're unsure whether something crosses the line, stop and ask.
 
-## 2. Team and ownership
+## 2. Layout
 
-| Pod | Lead | Package | Owns |
-| --- | --- | --- | --- |
-| Core | Opus 1 (integrator) | `core`, `datagen` | Registries, attachments, networking, alignment API, shared constants, items, blocks |
-| World | Opus 2 | `world` | Dimension, biomes, map gen, roads, ores, structures |
-| NPCs | Opus 3 | `npc` | Races, NPCs, AI, mounts, combat, hiring, invasions |
-| Progression | Opus 4 | `progression` | Quests, achievements, titles, banners, fellowships, traders, map GUI |
-
-Client-only code goes in `client/<pod>/`. Base package: `io.github.sethwillemsvg.lotrrevival`.
-
-**Pods do not edit another pod's package.** Need something from core? Open a `pod:core` ticket and wait, or ask Opus 1.
+| Path | What |
+| --- | --- |
+| `addon/` | The add-on (`lotr_revival`), package `io.github.sethwillemsvg.lotrrevival`, one package per system: `combat`, `hiring`, `nodemap`, `nemesis`, `events`, `structures`; client code in `client/<system>/`; shared helpers in `core/` |
+| `specs/addon/` | Current specs. `specs/archive/` holds the retired standalone-mod specs |
+| `tools/anim-viewer/`, `tools/anim/` | Animation pipeline |
+| `src/main/art/blockbench/` | Orc, olog and troll models |
+| `.github/workflows/build.yml` | CI: builds Middle-earth, builds the add-on, runs game tests, uploads one log per system |
 
 ## 3. Workflow
 
-1. **Spec**: a lead writes `specs/<pod>/<system>.md` from `specs/_TEMPLATE.md` and merges it to `main`.
-2. **Ticket**: the lead opens 1–2 day issues using the *Ticket* template, labeled `pod:*`, `phase:*`, `agent:*`, with a milestone.
-3. **Branch**: `<pod>/<issue#>-<short-slug>` off latest `main` (for example `world/42-shire-biomes`). One branch per ticket. Use a git worktree per agent.
-4. **Build locally** before every PR:
+1. **Spec:** `specs/addon/<system>.md` from `specs/_TEMPLATE.md`. Specs list design choices and open questions; the maintainer reviews them.
+2. **Branch:** one per piece of work. Agents working in parallel use separate git worktrees and stay inside their system's package.
+3. **Build:** CI is the build of record (cloud sessions often cannot reach Mojang's or NeoForged's servers). Locally:
    ```sh
-   ./gradlew build runData
-   git diff --exit-code src/generated   # datagen output must be committed
+   cd addon && ./gradlew build runGameTestServer -PmeJar=<middle-earth jar> -PmeApiJars=<sevenstars-api jar> -Pdebug=all
    ```
-5. **PR** to `main` using the PR template. Link the issue (`Closes #42`) and the spec.
-6. **Review**: the pod lead reviews. Anything touching `core/`, `datagen/DataGenerators.java`, `build.gradle` or `gradle.properties` also needs Opus 1.
-7. **Merge**: squash merge by Opus 1 only, after CI (`build` and `runtime-test`) is green. Player-visible changes also need the `playtested` label from the human maintainer.
+4. **Debug:** read the CI artifact `logs-<run>`: `summary.md`, one `<system>.log` per system, `errors.log`. See `specs/addon/debug-logging.md`.
+5. **Merge:** to `main` after CI is green; player-visible changes also need a playtest by the maintainer.
 
 ## 4. Code rules
 
-- **Datagen first.** Blockstates, models, loot tables, recipes, tags, lang and advancements are generated from Java providers. Never hand-edit files in `src/generated/`. Exception: structure `.nbt` files and textures.
-- **One register.** Use the DeferredRegisters in `core.registry.ModRegistries`. Do not create new ones without Opus 1.
-- **Ids** via `LOTRRevival.id("path")`. Registry names are `snake_case`.
-- **Shared constants** (faction ids, alignment values, tags) live in `core`. Do not duplicate them in pods.
-- **Player and world data** use NeoForge data attachments, not capabilities or raw NBT.
-- **Item data** uses data components, not NBT.
-- **Networking** uses `CustomPacketPayload` registered in core.
-- No mixins without lead approval. Prefer NeoForge events.
-- Logic gets a GameTest where practical (`src/main/java/.../<pod>/test/`). Use `@GameTest(template = "empty")`. Mock players from `makeMockServerPlayerInLevel` share one name and stay in the player list: always remove them in a `finally`.
+- Log through `core.log.LotrLog` with your system's name; debug lines through `LotrLog.dbg` (see the logging spec).
+- Integrate with Middle-earth through events, its public API and the Seven Stars API. A mixin only when nothing else works, and say why in the class comment.
+- Player and world data use NeoForge data attachments or `SavedData`; item data uses data components; packets use `CustomPacketPayload`.
+- Numbers from specs are config values (`lotr_revival-common.toml`) unless the spec says data.
+- Logic gets a GameTest in `<system>/test/` with `@GameTest(template = "empty")`. Mock players from `makeMockServerPlayerInLevel` share one name and stay in the player list: always remove them in a `finally`.
 - Java 21. 4-space indent. No wildcard imports.
 
-## 5. Shared-file locks
+## 5. Commits
 
-Before editing a shared file (`ModRegistries`, `DataGenerators`, `build.gradle`, `gradle.properties`, lang `en_us` if not generated), say so in your ticket ("touching ModRegistries"). Opus 1 serializes PRs that touch the same shared file.
-
-## 6. Commits
-
-Conventional style: `feat(world): add Shire biome`, `fix(npc): hobbit pathing`, `spec(progression): mini-quests`. Small, focused commits.
-
-## 7. Tooling
-
-See [docs/tooling.md](docs/tooling.md): cloud agents via the `claude` label, the headless runtime test, NovoAtlas worldgen, local agent definitions in `.claude/agents/`, and the art MCP servers.
+Conventional style: `feat(combat): parry window`, `fix(nodemap): travel cost`, `spec(addon): structures`. Small, focused commits.

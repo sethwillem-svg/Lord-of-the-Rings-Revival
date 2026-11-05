@@ -1,7 +1,6 @@
 # <System name>
 
-- **Pod:** core | world | npc | progression
-- **Lead:** Opus N
+- **Package:** `addon/.../lotrrevival/<system>`
 - **Status:** draft | approved | implemented
 - **Depends on:** <other specs or core APIs>
 
@@ -27,7 +26,11 @@ What the player sees and does, step by step.
 
 ## Data and APIs
 
-Registries, data attachments, data components, datapack formats, packets this system needs. Name the core APIs it uses.
+Registries, data attachments, data components, datapack formats, packets this system needs. Name the Middle-earth / Seven Stars API classes it uses.
+
+## Logging
+
+What the system logs at INFO, WARN and debug (`LotrLog`), per specs/addon/debug-logging.md.
 
 ## Out of scope
 
@@ -40,4 +43,4 @@ What this spec deliberately leaves for later.
 
 ## Tickets
 
-Filled in by the lead once the spec is approved.
+Rough implementation plan: files and classes, 0.5-2 days each.

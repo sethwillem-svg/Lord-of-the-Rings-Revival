@@ -1,1 +1,1 @@
-Read and follow @AGENTS.md before doing anything in this repo (note its regrouping banner). Specs are in specs/; the animation tools are in tools/anim-viewer/.
+Read and follow @AGENTS.md before doing anything in this repo. Specs are in specs/addon/ (specs/archive/ is retired); the animation tools are in tools/anim-viewer/; CI logs per system are described in specs/addon/debug-logging.md.
