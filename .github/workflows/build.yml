@@ -119,8 +119,11 @@ jobs:
           grep -vE '^\s+at |Ambiguity between arguments|server.properties' logs/errors.log | head -150 || true
           echo "===== compile errors ====="
           grep -A3 ': error:' logs/compile.log | head -120 || true
+          echo "===== failed game tests ====="
+          grep -hE 'required tests failed|GameTestServer\]:    - |LogTestReporter' addon/run/gametest/logs/latest.log | head -60 || true
+          grep -h '\[test\] FAIL' addon/run/gametest/logs/latest.log | head -60 || true
           echo "===== [test] lines ====="
-          grep -h '\[test\]' addon/run/gametest/logs/latest.log | head -200 || true
+          grep -h '\[test\]' addon/run/gametest/logs/latest.log | head -400 || true
 
       - name: Upload logs
         if: always()
