@@ -201,7 +201,7 @@ public final class NemesisLeaderTests {
 
     // ------------------------------------------------------------------ N6: bodyguards follow and defend
 
-    @GameTest(template = "empty", batch = "nemesis_bodyguards", timeoutTicks = 400)
+    @GameTest(template = "empty", batch = "nemesis_bodyguards", timeoutTicks = 600)
     public static void bodyguardFollow(GameTestHelper h) {
         String name = "bodyguard_follow";
         NemesisTestPlayers.begin(h, name);

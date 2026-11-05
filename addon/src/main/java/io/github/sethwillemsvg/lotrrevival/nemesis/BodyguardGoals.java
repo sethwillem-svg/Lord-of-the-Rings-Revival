@@ -54,6 +54,7 @@ public final class BodyguardGoals {
     /** Drives an idle follow goal (see {@link Follow#watchdog}); called for each guard from the body check. */
     public static void watchdog(NpcEntity guard) {
         for (WrappedGoal w : guard.goalSelector.getAvailableGoals()) if (w.getGoal() instanceof Follow f) f.watchdog();
+        for (WrappedGoal w : guard.targetSelector.getAvailableGoals()) if (w.getGoal() instanceof Defend d) d.watchdog();
     }
 
     static boolean leaderOk(@Nullable LivingEntity leader, NpcEntity guard) {
@@ -272,6 +273,14 @@ public final class BodyguardGoals {
         @Override
         public void stop() {
             pick = null;
+        }
+
+        /** Body-check fallback, as for {@link Follow#watchdog}: set the target if the goal did not. */
+        void watchdog() {
+            if (!canUse()) return;
+            watchdogs++;
+            LotrLog.dbg("nemesis", "bodyguard watchdog: defend goal idle, guard={} nemesis={}", LotrLog.id(guard.getUUID()), LotrLog.id(recordId));
+            start();
         }
     }
 }
