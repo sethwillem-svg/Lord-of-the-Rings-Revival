@@ -1,0 +1,6 @@
+{
+  "id": "neutral",
+  "extends": "base",
+  "description": "Identity: every block is kept as it is (still validated against the block dump).",
+  "keep": ["*"]
+}

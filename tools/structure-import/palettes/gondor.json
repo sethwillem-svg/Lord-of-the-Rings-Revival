@@ -1,0 +1,20 @@
+{
+  "id": "gondor",
+  "extends": "base",
+  "description": "Grey stone bricks become Middle-earth limestone bricks; cobblestone becomes cobbled limestone with some moss. Middle-earth ids checked by name against its block sets; run the block dump to validate.",
+  "blocks": {
+    "minecraft:cracked_stone_bricks": "middle-earth:cracked_limestone_bricks",
+    "minecraft:mossy_stone_bricks": "middle-earth:mossy_limestone_bricks"
+  },
+  "families": [
+    {
+      "from": {"base": "minecraft:stone_bricks", "stairs": "minecraft:stone_brick_stairs", "slab": "minecraft:stone_brick_slab", "wall": "minecraft:stone_brick_wall"},
+      "to": {"base": "middle-earth:limestone_bricks", "stairs": "middle-earth:limestone_brick_stairs", "slab": "middle-earth:limestone_brick_slab", "wall": "middle-earth:limestone_brick_wall"}
+    }
+  ],
+  "random": {
+    "minecraft:cobblestone": [["middle-earth:cobbled_limestone", 3], ["minecraft:mossy_cobblestone", 1]]
+  },
+  "keep": [],
+  "valuable_fallback": "minecraft:stone_bricks"
+}
