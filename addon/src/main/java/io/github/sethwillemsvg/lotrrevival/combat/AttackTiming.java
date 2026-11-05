@@ -210,8 +210,7 @@ public final class AttackTiming {
     private static void onShieldBlock(LivingShieldBlockEvent e) {
         if (!replaying || replayPending == null || !replayPending.heavy || e.getEntity() != replayPending.target) return;
         // TODO(spec "Heavy attacks"): heavy.shield_share > 0 should let the shield absorb that share instead of all or nothing
-        e.setBlocked(false);
-        CombatStats.heavyBypass++;
+        e.setBlocked(false);   // counted in Parry.resolvePlayer ("heavy bypass")
         LotrLog.dbg("combat", "heavy bypass: vanilla shield block skipped, defender={} attacker={}", LotrLog.id(e.getEntity().getUUID()),
                 replayNpc == null ? "-" : LotrLog.id(replayNpc.getUUID()));
     }

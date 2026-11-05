@@ -96,7 +96,7 @@ public final class Parry {
 
     /** The main hand's blade class (dagger, sword, longsword, axe, spear), or null. */
     @Nullable
-    static String bladeClass(LivingEntity e) {
+    public static String bladeClass(LivingEntity e) {
         String cls = WeaponClass.of(Hands.weapon(e));
         return cls != null && BLADES.contains(cls) ? cls : null;
     }
@@ -104,6 +104,14 @@ public final class Parry {
     /** Holds something to parry with: a shield in either hand, or a blade. */
     public static boolean canParry(Player player) {
         return heldShield(player) != null || bladeClass(player) != null;
+    }
+
+    /** The perfect window (ticks) for what the player holds now: a shield in either hand, else the blade; 0 when it cannot parry. */
+    public static int windowFor(Player player) {
+        ItemStack shield = heldShield(player);
+        if (shield != null) return CombatConfig.window(shieldClass(shield));
+        String blade = bladeClass(player);
+        return blade == null ? 0 : CombatConfig.window(blade);
     }
 
     public static int latencyMs(ServerPlayer player) {
