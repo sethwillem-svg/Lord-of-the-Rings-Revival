@@ -40,7 +40,8 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
     built by <code>node tools/anim-viewer/build_npc.js</code>), on the test figure or an exported Middle-earth NPC. Held items are
     sized by the drawn weapon to their class length (<code>weapon_grips.json</code>, pommel to tip), seated with the handle on
     the fist, and follow the weapon bones; shields are strapped to the forearm, face out from its back (<code>gecko/shield.js</code>,
-    as in game). The list shows the
+    as in game); bows are held upright across the forearm, string toward the archer, and in the bow clips the string is drawn
+    as the game shows it (<code>gecko/bow.js</code>: the line from the tips to the nock, and the model shown in the time bar). The list shows the
     clips an NPC plays with its weapon (attacks fall back between classes as in game).</div>
   <h2>Clips</h2>
   <div class="row"><label for="model">Model</label><select id="model" style="flex:1;min-width:0"><option value="">Test figure</option></select></div>
@@ -76,10 +77,12 @@ main{position:relative;display:flex;flex-direction:column;min-width:0}
 <script src="gecko/sample.js"></script>
 <script src="gecko/held.js"></script>
 <script src="gecko/shield.js"></script>
+<script src="gecko/bow.js"></script>
 <script src="gecko/clips.js"></script>
 <script>
 'use strict';
-const { RIG } = window.GeckoRig, S = window.GeckoSample, H = window.GeckoHeld, SH = window.GeckoShield, CL = window.GeckoClips;
+const { RIG } = window.GeckoRig, S = window.GeckoSample, H = window.GeckoHeld, SH = window.GeckoShield, CL = window.GeckoClips, BW = window.GeckoBow;
+const BOWS = new Set(['bow', 'longbow']);
 const RACES = ['man', 'elf', 'dwarf', 'hobbit', 'orc'];
 const ASSETS = '../../addon/src/main/resources/assets/lotr_revival/';
 const EXPORT_DIR = '../../addon/run/viewer_export/';
@@ -172,10 +175,18 @@ function testFigure(fig, weapon) {
   boxMesh(fig, 'right_leg', [-2, 0, -2], [2, 12, 2], '#5a4632'); boxMesh(fig, 'left_leg', [-2, 0, -2], [2, 12, 2], '#4b3b2a');
   if (weaponChoice().off === 'shield') testShield(fig);
   if (!weapon) return;
+  if (BOWS.has(weapon)) { testBow(fig, weapon); return; }
   // an item as Minecraft seats it: handle in the fist, blade forward (-z in part space); scaled to the chosen class's length
   boxMesh(fig, 'right_arm', [-1.3, 9.2, -16], [-0.7, 10.8, -3.5], '#c9ced6', 'right', weapon);
   boxMesh(fig, 'right_arm', [-1.4, 8, -3.5], [-0.6, 12, -2.5], '#8a6a2a', 'right', weapon);
   boxMesh(fig, 'right_arm', [-1.3, 9.5, -2.5], [-0.7, 10.5, 0], '#5a3a1a', 'right', weapon);
+}
+/** A generated bow (gecko/bow.js flatBow; flatter for a longbow) in the right hand as a display transform leaves it; its
+ *  seat (setHandSeats) holds it upright across the forearm as the game does. */
+function testBow(fig, weapon) {
+  const quads = BW.flatBow(weapon === 'longbow' ? 4 : 2), pos = [], idx = [];
+  quads.forEach((q, i) => { for (const p of q) pos.push(...p); idx.push(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3); });
+  addMesh(fig, 'right_arm', pos, null, idx, new THREE.MeshLambertMaterial({ color: '#7a5230', side: THREE.DoubleSide }), 'right', weapon);
 }
 /** A Middle-earth element shield in the left hand, as Minecraft's held-item layer draws it (gecko/shield.js armQuads); its
  *  seat (setHandSeats) straps it to the forearm as the game does. */
@@ -205,14 +216,23 @@ function npcFigure(fig, d) {
   });
 }
 /** Each hand's items share one seat (gecko/held.js seatItem): their drawn weapon at the class length, handle on the fist; a
- *  shield strapped to the forearm (gecko/shield.js seat, as client.render.WeaponGrip). */
+ *  shield strapped to the forearm (gecko/shield.js seat, as client.render.WeaponGrip); a bow upright across the forearm
+ *  (gecko/bow.js seat), with its string drawn as a line from the tips to the nock (fig.bow, posed in place()). */
 function setHandSeats(fig) {
   for (const side of ['right', 'left']) {
     const held = fig.meshes.filter((m) => m.hand === side);
     if (!held.length) continue;
-    const quads = held.flatMap((m) => (m.idx ? H.quadsOf(m.rest, m.idx) : []));
-    const seat = held[0].weapon === 'shield' ? SH.seat(quads, side) : H.seatItem(held[0].weapon, grips, quads, H.FIST[side]);
+    const quads = held.flatMap((m) => (m.idx ? H.quadsOf(m.rest, m.idx) : [])), cls = held[0].weapon;
+    const seat = cls === 'shield' ? SH.seat(quads, side) : BOWS.has(cls) ? BW.seat(quads, side, cls, grips) : H.seatItem(cls, grips, quads, H.FIST[side]);
     for (const m of held) m.seat = seat;
+    if (BOWS.has(cls) && seat) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+      const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xe8e2d0 }));
+      line.frustumCulled = false;
+      fig.group.add(line);
+      fig.bow = { side, placed: BW.placedBow(quads, seat.m), line, stage: 0 };
+    }
   }
 }
 function labelSprite(text) {
@@ -227,7 +247,7 @@ function labelSprite(text) {
 }
 function makeFigure(name) {
   const f = files[race()];
-  const fig = { group: new THREE.Group(), meshes: [], name, anim: f.anim.animations[name], hit: f.hits[name] };
+  const fig = { group: new THREE.Group(), meshes: [], name, anim: f.anim.animations[name], hit: f.hits[name], draw: f.draw };
   fig.group.rotation.y = Math.PI;
   scene.add(fig.group);
   if (source.kind === 'test') testFigure(fig, $('weapon').value === 'auto' ? 'sword' : weaponChoice().main);
@@ -240,6 +260,7 @@ function clearFigures() {
   for (const fig of figures) {
     for (const m of fig.meshes) { m.mesh.geometry.dispose(); }
     if (fig.label) { fig.label.material.map.dispose(); scene.remove(fig.label); }
+    if (fig.bow) fig.bow.line.geometry.dispose();
     scene.remove(fig.group);
   }
   figures = [];
@@ -282,6 +303,14 @@ function place(fig, time) {
     m.mesh.geometry.attributes.position.needsUpdate = true;
     m.mesh.geometry.computeVertexNormals();
   }
+  if (fig.bow) {   // the string: tips to the nock, pulled back by the clip's draw (the model the game shows: fig.bow.stage)
+    const b = fig.bow, w = W[b.side === 'left' ? 'weapon_l' : 'weapon_r'], p = BW.pullAt(fig.draw, fig.name, time);
+    b.stage = BW.stageOf(p);
+    b.line.visible = $('showSword').checked;
+    const pts = [b.placed.tips[0], BW.nock(b.placed, p), b.placed.tips[1]].map((x) => S.point(w, x));
+    b.line.geometry.attributes.position.array.set(pts.flat());
+    b.line.geometry.attributes.position.needsUpdate = true;
+  }
 }
 /** A figure's clip time at global time t: loops wrap; one-shots play, hold a moment, and repeat (Show all), or clamp. */
 function clipTime(fig, time, all) {
@@ -303,6 +332,7 @@ async function loadRace() {
       files[r] = {
         anim: await getJson(`${ASSETS}geckolib/animations/entity/npc_biped_${r}.animation.json`),
         hits: await getJson(`${ASSETS}geckolib/animations/entity/npc_biped_${r}.hits.json`),
+        draw: await getJson(`${ASSETS}geckolib/animations/entity/npc_biped_${r}.draw.json`).catch(() => null),   // the bow clips' draw timing
       };
     }
     $('msg').textContent = '';
@@ -449,7 +479,8 @@ function frame(now) {
     }
     for (const fig of figures) place(fig, clipTime(fig, t, all));
     $('scrub').value = L > 0 ? Math.min(t, L) / L : 0;
-    $('time').textContent = all ? `${figures.length} clips · ${t.toFixed(2)} s` : `${Math.min(t, L).toFixed(2)} / ${L.toFixed(2)} s`;
+    const bow = !all && figures[0].bow ? ` · ${['slack', 'pulling_0', 'pulling_1', 'pulling_2'][figures[0].bow.stage]}` : '';
+    $('time').textContent = all ? `${figures.length} clips · ${t.toFixed(2)} s` : `${Math.min(t, L).toFixed(2)} / ${L.toFixed(2)} s${bow}`;
   }
   placeCamera();
   renderer.render(scene, camera);

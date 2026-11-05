@@ -4,7 +4,8 @@
  *                                tips }, null for nothing drawn (see below)
  *   place(quads, left, cls, grips)  where item() moves a bow (part space, px; a 4x4, row-major), null to leave it as drawn
  *   seat(quads, side, cls, grips)   the same for quads in rig space, as the viewer keeps them: { m } for held.js seatPoint
- *   placedBow(quads, m)          the measured frame carried through a placement: { up, out, grip, brace, length }
+ *   placedBow(quads, m)          the measured frame carried through a placement: { up, out, grip, brace, length, tips }
+ *   flatBow(c)                   a generated bow as Minecraft bakes one, in the arm as a display leaves it (see there)
  *   nock(bow, p)                 the string's middle pulled back by draw progress p (0 at brace, 1 at full draw)
  *   stageOf(p) / STAGES          the item model shown at draw progress p: 0 slack, 1-3 pulling_0..pulling_2
  *   pullAt(draw, clip, t)        draw progress in a bow clip (bow_aim, bow_release) at clip time t, from the race's draw
@@ -124,7 +125,34 @@
     const b = measure(quads);
     if (!b || !m) return b;
     const k = Math.hypot(m[0], m[4], m[8]);
-    return { up: norm(applyDir(m, b.up)), out: norm(applyDir(m, b.out)), grip: apply(m, b.grip), brace: b.brace * k, length: b.length * k };
+    return { up: norm(applyDir(m, b.up)), out: norm(applyDir(m, b.out)), grip: apply(m, b.grip), brace: b.brace * k, length: b.length * k, tips: b.tips.map((p) => apply(m, p)) };
+  }
+
+  /**
+   * A generated (flat) bow as Minecraft bakes one, in the arm's part space as a display transform leaves it: two faces over
+   * its 16 px texture square (the plane y = 8, texel u along -x and v along +z about the fist) and one-texel edge quads, one
+   * px deep, along the wood's two edges and the string's. The bow lies on the texture's diagonal, its tips at texels
+   * (15.5, 0.5) and (0.5, 15.5); the wood a quadratic arc bowed toward texel (c, c), 1.5 texels thick (its middle at
+   * texel 4 + c/2 on the diagonal); the string straight between the tips, 1 texel thick. c 2: a bow (brace 3√2 texels);
+   * c 4: a flatter longbow (2√2). The viewer's test figure holds it; the tests measure it.
+   */
+  function flatBow(c) {
+    const A = [15.5, 0.5], Z = [0.5, 15.5];
+    const bez = (f) => [0, 1].map((i) => (1 - f) ** 2 * A[i] + 2 * f * (1 - f) * c + f * f * Z[i]);
+    const toPart = ([u, v], y) => [8 - u - 1, y, v - 8 - 2];
+    const edge = (line) => {
+      const qs = [];
+      for (let i = 0; i + 1 < line.length; i++) qs.push([toPart(line[i], 7.5), toPart(line[i + 1], 7.5), toPart(line[i + 1], 8.5), toPart(line[i], 8.5)]);
+      return qs;
+    };
+    const offset = (pts, d) => pts.map((p, i) => {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      return [p[0] - ((b[1] - a[1]) / l) * d, p[1] + ((b[0] - a[0]) / l) * d];
+    });
+    const wood = Array.from({ length: 25 }, (_, i) => bez(i / 24));
+    const string = Array.from({ length: 22 }, (_, i) => [0, 1].map((k) => A[k] + ((Z[k] - A[k]) * i) / 21));
+    const face = (y) => [toPart([0, 0], y), toPart([16, 0], y), toPart([16, 16], y), toPart([0, 16], y)];
+    return [face(7.5), face(8.5).reverse(), ...edge(offset(wood, 0.75)), ...edge(offset(wood, -0.75)), ...edge(offset(string, 0.5)), ...edge(offset(string, -0.5))];
   }
 
   /** Part space <-> rig space for an arm (held.js partToRig), points and 4x4s. */
@@ -139,9 +167,6 @@
   /** The viewer's seat for a bow held on `side` (quads in rig space): place() in the arm's part space carried into rig
    *  space, as { m } for held.js seatPoint; null with nothing drawn. */
   function seat(quads, side, cls, grips) {
-    // RED: today's game seats a bow as any weapon (held.js seatItem): its class length, the drawn point nearest the fist on it
-    const s0 = H.seatItem(cls, grips, quads, H.FIST[side]);
-    if (s0) { const k = s0.scale; return { m: [k, 0, 0, s0.fist[0] - k * s0.grip[0], 0, k, 0, s0.fist[1] - k * s0.grip[1], 0, 0, k, s0.fist[2] - k * s0.grip[2], 0, 0, 0, 1] }; }
     const m = place(quads.map((q) => q.map((p) => fromRig(side, p))), side === 'left', cls, grips);
     if (!m) return null;
     const o = toRig(side, [0, 0, 0]);
@@ -184,12 +209,15 @@
    * reads it, client.anim.BowDraw). worlds(clip, t) gives a clip's world bones (gecko/sample.js worldBones). Along the
    * arrow (the bow's out, through the grip) the hand's pull is how far it stands behind the grip, its miss how far off
    * the arrow's line it is:
-   *   drawStart  bow_aim: the hand on the string (miss under ON px) from here to the full draw, its pull rising
-   *   fullDraw   bow_aim: the pull first within ON of its greatest
+   *   drawStart  bow_aim: where the draw that ends at the full draw starts: going back from the full draw, the hand on
+   *              the string (miss under ON px) and its pull falling faster than MOVING px/s, the last such sample
+   *   fullDraw   bow_aim: the end of the draw: the pull first within ON px of its greatest, then on while it still rises
+   *              faster than MOVING px/s
    *   release    bow_release: the hand first more than ON from where the full draw held it (the string's middle)
-   * Times in seconds of clip time, sampled every 1/240 s, rounded to the ms.
+   * Times in seconds of clip time, sampled every 1/240 s, rounded to the ms. ON is over the clips' own wobble between keys
+   * (PulseLib lerps their Euler angles; bow_arms.js keys them every 1/60 s), MOVING a hand held still.
    */
-  const ON = 0.05, TICK = 1 / 240;
+  const ON = 0.25, MOVING = 2, TICK = 1 / 240;
   function drawTiming(worlds, aimLength, releaseLength) {
     const at = (clip, t) => {
       const W = worlds(clip, t), w = W.weapon_r, R = w.R;
@@ -202,16 +230,19 @@
     const ts = (len) => Array.from({ length: Math.floor(len / TICK + 1e-6) + 1 }, (_, i) => i * TICK);
     const aim = ts(aimLength).map((t) => ({ t, ...at('bow_aim', t) }));
     const top = Math.max(...aim.map((s) => s.pull));
-    const full = aim.find((s) => s.pull >= top - ON);
-    let start = aim.indexOf(full);
-    while (start > 0 && aim[start - 1].miss < ON && aim[start - 1].pull <= aim[start].pull + 1e-9) start--;
+    let f = aim.findIndex((s) => s.pull >= top - ON);
+    while (f + 1 < aim.length && aim[f + 1].pull - aim[f].pull > MOVING * TICK) f++;
+    const full = aim[f];
+    let i = f;
+    while (i > 0 && aim[i - 1].miss < ON && aim[i].pull - aim[i - 1].pull > MOVING * TICK) i--;
+    const start = aim[i];
     const rel = ts(releaseLength).map((t) => ({ t, ...at('bow_release', t) }));
     const held = rel[0], gone = rel.find((s) => Math.hypot(...sub(s.hand, sub(s.grip, scale(s.out, held.pull)))) > ON);
     const ms = (t) => +t.toFixed(3);
-    return { drawStart: ms(aim[start].t), fullDraw: ms(full.t), release: ms(gone ? gone.t : releaseLength) };
+    return { drawStart: ms(start.t), fullDraw: ms(full.t), release: ms(gone ? gone.t : releaseLength) };
   }
 
-  const api = { measure, place, placedBow, seat, nock, stageOf, pullAt, drawTiming, STAGES, PULL_1, PULL_2, DRAW, GRIP, UP, OUT, MIDDLE, DRAW_HAND, toRig, fromRig };
+  const api = { measure, place, placedBow, seat, flatBow, nock, stageOf, pullAt, drawTiming, STAGES, PULL_1, PULL_2, DRAW, GRIP, UP, OUT, MIDDLE, DRAW_HAND, toRig, fromRig };
   if (isNode) module.exports = api;
   else root.GeckoBow = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -4,9 +4,9 @@
  * model the game shows (slack, pulling_0..2: gecko/bow.js stageOf, from the clip's draw progress and the race's draw.json)
  * follows the hand. The bow is placed as the game and the viewer place it (gecko/bow.js seat: client.render.WeaponGrip.bow).
  *
- * Bows: two made here as Minecraft bakes a generated (flat) item model, so no export is needed: a bow and a flatter
- * longbow drawn on their texture's diagonal (two faces over the 16 px square, one-texel edge quads along the wood's two
- * edges and along the string), seen in the arm as a display transform leaves them; and every bow and longbow of the
+ * Bows: two generated (flat) item models as Minecraft bakes them, so no export is needed (gecko/bow.js flatBow): a bow
+ * and a flatter longbow drawn on their texture's diagonal (two faces over the 16 px square, one-texel edge quads along the
+ * wood's two edges and along the string), seen in the arm as a display transform leaves them; and every bow and longbow of the
  * exported Middle-earth NPCs (addon/run/viewer_export, from ./addon/bench.sh export), when there is one.
  *
  * Numbers:
@@ -46,33 +46,13 @@ const rot = (w, d) => [0, 1, 2].map((r) => w.R[r * 3] * d[0] + w.R[r * 3 + 1] * 
 const angle = (a, b) => deg(Math.acos(Math.max(-1, Math.min(1, dot(norm(a), norm(b))))));
 
 // ---- bows ----
-/** A generated bow as Minecraft bakes it, in the arm's part space as drawn (the texture square in the plane y = 8, its u
- *  along -x and v along +z about the fist): the tips at texels (15.5, 0.5) and (0.5, 15.5), the wood a quadratic arc bowed
- *  toward texel (c, c), 1.5 texels thick, the string straight between the tips, 1 texel thick. */
-function generatedBow(c) {
-  const A = [15.5, 0.5], Z = [0.5, 15.5], C = [c, c];
-  const bez = (f) => [0, 1].map((i) => (1 - f) ** 2 * A[i] + 2 * f * (1 - f) * C[i] + f * f * Z[i]);
-  const toPart = ([u, v], y) => [8 - u - 1, y, v - 8 - 2];
-  const edge = (line) => {   // one-texel edge quads along a polyline (texels), the item 1 px thick
-    const qs = [];
-    for (let i = 0; i + 1 < line.length; i++) qs.push([toPart(line[i], 7.5), toPart(line[i + 1], 7.5), toPart(line[i + 1], 8.5), toPart(line[i], 8.5)]);
-    return qs;
-  };
-  const offset = (pts, d) => pts.map((p, i) => {
-    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], t = norm([b[0] - a[0], b[1] - a[1], 0]);
-    return [p[0] - t[1] * d, p[1] + t[0] * d];
-  });
-  const wood = Array.from({ length: 25 }, (_, i) => bez(i / 24)), string = Array.from({ length: 22 }, (_, i) => [0, 1].map((k) => A[k] + ((Z[k] - A[k]) * i) / 21));
-  const face = (y) => [toPart([0, 0], y), toPart([16, 0], y), toPart([16, 16], y), toPart([0, 16], y)];
-  return [face(7.5), face(8.5).reverse(), ...edge(offset(wood, 0.75)), ...edge(offset(wood, -0.75)), ...edge(offset(string, 0.5)), ...edge(offset(string, -0.5))];
-}
 const toRigQuads = (quads, side) => quads.map((q) => q.map((p) => Hd.partToRig(side === 'left' ? 'left_arm' : 'right_arm', p)));
 const exported = fs.existsSync(path.join(EXPORT, 'index.json'))
   ? JSON.parse(fs.readFileSync(path.join(EXPORT, 'index.json'), 'utf8')).npcs.map((n) => JSON.parse(fs.readFileSync(path.join(EXPORT, n.file), 'utf8')))
   : [];
 const BOWS = [
-  { label: 'generated bow', cls: 'bow', quads: generatedBow(2) },
-  { label: 'generated longbow', cls: 'longbow', quads: generatedBow(4) },
+  { label: 'generated bow', cls: 'bow', quads: B.flatBow(2) },
+  { label: 'generated longbow', cls: 'longbow', quads: B.flatBow(4) },
   ...exported.flatMap((d) => {
     const ms = d.meshes.filter((m) => m.hand && m.part === 'right_arm' && (m.weapon === 'bow' || m.weapon === 'longbow'));
     return ms.length ? [{ label: d.label, cls: ms[0].weapon, quads: ms.flatMap((m) => Hd.quadsOf(m.pos, m.idx)) }] : [];
@@ -213,11 +193,13 @@ test('the bow is its class length once placed (±5%), and is measured from its o
     assert.ok(Math.abs(b.placed.length / (GRIPS[b.cls].length * 16) - 1) <= 0.05, `${b.label}: ${(b.placed.length / 16).toFixed(2)} blocks for ${b.cls}`);
     assert.ok(b.placed.brace > 1 && b.placed.brace < 7, `${b.label}: brace ${b.placed.brace.toFixed(2)} px`);
   }
-  // the generated bow, as drawn: tips at texels (15.5, 0.5) and (0.5, 15.5); the wood's middle bowed toward texel (5, 5)
-  const m = B.measure(generatedBow(2));
-  const g = [8 - 5 - 1, 8, 5 - 8 - 2];   // texel (5, 5) in part space (generatedBow's toPart)
-  assert.ok(Math.hypot(...sub(m.grip, g)) < 0.3, `grip [${m.grip.map((x) => x.toFixed(2))}], want [${g}]`);
-  assert.ok(Math.abs(m.brace - 3 * Math.SQRT2) < 0.3, `brace ${m.brace.toFixed(2)} texels, want ${(3 * Math.SQRT2).toFixed(2)}`);
+  // the generated bows, as drawn: tips at texels (15.5, 0.5) and (0.5, 15.5); the wood's middle at texel (5, 5) for the
+  // bow, (6, 6) for the longbow, on the diagonal 3√2 and 2√2 texels from the string's middle at (8, 8)
+  for (const [c, mid] of [[2, 5], [4, 6]]) {
+    const m = B.measure(B.flatBow(c)), g = [8 - mid - 1, 8, mid - 8 - 2];   // texel (mid, mid) in part space (flatBow)
+    assert.ok(Math.hypot(...sub(m.grip, g)) < 0.3, `c ${c}: grip [${m.grip.map((x) => x.toFixed(2))}], want [${g}]`);
+    assert.ok(Math.abs(m.brace - (8 - mid) * Math.SQRT2) < 0.3, `c ${c}: brace ${m.brace.toFixed(2)} texels, want ${((8 - mid) * Math.SQRT2).toFixed(2)}`);
+  }
 });
 
 test('the model shown follows the draw: slack until it starts, then pulling_0..2 rising with the hand’s pull, pulling_2 at full draw, slack from the release', () => {

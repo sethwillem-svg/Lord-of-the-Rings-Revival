@@ -101,6 +101,7 @@ test('the shipped race files are what the build makes today (run node tools/anim
     if (!isDeepStrictEqual({ ...a, animations: null }, { ...s, animations: null })) stale.push(`${race}.animation.json header`);
     for (const n of names(a.animations, s.animations)) if (!isDeepStrictEqual(a.animations[n], s.animations[n])) stale.push(`${race}.animation.json ${n}`);
     for (const n of names(h, sh)) if (!isDeepStrictEqual(h[n], sh[n])) stale.push(`${race}.hits.json ${n}`);
+    if (!isDeepStrictEqual(json(built[race].draw), shipped[race].draw)) stale.push(`${race}.draw.json`);
   }
   assert.equal(stale.length, 0, `${stale.length} stale: ${stale.slice(0, 20).join(', ')}`);
 });
