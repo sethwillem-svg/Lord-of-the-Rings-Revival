@@ -2,7 +2,7 @@
 /* Every race as build_npc.js builds it today ({ geo, animations, hits, clips } from buildRace), made once per process and
  * cached in test/.cache/build-<sha1>.json (gitignored). The sha1 covers the contents of every build input: the build code
  * (build_npc.js, npc_slots.js, hinge.js, gecko/, import/ and every other module build_npc.js loads), the weapon grips it
- * reads as it loads (classLength) and every source clip file loadSources() reads; test/build.test.js checks that the build
+ * reads as it loads (classLength), every source clip file loadSources() reads and the BVH libraries the stances come from; test/build.test.js checks that the build
  * reads nothing else. Any change to them misses the cache and rebuilds (clearing older builds), so test/build.test.js
  * still catches shipped files that were not rebuilt. An unreadable cache file is rebuilt too. The build is plain JSON data
  * (no functions or typed arrays), so the cached copy is the build as written to disk (-0 reads back as 0). */
@@ -31,6 +31,8 @@ function inputs() {
   };
   walk(require.cache[BUILD]);
   const clips = [path.join(LIB, 'animationsplus/model.bbmodel'), ...['mobends', 'seriousplayer', 'emotecraft'].flatMap((d) => filesIn(path.join(LIB, d), (f) => f.endsWith('.json')))];
+  // the BVH libraries the formation stances are picked from (build_npc.js stanceRaw reads the pool's takes from these)
+  clips.push(...['ual', 'kaykit', 'cmu'].flatMap((d) => filesIn(path.join(LIB, d), (f) => f.endsWith('.bvh'))));
   return [...[...code].sort(), GRIPS, ...clips];
 }
 

@@ -48,10 +48,13 @@ test('riding slots exist and loop', () => {
   assert.equal(built.man.animations.animations.ride_move.loop, true);
 });
 
-test('spear brace holds the thrust\'s first frame', () => {
+test('spear brace holds a frame that breathes (specs/addon/npc-formation-stances.md): only the torso and head move', () => {
   const c = built.man.clips.spear_brace;
   assert.equal(c.loop, true);
-  for (const ch of Object.values(c.bones)) for (const keys of Object.values(ch)) assert.equal(keys.length, 1);
+  for (const [bone, ch] of Object.entries(c.bones)) for (const keys of Object.values(ch)) {
+    if (bone === 'upper' || bone === 'head') assert.ok(keys.length > 1, `${bone} does not breathe`);
+    else assert.ok(keys.every((k) => k.v.every((x, j) => Math.abs(x - keys[0].v[j]) < 1e-6)), `${bone} moves`);
+  }
 });
 
 test('hits land at the end of the fastest stretch, not at the edge of the search window', () => {

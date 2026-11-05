@@ -7,6 +7,7 @@
   'use strict';
   const RACES = ['man', 'elf', 'dwarf', 'hobbit', 'orc'];
   const ap = (clip, extra) => ({ source: 'animationsplus', clip, ...extra });
+  const stance = { stance: true };
   const SLOTS = {
     // movement
     idle: ap('idle'), idle_2: ap('Idle_1', { loop: true }), idle_3: ap('Idle_2', { loop: true }),   // AP Idle_3 bends the elbows backwards
@@ -26,9 +27,10 @@
     // ranged
     bow_aim: ap('bowR'), bow_release: ap('Bow_ShootR'),
     crossbow_reload: ap('loadR'), crossbow_aim: ap('crossR'), crossbow_shoot: ap('Cross_ShootR'),
-    // formation stances (specs/addon/hiring-reputation.md)
-    // spear brace: the two-handed thrust held at its strike, spear levelled forward
-    guard: ap('blockR', { loop: true }), shield_brace: ap('blockL', { loop: true }), spear_brace: ap('Spear_Swing_2R', { hold: 0.19 }), march: ap('walk'),
+    // formation stances (specs/addon/hiring-reputation.md, specs/addon/npc-formation-stances.md): the build's pick from
+    // STANCE_POOL (below), recorded in STANCE_PICKS
+    guard: stance, guard_spear: stance, guard_bow: stance, shield_brace: stance, shield_brace_spear: stance, spear_brace: stance,
+    march: stance, march_spear: stance, march_bow: stance,
     // reactions and social
     hurt: ap('Fall_0'),
     taunt_1: ap('Taunt_0'), taunt_2: ap('Taunt_2'), taunt_3: ap('Taunt_3'), taunt_4: ap('Taunt_4'), taunt_5: ap('Taunt_5'),   // AP Taunt_1 flips its knees through 360°
@@ -88,7 +90,248 @@
   /** The share of a race's fighting style an attack must keep to count as fought in that style: build_npc.js bestAttack
    *  prefers a clip keeping it, and the tests compare races only on attacks that keep it (test/lib/pairs.js). */
   const KEEP = 0.6;
-  const api = { RACES, SLOTS, STYLE, POOL, KEEP };
+  /* ---- Formation stances (specs/addon/npc-formation-stances.md) ----
+   * Each stance slot plays the build's pick from its STANCE_POOL (build_npc.js stancePick, by test/lib/stance.js): a pool
+   * entry, or one entry's upper body over another's legs, finished for the race (posture, grip, hinges) and breathing where
+   * it holds a frame. Entry: { source, clip (a list: Mo' Bends layers, merged bone by bone), note, hold? (s: a held frame),
+   * mirror?, cycles? (whole gait cycles of a take that keeps walking), close? (the take as a loop, its seam spread),
+   * part? ('upper' or 'lower': lends only that half), grip? (how the hand turns what it holds: 'shaft' both hands on one
+   * shaft, 'up' carried upright, 'level' levelled forward, 'bow' the bow's limbs upright; build_npc.js stanceGrip) }.
+   * Sources: AnimationsPlus (AP), Serious Player (SP), Mo' Bends (MB), Emotecraft (all in loadSources), and the BVH
+   * libraries UAL (Quaternius, CC0), KayKit (CC0) and CMU (CMU's terms), retargeted by import/mocap.js. */
+  const ent = (source) => (clip, note, extra) => ({ source, clip, note, ...extra });
+  const AP = ent('animationsplus'), SP = ent('seriousplayer'), MB = ent('mobends'), UAL = ent('ual'), KAY = ent('kaykit'), CMU = ent('cmu');
+  // legs lent to the still stances: the source's own stance under a held upper body
+  const LEGS = {
+    swordIdle: UAL('Sword_Idle', 'UAL sword guard’s legs: knees deep, weight even', { part: 'lower' }),
+    idle: UAL('Idle_Loop', 'UAL idle’s legs: knees soft, weight even', { part: 'lower' }),
+    lunge: CMU('144_17', 'CMU lunging footwork, held in the lunge: back foot braced, front knee bent', { part: 'lower', hold: 1 }),
+    spearLunge: CMU('144_11', 'CMU spear-thrust lunges, held at full stretch', { part: 'lower', hold: 0.9 }),
+    crouch: UAL('Crouch_Idle_Loop', 'UAL crouch, held: low, one foot ahead (its hips tip forward: an upright chest over them bends back)', { part: 'lower', hold: 1 }),
+    block: UAL('Sword_Block', 'UAL sword block’s legs, held braced: knees bent, a short step forward', { part: 'lower', hold: 0.3 }),
+    dash: UAL('Shield_Dash', 'UAL shield charge’s legs, held as it starts: deep, a long step forward', { part: 'lower', hold: 0.3 }),
+  };
+  const WALKS = [
+    AP('walk', 'AP walk: the walk itself (arms swing full)'),
+    SP('walking', 'SP walking, one gait cycle', { cycles: 1 }),
+    UAL('Walk_Formal_Loop', 'UAL formal walk: upright, arms close to the body'),
+    CMU('142_11', 'CMU marching, one gait cycle', { cycles: 1 }),
+    CMU('138_01', 'CMU marching, one gait cycle', { cycles: 1 }),
+    CMU('21_06', 'CMU soldiers march, one gait cycle', { cycles: 1 }),
+    CMU('132_37', 'CMU marching (the dwarves’ walk variant), one gait cycle', { cycles: 1 }),
+  ];
+  // the shield holds: the left arm is the shield code's (build_npc.js withShield) in every one, so these lend the body
+  const SHIELDS = [
+    AP('blockL', 'AP shield block'),
+    SP('shield', 'SP shield raised'),
+    SP('shield_sneak', 'SP shield raised, crouched'),
+    UAL('Idle_Shield_Loop', 'UAL shield idle'),
+  ];
+  const STANCE_POOL = {
+    guard: [
+      AP('combatReady', 'AP combat-ready (keys no bone in the file: the rest pose)'),
+      AP('blockR', 'AP sword block: blade up across the face'),
+      UAL('Sword_Idle', 'UAL sword guard: knees bent, blade forward'),
+      UAL('Sword_Idle', 'UAL sword guard, held at its start: the blade still in front, the head highest', { hold: 0, part: 'upper' }),
+      UAL('Sword_Idle', 'UAL sword guard, held mid-breath: the blade still in front', { hold: 0.4, part: 'upper' }),
+      CMU('76_04', 'CMU defensive guard, held mid-take', { hold: 2.5 }),
+      MB(['stance_const', 'stance_arms'], "Mo' Bends combat stance (its legs, elbows and item, with its arms)"),
+      MB(['fist_guard_abs', 'fist_guard_pre'], "Mo' Bends fist guard"),
+      LEGS.idle,
+    ],
+    guard_spear: [
+      KAY('2H_Melee_Idle', 'KayKit two-handed guard, the shaft through both fists', { grip: 'shaft' }),
+      CMU('124_08', 'CMU both hands on a level shaft, held forward (mirrored: right hand behind), the shaft through both fists', { hold: 0.33, mirror: true, grip: 'shaft' }),
+      AP('Spear_Swing_2R', 'AP two-handed thrust held as it starts', { hold: 0 }),
+      AP('Spear_Swing_3R', 'AP rising thrust held at its strike: shaft up and forward in both hands', { hold: 0.3 }),
+      UAL('Idle_Lantern_Loop', 'UAL lantern idle mirrored: right hand at the hip, left raised in front, the shaft through both fists', { mirror: true, grip: 'shaft' }),
+      UAL('Idle_Lantern_Loop', 'UAL lantern idle mirrored, held with the left hand highest, the shaft through both fists', { mirror: true, hold: 1.9, grip: 'shaft' }),
+      LEGS.idle, LEGS.swordIdle,
+    ],
+    guard_bow: [
+      KAY('Ranged_Bow_Idle', 'KayKit bow idle, mirrored to the right hand, the bow upright', { mirror: true, grip: 'bow' }),
+      KAY('Ranged_Bow_Aiming_Idle', 'KayKit bow held at full draw, mirrored, the bow upright', { mirror: true, grip: 'bow' }),
+      SP('bow_idle', 'SP bow held ready'),
+      SP('bow_idle', 'SP bow held ready, the bow upright', { grip: 'bow' }),
+      AP('bowR', 'AP bow draw held as it starts, the bow upright', { hold: 0, grip: 'bow' }),
+      KAY('Ranged_Bow_Draw', 'KayKit draw held as the arrow is nocked, low, mirrored, the bow upright', { mirror: true, hold: 0.4, grip: 'bow' }),
+      KAY('Ranged_Bow_Draw', 'KayKit draw held with the arrow nocked, low, mirrored, the bow upright', { mirror: true, hold: 0.45, grip: 'bow' }),
+      KAY('Ranged_Bow_Draw', 'KayKit draw held with the arrow nocked, the string hand back, mirrored, the bow upright', { mirror: true, hold: 0.48, grip: 'bow' }),
+      KAY('Ranged_Bow_Draw', 'KayKit draw held as the bow starts up, mirrored, the bow upright', { mirror: true, hold: 0.5, grip: 'bow' }),
+      LEGS.idle,
+    ],
+    shield_brace: [...SHIELDS, LEGS.crouch, LEGS.lunge, LEGS.block, LEGS.dash],
+    shield_brace_spear: [
+      ...SHIELDS,
+      SP('trident', 'SP trident raised to throw, levelled', { grip: 'level', part: 'upper' }),
+      SP('swimming', 'SP crawl stroke held with the right hand by the head, levelled', { hold: 0, grip: 'level', part: 'upper' }),
+      CMU('79_93', 'CMU weight lifting, held with the right hand at the shoulder, levelled overhand', { hold: 2.68, grip: 'level', part: 'upper' }),
+      CMU('13_26', 'CMU directing traffic, held with the right hand raised by the head, levelled overhand', { hold: 4.03, grip: 'level', part: 'upper' }),
+      CMU('17_01', 'CMU angry walk, held with the right fist raised, levelled overhand', { hold: 3.57, grip: 'level', part: 'upper' }),
+      CMU('79_45', 'CMU bear, held with the right paw raised, levelled overhand', { hold: 1.39, grip: 'level', part: 'upper' }),
+      CMU('79_45', 'CMU bear, held as the right paw tops its rise, levelled overhand', { hold: 1.45, grip: 'level', part: 'upper' }),
+      AP('Spear_Swing_1R', 'AP thrust held at its strike, levelled', { hold: 0.2, grip: 'level', part: 'upper' }),
+      LEGS.crouch, LEGS.lunge, LEGS.block, LEGS.dash,
+    ],
+    spear_brace: [
+      AP('Spear_Swing_1R', 'AP thrust held at its strike', { hold: 0.2 }),
+      AP('Spear_Swing_2R', 'AP two-handed thrust held at its strike (the old brace)', { hold: 0.19 }),
+      AP('Spear_Swing_3R', 'AP rising thrust held at its strike', { hold: 0.43 }),
+      KAY('2H_Melee_Idle', 'KayKit two-handed guard, the shaft through both fists', { grip: 'shaft' }),
+      CMU('124_08', 'CMU both hands on a level shaft, held forward (mirrored: right hand behind), the shaft through both fists', { hold: 0.33, mirror: true, grip: 'shaft' }),
+      AP('blockR', 'AP sword block mirrored: right fist at the hip, left forward, the shaft through both fists', { mirror: true, grip: 'shaft' }),
+      CMU('135_09', 'CMU lunge punch (oi zuki), held at full stretch: right fist at the hip, left forward, the shaft through both fists', { hold: 0.73, grip: 'shaft', part: 'upper' }),
+      CMU('135_10', 'CMU knife-hand block (shuto uke), held: right hand at the hip, left forward, the shaft through both fists', { hold: 1.72, grip: 'shaft', part: 'upper' }),
+      CMU('142_22', 'CMU sneaky walk, held with the hands forward, the shaft through both fists', { hold: 0.81, grip: 'shaft', part: 'upper' }),
+      CMU('76_01', 'CMU back off and punch, held on guard: right fist back, left forward, the shaft through both fists', { hold: 7.07, grip: 'shaft', part: 'upper' }),
+      CMU('124_08', 'CMU both hands on a level shaft, held as it comes forward (mirrored), the shaft through both fists', { hold: 0.27, mirror: true, grip: 'shaft' }),
+      LEGS.crouch, LEGS.lunge, LEGS.spearLunge, LEGS.block, LEGS.dash,
+    ],
+    march: [
+      ...WALKS,
+      UAL('Sword_Idle', 'UAL sword guard, held: the blade carried steady', { hold: 0.4, part: 'upper' }),
+      AP('idle', 'AP idle: arms easy at the sides', { part: 'upper' }),
+    ],
+    march_spear: [
+      ...WALKS,
+      AP('idle', 'AP idle, the spear carried upright', { part: 'upper', grip: 'up' }),
+      AP('Idle_2', 'AP idle 2 held, the spear carried upright', { part: 'upper', hold: 1, grip: 'up' }),
+    ],
+    march_bow: [
+      ...WALKS,
+      CMU('132_37', 'CMU marching, held with the right forearm forward, the bow upright', { part: 'upper', hold: 2.51, grip: 'bow' }),
+      CMU('21_06', 'CMU soldiers march, held with the right forearm forward, the bow upright', { part: 'upper', hold: 2.0, grip: 'bow' }),
+      AP('sitHorse', 'AP rider’s hands, the bow upright', { part: 'upper', hold: 0, grip: 'bow' }),
+    ],
+  };
+  /** The build's pick per stance slot and race (build_npc.js stancePick prints each; test/stances.test.js checks this record
+   *  against the build). Score: the key pose's distance (test/lib/stance.js score, lower is closer); runner-up in brackets.
+   *  guard:
+   *    man 0.700 (runner-up ual:Sword_Idle@0.4 over mobends:fist_guard_abs,fist_guard_pre, 0.700)
+   *    elf 0.715 (runner-up ual:Sword_Idle@0.4 over mobends:fist_guard_abs,fist_guard_pre, 0.715)
+   *    dwarf 0.718 (runner-up ual:Sword_Idle@0.4 over animationsplus:combatReady, 0.725)
+   *    hobbit 0.680 (runner-up ual:Sword_Idle@0 over ual:Idle_Loop, 0.716)
+   *    orc 0.734 (runner-up ual:Sword_Idle@0 over ual:Idle_Loop, 0.766)
+   *  guard_spear:
+   *    man 0.168 (runner-up ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over kaykit:2H_Melee_Idle grip shaft, 0.205)
+   *    elf 0.270 (runner-up ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over kaykit:2H_Melee_Idle grip shaft, 0.302)
+   *    dwarf 0.337 (runner-up ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over kaykit:2H_Melee_Idle grip shaft, 0.394)
+   *    hobbit 0.168 (runner-up ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over kaykit:2H_Melee_Idle grip shaft, 0.214)
+   *    orc 0.286 (runner-up ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over kaykit:2H_Melee_Idle grip shaft, 0.342)
+   *  guard_bow:
+   *    man 0.573 (runner-up kaykit:Ranged_Bow_Draw@0.45 mirrored grip bow over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.586)
+   *    elf 0.512 (runner-up kaykit:Ranged_Bow_Draw@0.4 mirrored grip bow over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.525)
+   *    dwarf 0.589 (runner-up kaykit:Ranged_Bow_Draw@0.48 mirrored grip bow over seriousplayer:bow_idle, 0.590)
+   *    hobbit 0.573 (runner-up kaykit:Ranged_Bow_Draw@0.45 mirrored grip bow over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.589)
+   *    orc 0.401 (runner-up kaykit:Ranged_Bow_Draw@0.4 mirrored grip bow over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.428)
+   *  shield_brace:
+   *    man 0.869 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.900)
+   *    elf 0.888 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.938)
+   *    dwarf 0.738 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.801)
+   *    hobbit 0.778 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.808)
+   *    orc 0.765 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.836)
+   *  shield_brace_spear:
+   *    man 0.661 (runner-up cmu:79_45@1.45 grip level over cmu:144_17@1, 0.661)
+   *    elf 0.694 (runner-up seriousplayer:swimming@0 grip level over ual:Shield_Dash@0.3, 0.780)
+   *    dwarf 0.602 (runner-up cmu:79_45@1.39 grip level over cmu:144_17@1, 0.715)
+   *    hobbit 0.600 (runner-up cmu:79_45@1.45 grip level over cmu:144_17@1, 0.600)
+   *    orc 0.771 (runner-up cmu:79_45@1.45 grip level over ual:Crouch_Idle_Loop@1, 0.941)
+   *  spear_brace:
+   *    man 0.483 (runner-up cmu:124_08@0.33 mirrored grip shaft over ual:Crouch_Idle_Loop@1, 0.542)
+   *    elf 0.609 (runner-up cmu:142_22@0.81 grip shaft over ual:Crouch_Idle_Loop@1, 0.625)
+   *    dwarf 0.522 (runner-up cmu:124_08@0.33 mirrored grip shaft over ual:Crouch_Idle_Loop@1, 0.530)
+   *    hobbit 0.474 (runner-up cmu:124_08@0.33 mirrored grip shaft over ual:Crouch_Idle_Loop@1, 0.533)
+   *    orc 0.509 (runner-up cmu:135_09@0.73 grip shaft over ual:Crouch_Idle_Loop@1, 0.542)
+   *  march:
+   *    man 0.025 (runner-up seriousplayer:walking over cmu:142_11, 0.098)
+   *    elf 0.025 (runner-up seriousplayer:walking over cmu:142_11, 0.098)
+   *    dwarf 0.032 (runner-up seriousplayer:walking over cmu:142_11, 0.059)
+   *    hobbit 0.052 (runner-up seriousplayer:walking over cmu:132_37, 0.066)
+   *    orc 0.038 (runner-up seriousplayer:walking over cmu:142_11, 0.085)
+   *  march_spear:
+   *    man 0.460 (runner-up animationsplus:idle grip up over cmu:142_11, 0.540)
+   *    elf 0.460 (runner-up animationsplus:idle grip up over cmu:142_11, 0.540)
+   *    dwarf 0.467 (runner-up animationsplus:idle grip up over cmu:142_11, 0.501)
+   *    hobbit 0.494 (runner-up animationsplus:idle grip up over cmu:132_37, 0.500)
+   *    orc 0.468 (runner-up animationsplus:idle grip up over cmu:142_11, 0.527)
+   *  march_bow:
+   *    man 0.363 (runner-up cmu:21_06@2 grip bow over cmu:142_11, 0.427)
+   *    elf 0.402 (runner-up cmu:132_37@2.51 grip bow over cmu:132_37, 0.427)
+   *    dwarf 0.359 (runner-up cmu:21_06@2 grip bow over cmu:142_11, 0.387)
+   *    hobbit 0.394 (runner-up cmu:21_06@2 grip bow over cmu:132_37, 0.465)
+   *    orc 0.343 (runner-up cmu:21_06@2 grip bow over cmu:142_11, 0.388)
+   */
+  const STANCE_PICKS = {
+    guard: {
+      man: 'ual:Sword_Idle@0.4 over mobends:stance_const,stance_arms',
+      elf: 'ual:Sword_Idle@0.4 over mobends:stance_const,stance_arms',
+      dwarf: 'ual:Sword_Idle@0.4 over ual:Idle_Loop',
+      hobbit: 'ual:Sword_Idle@0.4 over ual:Idle_Loop',
+      orc: 'ual:Sword_Idle@0.4 over ual:Idle_Loop'
+    },
+    guard_spear: {
+      man: 'ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over animationsplus:Spear_Swing_2R@0',
+      elf: 'ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over animationsplus:Spear_Swing_2R@0',
+      dwarf: 'ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over cmu:124_08@0.33 mirrored grip shaft',
+      hobbit: 'ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over animationsplus:Spear_Swing_2R@0',
+      orc: 'ual:Idle_Lantern_Loop@1.9 mirrored grip shaft over cmu:124_08@0.33 mirrored grip shaft'
+    },
+    guard_bow: {
+      man: 'kaykit:Ranged_Bow_Draw@0.45 mirrored grip bow over kaykit:Ranged_Bow_Idle mirrored grip bow',
+      elf: 'kaykit:Ranged_Bow_Draw@0.4 mirrored grip bow over kaykit:Ranged_Bow_Idle mirrored grip bow',
+      dwarf: 'kaykit:Ranged_Bow_Draw@0.48 mirrored grip bow over kaykit:Ranged_Bow_Idle mirrored grip bow',
+      hobbit: 'kaykit:Ranged_Bow_Draw@0.45 mirrored grip bow over kaykit:Ranged_Bow_Idle mirrored grip bow',
+      orc: 'kaykit:Ranged_Bow_Draw@0.4 mirrored grip bow over kaykit:Ranged_Bow_Idle mirrored grip bow'
+    },
+    shield_brace: {
+      man: 'animationsplus:blockL over cmu:144_17@1',
+      elf: 'animationsplus:blockL over cmu:144_17@1',
+      dwarf: 'animationsplus:blockL over cmu:144_17@1',
+      hobbit: 'animationsplus:blockL over cmu:144_17@1',
+      orc: 'animationsplus:blockL over cmu:144_17@1'
+    },
+    shield_brace_spear: {
+      man: 'cmu:79_45@1.39 grip level over cmu:144_17@1',
+      elf: 'seriousplayer:swimming@0 grip level over cmu:144_17@1',
+      dwarf: 'cmu:79_45@1.45 grip level over cmu:144_17@1',
+      hobbit: 'cmu:79_45@1.39 grip level over cmu:144_17@1',
+      orc: 'cmu:79_45@1.45 grip level over cmu:144_17@1'
+    },
+    spear_brace: {
+      man: 'cmu:76_01@7.07 grip shaft over ual:Crouch_Idle_Loop@1',
+      elf: 'cmu:76_01@7.07 grip shaft over ual:Crouch_Idle_Loop@1',
+      dwarf: 'cmu:135_09@0.73 grip shaft over ual:Crouch_Idle_Loop@1',
+      hobbit: 'cmu:76_01@7.07 grip shaft over ual:Crouch_Idle_Loop@1',
+      orc: 'cmu:124_08@0.33 mirrored grip shaft over ual:Crouch_Idle_Loop@1'
+    },
+    march: {
+      man: 'seriousplayer:walking over cmu:132_37',
+      elf: 'seriousplayer:walking over cmu:132_37',
+      dwarf: 'seriousplayer:walking over cmu:132_37',
+      hobbit: 'seriousplayer:walking over cmu:142_11',
+      orc: 'seriousplayer:walking over cmu:132_37'
+    },
+    march_spear: {
+      man: 'animationsplus:idle grip up over cmu:132_37',
+      elf: 'animationsplus:idle grip up over cmu:132_37',
+      dwarf: 'animationsplus:idle grip up over cmu:132_37',
+      hobbit: 'animationsplus:idle grip up over cmu:142_11',
+      orc: 'animationsplus:idle grip up over cmu:132_37'
+    },
+    march_bow: {
+      man: 'cmu:21_06@2 grip bow over cmu:132_37',
+      elf: 'cmu:132_37@2.51 grip bow over cmu:142_11',
+      dwarf: 'cmu:21_06@2 grip bow over cmu:132_37',
+      hobbit: 'cmu:21_06@2 grip bow over cmu:142_11',
+      orc: 'cmu:21_06@2 grip bow over cmu:132_37'
+    }
+  };
+  /** The breathing a held upper body is given (the torso's and head's turns about their mean, the neck's sway at most
+   *  0.5 px). */
+  const STANCE_BREATH = { source: 'ual', clip: 'Idle_Loop', bones: ['upper', 'head'], sway: 0.5 };
+  /** The leg swing of a race's march, where it differs from its walk's (STYLE stride): dwarves march with a shorter stride. */
+  const MARCH_STRIDE = { dwarf: 0.8 };
+  const api = { RACES, SLOTS, STYLE, POOL, KEEP, STANCE_POOL, STANCE_PICKS, STANCE_BREATH, MARCH_STRIDE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NpcSlots = api;
 })(typeof window !== 'undefined' ? window : globalThis);
