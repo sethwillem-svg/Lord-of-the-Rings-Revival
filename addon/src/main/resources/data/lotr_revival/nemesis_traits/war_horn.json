@@ -1,0 +1,8 @@
+{
+  "kind": "strength",
+  "effect": "war_horn",
+  "numbers": {
+    "health_below": 0.5,
+    "soldiers": 3
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "scar",
+  "effect": "scar",
+  "damage": "fall",
+  "title": "the Twice-Fallen",
+  "numbers": {
+    "taken": 0.5
+  }
+}

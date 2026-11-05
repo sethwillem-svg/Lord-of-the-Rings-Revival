@@ -1,0 +1,9 @@
+{
+  "kind": "scar",
+  "effect": "scar",
+  "damage": "fire",
+  "title": "the Burnt",
+  "numbers": {
+    "taken": 0.5
+  }
+}

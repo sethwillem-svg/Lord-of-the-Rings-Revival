@@ -1,0 +1,7 @@
+{
+  "kind": "strength",
+  "effect": "armour_breaker",
+  "numbers": {
+    "armour_ignored": 0.25
+  }
+}

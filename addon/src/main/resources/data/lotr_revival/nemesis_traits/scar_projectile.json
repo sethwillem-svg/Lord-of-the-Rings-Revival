@@ -1,0 +1,9 @@
+{
+  "kind": "scar",
+  "effect": "scar",
+  "damage": "projectile",
+  "title": "the Arrow-Ridden",
+  "numbers": {
+    "taken": 0.5
+  }
+}

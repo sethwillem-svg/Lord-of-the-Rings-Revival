@@ -1,0 +1,10 @@
+{
+  "kind": "strength",
+  "effect": "grudge_damage",
+  "numbers": {
+    "damage": 1.25
+  },
+  "sides": [
+    "good"
+  ]
+}

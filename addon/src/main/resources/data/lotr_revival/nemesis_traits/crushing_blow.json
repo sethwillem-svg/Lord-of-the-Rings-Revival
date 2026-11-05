@@ -1,0 +1,7 @@
+{
+  "kind": "strength",
+  "effect": "crushing_blow",
+  "numbers": {
+    "heavy_chance": 0.5
+  }
+}

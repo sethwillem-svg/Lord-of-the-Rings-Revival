@@ -1,0 +1,7 @@
+{
+  "kind": "strength",
+  "effect": "iron_hide",
+  "numbers": {
+    "projectile_taken": 0.6
+  }
+}

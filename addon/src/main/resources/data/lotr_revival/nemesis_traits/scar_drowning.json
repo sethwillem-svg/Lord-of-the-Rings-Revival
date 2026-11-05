@@ -1,0 +1,9 @@
+{
+  "kind": "scar",
+  "effect": "scar",
+  "damage": "drowning",
+  "title": "the Drowned",
+  "numbers": {
+    "taken": 0.5
+  }
+}

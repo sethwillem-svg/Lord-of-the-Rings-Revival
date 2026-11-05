@@ -1,0 +1,7 @@
+{
+  "kind": "weakness",
+  "effect": "arrow_shy",
+  "numbers": {
+    "projectile_taken": 1.4
+  }
+}

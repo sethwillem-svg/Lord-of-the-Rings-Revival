@@ -1,0 +1,10 @@
+{
+  "kind": "strength",
+  "effect": "bloodthirsty",
+  "numbers": {
+    "heal_fraction": 0.2
+  },
+  "sides": [
+    "evil"
+  ]
+}

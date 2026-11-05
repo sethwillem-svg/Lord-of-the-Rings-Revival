@@ -1,0 +1,9 @@
+{
+  "kind": "scar",
+  "effect": "scar",
+  "damage": "other",
+  "title": "the Unburied",
+  "numbers": {
+    "taken": 0.5
+  }
+}
