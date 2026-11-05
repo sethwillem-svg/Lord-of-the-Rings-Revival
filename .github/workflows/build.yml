@@ -60,7 +60,15 @@ jobs:
           git clone --filter=blob:none "$ME_REPO" ~/me-src
           cd ~/me-src && git checkout "${{ steps.me.outputs.sha }}"
           chmod +x gradlew
-          ./gradlew --no-daemon :middle-earth:jar :sevenstars-api:jar :of-beasts-and-wild-things:jar -x test 2>&1 | tee ~/me-build.log
+          # the wrapper's 10 s download timeout fails often on runners
+          sed -i 's/^networkTimeout=.*/networkTimeout=120000/' gradle/wrapper/gradle-wrapper.properties
+          grep -q networkTimeout gradle/wrapper/gradle-wrapper.properties || echo networkTimeout=120000 >> gradle/wrapper/gradle-wrapper.properties
+          set -o pipefail
+          for i in 1 2 3; do
+            ./gradlew --no-daemon :middle-earth:jar :sevenstars-api:jar :of-beasts-and-wild-things:jar -x test 2>&1 | tee ~/me-build.log && break
+            [ $i = 3 ] && exit 1
+            echo "Middle-earth build attempt $i failed; retrying"; sleep 15
+          done
           mkdir -p ~/me-jars/api
           cp "$(ls middle-earth/build/libs/*.jar | grep -v -e sources -e javadoc | head -1)" ~/me-jars/middle-earth.jar
           for m in sevenstars-api of-beasts-and-wild-things; do
