@@ -1,7 +1,9 @@
 package io.github.sethwillemsvg.lotrrevival.client.nodemap;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import io.github.sethwillemsvg.lotrrevival.LotrRevival;
 import io.github.sethwillemsvg.lotrrevival.core.log.LotrLog;
+import io.github.sethwillemsvg.lotrrevival.nodemap.data.NodeKind;
 import io.github.sethwillemsvg.lotrrevival.nodemap.data.RouteKind;
 import io.github.sethwillemsvg.lotrrevival.nodemap.data.XZ;
 import io.github.sethwillemsvg.lotrrevival.nodemap.graph.GraphEdge;
@@ -19,6 +21,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -29,7 +32,7 @@ import org.joml.Vector2d;
 /**
  * Our layer on Middle-earth's map screen (spec Client code): routes, node markers, hover tooltip and the node panel,
  * drawn after Middle-earth draws its screen; clicks on our markers or panel are consumed so Middle-earth does not start a
- * drag. Markers are plain shapes until the marker sheet exists (TODO(spec N13)).
+ * drag. Markers are our own icons from {@link #MARKERS}, one per node kind and state.
  */
 @EventBusSubscriber(modid = LotrRevival.MOD_ID, value = Dist.CLIENT)
 public final class NodeMapOverlay {
@@ -176,28 +179,21 @@ public final class NodeMapOverlay {
         return x.compareTo(y) < 0 ? x + "|" + y : y + "|" + x;
     }
 
+    /** Our marker sheet (tools/nodemap/make_markers.py): one row per {@link NodeKind}, columns known, rumoured, barred, selected. */
+    static final ResourceLocation MARKERS = LotrRevival.id("textures/gui/nodemap/markers.png");
+    static final int CELL = 9, SHEET = 64;
+
     private static void marker(GuiGraphics g, int x, int y, GraphNode n, boolean known, boolean barred, boolean sel) {
-        int color = switch (n.kind()) {
-            case TOWN -> 0xFFE0D8B0;
-            case STRONGHOLD -> 0xFF9A9A9A;
-            case CROSSING -> 0xFF7FB0E0;
-            case RUIN -> 0xFFB08A6A;
-            case LANDMARK -> 0xFFB0D080;
-            case CAMP -> 0xFF60C060;
-        };
-        if (sel) g.fill(x - 4, y - 4, x + 5, y + 5, 0xFFE8C040);
-        if (known) {
-            g.fill(x - 3, y - 3, x + 4, y + 4, 0xFF000000);
-            g.fill(x - 2, y - 2, x + 3, y + 3, color);
-        } else {
-            g.renderOutline(x - 3, y - 3, 7, 7, 0xFFA0A0A0);
-        }
-        if (barred) {
-            for (int i = -2; i <= 2; i++) {
-                g.fill(x + i, y + i, x + i + 1, y + i + 1, 0xFFE03030);
-                g.fill(x + i, y - i, x + i + 1, y - i + 1, 0xFFE03030);
-            }
-        }
+        int col = !known ? 1 : barred ? 2 : sel ? 3 : 0;
+        if (sel && !known) g.fill(x - 5, y - 5, x + 6, y + 6, 0x80E8C040);   // a rumoured selection still shows where it is
+        icon(g, x - CELL / 2, y - CELL / 2, n.kind(), col);
+    }
+
+    /** One 9 x 9 cell of the sheet with its top-left corner at x, y. */
+    static void icon(GuiGraphics g, int x, int y, NodeKind kind, int col) {
+        RenderSystem.enableBlend();
+        g.blit(MARKERS, x, y, col * CELL, kind.ordinal() * CELL, CELL, CELL, SHEET, SHEET);
+        RenderSystem.disableBlend();
     }
 
     /** A line as small squares: solid (road, river), dashed (path) or dotted (wild); segments fully outside are skipped. */
