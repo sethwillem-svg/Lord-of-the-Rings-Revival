@@ -121,9 +121,16 @@ range (the item turned at most 80° from its seat): `shaft` (the spear runs from
 (carried upright), `level` (levelled forward), `bow` (the bow's limbs upright). It is the viewer's weapon-angle setting,
 aimed at a direction instead of set by hand.
 
-**Flat bow.** Until the bow work lands, `test/lib/flatbow.js` stands in for the bow: grip in the fist, limbs square to the
-forearm along its front (upright when the forearm is held out level, as when aiming), 1.2 blocks tip to tip, the string 2 px
-behind the grip. Swap it for the bow geometry when that is merged.
+**Bow.** The stance checks hold the bow as the game does (`gecko/bow.js`, the same as `client.render.WeaponGrip.bow`): a
+generated bow seated with its grip on the forearm's inner side just above the fist, its limbs along the forearm's front,
+the string toward the archer, its class length. The guard's drawing hand is judged against that string, and the march's
+"bow hand at the side" by the fist (the grip sits 2.25 px in from it).
+
+**Arms set for a stance** (where no library pose holds the weapon facing the front). A held upper body may have its arms
+set by the bow clips' own chains (`bow_arms.js`): `bowArms` puts the bow's grip at a place in front of the body, upright,
+with an arrow nocked and the drawing hand on the string; `onShaft` puts the right fist at the hip and the left one along a
+shaft line (its rise, length and turn across the body given), the grip `shaft` then running the spear through both fists.
+The libraries' two-handed spear holds and bow stances all stand side-on (chests 26-68 degrees off the facing).
 
 **Combining and breathing.** The upper body is every bone but `root`, `lower` and the legs (posture's split). A pair runs as
 long as the part that moves; the other part's loop is fitted to it a whole number of times. A held upper body breathes with
@@ -140,6 +147,16 @@ a deep crouch leaves the sole's middle 3 px up). **Dwarves** have no stride of t
 **Anatomy** in the stance checks is test/lib/anatomy.js's shoulder range and body clearance (which the existing tests apply
 to attacks only) and motion.test.js's spine range for the torso over the hips: a pairing can break the last (an upright
 chest over the UAL crouch's forward-tipped hips bends 34° back), so a pairing is judged on it once built in full.
+
+**Rules added after a render review (2026-11-05).** Rendered at t = 0.3 s, man's bow guard stood with its chest 46 degrees
+off the facing and both arms bunched at the chest, and his spear guard's shaft rose from the crotch out to his left, the
+right hand at 1.6 px over the hip joint. Three rules catch these (test/lib/stance.js):
+- *Facing* (still stances): the chest within 15 degrees of the NPC's facing. On the files as merged it failed 10 of 40 still
+  clips (every bow guard, 38-49 degrees; every spear brace, 26-68 degrees).
+- *guard_spear*: the lower hand at the waist or above, the waist 3 px over the hip joint (the belt line, a quarter up the
+  torso: the bottom 3 px of a Minecraft skin's torso are belt and trousers). It failed 10 of 10 guard_spear clips.
+- *guard_spear*: the spear's tip within 45 degrees of straight ahead, as the guard's blade (the merged shaft pointed 46-52
+  degrees across the body for man, elf and hobbit: 6 of 10 clips). It also joins the guard_spear score (range -45..45).
 
 **Measures.** "Guard" tip rules hold for every class that plays it (dagger, sword, axe, longsword). "Within N°" is the signed
 range −N..N, so its middle is its aim. Knee bend is each knee's hinge. "In front" is the world's −z. March: "first foot" is the

@@ -1211,7 +1211,7 @@ const { STANCE_POOL, STANCE_BREATH, MARCH_STRIDE } = require('./npc_slots.js');
 const BVH_SOURCES = new Set(['ual', 'kaykit', 'cmu']);
 
 /** A pool entry's name in the build's printout and in npc_slots.js STANCE_PICKS. */
-const stanceId = (e) => `${e.source}:${e.clip}${e.hold !== undefined ? '@' + e.hold : ''}${e.mirror ? ' mirrored' : ''}${e.grip ? ' grip ' + e.grip : ''}`;
+const stanceId = (e) => `${e.source}:${e.clip}${e.hold !== undefined ? '@' + e.hold : ''}${e.mirror ? ' mirrored' : ''}${e.grip ? ' grip ' + e.grip : ''}${e.bowArms ? ' bow arms at ' + e.bowArms.join(',') : ''}${e.onShaft ? ` hands on a shaft${e.onShaft.right ? ' from ' + e.onShaft.right.join(',') : ''} rising ${e.onShaft.rise}°${e.onShaft.toward ? ` ${e.onShaft.toward}° left` : ''}` : ''}`;
 const pairId = (up, low) => (up === low ? stanceId(up) : `${stanceId(up)} over ${stanceId(low)}`);
 
 /** The turn that levels a library's heads (degrees up; import/mocap.js headPitch): UAL's head-top joint sits ahead of the
@@ -1343,7 +1343,7 @@ function stanceTipSway(c, slot) {
  *   shaft  a two-handed hold: the item runs from the right fist through the left one (a spear held in both hands)
  *   up     the item points straight up (a spear carried upright)
  *   level  the item points straight ahead, level (a spear levelled over a shield)
- *   bow    the flat bow's limbs (test/lib/flatbow.js) stand upright, its string toward the archer
+ *   bow    the bow's limbs (gecko/bow.js, as the game seats it: test/lib/stance.js BOW_REST) stand upright
  */
 const GRIP_MAX = 80;
 const RIGHT_FIST = [6, 12, -2];
@@ -1352,7 +1352,7 @@ function stanceGrip(c, mode) {
   const out = clone(c), wr = out.bones.weapon_r = out.bones.weapon_r || {};
   const moving = !stillIn(c, () => true), times = moving ? Array.from({ length: Math.max(1, Math.round(c.length * 30)) + 1 }, (_, i) => (i * c.length) / Math.max(1, Math.round(c.length * 30))) : [0];
   const anim = animationJson({ c }).animations.c;
-  const rest = mode === 'bow' ? [0, 0, -1] : STRIKE_DIR;   // the item's axis in the weapon bone's frame (flatbow.js AXIS)
+  const rest = mode === 'bow' ? STANCE.BOW_REST.up : STRIKE_DIR;   // the item's axis in the weapon bone's frame
   const keys = times.map((t) => {
     const w = worldBones(samplePose(anim, Math.min(t, c.length - 1e-6))), R = w.weapon_r.R;
     const d0 = mulVec(R, rest);
@@ -1374,13 +1374,59 @@ function stanceGrip(c, mode) {
   return out;
 }
 
+/**
+ * A held pose's arms set by bow_arms.js as the bow clips' are (a pool entry's `bowArms`: the grip's place, rig px): the bow
+ * arm holding the bow there upright (its limbs along the torso's up, square to the facing), the drawing hand on the string
+ * at its middle with an arrow nocked (draw progress 0). Only for a held upper body (one key).
+ */
+function stanceBowArms(c, G) {
+  const out = clone(c), W = worldBones(samplePose(animationJson({ c }).animations.c, 0));
+  const g = vsub(G, BOW_ARMS._internals.bowArm(W, G, null).S), p = BOW_ARMS._internals.posed(W, g, 0, null);
+  const key = (v) => [{ t: 0, v, lerp: 'linear' }];
+  const set = (bone, v) => { out.bones[bone] = { rotation: key(v) }; };
+  set('right_arm', p.right.arm); set('right_elbow', p.right.elbow); set('weapon_r', p.right.hand);
+  set('left_arm', p.left.arm); set('left_elbow', p.left.elbow); set('weapon_l', p.left.hand);
+  return out;
+}
+const BOW_ARMS = require('./bow_arms.js');
+
+/**
+ * A held pose's hands put on a spear's shaft (a pool entry's `onShaft`: { right?, rise (degrees), d (px), toward (degrees) }),
+ * each fist set by bow_arms.js's drawing-arm chain (the swivel keeping the hand and forearm out of the head and torso, the
+ * elbow out from the body; for the right arm, solved on the mirrored pose and mirrored back): the right fist at `right`
+ * (rig px, before posture's turn of the chest: in the chest's frame) if given, then the left fist d px ahead of it along
+ * the line rising `rise` from level, turned `toward` degrees from straight ahead to the left (across the body, where the
+ * left hand reaches). The entry's grip `shaft` then runs the spear through both fists. For library poses that face the
+ * front: the two-handed spear holds in the libraries all stand side-on (their chests 26-68 degrees off the facing).
+ */
+function stanceOnShaft(c, { right, rise: r, d, toward = 0 }) {
+  const key = (m) => [{ t: 0, v: fromTrue(m), lerp: 'linear' }];
+  const putLeft = (clip, N) => {
+    const out = clone(clip), W = worldBones(samplePose(animationJson({ c: clip }).animations.c, 0));
+    const target = typeof N === 'function' ? N(W) : N, p = BOW_ARMS._internals.drawArm(W, target, null);
+    out.bones.left_arm = { rotation: key(mul3(transpose(W.body.R), p.r.R)) };
+    out.bones.left_elbow = { rotation: key(mul3(transpose(p.r.R), p.c.elbow.R)) };
+    out.bones.weapon_l = { rotation: key([1, 0, 0, 0, 1, 0, 0, 0, 1]) };
+    return out;
+  };
+  let x = c;
+  if (right) {   // the right arm: the left arm's chain on the mirrored pose, mirrored back
+    const m = putLeft({ ...mirror(c), length: c.length }, (W) => point(W.body, [-right[0], right[1], right[2]]));
+    x = { ...mirror(m), length: c.length };
+  }
+  return putLeft(x, (W) => {
+    const R = point(W.weapon_r, [6, 12, -2]), a = r * RAD, y = toward * RAD;
+    return vadd(R, [-d * Math.cos(a) * Math.sin(y), d * Math.sin(a), -d * Math.cos(a) * Math.cos(y)]);
+  });
+}
+
 /** A candidate posed for a race (not yet breathing): posture (march slots with the race's march stride), its grip, the
  *  hips following the torso, true hinges with the arms swivelled within the shoulder's range and out of the body as far as
  *  a swivel brings them (hinge.js limitTwist with anatomy, as every attack ships), a still stance's feet on the floor. */
-function stancePose(raw, slot, race, grip) {
+function stancePose(raw, slot, race, grip, arms, onShaft) {
   const c = clone(raw), style = STYLE[race] || {}, march = /^march/.test(slot);
   applyStyle(c, march ? 'march' : slot, march ? { ...style, stride: MARCH_STRIDE[race] || style.stride } : style);
-  let g = stanceGrip(c, grip);
+  let g = arms ? stanceBowArms(c, arms) : stanceGrip(onShaft ? stanceOnShaft(c, onShaft) : c, grip);
   hipsFollow(g);
   g = limitTwist(hingeify(g), { anatomy: true });
   // a still stance stands on the floor as the tests measure the foot (the sole's middle): the retarget plants the lowest
@@ -1397,7 +1443,7 @@ const stanceShield = (c) => withShield(c, shieldArm(), null);
 /** A candidate built (an upper body and legs, the same entry or two), breathing: { clip, shield () (its shield version,
  *  built when first asked, for slots that have one) }. The brace slots carry their own shield in the clip itself. */
 function stanceBuilt(up, low, slot, race, sources) {
-  const pose = stancePose(stanceCombine(stanceRaw(up, sources), stanceRaw(low, sources)), slot, race, up.grip);
+  const pose = stancePose(stanceCombine(stanceRaw(up, sources), stanceRaw(low, sources)), slot, race, up.grip, up.bowArms, up.onShaft);
   if (STANCE.SLOT[slot].shield) return { clip: stanceBreathe(stanceShield(pose), slot), shield: () => null };
   let s;
   const shield = STANCE.SHIELD_VERSIONS.includes(slot) ? () => s || (s = stanceBreathe(stanceShield(pose), slot)) : () => null;

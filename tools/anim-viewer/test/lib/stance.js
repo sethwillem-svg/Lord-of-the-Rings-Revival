@@ -4,7 +4,7 @@
  * clips with these, and build_npc.js picks each stance with them (the spec has the build reuse the tests' measures). They
  * reuse the tests' and the game's own yardsticks: test/lib/motion.js (frames, hinges), test/lib/anatomy.js (shoulder range,
  * arms out of the body), gecko/strike.js (the blade as the game seats it), gecko/shield.js (the shield's plate as the game
- * straps it) and test/lib/flatbow.js (a stand-in bow). The loop, feet and head checks are posture.test.js's, and the blade
+ * straps it) and gecko/bow.js (the bow as the game places it: client.render.WeaponGrip.bow). The loop, feet and head checks are posture.test.js's, and the blade
  * check weapons.test.js's calm-clip one, measured the same way here (those files are tests, not modules).
  * Rig space: px, y up, facing -z (gecko/rig.js). */
 const fs = require('node:fs');
@@ -14,7 +14,8 @@ const A = require('./anatomy.js');
 const SH = require('../../gecko/shield.js');
 const { blade, FIST } = require('../../gecko/strike.js');
 const { point, samplePose, worldBones } = require('../../gecko/sample.js');
-const { bow } = require('./flatbow.js');
+const BOW = require('../../gecko/bow.js');
+const HELD = require('../../gecko/held.js');
 
 const GRIPS = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../addon/src/main/resources/assets/lotr_revival/weapon_grips.json'), 'utf8'));
 /** A class's length in blocks (weapon_grips.json; build_npc.js classLength reads the same file). */
@@ -50,6 +51,7 @@ const KEY = {
   tipAim: [-45, 45],        // guard: degrees from straight ahead
   knees: [10, 40],          // guard: degrees of bend
   rise: [20, 60],           // guard_spear: shaft above level
+  spearAim: [-45, 45],      // guard_spear: the tip's degrees from straight ahead
   onShaft: [-2.5, 2.5],     // the other hand's distance from the shaft
   upright: [-30, 30],       // guard_bow: the bow's tilt from upright
   belowChin: [0, 12],       // guard_bow: the grip under the chin, down to the hips
@@ -104,11 +106,28 @@ const leftFist = (w) => point(w.weapon_l, FIST.left);
 const rise = (d) => deg(Math.asin(Math.max(-1, Math.min(1, d[1]))));
 /** Signed degrees of a point's direction from straight ahead about the body axis (+ to the right). */
 const aim = (p) => deg(Math.atan2(p[0], -p[2]));
-/** The flat bow in the right hand, posed. */
+/** The bow in the right hand at rest, in weapon_r's frame (rig px): a generated bow (gecko/bow.js flatBow, as Minecraft bakes
+ *  Middle-earth's) seated as the game seats it (gecko/bow.js seat, client.render.WeaponGrip.bow), its class length.
+ *  { grip, up (the limb axis, the upper tip's way), out (the arrow's way), tips: [lower, upper], brace }. */
+const BOW_REST = (() => {
+  const rig = BOW.flatBow(2).map((q) => q.map((p) => HELD.partToRig('right_arm', p)));
+  const p = BOW.placedBow(rig, BOW.seat(rig, 'right', 'bow', GRIPS).m);
+  const [a, b] = p.tips, upper = dot(sub(b, a), p.up) > 0 ? [a, b] : [b, a];
+  return { grip: p.grip, up: p.up, out: p.out, tips: upper, brace: p.brace };
+})();
+/** The bow in the right hand, posed: its grip, upper and lower tips and string (tip to tip). */
 function bowAt(w) {
-  const b = bow('right', lengthOf('bow')), at = (p) => point(w.weapon_r, p);
-  return { grip: at(b.grip), top: at(b.top), bottom: at(b.bottom), string: b.string.map(at) };
+  const at = (p) => point(w.weapon_r, p);
+  return { grip: at(BOW_REST.grip), top: at(BOW_REST.tips[1]), bottom: at(BOW_REST.tips[0]), string: BOW_REST.tips.map(at) };
 }
+/** The waist over the hips' joint (px): the belt line, a quarter of the way up the torso's 12 px (the bottom 3 px of a
+ *  Minecraft skin's torso are the belt and the trousers' top). A spear's lower hand 1.6 px over the joint (the UAL lantern
+ *  guard) reads in a render as a shaft rising from the crotch. */
+const WAIST = 3;
+/** The most a still stance's chest may turn from the NPC's facing (degrees). */
+const YAW_MAX = 15;
+/** The chest's turn from the facing about the vertical (degrees, + to the right): its forward (rest -z) on the ground. */
+const torsoYaw = (w) => { const f = [-w.body.R[2], -w.body.R[5], -w.body.R[8]]; return deg(Math.atan2(f[0], -f[2])); };
 /** Degrees the bow's limb axis leans from vertical. */
 const bowTilt = (b) => deg(Math.acos(Math.max(-1, Math.min(1, norm(sub(b.top, b.bottom))[1]))));
 
@@ -249,7 +268,7 @@ function torsoLean(w, hunch = 0) {
 const LOWER_BONES = new Set(['root', 'lower', 'right_leg', 'right_knee', 'left_leg', 'left_knee']);
 
 /** The rows of the spec's hard-rule table: each failure names one, and the half of the body it is about. */
-const RULES = ['loop', 'feet', 'sway', 'anatomy', 'blade', 'head', 'guard', 'guard_spear', 'guard_bow', 'shield', 'shield_brace',
+const RULES = ['loop', 'feet', 'facing', 'sway', 'anatomy', 'blade', 'head', 'guard', 'guard_spear', 'guard_bow', 'shield', 'shield_brace',
   'shield_brace_spear', 'spear_brace', 'march', 'march_spear', 'march_bow'];
 
 /**
@@ -306,6 +325,9 @@ function judge(name, anim, ctx = {}) {
       if (d > 0.5) fail('feet', 'lower', `${side} foot moves ${d.toFixed(2)} px`);
     }
     every('feet', 'lower', 'lower foot at y', (v) => v >= -1.5 && v <= 3.5, (w) => Math.min(footOf(w, 'right')[1], footOf(w, 'left')[1]));
+    // facing the front: the chest turned at most YAW_MAX from the NPC's facing (a still stance faces the enemy)
+    m.yaw = Math.max(...ws.map(torsoYaw).map(Math.abs));
+    if (m.yaw > YAW_MAX) fail('facing', 'upper', `chest turned ${m.yaw.toFixed(0)}° from the facing (≤ ${YAW_MAX}°)`);
     // steady but alive
     m.sway = spread(ws.map(tipOf));
     if (m.sway < SWAY[0] || m.sway > SWAY[1]) fail('sway', 'upper', `weapon tip sways ${m.sway.toFixed(2)} px (${SWAY[0]}-${SWAY[1]})`);
@@ -327,6 +349,11 @@ function judge(name, anim, ctx = {}) {
     every('guard_spear', 'upper', 'shaft above level °', (v) => v >= 20 && v <= 60, (w) => rise(weapon(w, cls).dir));
     every('guard_spear', 'upper', 'spear tip forward of the fist by', (v) => v > 0, (w) => weapon(w, cls).fist[2] - weapon(w, cls).tip[2]);
     m.rise = mean((w) => rise(weapon(w, cls).dir));
+    // the lower hand on the shaft at the waist or above (WAIST over the hips' joint: the belt, not the crotch), and the
+    // spear pointing ahead (its tip within 45° of straight ahead, as the guard's blade), not across the body
+    every('guard_spear', 'upper', 'lower hand above the waist by', (v) => v >= 0, (w) => Math.min(weapon(w, cls).fist[1], shield ? Infinity : leftFist(w)[1]) - hipsOf(w)[1] - WAIST);
+    every('guard_spear', 'upper', 'spear tip from straight ahead °', (v) => Math.abs(v) <= 45, (w) => aim(weapon(w, cls).tip));
+    m.spearAim = mean((w) => aim(weapon(w, cls).tip));
     if (!shield) {
       every('guard_spear', 'upper', 'left hand from the shaft', (v) => v <= 2.5, (w) => toSegment(leftFist(w), weapon(w, cls).butt, weapon(w, cls).tip));
       m.onShaft = mean((w) => toSegment(leftFist(w), weapon(w, cls).butt, weapon(w, cls).tip));
@@ -430,8 +457,9 @@ function judge(name, anim, ctx = {}) {
     }
     if (slot === 'march_bow') {
       every('march_bow', 'upper', 'bow limb axis from vertical °', (v) => v <= 30, (w) => bowTilt(bowAt(w)));
-      every('march_bow', 'upper', 'bow hand out at the side by', (v) => v >= 4, (w) => local(w.body, bowAt(w).grip)[0]);
-      every('march_bow', 'upper', 'bow hand below the armpit by', (v) => v > 0, (w) => 20 - local(w.body, bowAt(w).grip)[1]);
+      // the bow hand: the fist (the game seats the bow's grip on the forearm's inner side, 2.25 px in from it)
+      every('march_bow', 'upper', 'bow hand out at the side by', (v) => v >= 4, (w) => local(w.body, point(w.weapon_r, FIST.right))[0]);
+      every('march_bow', 'upper', 'bow hand below the armpit by', (v) => v > 0, (w) => 20 - local(w.body, point(w.weapon_r, FIST.right))[1]);
     }
   }
   return { fails, measures: m, score: score(slot, m, shield) };
@@ -446,7 +474,7 @@ function score(slot, m, shield) {
   const d = (k, v = m[k]) => { const [lo, hi] = KEY[k]; return v === undefined ? null : Math.abs(v - (lo + hi) / 2) / ((hi - lo) / 2); };
   const keys = {
     guard: ['tipZ', 'tipUp', 'tipAim', 'knees'],
-    guard_spear: shield ? ['rise'] : ['rise', 'onShaft'],
+    guard_spear: shield ? ['rise', 'spearAim'] : ['rise', 'spearAim', 'onShaft'],
     guard_bow: ['upright', 'belowChin', 'toString'],
     shield_brace: ['facing', 'hipsDown', 'lead'],
     shield_brace_spear: ['facing', 'hipsDown', 'lead', 'level', 'overShield'],
@@ -457,4 +485,4 @@ function score(slot, m, shield) {
   return ds.reduce((a, b) => a + b, 0) / (ds.length || 1);
 }
 
-module.exports = { SLOT, CLIPS, RULES, LOWER_BONES, SHIELD_VERSIONS, KEY, SWAY, judge, score, slotOf, shieldOf, lengthOf, weapon, bowAt, footOf, hipsOf, cyclesOf, armSwing, skate, steps, torsoLean, PLATES, plateAt };
+module.exports = { BOW_REST, SLOT, CLIPS, RULES, LOWER_BONES, SHIELD_VERSIONS, KEY, SWAY, judge, score, slotOf, shieldOf, lengthOf, weapon, bowAt, footOf, hipsOf, cyclesOf, armSwing, skate, steps, torsoLean, PLATES, plateAt };

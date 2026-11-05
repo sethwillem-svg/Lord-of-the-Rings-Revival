@@ -37,12 +37,13 @@ test('every race file has every stance slot and its shield version', () => {
 });
 test('stances loop without a pop: every bone within 0.5 px end to start', () => row('loop'));
 test('still stances keep their feet planted: each foot moves ≤ 0.5 px over the loop, the lower foot -1.5..3.5 px of the floor', () => row('feet', still));
+test('still stances face the front: the chest turned at most 15° from the facing', () => row('facing', still));
 test('still stances are steady but alive: the weapon tip sways 0.2-2 px over the loop', () => row('sway', still));
 test('stances keep the arms in the shoulder’s range (10° slack) and out of the body (0.5 px)', () => row('anatomy'));
 test('stances keep the blade out of the body and head, and above the floor', () => row('blade'));
 test('stances keep the head level: within 30° of the horizon', () => row('head'));
 test('guard: tip in front of the chest (z ≤ -4 px), above the hips, within 45° of straight ahead, for every class that plays it; knees bent 10-40°', () => row('guard', (j) => slot(j) === 'guard'));
-test('guard_spear: shaft 20-60° above level, tip forward; both hands within 2.5 px of the shaft (no shield)', () => row('guard_spear', (j) => slot(j) === 'guard_spear'));
+test('guard_spear: shaft 20-60° above level, tip forward; the lower hand at the waist or above; both hands within 2.5 px of the shaft (no shield)', () => row('guard_spear', (j) => slot(j) === 'guard_spear'));
 test('guard_bow: bow upright within 30°, held below the chin; the drawing hand within 6 px of the string', () => row('guard_bow', (j) => slot(j) === 'guard_bow'));
 test('with a shield: the plate faces the front within 35°, covers the chest, leaves the face clear, and the weapon arm is outside it', () => row('shield', (j) => ST.shieldOf(j.name)));
 test('shield_brace: hips ≥ 1.5 px lower than idle, lead foot ≥ 3 px ahead of the other', () => row('shield_brace', (j) => /^shield_brace/.test(j.name)));
