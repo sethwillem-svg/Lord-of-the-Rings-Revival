@@ -27,6 +27,12 @@ import net.sevenstars.middleearth.entity.npcs.NpcEntity;
  * GameTestHelper's relative positions are measured from the test's structure block, which may not be the template's own
  * origin (CI run 212 found no block entity at the template position 1,3,1). Every run logs the expected position, what is
  * there, what the scan found and the offset between them, so a failure explains itself.
+ *
+ * <p>CI run 215: the template sits one block above the structure block (the structure block's default structure offset
+ * is 0,1,0), so the manager is at relative 1,4,1. The scan used {@code GameTestHelper#relativePos}, which in 1.21.1
+ * inverts the test rotation by adding 180 degrees: for an unrotated test that mirrors x and z around the structure
+ * block, so the scan reported -1,4,-1 and then looked up the block entity at the wrong place ("no block entity").
+ * {@link #rel} subtracts the origin instead; these tests never rotate.
  */
 @GameTestHolder(LotrRevival.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -36,6 +42,8 @@ public final class ResidentTests {
     /** Positions in the template (tools/structure-import/builds/placeholder_watchtower/build.json). */
     static final BlockPos MANAGER = new BlockPos(1, 3, 1);
     static final List<BlockPos> NESTS = List.of(new BlockPos(3, 9, 3), new BlockPos(1, 3, 5));
+    /** Where the template's origin sits in the test's relative frame (above the structure block; CI run 215). */
+    static final BlockPos TEMPLATE_ORIGIN = new BlockPos(0, 1, 0);
     static final ResourceLocation GONDOR = ResourceLocation.fromNamespaceAndPath("middle-earth", "gondor");
     static final ResourceLocation MANAGER_BLOCK = ResourceLocation.fromNamespaceAndPath("middle-earth", "structure_manager");
     static final ResourceLocation ORC_MANAGER_BLOCK = ResourceLocation.fromNamespaceAndPath("middle-earth", "orc_structure_manager");
@@ -44,6 +52,14 @@ public final class ResidentTests {
 
     /** What the scan of the test area found. Positions are relative (same frame as GameTestHelper#absolutePos). */
     record Scan(List<BlockPos> managers, List<BlockPos> nests, Map<String, Integer> counts, BlockPos origin, AABB bounds) {}
+
+    /**
+     * Absolute to relative, the inverse of {@code absolutePos} for an unrotated test. Not {@code relativePos}: that
+     * mirrors x and z when the rotation is none (see the class comment).
+     */
+    static BlockPos rel(BlockPos origin, BlockPos abs) {
+        return abs.immutable().subtract(origin);
+    }
 
     static Scan scan(GameTestHelper h) {
         AABB b = h.getBounds();
@@ -57,8 +73,8 @@ public final class ResidentTests {
             if (s.isAir()) continue;
             ResourceLocation id = BuiltInRegistries.BLOCK.getKey(s.getBlock());
             counts.merge(id.toString(), 1, Integer::sum);
-            if (id.equals(MANAGER_BLOCK) || id.equals(ORC_MANAGER_BLOCK)) managers.add(h.relativePos(p.immutable()));
-            if (id.equals(NEST_BLOCK)) nests.add(h.relativePos(p.immutable()));
+            if (id.equals(MANAGER_BLOCK) || id.equals(ORC_MANAGER_BLOCK)) managers.add(rel(origin, p));
+            if (id.equals(NEST_BLOCK)) nests.add(rel(origin, p));
         }
         return new Scan(managers, nests, counts, origin, b);
     }
@@ -83,9 +99,11 @@ public final class ResidentTests {
     static String summary(GameTestHelper h, Scan sc) {
         StringBuilder out = new StringBuilder();
         out.append("structure-block origin ").append(sc.origin().toShortString()).append(", bounds ").append(sc.bounds())
-                .append("; expected manager ").append(describe(h, MANAGER)).append("; nearby (+-1): ");
+                .append("; expected manager (template ").append(MANAGER.toShortString()).append(" + ")
+                .append(TEMPLATE_ORIGIN.toShortString()).append(") ").append(describe(h, MANAGER.offset(TEMPLATE_ORIGIN)))
+                .append("; nearby (+-1): ");
         for (int dy = -1; dy <= 1; dy++) {
-            BlockPos p = MANAGER.offset(0, dy, 0);
+            BlockPos p = MANAGER.offset(TEMPLATE_ORIGIN).offset(0, dy, 0);
             out.append(p.toShortString()).append('=').append(BuiltInRegistries.BLOCK.getKey(h.getBlockState(p).getBlock())).append(' ');
         }
         out.append("; scan found managers ").append(sc.managers().stream().map(BlockPos::toShortString).toList())
