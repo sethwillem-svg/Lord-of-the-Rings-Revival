@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.bucklebury",
+    "fallback": "Bucklebury"
+  },
+  "description": {
+    "translate": "node.lotr_revival.bucklebury.desc",
+    "fallback": "The Brandybucks' village across the river, behind the High Hay."
+  },
+  "kind": "town",
+  "map": [
+    885.0,
+    905.0
+  ],
+  "faction": "middle-earth:shire"
+}

@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.annuminas",
+    "fallback": "Annúminas"
+  },
+  "description": {
+    "translate": "node.lotr_revival.annuminas.desc",
+    "fallback": "Fallen towers by the shore of Lake Evendim."
+  },
+  "kind": "ruin",
+  "map": [
+    860.0,
+    730.0
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.argonath",
+    "fallback": "Argonath"
+  },
+  "description": {
+    "translate": "node.lotr_revival.argonath.desc",
+    "fallback": "Two stone kings on the river, hands raised in warning to the north."
+  },
+  "kind": "landmark",
+  "map": [
+    1720.0,
+    1460.0
+  ]
+}

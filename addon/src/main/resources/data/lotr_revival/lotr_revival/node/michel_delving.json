@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.michel_delving",
+    "fallback": "Michel Delving"
+  },
+  "description": {
+    "translate": "node.lotr_revival.michel_delving.desc",
+    "fallback": "The chief town of the Shire, its halls dug into the White Downs."
+  },
+  "kind": "town",
+  "map": [
+    740.0,
+    910.0
+  ],
+  "faction": "middle-earth:shire"
+}

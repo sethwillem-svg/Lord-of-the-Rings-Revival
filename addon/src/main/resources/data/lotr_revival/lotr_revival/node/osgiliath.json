@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.osgiliath",
+    "fallback": "Osgiliath"
+  },
+  "description": {
+    "translate": "node.lotr_revival.osgiliath.desc",
+    "fallback": "The broken city on both banks of the Anduin, held at great cost."
+  },
+  "kind": "ruin",
+  "map": [
+    1860.0,
+    1680.0
+  ],
+  "faction": "middle-earth:gondor"
+}

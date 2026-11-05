@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.high_pass",
+    "fallback": "The High Pass"
+  },
+  "description": {
+    "translate": "node.lotr_revival.high_pass.desc",
+    "fallback": "A narrow way over the mountains, watched from caves beneath."
+  },
+  "kind": "stronghold",
+  "map": [
+    1400.0,
+    820.0
+  ],
+  "faction": "middle-earth:goblin_town"
+}

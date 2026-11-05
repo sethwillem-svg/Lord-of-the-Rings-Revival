@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.dimrill_gate",
+    "fallback": "Dimrill Gate"
+  },
+  "description": {
+    "translate": "node.lotr_revival.dimrill_gate.desc",
+    "fallback": "The great eastern gate of Khazad-dûm, above the Dimrill Dale."
+  },
+  "kind": "stronghold",
+  "map": [
+    1400.0,
+    1080.0
+  ],
+  "faction": "middle-earth:moria"
+}

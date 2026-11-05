@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.last_bridge",
+    "fallback": "Last Bridge"
+  },
+  "description": {
+    "translate": "node.lotr_revival.last_bridge.desc",
+    "fallback": "Three stone arches over the Hoarwell, the last sure crossing for many leagues."
+  },
+  "kind": "crossing",
+  "map": [
+    1170.0,
+    870.0
+  ]
+}

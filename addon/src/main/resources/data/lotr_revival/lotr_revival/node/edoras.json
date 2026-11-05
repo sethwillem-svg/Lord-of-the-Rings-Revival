@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.edoras",
+    "fallback": "Edoras"
+  },
+  "description": {
+    "translate": "node.lotr_revival.edoras.desc",
+    "fallback": "A golden hall on a green hill, ringed by a dike and a wall of thorn."
+  },
+  "kind": "town",
+  "map": [
+    1540.0,
+    1560.0
+  ],
+  "faction": "middle-earth:rohan"
+}

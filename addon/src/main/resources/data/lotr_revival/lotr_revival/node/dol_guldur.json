@@ -1,0 +1,17 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.dol_guldur",
+    "fallback": "Dol Guldur"
+  },
+  "description": {
+    "translate": "node.lotr_revival.dol_guldur.desc",
+    "fallback": "A dark hill in the south of the forest where a shadow once dwelt."
+  },
+  "kind": "stronghold",
+  "map": [
+    1620.0,
+    1100.0
+  ],
+  "faction": "middle-earth:mordor",
+  "hidden": true
+}

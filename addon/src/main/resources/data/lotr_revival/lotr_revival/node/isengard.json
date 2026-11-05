@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.isengard",
+    "fallback": "Isengard"
+  },
+  "description": {
+    "translate": "node.lotr_revival.isengard.desc",
+    "fallback": "A ring of rock around a black tower, its gardens turned to pits and forges."
+  },
+  "kind": "stronghold",
+  "map": [
+    1380.0,
+    1440.0
+  ],
+  "faction": "middle-earth:isengard"
+}

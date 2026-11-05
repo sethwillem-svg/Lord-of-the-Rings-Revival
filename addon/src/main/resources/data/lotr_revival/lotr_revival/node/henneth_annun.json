@@ -1,0 +1,17 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.henneth_annun",
+    "fallback": "Henneth Annûn"
+  },
+  "description": {
+    "translate": "node.lotr_revival.henneth_annun.desc",
+    "fallback": "A hidden refuge behind a curtain of falling water."
+  },
+  "kind": "stronghold",
+  "map": [
+    1880.0,
+    1600.0
+  ],
+  "faction": "middle-earth:gondor",
+  "hidden": true
+}

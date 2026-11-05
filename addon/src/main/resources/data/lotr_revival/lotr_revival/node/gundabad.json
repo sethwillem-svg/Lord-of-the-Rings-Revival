@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.gundabad",
+    "fallback": "Mount Gundabad"
+  },
+  "description": {
+    "translate": "node.lotr_revival.gundabad.desc",
+    "fallback": "A grim peak at the north end of the mountains, hollowed into a warren."
+  },
+  "kind": "stronghold",
+  "map": [
+    1420.0,
+    560.0
+  ],
+  "faction": "middle-earth:hobgoblin_tribes.gundabad"
+}

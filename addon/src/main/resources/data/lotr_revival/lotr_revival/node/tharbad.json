@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.tharbad",
+    "fallback": "Tharbad"
+  },
+  "description": {
+    "translate": "node.lotr_revival.tharbad.desc",
+    "fallback": "Rotting piers and a ruined bridge where the old road crossed the Greyflood."
+  },
+  "kind": "ruin",
+  "map": [
+    1080.0,
+    1180.0
+  ]
+}

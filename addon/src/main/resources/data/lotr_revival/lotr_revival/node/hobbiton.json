@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.hobbiton",
+    "fallback": "Hobbiton"
+  },
+  "description": {
+    "translate": "node.lotr_revival.hobbiton.desc",
+    "fallback": "Round doors and tidy gardens on the slopes of the Hill."
+  },
+  "kind": "town",
+  "map": [
+    800.0,
+    890.0
+  ],
+  "faction": "middle-earth:shire"
+}

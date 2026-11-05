@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.morannon",
+    "fallback": "The Black Gate"
+  },
+  "description": {
+    "translate": "node.lotr_revival.morannon.desc",
+    "fallback": "Iron doors between two towers, shutting the pass into the dark land."
+  },
+  "kind": "stronghold",
+  "map": [
+    1890.0,
+    1440.0
+  ],
+  "faction": "middle-earth:mordor"
+}

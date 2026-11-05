@@ -1,0 +1,5 @@
+{
+  "from": "lotr_revival:last_bridge",
+  "to": "lotr_revival:ford_of_bruinen",
+  "kind": "road"
+}

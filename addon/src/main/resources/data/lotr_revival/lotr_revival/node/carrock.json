@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.carrock",
+    "fallback": "The Carrock"
+  },
+  "description": {
+    "translate": "node.lotr_revival.carrock.desc",
+    "fallback": "A great rock standing in the Anduin, with steps cut to its flat top."
+  },
+  "kind": "landmark",
+  "map": [
+    1490.0,
+    820.0
+  ]
+}
