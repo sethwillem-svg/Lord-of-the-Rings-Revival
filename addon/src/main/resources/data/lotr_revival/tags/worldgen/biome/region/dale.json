@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "#middle-earth:has_structure/dale_biomes",
+      "required": false
+    }
+  ]
+}

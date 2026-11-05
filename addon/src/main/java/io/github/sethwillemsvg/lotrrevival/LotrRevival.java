@@ -20,6 +20,7 @@ public final class LotrRevival {
     public LotrRevival(IEventBus modBus) {
         CombatModule.init(modBus);   // attack timing, parry, warning payloads (registers the npc_attack payload, version 2)
         io.github.sethwillemsvg.lotrrevival.nodemap.NodeMapModule.init(modBus);
+        io.github.sethwillemsvg.lotrrevival.structures.StructuresModule.init(modBus);
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> BenchCommands.register(e.getDispatcher()));
         // benchmark NPCs never come back from disk: each run (and each reload of the world) starts from the count asked for
         NeoForge.EVENT_BUS.addListener((EntityJoinLevelEvent e) -> {

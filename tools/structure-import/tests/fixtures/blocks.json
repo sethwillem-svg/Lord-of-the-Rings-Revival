@@ -1,0 +1,475 @@
+{
+ "source": "hand-written test fixture (tests/fixtures/make_blocks_fixture.py)",
+ "blocks": {
+  "middle-earth:cobbled_limestone": {
+   "properties": {},
+   "default": {}
+  },
+  "middle-earth:cracked_limestone_bricks": {
+   "properties": {},
+   "default": {}
+  },
+  "middle-earth:limestone_brick_slab": {
+   "properties": {
+    "type": [
+     "top",
+     "bottom",
+     "double"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "type": "bottom",
+    "waterlogged": "false"
+   }
+  },
+  "middle-earth:limestone_brick_stairs": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ],
+    "half": [
+     "top",
+     "bottom"
+    ],
+    "shape": [
+     "straight",
+     "inner_left",
+     "inner_right",
+     "outer_left",
+     "outer_right"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "facing": "north",
+    "half": "bottom",
+    "shape": "straight",
+    "waterlogged": "false"
+   }
+  },
+  "middle-earth:limestone_brick_wall": {
+   "properties": {
+    "east": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "north": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "south": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "west": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "up": [
+     "true",
+     "false"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "east": "none",
+    "north": "none",
+    "south": "none",
+    "west": "none",
+    "up": "true",
+    "waterlogged": "false"
+   }
+  },
+  "middle-earth:limestone_bricks": {
+   "properties": {},
+   "default": {}
+  },
+  "middle-earth:mossy_limestone_bricks": {
+   "properties": {},
+   "default": {}
+  },
+  "middle-earth:orc_structure_manager": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ]
+   },
+   "default": {
+    "facing": "north"
+   }
+  },
+  "middle-earth:structure_manager": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ]
+   },
+   "default": {
+    "facing": "north"
+   }
+  },
+  "middle-earth:structure_nest": {
+   "properties": {
+    "enabled": [
+     "true",
+     "false"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "enabled": "false",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:air": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:barrel": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east",
+     "up",
+     "down"
+    ],
+    "open": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "facing": "north",
+    "open": "false"
+   }
+  },
+  "minecraft:cave_air": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:chest": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ],
+    "type": [
+     "single",
+     "left",
+     "right"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "facing": "north",
+    "type": "single",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:coarse_dirt": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:cobblestone": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:dirt": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:grass_block": {
+   "properties": {
+    "snowy": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "snowy": "false"
+   }
+  },
+  "minecraft:gravel": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:ladder": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "facing": "north",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:mossy_cobblestone": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:oak_door": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ],
+    "half": [
+     "upper",
+     "lower"
+    ],
+    "hinge": [
+     "left",
+     "right"
+    ],
+    "open": [
+     "true",
+     "false"
+    ],
+    "powered": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "facing": "north",
+    "half": "lower",
+    "hinge": "left",
+    "open": "false",
+    "powered": "false"
+   }
+  },
+  "minecraft:oak_leaves": {
+   "properties": {
+    "distance": [
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7"
+    ],
+    "persistent": [
+     "true",
+     "false"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "distance": "7",
+    "persistent": "false",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:oak_planks": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:oak_stairs": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ],
+    "half": [
+     "top",
+     "bottom"
+    ],
+    "shape": [
+     "straight",
+     "inner_left",
+     "inner_right",
+     "outer_left",
+     "outer_right"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "facing": "north",
+    "half": "bottom",
+    "shape": "straight",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:sand": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:snow_block": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:stone": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:stone_brick_slab": {
+   "properties": {
+    "type": [
+     "top",
+     "bottom",
+     "double"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "type": "bottom",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:stone_brick_stairs": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ],
+    "half": [
+     "top",
+     "bottom"
+    ],
+    "shape": [
+     "straight",
+     "inner_left",
+     "inner_right",
+     "outer_left",
+     "outer_right"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "facing": "north",
+    "half": "bottom",
+    "shape": "straight",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:stone_brick_wall": {
+   "properties": {
+    "east": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "north": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "south": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "west": [
+     "none",
+     "low",
+     "tall"
+    ],
+    "up": [
+     "true",
+     "false"
+    ],
+    "waterlogged": [
+     "true",
+     "false"
+    ]
+   },
+   "default": {
+    "east": "none",
+    "north": "none",
+    "south": "none",
+    "west": "none",
+    "up": "true",
+    "waterlogged": "false"
+   }
+  },
+  "minecraft:stone_bricks": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:structure_void": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:torch": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:void_air": {
+   "properties": {},
+   "default": {}
+  },
+  "minecraft:wall_torch": {
+   "properties": {
+    "facing": [
+     "north",
+     "south",
+     "west",
+     "east"
+    ]
+   },
+   "default": {
+    "facing": "north"
+   }
+  }
+ }
+}

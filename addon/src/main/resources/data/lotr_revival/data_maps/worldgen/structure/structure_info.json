@@ -1,0 +1,163 @@
+{
+  "values": {
+    "lotr_revival:placeholder_watchtower": {
+      "faction": "middle-earth:gondor",
+      "residents": true,
+      "region": "gondor",
+      "ground_offset": 2,
+      "build": "placeholder_watchtower",
+      "credit": {
+        "title": "Placeholder Watchtower",
+        "author": "LOTR Revival contributors",
+        "licence": "LicenseRef-ASSETS_LICENSE",
+        "changes": "palette: 231 blocks swapped to Middle-earth blocks (gondor palette); palette: 10 blocks swapped to other vanilla blocks (gondor palette); natural ground at or below y=1 made structure void (98 blocks); outside air made structure void; added a structure manager and 2 nests",
+        "own_work": true
+      }
+    },
+    "middle-earth:dale_keep": {
+      "faction": "middle-earth:dale",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:longbeards_hall": {
+      "faction": "middle-earth:longbeards.erebor",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:woodland_realm_hall": {
+      "faction": "middle-earth:woodland_realm",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:gundabad_camp": {
+      "faction": "middle-earth:hobgoblin_tribes.gundabad",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:isengard_camp": {
+      "faction": "middle-earth:isengard",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:mordor_firecamp": {
+      "faction": "middle-earth:mordor",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:traveler_camp": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:andesite_ruin_tower": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:dolomite_house_ruin": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:dolomite_ruin_arch": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:dolomite_ruins": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:granite_ruin": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:granite_ruin_arch": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:granite_ruin_brick_house": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:granite_ruin_tower": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:limestone_ruin": {
+      "residents": false,
+      "ground_offset": 0
+    },
+    "middle-earth:dale_watch_tower": {
+      "faction": "middle-earth:dale",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:gondor_watch_tower": {
+      "faction": "middle-earth:gondor",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:gundabad_watch_tower": {
+      "faction": "middle-earth:hobgoblin_tribes.gundabad",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:isengard_watch_tower": {
+      "faction": "middle-earth:isengard",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:longbeards_watch_tower": {
+      "faction": "middle-earth:longbeards.erebor",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:lothlorien_watch_tower": {
+      "faction": "middle-earth:lothlorien",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:mordor_watch_tower": {
+      "faction": "middle-earth:mordor",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:rohan_watch_tower": {
+      "faction": "middle-earth:rohan",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:brigand_dungeon": {
+      "faction": "middle-earth:brigand",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:dale_village": {
+      "faction": "middle-earth:dale",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:gondor_village": {
+      "faction": "middle-earth:gondor",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:hobbit_village": {
+      "faction": "middle-earth:shire",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:lothlorien_houses": {
+      "faction": "middle-earth:lothlorien",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:rohan_village": {
+      "faction": "middle-earth:rohan",
+      "residents": true,
+      "ground_offset": 0
+    },
+    "middle-earth:woodland_realm_hamlet": {
+      "faction": "middle-earth:woodland_realm",
+      "residents": true,
+      "ground_offset": 0
+    }
+  }
+}

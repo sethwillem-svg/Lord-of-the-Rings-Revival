@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "middle-earth:dale_keep",
+      "required": false
+    },
+    {
+      "id": "middle-earth:longbeards_hall",
+      "required": false
+    },
+    {
+      "id": "middle-earth:woodland_realm_hall",
+      "required": false
+    }
+  ]
+}

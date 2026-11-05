@@ -1,0 +1,29 @@
+{
+  "id": "lotr_revival:brigand_hideout",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:brigand_hideout.thief",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 10,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:brigand", "npc_identifier": "middle-earth:brigand.thief"}
+      ]
+    },
+    {
+      "id": "lotr_revival:brigand_hideout.thug",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 10,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:brigand", "npc_identifier": "middle-earth:brigand.thug"}
+      ]
+    },
+    {
+      "id": "lotr_revival:brigand_hideout.chieftain",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 10,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "faction_key": "middle-earth:brigand", "npc_identifier": "middle-earth:brigand.chieftain"}
+      ]
+    }
+  ]
+}

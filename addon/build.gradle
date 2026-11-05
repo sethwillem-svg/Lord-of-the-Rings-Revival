@@ -30,6 +30,9 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
             // -Pdebug=all or -Pdebug=combat,nemesis: per-system debug lines (specs/addon/debug-logging.md)
             if (project.hasProperty('debug')) systemProperty 'lotr_revival.debug', project.property('debug').toString()
+            // structures dev modes (specs/addon/structures.md): -PblockDump=<file>, -PstructureUpgrade=<dir>
+            if (project.hasProperty('blockDump')) systemProperty 'lotr_revival.blockDump', project.property('blockDump').toString()
+            if (project.hasProperty('structureUpgrade')) systemProperty 'lotr_revival.structureUpgrade', project.property('structureUpgrade').toString()
         }
     }
     mods {

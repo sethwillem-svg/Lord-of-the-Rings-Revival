@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "#middle-earth:has_structure/anduin_vales_biomes",
+      "required": false
+    },
+    {
+      "id": "#middle-earth:has_structure/dunland_biomes",
+      "required": false
+    }
+  ]
+}

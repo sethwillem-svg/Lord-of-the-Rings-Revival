@@ -49,6 +49,9 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "Middle-earth $ME_REF at $sha"
 
+      - name: Structure import tool (tests and generated files up to date)
+        run: bash tools/structure-import/check.sh 2>&1 | tee -a structure-tool.log
+
       - name: Restore Middle-earth jars
         id: mecache
         uses: actions/cache/restore@v4

@@ -1,0 +1,28 @@
+{
+  "id": "base",
+  "description": "Vanilla blocks every palette keeps: doors, torches, glass, wool, plants, redstone parts, natural ground, wood, and blocks that are already Middle-earth's.",
+  "keep": [
+    "middle-earth:*",
+    "minecraft:*_door", "minecraft:*_trapdoor", "minecraft:*_fence_gate",
+    "minecraft:torch", "minecraft:wall_torch", "minecraft:lantern", "minecraft:soul_lantern", "minecraft:campfire",
+    "minecraft:soul_torch", "minecraft:soul_wall_torch",
+    "minecraft:glass", "minecraft:glass_pane", "minecraft:*_stained_glass", "minecraft:*_stained_glass_pane",
+    "minecraft:*_wool", "minecraft:*_carpet", "minecraft:*_bed", "minecraft:*_banner", "minecraft:*_wall_banner",
+    "minecraft:ladder", "minecraft:scaffolding", "minecraft:chain", "minecraft:iron_bars",
+    "minecraft:chest", "minecraft:barrel", "minecraft:crafting_table", "minecraft:furnace", "minecraft:smoker",
+    "minecraft:bookshelf", "minecraft:lectern", "minecraft:anvil", "minecraft:cauldron", "minecraft:flower_pot",
+    "minecraft:potted_*", "minecraft:hay_block", "minecraft:composter",
+    "minecraft:*_sign", "minecraft:*_wall_sign", "minecraft:*_hanging_sign", "minecraft:*_wall_hanging_sign",
+    "minecraft:*_leaves", "minecraft:*_sapling", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern",
+    "minecraft:large_fern", "minecraft:dandelion", "minecraft:poppy", "minecraft:vine", "minecraft:moss_carpet",
+    "minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:podzol", "minecraft:rooted_dirt",
+    "minecraft:mud", "minecraft:sand", "minecraft:red_sand", "minecraft:gravel", "minecraft:stone", "minecraft:snow_block",
+    "minecraft:dirt_path", "minecraft:snow", "minecraft:water",
+    "minecraft:lever", "minecraft:*_button", "minecraft:*_pressure_plate", "minecraft:redstone_wire",
+    "minecraft:repeater", "minecraft:comparator", "minecraft:redstone_torch", "minecraft:redstone_wall_torch",
+    "minecraft:*_planks", "minecraft:*_log", "minecraft:stripped_*_log", "minecraft:*_wood", "minecraft:*_fence",
+    "minecraft:oak_stairs", "minecraft:spruce_stairs", "minecraft:birch_stairs", "minecraft:dark_oak_stairs",
+    "minecraft:oak_slab", "minecraft:spruce_slab", "minecraft:birch_slab", "minecraft:dark_oak_slab"
+  ],
+  "valuable_fallback": "minecraft:stone_bricks"
+}

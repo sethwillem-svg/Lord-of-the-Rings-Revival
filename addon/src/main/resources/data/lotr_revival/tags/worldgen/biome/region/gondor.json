@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "#middle-earth:has_structure/gondor_biomes",
+      "required": false
+    }
+  ]
+}

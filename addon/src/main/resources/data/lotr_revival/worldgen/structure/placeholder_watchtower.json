@@ -1,0 +1,18 @@
+{
+  "type": "lotr_revival:build",
+  "biomes": "#lotr_revival:region/gondor",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "beard_thin",
+  "start_pool": "lotr_revival:build/placeholder_watchtower",
+  "build": "placeholder_watchtower",
+  "template": "lotr_revival:build/placeholder_watchtower",
+  "size": [
+    7,
+    11,
+    7
+  ],
+  "max_slope": 6,
+  "site": "land",
+  "ground_y": 1
+}

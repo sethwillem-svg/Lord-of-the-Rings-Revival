@@ -1,0 +1,2 @@
+# addon/.gitignore ignores build/ (Gradle); structure templates and pools under build/ here are generated data we commit.
+!build/
