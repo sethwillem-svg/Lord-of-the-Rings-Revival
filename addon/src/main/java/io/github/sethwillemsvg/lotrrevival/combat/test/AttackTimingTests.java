@@ -48,26 +48,30 @@ public final class AttackTimingTests {
 
     @GameTest(template = "empty", timeoutTicks = 80)
     public static void damageLandsOnTheHitTick(GameTestHelper h) {
+        LotrLog.info("test", "START damageLandsOnTheHitTick");
         NpcEntity npc = soldier(h);
         Zombie target = target(h);
-        float health = target.getHealth();
         npc.doHurtTarget(target);
         long now = h.getLevel().getGameTime(), due = AttackTiming.dueTick(npc);
         h.assertTrue(due > now, "the swing's damage was not held for the hit frame");
-        h.assertTrue(target.getHealth() == health, "damage was dealt at the swing, not at the hit frame");
+        // judged by our replayed hit, not by health: the zombie can take other damage (it took inWall in run 212)
+        h.assertTrue(AttackTiming.lastReplay(target) == null, "damage was dealt at the swing, not at the hit frame");
         long wait = due - now;
         if (wait > 2) h.runAfterDelay(wait - 2, () -> {
-            if (target.getHealth() != health) {
-                var src = target.getLastDamageSource();
-                String why = "damage came before the hit tick: health " + health + " -> " + target.getHealth() + " at tick "
-                        + h.getLevel().getGameTime() + " (due " + due + "), last source "
-                        + (src == null ? "none" : src.getMsgId() + " from " + (src.getEntity() == null ? "-" : src.getEntity().getType()));
+            if (AttackTiming.lastReplay(target) != null) {
+                String why = "the NPC hit landed at tick " + h.getLevel().getGameTime() + ", before the hit tick " + due;
                 LotrLog.info("test", "FAIL damageLandsOnTheHitTick: {}", why);
                 h.fail(why);
             }
         });
         h.runAfterDelay(wait + 2, () -> {
-            h.assertTrue(target.getHealth() < health, "no damage on the hit tick");
+            AttackTiming.ReplayHit hit = AttackTiming.lastReplay(target);
+            if (hit == null) {
+                LotrLog.info("test", "FAIL damageLandsOnTheHitTick: no hit on the hit tick (dist {}, reach {})",
+                        String.format("%.2f", npc.distanceTo(target)), String.format("%.2f", AttackTiming.reachFor(npc, target)));
+                h.fail("no damage on the hit tick");
+            }
+            LotrLog.info("test", "PASS damageLandsOnTheHitTick: hit at {} (due {}), dealt {}", h.getLevel().getGameTime(), due, hit.dealt());
             h.succeed();
         });
     }
