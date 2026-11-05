@@ -84,7 +84,7 @@ final class NodeMapTestSupport {
     }
 
     static ServerPlayer player(GameTestHelper h, GameType mode) {
-        ServerPlayer p = h.makeMockServerPlayerInLevel();
+        ServerPlayer p = io.github.sethwillemsvg.lotrrevival.core.test.TestPlayers.mock(h);
         p.setGameMode(mode);
         Vec3 at = spot(h);
         p.moveTo(at.x, at.y, at.z, 0, 0);

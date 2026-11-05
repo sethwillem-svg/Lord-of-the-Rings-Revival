@@ -67,7 +67,7 @@ final class CombatTestKit {
         }
 
         ServerPlayer player(int x, int y, int z, float yaw) {
-            ServerPlayer p = h.makeMockServerPlayerInLevel();
+            ServerPlayer p = io.github.sethwillemsvg.lotrrevival.core.test.TestPlayers.mock(h);
             players.add(p);
             p.setGameMode(GameType.SURVIVAL);
             Vec3 at = h.absoluteVec(Vec3.atBottomCenterOf(new BlockPos(x, y, z)));

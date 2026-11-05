@@ -113,6 +113,12 @@ jobs:
         run: |
           bash .github/scripts/split-logs.sh addon/run/gametest/logs/latest.log logs
           cat logs/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+          # also in the job log, so tools that can only read job logs see it
+          echo "::group::summary.md"; cat logs/summary.md || true; echo "::endgroup::"
+          echo "===== FAILED TESTS / ERRORS (first 150 lines of errors.log) ====="
+          grep -vE '^\s+at |Ambiguity between arguments|server.properties' logs/errors.log | head -150 || true
+          echo "===== [test] lines ====="
+          grep -h '\[test\]' addon/run/gametest/logs/latest.log | head -200 || true
 
       - name: Upload logs
         if: always()

@@ -91,7 +91,7 @@ public final class NemesisTestPlayers {
 
     /** A mock player in survival with this Middle-earth faction (null: none), standing at the test's relative position. */
     public static ServerPlayer player(GameTestHelper h, @Nullable ResourceLocation faction, BlockPos rel) {
-        ServerPlayer p = h.makeMockServerPlayerInLevel();
+        ServerPlayer p = io.github.sethwillemsvg.lotrrevival.core.test.TestPlayers.mock(h);
         p.setGameMode(GameType.SURVIVAL);
         var abs = h.absoluteVec(rel.getCenter());
         p.moveTo(abs.x, abs.y, abs.z);
