@@ -1,0 +1,29 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "middle-earth:dale_village",
+      "required": false
+    },
+    {
+      "id": "middle-earth:gondor_village",
+      "required": false
+    },
+    {
+      "id": "middle-earth:hobbit_village",
+      "required": false
+    },
+    {
+      "id": "middle-earth:lothlorien_houses",
+      "required": false
+    },
+    {
+      "id": "middle-earth:rohan_village",
+      "required": false
+    },
+    {
+      "id": "middle-earth:woodland_realm_hamlet",
+      "required": false
+    }
+  ]
+}

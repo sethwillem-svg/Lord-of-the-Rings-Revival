@@ -1,0 +1,23 @@
+{
+  "structures": [
+    {
+      "structure": "lotr_revival:placeholder_watchtower",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "lotr_revival:configured_spread",
+    "set": "lotr_revival:gondor",
+    "region": "gondor",
+    "spacing": 24,
+    "separation": 10,
+    "salt": 80127772,
+    "exclusions": [
+      {
+        "set": "middle-earth:gondor",
+        "chunks": 3
+      }
+    ],
+    "own_chunks": 2
+  }
+}

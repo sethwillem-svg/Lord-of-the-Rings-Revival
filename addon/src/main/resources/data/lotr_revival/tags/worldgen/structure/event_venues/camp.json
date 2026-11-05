@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "middle-earth:gundabad_camp",
+      "required": false
+    },
+    {
+      "id": "middle-earth:isengard_camp",
+      "required": false
+    },
+    {
+      "id": "middle-earth:mordor_firecamp",
+      "required": false
+    },
+    {
+      "id": "middle-earth:traveler_camp",
+      "required": false
+    }
+  ]
+}

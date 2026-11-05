@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "#middle-earth:has_structure/ruins_biomes",
+      "required": false
+    },
+    {
+      "id": "#middle-earth:has_structure/granite_ruin_biomes",
+      "required": false
+    },
+    {
+      "id": "#middle-earth:has_structure/limestone_ruin_biomes",
+      "required": false
+    },
+    {
+      "id": "#middle-earth:has_structure/dolomite_ruin_biomes",
+      "required": false
+    },
+    {
+      "id": "#middle-earth:has_structure/andesite_ruin_biomes",
+      "required": false
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "replace": false,
+  "values": [
+    "lotr_revival:placeholder_watchtower",
+    {
+      "id": "middle-earth:dale_watch_tower",
+      "required": false
+    },
+    {
+      "id": "middle-earth:gondor_watch_tower",
+      "required": false
+    },
+    {
+      "id": "middle-earth:gundabad_watch_tower",
+      "required": false
+    },
+    {
+      "id": "middle-earth:isengard_watch_tower",
+      "required": false
+    },
+    {
+      "id": "middle-earth:longbeards_watch_tower",
+      "required": false
+    },
+    {
+      "id": "middle-earth:lothlorien_watch_tower",
+      "required": false
+    },
+    {
+      "id": "middle-earth:mordor_watch_tower",
+      "required": false
+    },
+    {
+      "id": "middle-earth:rohan_watch_tower",
+      "required": false
+    }
+  ]
+}

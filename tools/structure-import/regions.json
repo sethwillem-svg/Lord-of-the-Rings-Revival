@@ -1,0 +1,17 @@
+{
+  "description": "Region table (specs/addon/structures.md, Placement). Middle-earth ids are integration points only. Keep in step with structures/Regions.java.",
+  "regions": [
+    {"id": "gondor", "faction": "middle-earth:gondor", "me_biome_tags": ["gondor_biomes"], "me_set": "middle-earth:gondor", "spacing": 24, "separation": 10, "palette": "gondor"},
+    {"id": "rohan", "faction": "middle-earth:rohan", "me_biome_tags": ["rohan_biomes"], "me_set": "middle-earth:rohan", "spacing": 24, "separation": 10, "palette": "rohan"},
+    {"id": "dale", "faction": "middle-earth:dale", "me_biome_tags": ["dale_biomes"], "me_set": "middle-earth:dale", "spacing": 24, "separation": 10, "palette": "dale"},
+    {"id": "erebor", "faction": "middle-earth:longbeards.erebor", "me_biome_tags": ["longbeards_biomes"], "me_set": "middle-earth:longbeards", "spacing": 28, "separation": 12, "palette": "dwarf"},
+    {"id": "lothlorien", "faction": "middle-earth:lothlorien", "me_biome_tags": ["lothlorien_biomes"], "me_set": "middle-earth:lothlorien", "spacing": 20, "separation": 8, "palette": "elf"},
+    {"id": "woodland_realm", "faction": "middle-earth:woodland_realm", "me_biome_tags": ["woodland_realm_biomes"], "me_set": "middle-earth:woodland_realm", "spacing": 20, "separation": 8, "palette": "elf"},
+    {"id": "shire", "faction": "middle-earth:shire", "me_biome_tags": ["shire_biomes"], "me_set": "middle-earth:shire", "spacing": 24, "separation": 10, "palette": "shire"},
+    {"id": "mordor", "faction": "middle-earth:mordor", "me_biome_tags": ["mordor_biomes"], "me_set": "middle-earth:mordor", "spacing": 24, "separation": 10, "palette": "orc"},
+    {"id": "isengard", "faction": "middle-earth:isengard", "me_biome_tags": ["isengard_biomes"], "me_set": "middle-earth:isengard", "spacing": 20, "separation": 8, "palette": "orc"},
+    {"id": "gundabad", "faction": "middle-earth:hobgoblin_tribes.gundabad", "me_biome_tags": ["gundabad_wilderness"], "me_set": "middle-earth:gundabad", "spacing": 24, "separation": 10, "palette": "orc"},
+    {"id": "brigand", "faction": "middle-earth:brigand", "me_biome_tags": ["anduin_vales_biomes", "dunland_biomes"], "me_set": "middle-earth:anduin_vales", "spacing": 28, "separation": 12, "palette": "ruin"},
+    {"id": "wild", "faction": null, "me_biome_tags": ["ruins_biomes", "granite_ruin_biomes", "limestone_ruin_biomes", "dolomite_ruin_biomes", "andesite_ruin_biomes"], "me_set": "middle-earth:cardolan", "spacing": 32, "separation": 14, "palette": "ruin"}
+  ]
+}

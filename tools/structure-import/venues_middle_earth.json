@@ -1,0 +1,41 @@
+{
+  "description": "Middle-earth's structures added to our venue tags (optional entries) and their structure_info (faction and residents from what each structure visibly holds). Hand-written data of ours; names Middle-earth's structure ids only.",
+  "kinds": {
+    "castle": {
+      "dale_keep": {"faction": "middle-earth:dale", "residents": true},
+      "longbeards_hall": {"faction": "middle-earth:longbeards.erebor", "residents": true},
+      "woodland_realm_hall": {"faction": "middle-earth:woodland_realm", "residents": true}
+    },
+    "camp": {
+      "gundabad_camp": {"faction": "middle-earth:hobgoblin_tribes.gundabad", "residents": true},
+      "isengard_camp": {"faction": "middle-earth:isengard", "residents": true},
+      "mordor_firecamp": {"faction": "middle-earth:mordor", "residents": true},
+      "traveler_camp": {"faction": null, "residents": false}
+    },
+    "ruin": {
+      "dolomite_ruins": {}, "dolomite_house_ruin": {}, "dolomite_ruin_arch": {}, "granite_ruin": {}, "granite_ruin_arch": {},
+      "granite_ruin_brick_house": {}, "granite_ruin_tower": {}, "andesite_ruin_tower": {}, "limestone_ruin": {}
+    },
+    "watchtower": {
+      "dale_watch_tower": {"faction": "middle-earth:dale", "residents": true},
+      "gondor_watch_tower": {"faction": "middle-earth:gondor", "residents": true},
+      "gundabad_watch_tower": {"faction": "middle-earth:hobgoblin_tribes.gundabad", "residents": true},
+      "isengard_watch_tower": {"faction": "middle-earth:isengard", "residents": true},
+      "longbeards_watch_tower": {"faction": "middle-earth:longbeards.erebor", "residents": true},
+      "lothlorien_watch_tower": {"faction": "middle-earth:lothlorien", "residents": true},
+      "mordor_watch_tower": {"faction": "middle-earth:mordor", "residents": true},
+      "rohan_watch_tower": {"faction": "middle-earth:rohan", "residents": true}
+    },
+    "hideout": {
+      "brigand_dungeon": {"faction": "middle-earth:brigand", "residents": true}
+    },
+    "village": {
+      "gondor_village": {"faction": "middle-earth:gondor", "residents": true},
+      "rohan_village": {"faction": "middle-earth:rohan", "residents": true},
+      "dale_village": {"faction": "middle-earth:dale", "residents": true},
+      "hobbit_village": {"faction": "middle-earth:shire", "residents": true},
+      "woodland_realm_hamlet": {"faction": "middle-earth:woodland_realm", "residents": true},
+      "lothlorien_houses": {"faction": "middle-earth:lothlorien", "residents": true}
+    }
+  }
+}

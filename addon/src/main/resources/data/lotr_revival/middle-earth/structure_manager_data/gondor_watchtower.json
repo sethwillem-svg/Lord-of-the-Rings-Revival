@@ -1,0 +1,21 @@
+{
+  "id": "lotr_revival:gondor_watchtower",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:gondor_watchtower.guard",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 8,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:gondor", "npc_identifier": "middle-earth:gondor.soldier"}
+      ]
+    },
+    {
+      "id": "lotr_revival:gondor_watchtower.archer",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 8,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "faction_key": "middle-earth:gondor", "npc_identifier": "middle-earth:gondor.militia"}
+      ]
+    }
+  ]
+}
