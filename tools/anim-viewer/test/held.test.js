@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { partToRig, FIST, itemScale, scaleAbout, bendPoint, quadsOf, drawnItem, seatItem, seatPoint } = require('../gecko/held.js');
+const { partToRig, FIST, itemScale, seatedLength, scaleAbout, bendPoint, quadsOf, drawnItem, seatItem, seatPoint } = require('../gecko/held.js');
 const { RIG } = require('../gecko/rig.js');
 
 const near = (a, b, eps = 1e-6) => a.every((x, i) => Math.abs(x - b[i]) < eps);
@@ -20,11 +20,27 @@ test('class lengths (blocks, pommel to tip as drawn) come from weapon_grips.json
     { dagger: 0.85, sword: 1.5, longsword: 1.9, axe: 1.65, spear: 2.8, bow: 1.2, longbow: 1.8, crossbow: 1.0 });
 });
 
-test('an item is scaled to its class length; unknown classes keep their size', () => {
-  assert.ok(Math.abs(itemScale('dagger', grips, 24) - 13.6 / 24) < 1e-9);
-  assert.ok(Math.abs(itemScale('spear', grips, 56) - 44.8 / 56) < 1e-9);
+test('melee classes name the typical Middle-earth item length as drawn (blocks, the median of the exported items)', () => {
+  assert.deepEqual(Object.fromEntries(Object.entries(grips).filter(([, v]) => v.native).map(([k, v]) => [k, v.native])),
+    { dagger: 0.87, sword: 0.76, longsword: 0.78, axe: 0.67, spear: 2.29 });
+});
+
+test('a typical item is scaled to its class length; unknown classes keep their size', () => {
+  assert.ok(Math.abs(itemScale('dagger', grips, 0.87 * 16) * 0.87 - 0.85) < 1e-9);
+  assert.ok(Math.abs(itemScale('spear', grips, 2.29 * 16) * 2.29 - 2.8) < 1e-9);
   assert.equal(itemScale('shield', grips, 17), 1);
   assert.equal(itemScale(null, grips, 17), 1);
+});
+
+test('one factor per class: a short spear stays short beside a long one (Middle-earth\u2019s own proportions)', () => {
+  const short = itemScale('spear', grips, 1.17 * 16) * 1.17, long = itemScale('spear', grips, 2.43 * 16) * 2.43;
+  assert.ok(Math.abs(short - (1.17 * 2.8) / 2.29) < 1e-9, `short spear ${short.toFixed(2)} blocks`);
+  assert.ok(Math.abs(short / long - 1.17 / 2.43) < 1e-9);
+});
+
+test('no item grows past 1.3x its class length (an outsized axe is held to 2.145 blocks)', () => {
+  assert.ok(Math.abs(itemScale('axe', grips, 1.03 * 16) * 1.03 - 1.3 * 1.65) < 1e-9);
+  assert.ok(Math.abs(seatedLength('axe', grips, 1.03 * 16) - 1.3 * 1.65 * 16) < 1e-9);
 });
 
 test('scaling about the fist keeps the handle in the hand', () => {
@@ -76,13 +92,14 @@ test('a model without big faces (a real 3D model) keeps all its quads', () => {
   assert.ok(Math.abs(drawnItem(quads).length - 7) < 1e-9);   // the box's diagonal: 2, 3, 6
 });
 
-test('a seated item has its handle on the fist and its drawn length at the class length', () => {
+test('a seated item has its handle on the fist and its drawn length at its seated length (seatedLength)', () => {
   for (const cls of ['dagger', 'sword', 'longsword', 'axe', 'spear']) {
     const quads = generatedItem(), seat = seatItem(cls, grips, quads, FIST.right);
     const kept = drawnItem(quads).pts.map((p) => seatPoint(seat, p));
     assert.ok(Math.min(...kept.map((p) => dist(p, FIST.right))) < 1e-9, `${cls}: the handle is off the fist`);
     assert.ok(near(seatPoint(seat, seat.grip), FIST.right, 1e-9), `${cls}: grip ${seat.grip} lands at ${seatPoint(seat, seat.grip)}`);
-    assert.ok(Math.abs(exactDiameter(kept) / 16 - grips[cls].length) < 1e-6, `${cls}: ${exactDiameter(kept) / 16} blocks`);
+    const want = seatedLength(cls, grips, drawnItem(quads).length);
+    assert.ok(Math.abs(exactDiameter(kept) - want) < 1e-6 * want, `${cls}: ${exactDiameter(kept) / 16} blocks, want ${want / 16}`);
   }
   assert.equal(seatItem('shield', grips, generatedItem(), FIST.right), null);   // no class length: drawn as Minecraft seats it
   assert.deepEqual(seatPoint(null, [1, 2, 3]), [1, 2, 3]);

@@ -1,9 +1,9 @@
 {
-  "dagger": { "length": 0.85 },
-  "sword": { "length": 1.5 },
-  "longsword": { "length": 1.9 },
-  "axe": { "length": 1.65 },
-  "spear": { "length": 2.8 },
+  "dagger": { "length": 0.85, "native": 0.87 },
+  "sword": { "length": 1.5, "native": 0.76 },
+  "longsword": { "length": 1.9, "native": 0.78 },
+  "axe": { "length": 1.65, "native": 0.67 },
+  "spear": { "length": 2.8, "native": 2.29 },
   "bow": { "length": 1.2 },
   "longbow": { "length": 1.8 },
   "crossbow": { "length": 1.0 }

@@ -42,7 +42,10 @@ public final class WeaponGrip {
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    private record Grip(float length, Vector3f rotate, Vector3f offset) {}
+    private record Grip(float length, float nativeLength, Vector3f rotate, Vector3f offset) {}
+
+    /** No item grows past this share of its class length (an outsized item in a class of smaller ones). */
+    private static final float CAP = 1.3f;
 
     private static Map<String, Grip> grips;
 
@@ -67,7 +70,20 @@ public final class WeaponGrip {
     }
 
     /**
-     * Where a held item goes: its drawn weapon scaled to the class length about its grip, the grip moved onto the fist, then
+     * An item's drawn length once seated (px), from its own drawn length (px). A class with a "native" length (blocks: the
+     * typical Middle-earth item as drawn) scales all its items by one factor, length / native, so they keep Middle-earth's
+     * proportions (a short orc spear stays short beside a Gondor spear), at most CAP times the class length; a class without
+     * one brings every item to its length. Unknown classes keep their size. Mirrors tools/anim-viewer/gecko/held.js.
+     */
+    public static float seatedLength(@Nullable String cls, float length) {
+        Grip g = cls == null ? null : grips().get(cls);
+        if (g == null || length <= 1e-6f) return length;
+        if (g.nativeLength() <= 0) return g.length() * 16f;
+        return Math.min(length * g.length() / g.nativeLength(), CAP * g.length() * 16f);
+    }
+
+    /**
+     * Where a held item goes: its drawn weapon scaled about its grip to its seated length (seatedLength), the grip moved onto the fist, then
      * the class's turn and offset; a shield strapped to the forearm (strap). quads: the item's faces as Minecraft draws it
      * in the arm (px), x, y, z per vertex. Null for other classes without a length, and for items with nothing drawn.
      */
@@ -82,7 +98,7 @@ public final class WeaponGrip {
         if (length < 1e-3f) return null;
         Vector3f f = fist(left), grip = drawn.get(0);
         for (Vector3f p : drawn) if (p.distanceSquared(f) < grip.distanceSquared(f)) grip = p;
-        float s = g.length() * 16f / length;
+        float s = seatedLength(cls, length) / length;
         float sign = left ? -1 : 1;   // the left hand mirrors the class's turn and sideways offset
         return new Matrix4f().translate(f).translate(sign * g.offset().x, g.offset().y, g.offset().z)
                 .rotateZYX((float) Math.toRadians(sign * g.rotate().z), (float) Math.toRadians(sign * g.rotate().y), (float) Math.toRadians(g.rotate().x))
@@ -282,7 +298,8 @@ public final class WeaponGrip {
             for (var e : root.entrySet()) {
                 JsonObject o = e.getValue().getAsJsonObject();
                 if (!o.has("length")) continue;
-                grips.put(e.getKey(), new Grip(o.get("length").getAsFloat(), vec(o.get("rotate")), vec(o.get("offset"))));
+                grips.put(e.getKey(), new Grip(o.get("length").getAsFloat(), o.has("native") ? o.get("native").getAsFloat() : 0f,
+                        vec(o.get("rotate")), vec(o.get("offset"))));
             }
         } catch (Exception e) {
             LOG.warn("lotr_revival: could not read weapon_grips.json", e);

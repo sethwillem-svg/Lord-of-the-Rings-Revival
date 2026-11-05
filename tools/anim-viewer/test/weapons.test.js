@@ -135,12 +135,14 @@ test('real items: the handle is in the hand (the drawn weapon within 2.5 px of i
   assert.deepEqual(bad, []);
 });
 
-test('real items: the drawn weapon is its class length once seated (±5%, pommel to tip)', { skip: !exported && 'no export (./addon/bench.sh export)' }, () => {
+test('real items: once seated the drawn weapon keeps its size against its class (length × its share of the typical item, at most 1.3× the class; ±5%)', { skip: !exported && 'no export (./addon/bench.sh export)' }, () => {
   const bad = [];
   for (const h of hands()) {
-    if (!GRIPS[h.weapon]) continue;
-    const len = diameter(dedupe(SEATED(h))) / 16;
-    if (Math.abs(len / GRIPS[h.weapon].length - 1) > 0.05) bad.push(`${h.label}: ${len.toFixed(2)} blocks for ${h.weapon} (${GRIPS[h.weapon].length})`);
+    const g = GRIPS[h.weapon];
+    if (!g || !g.length) continue;
+    const own = drawnItem(h.quads).length / 16, len = diameter(dedupe(SEATED(h))) / 16;
+    const want = g.native ? Math.min((own * g.length) / g.native, 1.3 * g.length) : g.length;
+    if (Math.abs(len / want - 1) > 0.05) bad.push(`${h.label}: ${len.toFixed(2)} blocks for ${h.weapon} (want ${want.toFixed(2)})`);
   }
   assert.deepEqual(bad, []);
 });
