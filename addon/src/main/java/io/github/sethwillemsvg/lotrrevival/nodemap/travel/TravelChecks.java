@@ -110,7 +110,10 @@ public final class TravelChecks {
             if (ctx.combat.inCombat(p, p.level().getGameTime(), s.combatTagTicks())) {
                 return Outcome.no("combat_tag", Msg.t("refuse.combat", "You cannot travel in the middle of a fight."));
             }
-            // TODO(spec Cost, coin_per_1000): pay in Middle-earth coins like hiring; off by default, so not wired yet
+            int coins = s.cost().coins(len);
+            if (coins > 0 && !CoinPurse.canPay(p, coins)) {
+                return Outcome.no("cant_afford", Msg.t("refuse.cant_afford", "This journey costs %s copper, and you cannot pay it.", coins));
+            }
         }
         return new Outcome(new Plan(from, to, best, exempt ? 0 : s.cost().cooldown(len), exempt ? 0 : s.cost().exhaustion(len),
                 exempt ? 0 : s.cost().coins(len), exempt), null);

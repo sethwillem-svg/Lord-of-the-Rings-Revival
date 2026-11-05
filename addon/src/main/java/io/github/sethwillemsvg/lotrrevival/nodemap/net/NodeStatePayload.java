@@ -12,11 +12,11 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * Server to client: one player's node map state. Barred nodes are worked out on the server, so the client needs no
  * reputation data. Also carries the cost numbers in use so the panel can show the same cooldown and hunger the server
- * will apply.
+ * will apply, and the coin price per 1,000 blocks (0 = off).
  */
 public record NodeStatePayload(List<ResourceLocation> known, List<ResourceLocation> rumoured, List<Barred> barred, List<CampInfo> camps,
                                int cooldown, String lastNode, int campLimit, int departRadius, int cooldownBase, double cooldownPerBlock,
-                               int cooldownMax, double exhaustionPerBlock, double exhaustionCap, double wildFactor)
+                               int cooldownMax, double exhaustionPerBlock, double exhaustionCap, double wildFactor, int coinPer1000)
         implements CustomPacketPayload {
     public static final Type<NodeStatePayload> TYPE = new Type<>(LotrRevival.id("node_state"));
 
@@ -55,6 +55,7 @@ public record NodeStatePayload(List<ResourceLocation> known, List<ResourceLocati
         b.writeDouble(p.exhaustionPerBlock);
         b.writeDouble(p.exhaustionCap);
         b.writeDouble(p.wildFactor);
+        b.writeVarInt(p.coinPer1000);
     }
 
     private static NodeStatePayload read(FriendlyByteBuf b) {
@@ -74,7 +75,7 @@ public record NodeStatePayload(List<ResourceLocation> known, List<ResourceLocati
             camps.add(new CampInfo(id, name, pos, links));
         }
         return new NodeStatePayload(known, rumoured, barred, camps, b.readVarInt(), b.readUtf(256), b.readVarInt(), b.readVarInt(),
-                b.readVarInt(), b.readDouble(), b.readVarInt(), b.readDouble(), b.readDouble(), b.readDouble());
+                b.readVarInt(), b.readDouble(), b.readVarInt(), b.readDouble(), b.readDouble(), b.readDouble(), b.readVarInt());
     }
 
     @Override
