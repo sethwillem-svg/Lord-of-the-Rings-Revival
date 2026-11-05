@@ -46,8 +46,9 @@
    *   low        degrees the weapon arm strikes lower
    *   lead       seconds the hips lead the arm (+, skilled) or the arm lags the body (-, a brawler's throw)
    *   freeArm    { out: degrees held away from the body (+) or tucked (-), flail: share of the weapon arm's swing the free
-   *              arm throws the other way, at most 120° (build_npc.js FLAIL_MAX) } — not for two-handed weapons, whose free
-   *              hand stays on the grip
+   *              arm throws the other way, at most 120° (build_npc.js FLAIL_MAX), front to back only as far as the shoulder
+   *              takes it and the rest flung out to the side, the elbow opening (build_npc.js flung) } — not for
+   *              two-handed weapons, whose free hand stays on the grip
    *   jitter     degrees every key wobbles by: no two swings alike
    * A swing that would no longer strike in front, would spin, or would lose a two-handed grip gets less of it. */
   /* tempo (attacks only; specs/addon/npc-attack-tempo.md, checked in test/fighting.test.js and test/timing.test.js): time

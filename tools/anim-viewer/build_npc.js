@@ -84,6 +84,39 @@ const TWO_HANDED = new Set(['longsword', 'spear', 'axe']);
 /** The most a free arm's counter-swing (STYLE fight.freeArm.flail) turns it from where it was, degrees: 2.5 times a big swing
  *  would wind it right round the shoulder (an orc's free arm reached 600°), which no twist of the arm can make look whole. */
 const FLAIL_MAX = 120;
+/** How far inside the shoulder's range (extension 60°, horizontal adduction 45° past straight ahead: test/anatomy.test.js)
+ *  a flung free arm is kept, degrees: room for the jitter, the posture and the curves between keys. */
+const FLUNG_MARGIN = 10;
+/** The most of a free arm's throw back (a counter-swing to a blow forward) taken front to back, degrees: the rest flings it
+ *  out to its side (FLUNG_OUT), where the shoulder has the room. */
+const FLUNG_BACK = 45;
+/** Where a free arm flung out goes, in the torso's frame (x to the right, y up, z back): out to its left and a little up. */
+const FLUNG_OUT = (() => { const l = Math.hypot(1, 0.2); return [-1 / l, 0.2 / l, 0]; })();
+const angleTo = (a, b) => (Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))) * 180) / Math.PI;
+/**
+ * The free (left) arm's key v thrown `swing` degrees front to back (+ forward) and held `out` degrees away from the body.
+ * The old counter-swing threw it straight back by the whole swing, round behind the back and over into the head. Now a
+ * throw forward keeps as much of itself as stays FLUNG_MARGIN inside the shoulder's range, and a throw back at most
+ * FLUNG_BACK (less where that would leave the range); what is left of the throw turns the arm toward FLUNG_OUT (no further),
+ * so a big throw flings the arm out and away from the body. The arm hangs from the body bone, so its direction in the
+ * torso is its own key's (before posture, which only holds it further forward and out). Returns the key.
+ */
+function flung(v, swing, out) {
+  const dirOf = (R) => [-R[1], -R[4], -R[7]];   // the arm's long axis (rest -y)
+  const fits = (R) => { const s = shoulderOf(R); return s.back <= SHOULDER_RANGE.back - FLUNG_MARGIN && s.across <= SHOULDER_RANGE.across - FLUNG_MARGIN; };
+  const key = (f) => {   // share f of the throw front to back, the rest toward FLUNG_OUT
+    const c = [v[0] - swing * f, v[1], v[2] - out], R = trueRotation(c), d = dirOf(R);
+    const a = Math.min(Math.abs(swing) * (1 - f), angleTo(d, FLUNG_OUT));
+    const n = [d[1] * FLUNG_OUT[2] - d[2] * FLUNG_OUT[1], d[2] * FLUNG_OUT[0] - d[0] * FLUNG_OUT[2], d[0] * FLUNG_OUT[1] - d[1] * FLUNG_OUT[0]];
+    const l = Math.hypot(...n);
+    if (a < 1e-6 || l < 1e-9) return { c, R };
+    const T = mul3(eulerAxis(n.map((x) => x / l), (a * Math.PI) / 180), R), k = fromTrue(T);
+    return { c: nearKey(k, c), R: T };   // the key nearest the unturned one
+  };
+  const top = swing < 0 ? Math.min(1, FLUNG_BACK / -swing) : 1;
+  for (let i = 20; i > 0; i--) { const r = key((i / 20) * top); if (fits(r.R)) return r.c; }
+  return key(0).c;
+}
 const scaleKeys = (keys, f) => keys.forEach((k, i) => { k.v = f(k, i); });
 
 /** A race's way of swinging (STYLE.fight), at strength k (0..1), on an attack in Blockbench values before mirroring. */
@@ -129,10 +162,19 @@ function fight(clip, slot, f, k) {
     const base = left.rotation || [{ t: 0, v: [0, 0, 0], lerp: 'linear' }];
     left.rotation = times.map((t) => {
       const r = at(arm, t), v = at(base, t).slice(), fl = (f.freeArm.flail || 0) * k;
-      // counter-swing front to back, at most FLAIL_MAX either way: thrown back, not wound round the shoulder
+      // counter-swing front to back, at most FLAIL_MAX either way, flung out where the shoulder would not take it (flung)
       const swing = Math.max(-FLAIL_MAX, Math.min(FLAIL_MAX, fl * (r[0] - v0[0])));
-      return { t, v: [v[0] - swing, v[1], v[2] - (f.freeArm.out || 0) * k], lerp: 'linear' };
+      return { t, v: flung(v, swing, (f.freeArm.out || 0) * k), lerp: 'linear' };
     });
+    // a flung arm swings out straight: the elbow opens with the throw, fully at FLAIL_MAX
+    const elbow = clip.bones.left_elbow && clip.bones.left_elbow.rotation;
+    if (elbow && f.freeArm.flail) {
+      const own = elbow.map((x) => ({ ...x, v: x.v.slice() }));
+      clip.bones.left_elbow.rotation = [...new Set([...times, ...own.map((x) => x.t)])].sort((x, y) => x - y).map((t) => {
+        const throwOf = Math.min(FLAIL_MAX, Math.abs((f.freeArm.flail || 0) * k * (at(arm, t)[0] - v0[0])));
+        return { t, v: at(own, t).map((x) => x * (1 - throwOf / FLAIL_MAX)), lerp: 'linear' };
+      });
+    }
   }
   // uneven, not jagged: a slow sway per bone and axis (0.5-1.5 cycles over the swing, random phase), zero at the start
   if (f.jitter) for (const bone of ['right_arm', 'weapon_r', 'left_arm', 'upper'])
@@ -457,9 +499,10 @@ function drawBack(clip, slot, w) {
  * The finishing steps every attack goes through after its race's fighting style: posture, a lead-in from standing, the
  * hips following the torso, smooth curves, true hinges resampled evenly, and the edge leading. The style check (fought)
  * judges this exact output, without `anatomy`: that (the arms swivelled within the shoulder's range and out of the body,
- * hinge.js limitTwist opts.anatomy) is added once the clip is chosen, on the clip that ships (buildRace checks it still
- * meets the bar). It only swivels the arms, the hands and weapon left where they are, and is slow enough to build that
- * the many clips tried while choosing would take minutes more.
+ * hinge.js limitTwist opts.anatomy, and a one-handed attack's upper arms first re-posed within the shoulder's range away
+ * from the strike, repose) is added once the clip is chosen, on the clip that ships (buildRace checks it still meets the
+ * bar). The swivel leaves the hands and weapon where they are; the re-posing moves them only outside the game tick either
+ * side of the hit. Both are slow enough to build that the many clips tried while choosing would take minutes more.
  */
 function finishAttack(clip, slot, style, idle, side = 'right', walk = null, anatomy = false) {
   const c = clone(clip);
@@ -496,8 +539,136 @@ function finishPostured(c, slot, style, idle, side, walk, anatomy = false) {
   // as it stands: the roll and the twist limit after it leave the weapon's path where it is, but Euler keys can stray from
   // it between them by a fraction of a pixel, enough to move a slow apex
   const t = tempoFor(slot, style), at = t ? warpOf(c, slot, t, side) : null, s = strikePose(c, slot, t, at, idle, side);
-  c = edgeAlign(c, slot, side, s.hit, s.hold, anatomy);
-  return tempo(c, slot, t, idle, side, null, at);
+  const plain = () => tempo(edgeAlign(c, slot, side, s.hit, s.hold, anatomy), slot, t, idle, side, null, at);
+  if (!anatomy || TWO_HANDED.has(slot.split('_')[1])) return plain();
+  // with the arms' anatomy, a one-handed attack's arms re-posed within the shoulder's range first (repose: toward hanging,
+  // or toward hanging or straight ahead), whichever leaves them least past it, where the swing so finished still meets the
+  // bar, no arm snaps round (snaps) and it leaves them less past than they were; else as it is. Two-handed grips are left:
+  // turning one arm would take its hand off the shaft
+  let best = null;
+  for (const goals of REPOSE_GOALS) {
+    const r = repose(c, s.hold, goals);
+    if (r === c) continue;
+    const done = tempo(edgeAlign(r, slot, side, s.hit, s.hold, anatomy), slot, t, idle, side, null, at), a = animationJson({ c: done }).animations.c;
+    if (!meetsBar(a, slot) || snaps(a)) continue;
+    const past = mostPast(a);
+    if (!best || past < best.past - 1e-9) best = { done, past };
+  }
+  if (!best) return plain();
+  const own = plain(), ownPast = mostPast(animationJson({ c: own }).animations.c);
+  return best.past < ownPast - 1e-9 ? best.done : own;
+}
+
+/** Re-posing (repose): an upper arm is re-posed where it reaches more than REPOSE_PAST degrees past the shoulder's range
+ *  (test/anatomy.test.js allows 10°), back to REPOSE_PAST; the turn eases out over REPOSE_EASE s either side, and over
+ *  REPOSE_HOLD s toward the hit's edge hold, inside which the swing is left exactly as it is. Through the stretch it re-poses
+ *  the arm gets a key every REPOSE_STEP s, so the curves between keys stay re-posed too. */
+const REPOSE_PAST = 5, REPOSE_EASE = 0.05, REPOSE_HOLD = 0.02, REPOSE_STEP = 1 / 240;
+/** Where repose may turn an arm toward, in the torso's frame: hanging; or hanging or straight ahead, whichever is nearer. */
+const REPOSE_GOALS = [[[0, -1, 0]], [[0, -1, 0], [0, 0, -1]]];
+/** The arms' rotations in the torso's frame (Bᵀ R) at world bones w. */
+function armsLocal(w) {
+  const B = w.body.R;
+  return ['right_arm', 'left_arm'].map((b) => {
+    const R = w[b].R, L = [];
+    for (let r = 0; r < 3; r++) for (let q = 0; q < 3; q++) L.push(B[r] * R[q] + B[3 + r] * R[3 + q] + B[6 + r] * R[6 + q]);
+    return L;
+  });
+}
+/** The most either upper arm of a finished attack is past the shoulder's range and REPOSE_PAST (degrees), every 2 ms. */
+function mostPast(anim) {
+  let m = -Infinity;
+  for (let t = 0; t <= anim.animation_length + 1e-9; t += 0.002) {
+    const [r, l] = armsLocal(worldBones(samplePose(anim, Math.min(t, anim.animation_length))));
+    m = Math.max(m, armPast(r, 'right'), armPast(l, 'left'));
+  }
+  return m;
+}
+/** Does an upper arm of a finished attack turn more than SNAP degrees in 1/120 s against the torso anywhere (every 2 ms)?
+ *  test/joints.test.js allows 60°. */
+const SNAP = 50;
+function snaps(anim) {
+  const L = anim.animation_length, at = (t) => armsLocal(worldBones(samplePose(anim, Math.min(t, L))));
+  for (let t = 0; t + 1 / 120 <= L + 1e-9; t += 0.002) {
+    const a = at(t), b = at(t + 1 / 120);
+    for (let i = 0; i < 2; i++) {
+      let tr = 0;
+      for (let k = 0; k < 9; k++) tr += a[i][k] * b[i][k];
+      if (Math.acos(Math.max(-1, Math.min(1, (tr - 1) / 2))) / RAD > SNAP) return true;
+    }
+  }
+  return false;
+}
+/** How far (degrees) an upper arm on `side` with local rotation L (its parent is the body bone) is past the shoulder's range
+ *  and REPOSE_PAST (≤ 0: within). */
+function armPast(L, side) {
+  const R = side === 'left' ? L : [L[0], -L[1], L[2], L[3], L[4], L[5], L[6], L[7], L[8]], s = shoulderOf(R);   // a right arm as its mirror
+  return Math.max(s.back - SHOULDER_RANGE.back, s.across - SHOULDER_RANGE.across) - REPOSE_PAST;
+}
+/** Of a rotation key v's two Euler triples (each up to whole turns), the one nearest `near`: keys between which a clip's
+ *  Euler curves do not swing the long way round. */
+function nearKey(v, near) {
+  const wrap = (u) => u.map((x, j) => x + 360 * Math.round((near[j] - x) / 360)), far = (u) => Math.max(...u.map((x, j) => Math.abs(x - near[j])));
+  const a = wrap(v), b = wrap([v[0] + 180, 180 - v[1], v[2] + 180]);
+  return far(b) < far(a) ? b : a;
+}
+/**
+ * The upper arms of a one-handed attack brought back within reach of the shoulder's range (REPOSE_PAST) at the keys where a
+ * swing (most often a race's wind-up drawn further back) carries them further, outside the hit's edge hold (`hold`, s on
+ * this clip's clock): each such arm turned, with its forearm and hand, toward one of `goals` (REPOSE_GOALS) by the least
+ * angle that does it, easing in and out over REPOSE_EASE s and none inside the hold, so the strike is the swing's own. The
+ * swivel (edgeAlign's anatomy) then takes the arms on from there. Returns the clip (a new one when anything changed).
+ */
+function repose(clip, hold, goals = REPOSE_GOALS[0]) {
+  const anim = animationJson({ c: clip }).animations.c, c = clone(clip);
+  const localAt = (t, bone) => {   // the arm's rotation in the body bone's frame at t, as the clip plays: Bᵀ R
+    const w = worldBones(samplePose(anim, Math.min(t, clip.length))), B = w.body.R, R = w[bone].R, L = [];
+    for (let r = 0; r < 3; r++) for (let q = 0; q < 3; q++) L.push(B[r] * R[q] + B[3 + r] * R[3 + q] + B[6 + r] * R[6 + q]);
+    return L;
+  };
+  let changed = false;
+  for (const side of ['right', 'left']) {
+    const bone = side + '_arm';
+    if (!(c.bones[bone] && c.bones[bone].rotation)) continue;
+    const bad = c.bones[bone].rotation.filter((k) => armPast(localAt(k.t, bone), side) > 0);
+    if (!bad.length) continue;
+    const from = Math.max(0, bad[0].t - REPOSE_EASE), to = Math.min(clip.length, bad[bad.length - 1].t + REPOSE_EASE);
+    const own = c.bones[bone].rotation, grid = [];
+    for (let t = from; t <= to + 1e-9; t += REPOSE_STEP) if (!own.some((k) => Math.abs(k.t - t) < REPOSE_STEP / 2)) grid.push({ t, v: null, lerp: 'catmullrom' });
+    const keys = [...own, ...grid].sort((x, y) => x.t - y.t);
+    keys.forEach((k, i) => { if (!k.v) k.v = nearKey(fromTrue(localAt(k.t, bone)), keys[i - 1].v); });
+    // each key's least turn that brings it within, toward the nearer goal (about d × goal, in the body's frame)
+    const turn = keys.map((k) => {
+      const L = trueRotation(k.v);
+      if (armPast(L, side) <= 0) return null;
+      const d = [-L[1], -L[4], -L[7]];
+      let best = null;
+      for (const goal of goals) {
+        const n = [d[1] * goal[2] - d[2] * goal[1], d[2] * goal[0] - d[0] * goal[2], d[0] * goal[1] - d[1] * goal[0]], l = Math.hypot(...n);
+        if (l < 1e-9) continue;
+        const u = n.map((x) => x / l);
+        for (let a = 1; a < 180 && (!best || a < best.a); a++) if (armPast(mul3(eulerAxis(u, a * RAD), L), side) <= 0) { best = { n: u, a }; break; }
+      }
+      return best;
+    });
+    // eased: each key turned about the axis of the key whose turn reaches it most, never further past than it was
+    keys.forEach((k, i) => {
+      const toHold = Math.min(1, Math.max(hold[0] - k.t, k.t - hold[1], 0) / REPOSE_HOLD);
+      let pick = null;
+      turn.forEach((x, j) => {
+        const a = x ? x.a * Math.max(0, 1 - Math.abs(keys[j].t - k.t) / REPOSE_EASE) : 0;
+        if (a > 0 && (!pick || a > pick.a)) pick = { a, n: x.n };
+      });
+      if (!pick || toHold <= 0) return;
+      const L = trueRotation(k.v), was = Math.max(0, armPast(L, side));
+      for (let f = 1; f > 0.05; f -= 0.1) {
+        const T = mul3(eulerAxis(pick.n, pick.a * toHold * f * RAD), L);
+        if (armPast(T, side) <= was + 1e-9) { k.v = nearKey(fromTrue(T), k.v); changed = true; return; }
+      }
+    });
+    c.bones[bone].rotation = keys;
+  }
+  return changed ? c : clip;
 }
 
 /**
