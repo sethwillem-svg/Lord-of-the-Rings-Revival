@@ -20,7 +20,9 @@ public final class LoadGovernor {
 
     private static State state = State.GREEN;
     private static long since;
-    private static long redSince = -1;
+    /** Tick Red started; NOT_RED when not Red (ticks can be 0 or negative in tests, so no -1 sentinel). */
+    private static final long NOT_RED = Long.MIN_VALUE;
+    private static long redSince = NOT_RED;
     private static double lastMs;
 
     private LoadGovernor() {}
@@ -29,13 +31,19 @@ public final class LoadGovernor {
         return state;
     }
 
+    /** One line for logs and test failures: state, last average tick time, Red start. */
+    public static String describe(long tick) {
+        return "governor=" + state + " avg_ms=" + String.format("%.1f", lastMs) + " red_since=" + (redSince == NOT_RED ? "-" : redSince)
+                + " tick=" + tick + " shedding=" + shedding(tick) + " frozen=" + frozen;
+    }
+
     public static double lastMs() {
         return lastMs;
     }
 
     /** True once Red has lasted the shed delay (active events far from players resolve off-screen). */
     public static boolean shedding(long tick) {
-        return state == State.RED && redSince >= 0 && tick - redSince >= EventsConfig.i(EventsConfig.GOV_SHED_SECONDS) * 20L;
+        return state == State.RED && redSince != NOT_RED && tick - redSince >= EventsConfig.i(EventsConfig.GOV_SHED_SECONDS) * 20L;
     }
 
     /** Once a second from the events tick. */
@@ -67,7 +75,7 @@ public final class LoadGovernor {
                     Math.round(chunkFraction * 100), tick);
             state = want;
             since = tick;
-            redSince = want == State.RED ? tick : -1;
+            redSince = want == State.RED ? tick : NOT_RED;
         }
         return state;
     }
@@ -76,13 +84,13 @@ public final class LoadGovernor {
     public static void forceForTest(State s) {
         state = s;
         since = Long.MIN_VALUE / 2;
-        redSince = s == State.RED ? Long.MIN_VALUE / 4 : -1;
+        redSince = s == State.RED ? -1_000_000_000L : NOT_RED;   // Red long enough to shed at once
     }
 
     /** Game tests: back to Green with no hold. */
     public static void reset() {
         state = State.GREEN;
         since = Long.MIN_VALUE / 2;
-        redSince = -1;
+        redSince = NOT_RED;
     }
 }
