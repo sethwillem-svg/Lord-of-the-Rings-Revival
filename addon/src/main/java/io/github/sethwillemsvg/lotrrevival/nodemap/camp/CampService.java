@@ -32,11 +32,17 @@ public final class CampService {
         this.ctx = ctx;
     }
 
+    /** The name trimmed, or null when it is empty, longer than {@link #NAME_MAX}, or has control or formatting characters. */
     @Nullable
     public static String cleanName(String raw) {
         if (raw == null) return null;
         String n = raw.trim();
-        return n.isEmpty() || n.length() > NAME_MAX ? null : n;
+        if (n.isEmpty() || n.length() > NAME_MAX) return null;
+        for (int i = 0; i < n.length(); i++) {
+            char c = n.charAt(i);
+            if (c < 32 || c == 127 || c == '\u00a7') return null;   // control characters and formatting codes: names are shown literally
+        }
+        return n;
     }
 
     private Result no(ServerPlayer p, String op, String code, Component msg) {
@@ -89,8 +95,10 @@ public final class CampService {
         if (c == null || !data.renameCamp(id, name)) return no(p, "rename", "no_camp", Msg.t("camp.none", "You have no camp %s.", id));
         LotrLog.dbg("nodemap", "camp rename: player={} id={} \"{}\" -> \"{}\" pos={},{},{}", LotrLog.id(p.getUUID()), id, c.name(), name,
                 c.pos().getX(), c.pos().getY(), c.pos().getZ());
+        Component msg = Msg.t("camp.renamed", "Camp renamed to %s.", name);
+        p.displayClientMessage(msg, false);
         ctx.onChange.accept(p);
-        return new Result(true, data.camp(id), "ok", Msg.t("camp.renamed", "Camp renamed to %s.", name));
+        return new Result(true, data.camp(id), "ok", msg);
     }
 
     public Result delete(ServerPlayer p, int id) {
@@ -100,8 +108,10 @@ public final class CampService {
         if (NodeRef.camp(id).equals(data.lastNode())) data.setLastNode(null);
         LotrLog.dbg("nodemap", "camp delete: player={} id={} name=\"{}\" pos={},{},{}", LotrLog.id(p.getUUID()), id, c.name(),
                 c.pos().getX(), c.pos().getY(), c.pos().getZ());
+        Component msg = Msg.t("camp.removed", "Camp %s removed.", c.name());
+        p.displayClientMessage(msg, false);
         ctx.onChange.accept(p);
-        return new Result(true, c, "ok", Msg.t("camp.removed", "Camp %s removed.", c.name()));
+        return new Result(true, c, "ok", msg);
     }
 
     /** Links of one camp for display: other end and length. */

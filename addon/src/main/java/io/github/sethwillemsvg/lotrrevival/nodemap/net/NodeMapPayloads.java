@@ -47,24 +47,12 @@ public final class NodeMapPayloads {
                 PacketDistributor.sendToPlayer(sp, new PacketOpenMapScreen(PermissionsME.checkMapTeleport(sp)));
                 sync(sp);
             }));
-            r.playToServer(TravelRequestPayload.TYPE, TravelRequestPayload.STREAM_CODEC, (p, ctx) -> server(ctx, "travel_request", sp -> {
-                NodeRef ref = NodeRef.parse(p.target());
-                if (ref == null) {
-                    LotrLog.warn("travel", "travel_request from {} with a bad ref '{}'", LotrLog.id(sp.getUUID()), p.target());
-                    return;
-                }
-                NodeMapModule.TRAVEL.request(sp, ref);
-            }));
+            r.playToServer(TravelRequestPayload.TYPE, TravelRequestPayload.STREAM_CODEC, (p, ctx) -> server(ctx, "travel_request",
+                    sp -> NodeMapServerHandlers.travelRequest(NodeMapModule.TRAVEL, sp, p.target())));
             r.playToServer(TravelCancelPayload.TYPE, TravelCancelPayload.STREAM_CODEC,
-                    (p, ctx) -> server(ctx, "travel_cancel", sp -> NodeMapModule.TRAVEL.cancel(sp, "button")));
-            r.playToServer(CampEditPayload.TYPE, CampEditPayload.STREAM_CODEC, (p, ctx) -> server(ctx, "camp_edit", sp -> {
-                switch (p.op()) {
-                    case "create" -> NodeMapModule.CAMPS.create(sp, p.name());
-                    case "rename" -> NodeMapModule.CAMPS.rename(sp, p.id(), p.name());
-                    case "delete" -> NodeMapModule.CAMPS.delete(sp, p.id());
-                    default -> LotrLog.warn("nodemap", "camp_edit from {} with unknown op '{}'", LotrLog.id(sp.getUUID()), p.op());
-                }
-            }));
+                    (p, ctx) -> server(ctx, "travel_cancel", sp -> NodeMapServerHandlers.cancel(NodeMapModule.TRAVEL, sp)));
+            r.playToServer(CampEditPayload.TYPE, CampEditPayload.STREAM_CODEC,
+                    (p, ctx) -> server(ctx, "camp_edit", sp -> NodeMapServerHandlers.campEdit(NodeMapModule.CAMPS, sp, p)));
         });
     }
 
@@ -120,7 +108,7 @@ public final class NodeMapPayloads {
         @Nullable NodeRef last = acc.data.lastNode();
         return new NodeStatePayload(known, new ArrayList<>(acc.data.rumoured()), barred, camps, acc.data.cooldown(),
                 last == null ? "" : last.toString(), s.customMax(), s.departRadius(), s.cost().cooldownBase(), s.cost().cooldownPerBlock(),
-                s.cost().cooldownMax(), s.cost().exhaustionPerBlock(), s.cost().exhaustionCap(), s.wildFactor());
+                s.cost().cooldownMax(), s.cost().exhaustionPerBlock(), s.cost().exhaustionCap(), s.wildFactor(), s.cost().coinPer1000());
     }
 
     public static void sendStatus(ServerPlayer p, String state, @Nullable NodeRef target, int left, int total, Component reason) {
