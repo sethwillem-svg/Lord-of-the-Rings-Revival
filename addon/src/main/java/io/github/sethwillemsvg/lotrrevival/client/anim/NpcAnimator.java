@@ -1,7 +1,9 @@
 package io.github.sethwillemsvg.lotrrevival.client.anim;
 
 import com.mojang.logging.LogUtils;
+import io.github.sethwillemsvg.lotrrevival.combat.Hands;
 import io.github.sethwillemsvg.lotrrevival.combat.NpcRaces;
+import io.github.sethwillemsvg.lotrrevival.combat.WeaponClass;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.resources.ResourceLocation;
@@ -96,7 +98,22 @@ public final class NpcAnimator {
 
     /** The server started an attack (combat.AttackTiming): play it at speed. */
     public static void startAttack(LivingEntity entity, String animation, float speed) {
-        if (isNpc(entity)) NpcAnimatable.of(entity).attack(entity, animation, speed);
+        startAttack(entity, animation, speed, 0);
+    }
+
+    /** The server started an attack: play it at speed for normalAfterTicks ticks, then at normal speed (the time warp). */
+    public static void startAttack(LivingEntity entity, String animation, float speed, int normalAfterTicks) {
+        if (isNpc(entity)) NpcAnimatable.of(entity).attack(entity, animation, speed, normalAfterTicks);
+    }
+
+    /** Plays a one-off overlay clip (stagger, parry_shield, ...) when this NPC's rig has it. */
+    public static void play(LivingEntity entity, String animation) {
+        if (isNpc(entity)) NpcAnimatable.of(entity).play(animation);
+    }
+
+    /** Holds a shield in its other hand. */
+    public static boolean isShieldBearer(LivingEntity entity) {
+        return "shield".equals(WeaponClass.of(Hands.other(entity)));
     }
 
     /** The joint angles of the pose last applied to this NPC (JOINTS order, radians), or null if it has none. Read by the
