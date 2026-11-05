@@ -81,6 +81,9 @@ public final class NemesisTestPlayers {
     /** Retreats every body and forgets the records of the factions the tests use. */
     public static void clear(MinecraftServer s) {
         NemesisSavedData d = NemesisSavedData.get(s);
+        // ambushes run as world events now: end them (and any other event a test left) before the bodies go
+        io.github.sethwillemsvg.lotrrevival.events.WorldEventManager.clearForTest(s);
+        Ambush.ENDED.clear();
         for (NemesisRecord r : new ArrayList<>(d.records.values())) if (Manifestation.body(r.id) != null) Manifestation.retreat(s, r, "test cleanup");
         for (ResourceLocation f : List.of(MORDOR, GONDOR, BRIGAND)) d.clearFactionForTest(f);
         NemesisRandom.reset();
