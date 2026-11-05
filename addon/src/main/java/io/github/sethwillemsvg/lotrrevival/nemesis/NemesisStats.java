@@ -18,9 +18,11 @@ public final class NemesisStats {
         Map<NemesisRecord.Status, Integer> byStatus = new EnumMap<>(NemesisRecord.Status.class);
         for (NemesisRecord r : d.records.values()) byStatus.merge(r.status, 1, Integer::sum);
         LotrLog.dbg("nemesis", "summary tick={}: records={} bodies={} rise_rolls={} rises={} rank_changes={} escapes={} cheat_deaths={} "
-                        + "deaths={} ambush_checks={} ambushes={} body_checks={} retreats={} sergeants={}",
+                        + "deaths={} ambush_checks={} ambushes={} body_checks={} retreats={} sergeants={} guard_repaths={} guard_teleports={} "
+                        + "guard_defends={}",
                 server.getTickCount(), byStatus, d.manifestCount(), rolls, rises, rankChanges, escapes, cheatDeaths, deaths,
-                ambushChecks, ambushes, bodyChecks, retreats, sergeants);
+                ambushChecks, ambushes, bodyChecks, retreats, sergeants, BodyguardGoals.repaths, BodyguardGoals.teleports, BodyguardGoals.defends);
         rises = deaths = escapes = cheatDeaths = ambushChecks = ambushes = bodyChecks = retreats = rolls = rankChanges = sergeants = 0;
+        BodyguardGoals.repaths = BodyguardGoals.teleports = BodyguardGoals.defends = 0;
     }
 }

@@ -54,6 +54,8 @@ public final class Manifestation {
         public final UUID recordId;
         public NpcEntity entity;
         public final List<NpcEntity> guards = new ArrayList<>();
+        /** What it rides (Warlord and up), or null. */
+        public @Nullable Entity mount;
         public long retreatAtTick = -1;
         public String retreatReason = "";
         public long lastHolderNearTick;
@@ -107,8 +109,17 @@ public final class Manifestation {
             return null;
         }
         npc.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, NemesisRandom.nextInt(360), 0);
-        if (!r.gear.isEmpty()) r.gear.forEach((slot, stack) -> npc.setItemSlot(slot, stack.copy()));
-        // TODO(spec §Ranks gear): from Commander up, re-roll once from Faction.getRandomGear(level, LEADER, race) and keep it
+        if (!r.gear.isEmpty()) {
+            for (EquipmentSlot slot : EquipmentSlot.values()) if (slot != EquipmentSlot.BODY) npc.setItemSlot(slot, ItemStack.EMPTY);
+            r.gear.forEach((slot, stack) -> npc.setItemSlot(slot, stack.copy()));
+            npc.updateAttackType();
+            LotrLog.dbg("nemesis", "gear: id={} wears its saved gear {}", r.shortId(), LeaderGear.describe(r));
+        } else {
+            LeaderGear.snapshot(npc, r);   // spawned without a rise (command, test): keeps what Middle-earth gave it from now on
+            LotrLog.dbg("nemesis", "gear: id={} had none saved; keeps its type's gear {}", r.shortId(), LeaderGear.describe(r));
+        }
+        LeaderGear.rerollIfDue(level, npc, r, f);
+        Entity mount = LeaderGear.mountIfDue(level, npc, r, f);
         r.manifestation++;
         r.status = NemesisRecord.Status.MANIFEST;
         r.lastDimension = level.dimension().location();
@@ -121,13 +132,15 @@ public final class Manifestation {
         level.addFreshEntity(npc);
         npc.setHealth(npc.getMaxHealth());
         Body b = new Body(r.id, npc);
+        b.mount = mount;
         b.lastHolderNearTick = level.getGameTime();
         BODIES.put(r.id, b);
         spawnGuards(level, r, b, f);
         NemesisBossBar.create(npc, r);
-        LotrLog.dbg("nemesis", "manifest: id={} name=\"{}\" rank={} body={} at {},{},{} dim={} manifestation={} guards={} reason={} tick={}",
-                r.shortId(), r.displayName(), r.rank, LotrLog.id(npc.getUUID()), pos.getX(), pos.getY(), pos.getZ(),
-                r.lastDimension, r.manifestation, b.guards.size(), reason, level.getGameTime());
+        LotrLog.dbg("nemesis", "manifest: id={} name=\"{}\" rank={} body={} at {},{},{} dim={} manifestation={} guards={} mount={} reason={} "
+                        + "tick={}", r.shortId(), r.displayName(), r.rank, LotrLog.id(npc.getUUID()), pos.getX(), pos.getY(), pos.getZ(),
+                r.lastDimension, r.manifestation, b.guards.size(), mount == null ? "none" : mount.getType().toShortString(), reason,
+                level.getGameTime());
         return npc;
     }
 
@@ -158,6 +171,9 @@ public final class Manifestation {
         r.escapeTried = false;
         r.warHornUsed = false;
         r.noPlayerSinceTick = -1;
+        // a body that died in an event or ambush keeps those ids; a new body starts free (callers set them after spawning)
+        r.eventId = null;
+        r.ambushTarget = null;
     }
 
     private static void prepareBody(NpcEntity npc, NemesisRecord r) {
@@ -235,8 +251,16 @@ public final class Manifestation {
             return;
         }
         for (int i = 0; i < n; i++) {
-            NpcEntity g = spawnHelper(level, NemesisRandom.pick(pool), b.entity.blockPosition());
-            if (g != null) b.guards.add(g);
+            ResourceLocation type = NemesisRandom.pick(pool);
+            NpcEntity g = spawnHelper(level, type, b.entity.blockPosition());
+            if (g == null) {
+                LotrLog.dbg("nemesis", "bodyguard of {}: Middle-earth could not build {}", r.shortId(), type);
+                continue;
+            }
+            BodyguardGoals.attach(g, b.entity, r.id);
+            b.guards.add(g);
+            LotrLog.dbg("nemesis", "bodyguard: id={} guard={} type={} at {} ({}/{})", r.shortId(), LotrLog.id(g.getUUID()), type,
+                    g.blockPosition().toShortString(), b.guards.size(), n);
         }
     }
 
@@ -270,7 +294,10 @@ public final class Manifestation {
             if (!e.isRemoved() && e.level() instanceof ServerLevel sl) {
                 sl.sendParticles(ParticleTypes.LARGE_SMOKE, e.getX(), e.getY() + 1, e.getZ(), 30, 0.4, 0.8, 0.4, 0.02);
                 r.lastPos = e.blockPosition();
+                LeaderGear.discardMount(b.mount != null ? b.mount : e.getVehicle(), e);
                 e.discard();
+            } else {
+                LeaderGear.discardMount(b.mount, e);
             }
             for (NpcEntity g : b.guards) if (!g.isRemoved()) g.discard();
             NemesisBossBar.remove(e.getUUID());
@@ -352,11 +379,7 @@ public final class Manifestation {
             }
             if (TraitEffects.has(r, "unshakeable") && e.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)) e.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
             TraitEffects.bodyTick(e, r);
-            for (NpcEntity g : b.guards) {
-                if (g.isRemoved()) continue;
-                if (e.getTarget() != null && g.getTarget() == null) g.setTarget(e.getTarget());
-                if (g.distanceToSqr(e) > 12 * 12) g.getNavigation().moveTo(e, 1.1);   // TODO(spec §Ranks): a real follow goal
-            }
+            b.guards.removeIf(Entity::isRemoved);   // following and defending are the guards' own goals (BodyguardGoals)
             NemesisBossBar.update(e, r);
         }
     }
@@ -366,6 +389,14 @@ public final class Manifestation {
     /** A body that loads with an older manifestation number, or of a dead or at-large record, is removed silently. */
     public static void onJoin(EntityJoinLevelEvent e) {
         if (e.getLevel().isClientSide()) return;
+        if (e.loadedFromDisk() && (e.getEntity().getTags().contains(BodyguardGoals.GUARD_TAG)
+                || e.getEntity().getTags().contains(LeaderGear.MOUNT_TAG))) {
+            // goals are not saved, and a bodyguard or mount without its live nemesis has no business here
+            e.setCanceled(true);
+            LotrLog.dbg("nemesis", "leftover {} removed on load: entity={} type={}", e.getEntity().getTags().contains(LeaderGear.MOUNT_TAG)
+                    ? "nemesis mount" : "bodyguard", LotrLog.id(e.getEntity().getUUID()), e.getEntity().getType().toShortString());
+            return;
+        }
         NemesisLink link = NemesisLink.of(e.getEntity());
         if (link == null || e.getEntity().getServer() == null) return;
         NemesisRecord r = NemesisSavedData.get(e.getEntity().getServer()).find(link.id());
