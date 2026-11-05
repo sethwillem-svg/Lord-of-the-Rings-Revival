@@ -294,7 +294,7 @@ public final class Parry {
         stagger(level, npc, now, "parried by " + LotrLog.id(player.getUUID()));
         double kb = CombatConfig.parryKnockback();
         if (kb > 0) npc.knockback(kb, player.getX() - npc.getX(), player.getZ() - npc.getZ());
-        CombatFx.perfect(level, player, npc);
+        CombatFx.perfect(level, player, npc, s.kind == ParryState.PressKind.SHIELD);
         LotrLog.dbg("combat", "counter armed: player={} target={} until={}", LotrLog.id(player.getUUID()), LotrLog.id(npc.getUUID()),
                 s.counterUntil);
     }
@@ -337,8 +337,9 @@ public final class Parry {
             speed.addOrUpdateTransientModifier(new AttributeModifier(STAGGER_SLOW, CombatConfig.staggerSpeed(), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         STAGGERED.put(npc, Boolean.TRUE);
         CombatStats.staggers++;
+        CombatFx.stagger(level, npc);
         LotrLog.dbg("combat", "stagger start: npc={} ticks={} until={} ({}) tick={}", LotrLog.id(npc.getUUID()), ticks, st.staggerUntil, why, now);
-        // TODO(spec ticket 3/8): the client plays the NPC's stagger clip on NpcAttackEndPayload PARRIED; none exist yet
+        // the client plays the NPC's stagger clip on NpcAttackEndPayload PARRIED (client.anim.ClientAttack.end)
     }
 
     /** Lifts the slow from NPCs whose stagger ended (AttackTiming's level tick). */

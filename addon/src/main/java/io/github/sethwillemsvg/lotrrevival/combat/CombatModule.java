@@ -14,7 +14,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 /**
- * Combat wiring (specs/addon/combat-parry-warning.md): config, attachments, payloads (registrar version 2), and the server
+ * Combat wiring (specs/addon/combat-parry-warning.md): config, attachments, sounds, particles, payloads (registrar version 2), and the server
  * listeners of AttackTiming, Parry and CombatStats. Client wiring is in client.combat.CombatClientModule.
  */
 public final class CombatModule {
@@ -32,6 +32,8 @@ public final class CombatModule {
             if (e.getConfig().getSpec() == CombatConfig.SPEC) CombatConfig.logInUse();
         });
         ParryState.register(modBus);
+        CombatSounds.register(modBus);
+        CombatParticles.register(modBus);
         modBus.addListener(CombatModule::payloads);
         AttackTiming.register();
         Parry.register();

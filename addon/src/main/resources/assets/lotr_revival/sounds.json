@@ -1,0 +1,50 @@
+{
+  "combat.parry_perfect": {
+    "subtitle": "subtitles.lotr_revival.combat.parry_perfect",
+    "sounds": [
+      {
+        "name": "lotr_revival:combat/parry_perfect"
+      }
+    ]
+  },
+  "combat.parry_glance": {
+    "subtitle": "subtitles.lotr_revival.combat.parry_glance",
+    "sounds": [
+      {
+        "name": "lotr_revival:combat/parry_glance"
+      }
+    ]
+  },
+  "combat.shield_block": {
+    "subtitle": "subtitles.lotr_revival.combat.shield_block",
+    "sounds": [
+      {
+        "name": "lotr_revival:combat/shield_block"
+      }
+    ]
+  },
+  "combat.stagger": {
+    "subtitle": "subtitles.lotr_revival.combat.stagger",
+    "sounds": [
+      {
+        "name": "lotr_revival:combat/stagger"
+      }
+    ]
+  },
+  "combat.heavy_warn": {
+    "subtitle": "subtitles.lotr_revival.combat.heavy_warn",
+    "sounds": [
+      {
+        "name": "lotr_revival:combat/heavy_warn"
+      }
+    ]
+  },
+  "combat.counter_ready": {
+    "subtitle": "subtitles.lotr_revival.combat.counter_ready",
+    "sounds": [
+      {
+        "name": "lotr_revival:combat/counter_ready"
+      }
+    ]
+  }
+}

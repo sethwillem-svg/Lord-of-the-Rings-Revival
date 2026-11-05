@@ -11,7 +11,7 @@ import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
-/** Client combat wiring, called from combat.CombatModule on a client only: warning config, marker layer, parry input. */
+/** Client combat wiring, called from combat.CombatModule on a client only: warning config, marker layer, particle providers, parry input. */
 public final class CombatClientModule {
     private CombatClientModule() {}
 
@@ -22,6 +22,7 @@ public final class CombatClientModule {
         });
         modBus.addListener((RegisterGuiLayersEvent e) -> e.registerAboveAll(LotrRevival.id("attack_warnings"), MarkerRenderer::draw));
         modBus.addListener((RegisterKeyMappingsEvent e) -> e.register(ParryInput.KEY));
+        modBus.addListener(CombatParticleProviders::register);
         NeoForge.EVENT_BUS.addListener(ParryInput::onInteract);
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post e) -> {
             AttackMarkers.tick();

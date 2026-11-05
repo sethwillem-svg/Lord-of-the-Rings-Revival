@@ -169,7 +169,7 @@ public final class AttackTiming {
                 NpcAttackPayload.flags(heavy, mounted));
         sink(payload);
         PacketDistributor.sendToPlayersTrackingEntity(npc, payload);
-        if (heavy && target instanceof ServerPlayer sp) CombatFx.heavyWarn(sp);
+        if (heavy) CombatFx.heavyStart(level, npc, target);
     }
 
     private static boolean rollHeavy(NpcEntity npc, @Nullable String realClass, ParryState.NpcCombat st, long now) {
