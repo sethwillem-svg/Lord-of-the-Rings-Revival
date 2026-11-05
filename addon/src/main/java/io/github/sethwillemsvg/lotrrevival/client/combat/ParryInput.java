@@ -19,7 +19,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * Blade guard input: the use key with a blade in the main hand (no shield, nothing usable in the off hand, not aimed at a
  * block or entity) or the Parry key (unbound by default) sends a ParryPayload; the server stamps the tick. A local cooldown
  * of one guard length keeps a held key from spamming presses (the server enforces the same).
- * TODO(spec ticket 6): a proper first-person guard pose; the main-hand swing stands in. Lang keys for the key mapping.
+ * Key name: key.lotr_revival.parry in the "LOTR Revival" category (lang en_us). TODO(spec ticket 6): a proper first-person
+ * guard pose; the main-hand swing stands in.
  */
 public final class ParryInput {
     private ParryInput() {}

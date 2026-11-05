@@ -72,5 +72,12 @@
   "lotr_revival.event.title.muster.opposition": "Break the muster",
   "lotr_revival.event.title.raid": "Raid",
   "lotr_revival.event.title.defence": "Defend the settlement",
-  "lotr_revival.event.title.unknown": "Something stirs"
+  "lotr_revival.event.title.unknown": "Something stirs",
+  "key.lotr_revival.parry": "Parry",
+  "subtitles.lotr_revival.combat.parry_perfect": "Parry rings out",
+  "subtitles.lotr_revival.combat.parry_glance": "Blade glances off",
+  "subtitles.lotr_revival.combat.shield_block": "Shield thuds",
+  "subtitles.lotr_revival.combat.stagger": "Fighter staggers",
+  "subtitles.lotr_revival.combat.heavy_warn": "Heavy blow coming",
+  "subtitles.lotr_revival.combat.counter_ready": "Counter ready"
 }
