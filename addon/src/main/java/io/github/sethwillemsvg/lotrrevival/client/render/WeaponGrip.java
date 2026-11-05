@@ -36,6 +36,10 @@ import java.util.Map;
  *
  * <p>Shields have no length: they are strapped to the forearm instead (strap), measured from their own faces the same way,
  * so every Middle-earth shield, block-element model or builtin entity model, sits face out from the back of the forearm.
+ *
+ * <p>Bows and longbows are held across the forearm instead (bow): measured from their own faces (limbs, grip, which side
+ * the string is on), their display transform ignored, upright when the arm is held out toward the target, the grip on the
+ * hand and the string toward the archer, at the class length tip to tip.
  */
 public final class WeaponGrip {
     private WeaponGrip() {}
@@ -68,12 +72,13 @@ public final class WeaponGrip {
 
     /**
      * Where a held item goes: its drawn weapon scaled to the class length about its grip, the grip moved onto the fist, then
-     * the class's turn and offset; a shield strapped to the forearm (strap). quads: the item's faces as Minecraft draws it
+     * the class's turn and offset; a shield strapped to the forearm (strap); a bow held across it (bow). quads: the item's faces as Minecraft draws it
      * in the arm (px), x, y, z per vertex. Null for other classes without a length, and for items with nothing drawn.
      */
     @Nullable
     public static Matrix4f place(@Nullable String cls, boolean left, List<float[]> quads) {
         if ("shield".equals(cls)) return strap(left, quads);
+        if (isBow(cls)) return bow(cls, left, quads);
         Grip g = cls == null ? null : grips().get(cls);
         if (g == null) return null;
         List<Vector3f> drawn = drawn(quads);
@@ -87,6 +92,125 @@ public final class WeaponGrip {
         return new Matrix4f().translate(f).translate(sign * g.offset().x, g.offset().y, g.offset().z)
                 .rotateZYX((float) Math.toRadians(sign * g.rotate().z), (float) Math.toRadians(sign * g.rotate().y), (float) Math.toRadians(g.rotate().x))
                 .scale(s).translate(-grip.x, -grip.y, -grip.z);
+    }
+
+    // ---- bows ----
+    /** Bows and longbows: placed by bow (crossbows are seated as weapons). */
+    public static boolean isBow(@Nullable String cls) {
+        return "bow".equals(cls) || "longbow".equals(cls);
+    }
+
+    /** The grip's place in the bow hand (part space, px): just above the fist's top (z -2.5: the front of the forearm, up
+     *  when the arm is held out), half way along the hand (y 8.5), on the forearm's inner side (x +1.25 on the right arm,
+     *  whose inner face is at x 1; -1.25 on the left, whose inner face is at -1). */
+    public static Vector3f bowGrip(boolean left) {
+        return new Vector3f(left ? -1.25f : 1.25f, 8.5f, -2.5f);
+    }
+
+    /** The bow's frame in the hand (part space): its limbs along the front of the forearm, out (the arrow's way) down the
+     *  arm toward the fist, so the string lies toward the shoulder. */
+    public static final Vector3f BOW_UP = new Vector3f(0, 0, -1), BOW_OUT = new Vector3f(0, 1, 0);
+    /** The share of the bow's length either side of its middle where the grip is looked for. */
+    private static final float BOW_MIDDLE = 0.05f;
+
+    /** A bow measured from its faces (px, the quads' space): limb axis (toward the tip nearer the displayed up, -z), out
+     *  (from the string to the wood: the arrow's way), the grip (the wood's middle), brace (the string's middle behind the
+     *  grip) and length (tip to tip). */
+    public record Bow(Vector3f up, Vector3f out, Vector3f grip, float brace, float length) {}
+
+    /**
+     * Measures a bow (the same measure as tools/anim-viewer/gecko/bow.js measure): its drawn points (a generated model's
+     * big faces dropped, see the class comment) flattened onto the item's middle plane (the largest face's normal); the
+     * tips, the farthest pair; across the limb axis in the plane, the wood's middle stands off the straight string to one
+     * side: of the points within BOW_MIDDLE of the middle of the length, the farthest off the tips' line is on the wood,
+     * so out points that way (from the string to the wood: the arrow's way); split at the widest gap between their
+     * offsets, the far side is the wood (the grip half way through it) and the near side the string (the brace: how far
+     * its middle stands behind the grip). Null with nothing drawn.
+     */
+    @Nullable
+    public static Bow measureBow(List<float[]> quads) {
+        if (quads.isEmpty()) return null;
+        Vector3f bigN = null;
+        float bigA = 0;
+        for (float[] q : quads) {
+            Vector3f n = newell(q);
+            float a = n.length() / 2;
+            if (a > bigA) { bigA = a; bigN = n.normalize(); }
+        }
+        if (bigN == null || bigA < 1e-9f) return null;
+        List<Vector3f> drawn = drawn(quads);
+        if (drawn.size() < 2) return null;
+        Vector3f c0 = new Vector3f();
+        for (Vector3f p : drawn) c0.add(p);
+        c0.div(drawn.size());
+        List<Vector3f> pts = new ArrayList<>();
+        for (Vector3f p : drawn) pts.add(new Vector3f(p).sub(new Vector3f(bigN).mul(new Vector3f(p).sub(c0).dot(bigN))));
+        Vector3f a = pts.get(0), b = pts.get(1);
+        float best = -1;
+        for (int i = 0; i < pts.size(); i++)
+            for (int j = i + 1; j < pts.size(); j++) {
+                float d = pts.get(i).distance(pts.get(j));
+                if (d > best) { best = d; a = pts.get(i); b = pts.get(j); }
+            }
+        if (best < 1e-3f) return null;
+        Vector3f up = new Vector3f(b).sub(a).normalize();
+        if (up.dot(BOW_UP) < 0) up.negate();
+        Vector3f normal = new Vector3f(bigN).sub(new Vector3f(up).mul(bigN.dot(up))).normalize();
+        Vector3f across = new Vector3f(normal).cross(up).normalize();
+        Vector3f mid = new Vector3f(a).add(b).mul(0.5f);
+        List<Float> off = new ArrayList<>();
+        for (Vector3f p : pts) {
+            Vector3f v = new Vector3f(p).sub(mid);
+            if (Math.abs(v.dot(up)) <= BOW_MIDDLE * best) off.add(v.dot(across));
+        }
+        float far = 0;
+        for (float s : off) if (Math.abs(s) > Math.abs(far)) far = s;
+        float sign = far < 0 ? -1 : 1;
+        // the wood and the string at the middle: the offsets either side of the widest gap between them (the string a thin
+        // line, the wood a band of its two edges, the gap the brace); a middle with no gap is all wood, its string the tips' line
+        float[] s = new float[off.size()];
+        for (int i = 0; i < s.length; i++) s[i] = off.get(i) * sign;
+        java.util.Arrays.sort(s);
+        int cut = 0;
+        float gap = 1e-6f;
+        for (int i = 1; i < s.length; i++) if (s[i] - s[i - 1] > gap) { gap = s[i] - s[i - 1]; cut = i; }
+        float depth = (s[cut] + s[s.length - 1]) / 2, behind = cut > 0 ? (s[0] + s[cut - 1]) / 2 : 0;
+        Vector3f out = new Vector3f(across).mul(sign);
+        return new Bow(up, out, new Vector3f(mid).add(new Vector3f(out).mul(depth)), depth - behind, best);
+    }
+
+    /**
+     * Where a bow or longbow goes, whatever the item's own display transform did with it (Middle-earth's turns it for
+     * Minecraft's aiming arms): measured from its faces (measureBow), its limbs along the front of the forearm (BOW_UP: up
+     * when the arm is held out toward the target), its out down the arm (BOW_OUT, so the string lies toward the archer),
+     * the grip on bowGrip, the length the class's (tip to tip). The same placement is tools/anim-viewer/gecko/bow.js place;
+     * the bow clips hold the bow arm out with the forearm's front up and draw the string back along it. Null with nothing
+     * drawn.
+     */
+    @Nullable
+    public static Matrix4f bow(String cls, boolean left, List<float[]> quads) {
+        Bow b = measureBow(quads);
+        if (b == null) return null;
+        // bows have no "native" scale: the class length, tip to tip (the same factor seatedLength gives such classes)
+        float s = length(cls) * 16f / b.length();
+        if (s <= 0) return null;
+        Matrix3f to = new Matrix3f(BOW_UP, BOW_OUT, new Vector3f(BOW_UP).cross(BOW_OUT));
+        Matrix3f from = new Matrix3f(b.up(), b.out(), new Vector3f(b.up()).cross(b.out()));
+        Matrix3f r = to.mul(from.transpose()).scale(s);
+        Vector3f moved = r.transform(new Vector3f(b.grip()));
+        return new Matrix4f().set(r).setTranslation(bowGrip(left).sub(moved));
+    }
+
+    /** Newell's normal of a face: its unit normal times twice its area. */
+    private static Vector3f newell(float[] q) {
+        Vector3f n = new Vector3f();
+        int count = q.length / 3;
+        for (int i = 0; i < count; i++) {
+            int j = (i + 1) % count;
+            float ax = q[i * 3], ay = q[i * 3 + 1], az = q[i * 3 + 2], bx = q[j * 3], by = q[j * 3 + 1], bz = q[j * 3 + 2];
+            n.add((ay - by) * (az + bz), (az - bz) * (ax + bx), (ax - bx) * (ay + by));
+        }
+        return n;
     }
 
     // ---- shields ----

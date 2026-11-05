@@ -8,6 +8,7 @@ import com.arcanc.pulselib.util.PRenderTypes;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.logging.LogUtils;
 import com.mojang.math.Axis;
+import io.github.sethwillemsvg.lotrrevival.client.anim.BowDraw;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimatable;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcAnimator;
 import io.github.sethwillemsvg.lotrrevival.client.anim.NpcPose;
@@ -37,6 +38,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.armortrim.ArmorTrim;
@@ -74,7 +76,9 @@ import java.util.WeakHashMap;
  *    hand. Not drawn: glint; items whose look changes every frame (compass, clock) keep their first look. Items with their own
  *    renderer (banners, banner shields) are drawn the normal way: their pattern layers share one surface and need draw order.
  *    Both ways the item is first placed in the arm (WeaponGrip, measured from what HeldItems draws): weapons sized and
- *    seated on the fist, shields strapped to the forearm, face out from its back.
+ *    seated on the fist, shields strapped to the forearm, face out from its back, bows held upright across it. A bow's look
+ *    includes the drawn model its bow clip has reached (client.anim.BowDraw), so each of slack and pulling_0..2 is recorded
+ *    once and shown as the clip draws.
  */
 public class PulseNpcRenderer extends VanillaNpcRenderer {
     private static final Logger LOG = LogUtils.getLogger();
@@ -94,14 +98,16 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     private final Map<ModelPart, List<Quad>> armourQuads = new WeakHashMap<>();
     private final Map<ModelPart, Map<Object, PGeometryData>> armourMeshes = new WeakHashMap<>();
     private final Map<ItemKey, List<Piece>> itemPieces = new HashMap<>();
-    /** Each held item's faces in arm space (px), and where it sits per stance (arm space, blocks; NONE_PLACE: as drawn). */
+    /** Each held item look's faces in arm space (px), and where it sits (arm space, blocks; NONE_PLACE: as drawn). */
     private final Map<ItemKey, List<float[]>> itemQuads = new HashMap<>();
     private final Map<ItemKey, Matrix4f> itemPlace = new HashMap<>();
     private static final Matrix4f NONE_PLACE = new Matrix4f();
     private final java.util.Set<Class<?>> warned = new java.util.HashSet<>();
     private TextureAtlas atlasSeen;
 
-    private record ItemKey(int stackHash, ItemDisplayContext context, boolean left) {}
+    /** A held item's look: the stack, the hand, and for a bow or crossbow the drawn model shown (client.anim.BowDraw stage,
+     *  0 for anything else). */
+    private record ItemKey(int stackHash, ItemDisplayContext context, boolean left, int bowStage) {}
 
     private record ArmourKey(int stackHash, EquipmentSlot slot) {}
 
@@ -377,7 +383,12 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         } else {
             model.translateToHand(arm, poseStack);   // the hand frame Minecraft's held-item layer uses
         }
-        ItemKey key = new ItemKey(ItemStack.hashItemAndComponents(stack), context, left);
+        // a bow shows the model its clip's draw has reached (BowDraw, from the clip's time: not the entity's using-item state);
+        // a crossbow its real reload (the server times it), which keys the recording so the reload does not freeze
+        String cls = WeaponGrip.classOf(stack);
+        int bowStage = animatable != null && WeaponGrip.isBow(cls) ? animatable.bowStage()
+                : "crossbow".equals(cls) ? crossbowStage(entity, stack) : BowDraw.SLACK;
+        ItemKey key = new ItemKey(ItemStack.hashItemAndComponents(stack), context, left, bowStage);
         Matrix4f place = place(entity, stack, key);   // a weapon at its class's length, handle on the fist; a shield strapped to the forearm (WeaponGrip)
         if (place != NONE_PLACE) poseStack.mulPose(place);
         poseStack.mulPose(Axis.XP.rotationDegrees(-90f));
@@ -386,33 +397,42 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
         // Items with their own renderer (banners, banner shields, ...) paint several layers onto one surface, which only
         // works in draw order: draw those the normal way. Ordinary item models go to PulseLib.
         if (Minecraft.getInstance().getItemRenderer().getModel(stack, entity.level(), entity, entity.getId()).isCustomRenderer()) {
-            HeldItems.render(itemInHand, entity, stack, context, left, poseStack, buffers, light);
+            HeldItems.render(itemInHand, entity, stack, context, left, poseStack, buffers, light, bowStage);
             poseStack.popPose();
             return;
         }
         Matrix4f m = new Matrix4f(poseStack.last().pose());
         poseStack.popPose();
-        List<Piece> pieces = itemPieces.computeIfAbsent(key, k -> recordItem(entity, stack, context, left));
+        List<Piece> pieces = itemPieces.computeIfAbsent(key, k -> recordItem(entity, stack, context, left, k.bowStage()));
         for (Piece piece : pieces) submit(piece.type, piece.mesh, m, piece.color, light, OverlayTexture.NO_OVERLAY);
     }
 
-    /** Where a held item sits in the arm (WeaponGrip), cached per item. */
+    /** A crossbow's reload stage now (BowDraw.crossbowStage), from the entity's use of it, as Minecraft's predicates read it. */
+    private static int crossbowStage(NpcEntity entity, ItemStack stack) {
+        boolean reloading = entity.isUsingItem() && entity.getUseItem() == stack;
+        float pull = reloading ? (stack.getUseDuration(entity) - entity.getUseItemRemainingTicks()) / (float) CrossbowItem.getChargeDuration(stack, entity) : 0f;
+        return BowDraw.crossbowStage(reloading, CrossbowItem.isCharged(stack), pull);
+    }
+
+    /** Where a held item sits in the arm (WeaponGrip), cached per item look. A bow is measured on its slack model for every
+     *  stage, so the drawn models (their limbs bent, an arrow across the grip) sit where the slack bow does. */
     private Matrix4f place(NpcEntity entity, ItemStack stack, ItemKey key) {
         return itemPlace.computeIfAbsent(key, k -> {
-            List<float[]> quads = itemQuads.computeIfAbsent(key, kk -> armQuads(entity, stack, key.context(), key.left()));
+            ItemKey measured = new ItemKey(k.stackHash(), k.context(), k.left(), BowDraw.SLACK);
+            List<float[]> quads = itemQuads.computeIfAbsent(measured, kk -> armQuads(entity, stack, kk.context(), kk.left(), kk.bowStage()));
             Matrix4f grip = WeaponGrip.place(WeaponGrip.classOf(stack), key.left(), quads);
             return grip == null ? NONE_PLACE : WeaponGrip.toBlocks(grip);
         });
     }
 
     /** The item's faces as Minecraft's held-item layer places them in the arm (arm space, px; x, y, z per vertex). */
-    private List<float[]> armQuads(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left) {
+    private List<float[]> armQuads(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left, int bowStage) {
         PoseStack ps = new PoseStack();
         ps.mulPose(Axis.XP.rotationDegrees(-90f));
         ps.mulPose(Axis.YP.rotationDegrees(180f));
         ps.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);
         PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
-        HeldItems.render(itemInHand, entity, stack, context, left, ps, buffers, 0xF000F0);
+        HeldItems.render(itemInHand, entity, stack, context, left, ps, buffers, 0xF000F0, bowStage);
         buffers.flush();
         List<float[]> out = new ArrayList<>();
         buffers.byType.forEach((rt, rec) -> {
@@ -430,9 +450,9 @@ public class PulseNpcRenderer extends VanillaNpcRenderer {
     }
 
     /** Draws the item once into a recorder (hand space), then packs one mesh per (texture, colour). */
-    private List<Piece> recordItem(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left) {
+    private List<Piece> recordItem(NpcEntity entity, ItemStack stack, ItemDisplayContext context, boolean left, int bowStage) {
         PulseGeometry.RecordingBuffers buffers = new PulseGeometry.RecordingBuffers();
-        HeldItems.render(itemInHand, entity, stack, context, left, new PoseStack(), buffers, 0xF000F0);
+        HeldItems.render(itemInHand, entity, stack, context, left, new PoseStack(), buffers, 0xF000F0, bowStage);
         buffers.flush();
         List<Piece> pieces = new ArrayList<>();
         buffers.byType.forEach((rt, rec) -> {

@@ -56,6 +56,10 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private long serverAttackAt = -1000;
     /** The pose last applied to the model this frame (NpcAnimator.apply), read by the renderer for held items. */
     @Nullable NpcPose lastPose;
+    /** The bow model shown this frame (BowDraw stage, from the bow clips' draw; NpcAnimator.apply), read by the renderer. */
+    int bowStage;
+    /** The tick bow_aim was entered and the tick bow_release was triggered (-1: not since), for the bow clips' time. */
+    private int aimTick = -1, releaseTick = -1;
     private final Map<String, Float> pendingSpeeds = new HashMap<>();
     /** The overlay the last attack() played (its handed name) and its speed: what a hitstop freezes and restores. */
     @Nullable private String lastAttack;
@@ -137,8 +141,14 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         float speed = (float) Math.hypot(mover.getX() - mover.xo, mover.getZ() - mover.zo);
         String next = baseState(entity, speed);
         if (!next.equals(state) && entity.deathTime == 0) {
-            if (state.equals("bow_aim")) trigger(c, "bow_release", 1f);
-            else if (state.equals("crossbow_aim")) trigger(c, "crossbow_shoot", 1f);
+            if (state.equals("bow_aim")) {
+                trigger(c, "bow_release", 1f);
+                releaseTick = entity.tickCount;
+            } else if (state.equals("crossbow_aim")) trigger(c, "crossbow_shoot", 1f);
+        }
+        if (next.equals("bow_aim") && !state.equals("bow_aim")) {
+            aimTick = entity.tickCount;
+            releaseTick = -1;
         }
         state = next;
         c.setParameter(NpcGraphs.SPEED, speed);
@@ -172,6 +182,28 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     /** The base state now: free, riding, a stance, bow_aim, crossbow_aim or crossbow_reload (NpcGraphs.STATES). */
     public String state() {
         return state;
+    }
+
+    /**
+     * The bow model to show now (BowDraw stage) from the bow clips' own time, not the entity's using-item state: while in
+     * bow_aim, its draw since the state was entered; after a release, bow_release's (an overlay plays from the tick after
+     * its trigger: until then the full draw holds). Slack otherwise, and without the race's draw timing.
+     */
+    int bowStage(LivingEntity entity, float partialTick) {
+        BowDraw.Timing d = BowDraw.of(race);
+        if (d == null) return BowDraw.SLACK;
+        if (state.equals("bow_aim") && aimTick >= 0)
+            return BowDraw.stageOf(BowDraw.pullAt(d, "bow_aim", (entity.tickCount - aimTick + partialTick) / 20f));
+        if (releaseTick >= 0) {
+            float t = (entity.tickCount - releaseTick - 1 + partialTick) / 20f;
+            return t < 0 ? BowDraw.PULLING_2 : BowDraw.stageOf(BowDraw.pullAt(d, "bow_release", t));
+        }
+        return BowDraw.SLACK;
+    }
+
+    /** The bow model shown this frame (BowDraw stage). */
+    public int bowStage() {
+        return bowStage;
     }
 
     /** The pose applied to this NPC's model this frame, or null. */

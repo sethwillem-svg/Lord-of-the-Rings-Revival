@@ -77,7 +77,10 @@ public final class NpcAnimator {
         String state = a == null ? "" : a.state();
         float aim = state.equals("bow_aim") || state.equals("crossbow_aim") ? headPitch * Mth.DEG_TO_RAD : 0f;
         NpcPose pose = ours ? NpcPose.of(entity, ageInTicks - entity.tickCount, aim) : null;
-        if (a != null) a.lastPose = pose;
+        if (a != null) {
+            a.lastPose = pose;
+            a.bowStage = a.bowStage(entity, ageInTicks - entity.tickCount);
+        }
         if (pose == null) {   // Minecraft's pose: straight limbs
             JOINT_ANGLES.remove(entity);
             return;

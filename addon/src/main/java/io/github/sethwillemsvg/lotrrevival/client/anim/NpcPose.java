@@ -39,8 +39,10 @@ public final class NpcPose {
     }
 
     /**
-     * As of(entity, partialTick), with both arms (and what they hold) turned about their shoulders by aimPitch (radians,
-     * Minecraft's head pitch: positive looks down), as Minecraft aims a bow with the head.
+     * As of(entity, partialTick), with both arms (and what they hold) turned by aimPitch (radians, Minecraft's head pitch:
+     * positive looks down), as Minecraft aims a bow with the head. Both turn about one point, the middle of the two posed
+     * shoulders, so the hands keep their places on the bow and its string (each about its own shoulder would move them
+     * apart by the turn times the shoulders' distance).
      */
     @Nullable
     public static NpcPose of(LivingEntity entity, float partialTick, float aimPitch) {
@@ -51,16 +53,19 @@ public final class NpcPose {
         List<PAnimationController<NpcAnimatable>> controllers = new ArrayList<>();
         a.controllers().forEach(controllers::add);
         Matrix4f[] rig = rigMotion(model, model.evaluate(controllers, Map.of(), partialTick));
-        if (aimPitch != 0f) for (String side : new String[] {"right", "left"}) aim(model, rig, side, aimPitch);
+        if (aimPitch != 0f) {
+            int r = model.boneIndex("right_arm"), l = model.boneIndex("left_arm");
+            if (r >= 0 && l >= 0) {
+                Vector3f about = rig[r].transformPosition(shoulderRest("right")).add(rig[l].transformPosition(shoulderRest("left"))).mul(0.5f);
+                for (String side : new String[] {"right", "left"}) aim(model, rig, side, aimPitch, about);
+            }
+        }
         return new NpcPose(model, rig);
     }
 
-    /** Turns an arm, its elbow and its weapon bone about the posed shoulder (rig space: Minecraft's +x pitch is -x here). */
-    private static void aim(PBakedModel model, Matrix4f[] rig, String side, float pitch) {
-        int arm = model.boneIndex(side + "_arm");
-        if (arm < 0) return;
-        Vector3f shoulder = rig[arm].transformPosition(shoulderRest(side));
-        Matrix4f turn = new Matrix4f().translation(shoulder).rotateX(-pitch).translate(-shoulder.x, -shoulder.y, -shoulder.z);
+    /** Turns an arm, its elbow and its weapon bone about a point (rig space: Minecraft's +x pitch is -x here). */
+    private static void aim(PBakedModel model, Matrix4f[] rig, String side, float pitch, Vector3f about) {
+        Matrix4f turn = new Matrix4f().translation(about).rotateX(-pitch).translate(-about.x, -about.y, -about.z);
         for (String bone : new String[] {side + "_arm", side + "_elbow", side.equals("right") ? "weapon_r" : "weapon_l"}) {
             int i = model.boneIndex(bone);
             if (i >= 0) rig[i] = new Matrix4f(turn).mul(rig[i]);
