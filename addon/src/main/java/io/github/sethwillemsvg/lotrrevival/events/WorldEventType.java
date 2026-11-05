@@ -38,4 +38,27 @@ public interface WorldEventType {
 
     /** Lang key of the title for a viewer of this side (lead or opposition). */
     String titleKey(String viewerSide);
+
+    /** Longest it may run, in seconds (8 min; ambush 5). */
+    default int durationSeconds() {
+        return EventsConfig.i(EventsConfig.DURATION_SECONDS);
+    }
+
+    /** Holds forced chunks around its centre (ambushes happen next to their player and hold none). */
+    default boolean forcesChunks() {
+        return true;
+    }
+
+    /**
+     * Staged by the event scheduler: counts toward the "one event per player" rule, the server cap and the per-player cooldown,
+     * and gets the action-bar hint. False for ambushes, which have their own schedule (at most one per player besides).
+     */
+    default boolean scheduled() {
+        return true;
+    }
+
+    /** Renown for each nemesis of the winning side ("into the records"). */
+    default int winRenown() {
+        return io.github.sethwillemsvg.lotrrevival.nemesis.NemesisConfig.i(io.github.sethwillemsvg.lotrrevival.nemesis.NemesisConfig.RENOWN_EVENT_WIN);
+    }
 }

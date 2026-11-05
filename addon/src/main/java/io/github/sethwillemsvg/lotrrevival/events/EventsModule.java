@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.events;
 
 import io.github.sethwillemsvg.lotrrevival.core.log.LotrLog;
 import io.github.sethwillemsvg.lotrrevival.events.network.WorldEventsPayload;
+import io.github.sethwillemsvg.lotrrevival.events.types.AmbushEvent;
 import io.github.sethwillemsvg.lotrrevival.nemesis.Ambush;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -35,6 +36,7 @@ public final class EventsModule {
         modBus.addListener((RegisterTicketControllersEvent e) -> EventChunkTickets.register(e));
         modBus.addListener((RegisterPayloadHandlersEvent e) -> WorldEventsPayload.register(e));
         Ambush.governorRed = () -> LoadGovernor.state() == LoadGovernor.State.RED;
+        Ambush.stager = AmbushEvent::begin;   // N8: ambushes run as the `ambush` world-event type
 
         var bus = NeoForge.EVENT_BUS;
         bus.addListener((ServerStartedEvent e) -> {

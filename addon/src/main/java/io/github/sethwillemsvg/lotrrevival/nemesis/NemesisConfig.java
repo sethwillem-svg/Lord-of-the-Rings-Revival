@@ -35,6 +35,8 @@ public final class NemesisConfig {
             AMBUSH_MIN_ONLINE_MINUTES;
     public static final ModConfigSpec.DoubleValue AMBUSH_CHANCE;
     public static final ModConfigSpec.IntValue MAX_SERGEANTS;
+    public static final ModConfigSpec.ConfigValue<String> GEAR_REROLL_RANK, MOUNT_RANK;
+    public static final ModConfigSpec.IntValue GUARD_FOLLOW_DISTANCE, GUARD_LEASH_DISTANCE, GUARD_TELEPORT_DISTANCE;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -84,6 +86,16 @@ public final class NemesisConfig {
         REPUTATION_MULTIPLIER = b.defineInRange("nemesis_reputation_multiplier", 25, 0, 1000);
         FADE_DAYS = b.defineInRange("fade_days", 30, 1, 3650);
         DEAD_KEEP_DAYS = b.defineInRange("dead_keep_days", 7, 0, 365);
+        GEAR_REROLL_RANK = b.comment("Lowest rank whose gear is re-rolled once from the faction's LEADER (else VETERAN) gear")
+                .define("gear_reroll_rank", "commander", o -> o instanceof String s && isRank(s));
+        MOUNT_RANK = b.comment("Lowest rank that rides a mount (its type's, else one of a LEADER type of its faction)")
+                .define("mount_rank", "warlord", o -> o instanceof String s && isRank(s));
+        GUARD_FOLLOW_DISTANCE = b.comment("Bodyguards out of a fight walk back once further than this from their nemesis")
+                .defineInRange("bodyguard_follow_distance", 6, 2, 64);
+        GUARD_LEASH_DISTANCE = b.comment("Bodyguards break off a fight once further than this from their nemesis")
+                .defineInRange("bodyguard_leash_distance", 12, 4, 128);
+        GUARD_TELEPORT_DISTANCE = b.comment("Bodyguards further than this (a mounted nemesis rode off) are moved next to it")
+                .defineInRange("bodyguard_teleport_distance", 32, 8, 256);
         b.pop();
 
         b.push("politics");
@@ -139,6 +151,17 @@ public final class NemesisConfig {
         return l.get(Math.min(index, l.size() - 1)).doubleValue();
     }
 
+    private static boolean isRank(String s) {
+        for (Rank r : Rank.values()) if (r.key().equals(s)) return true;
+        return false;
+    }
+
+    /** A rank-valued setting (lower-case rank name); the default when unset or unknown. */
+    public static Rank rank(ModConfigSpec.ConfigValue<String> v) {
+        String s = get(v, v.getDefault());
+        return isRank(s) ? Rank.byName(s) : Rank.byName(v.getDefault());
+    }
+
     public static boolean factionDisabled(ResourceLocation faction) {
         return get(DISABLED_FACTIONS, List.<String>of()).contains(faction.toString());
     }
@@ -151,10 +174,12 @@ public final class NemesisConfig {
     public static void logInUse() {
         LotrLog.info("nemesis", "config: enabled={} disabled_factions={} allowed_dimensions={} max_manifest={} thresholds={} seats={} "
                         + "player_kill_chance={} unit_kill_chance={} escape={} cheat_death={} rep_x={} fade_days={} ambush_chance={} "
-                        + "ambush_cooldown={}min safe_radius={} max_sergeants={}",
+                        + "ambush_cooldown={}min safe_radius={} max_sergeants={} gear_reroll_rank={} mount_rank={} guard_follow={} guard_leash={} "
+                        + "guard_teleport={}",
                 enabled(), get(DISABLED_FACTIONS, List.of()), get(ALLOWED_DIMENSIONS, List.of()), i(MAX_MANIFEST),
                 get(RANK_THRESHOLDS, List.of()), get(RANK_SEATS, List.of()), d(PLAYER_KILL_CHANCE), d(UNIT_KILL_CHANCE),
                 get(ESCAPE_CHANCES, List.of()), get(CHEAT_DEATH_CHANCES, List.of()), i(REPUTATION_MULTIPLIER), i(FADE_DAYS),
-                d(AMBUSH_CHANCE), i(AMBUSH_COOLDOWN_MINUTES), i(SAFE_RADIUS), i(MAX_SERGEANTS));
+                d(AMBUSH_CHANCE), i(AMBUSH_COOLDOWN_MINUTES), i(SAFE_RADIUS), i(MAX_SERGEANTS), rank(GEAR_REROLL_RANK), rank(MOUNT_RANK),
+                i(GUARD_FOLLOW_DISTANCE), i(GUARD_LEASH_DISTANCE), i(GUARD_TELEPORT_DISTANCE));
     }
 }

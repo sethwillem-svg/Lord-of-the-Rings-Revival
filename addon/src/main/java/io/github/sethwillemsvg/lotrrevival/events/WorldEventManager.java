@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.events;
 
 import io.github.sethwillemsvg.lotrrevival.core.log.LotrLog;
 import io.github.sethwillemsvg.lotrrevival.events.network.WorldEventsPayload;
+import io.github.sethwillemsvg.lotrrevival.events.types.AmbushEvent;
 import io.github.sethwillemsvg.lotrrevival.events.types.MusterEvent;
 import io.github.sethwillemsvg.lotrrevival.events.types.RaidEvent;
 import io.github.sethwillemsvg.lotrrevival.events.types.WarbandClashEvent;
@@ -53,7 +54,7 @@ public final class WorldEventManager {
         register(new WarbandClashEvent());
         register(new MusterEvent());
         register(new RaidEvent());
-        // TODO(spec §Event types, N8): register the nemesis ambush as the `ambush` event type
+        register(AmbushEvent.INSTANCE);   // staged by nemesis.Ambush through AmbushEvent.begin, never by the scheduler (weight 0)
     }
 
     private WorldEventManager() {}
@@ -91,14 +92,14 @@ public final class WorldEventManager {
         WorldEvent ev = new WorldEvent(UUID.randomUUID(), type.id(), level.dimension().location(), centre, owner, tick);
         ev.venue = venue;
         ev.leadFactions.add(pick.lead());
-        ev.oppFactions.add(pick.opposition());
-        ev.deadline = tick + EventsConfig.i(EventsConfig.DURATION_SECONDS) * 20L;
+        if (pick.opposition() != null) ev.oppFactions.add(pick.opposition());   // an ambushed player may have no faction
+        ev.deadline = tick + type.durationSeconds() * 20L;
         if (NeoForge.EVENT_BUS.post(new WorldEventGameEvents.Started(ev)).isCanceled()) {
             LotrLog.dbg("events", "event {} {} cancelled by a listener", type.id(), ev.shortId());
             return null;
         }
         ACTIVE.put(ev.id, ev);
-        int chunks = EventChunkTickets.forceAround(level, ev.id, centre);
+        int chunks = type.forcesChunks() ? EventChunkTickets.forceAround(level, ev.id, centre) : 0;
         int placed = type.stage(ev, level, pick);
         ev.initialLead = ev.count(EventParticipant.LEAD);
         ev.initialOpposition = ev.count(EventParticipant.OPPOSITION);
@@ -114,7 +115,7 @@ public final class WorldEventManager {
         LotrLog.dbg("events", "event started: id={} type={} centre={} venue={} lead={} ({} npcs) opposition={} ({} npcs) nemeses={} owner={} "
                         + "chunks={} deadline={} tick={}", ev.shortId(), type.id(), centre.toShortString(), venue == null ? "open ground" : VenueFinder.key(venue),
                 ev.leadFactions, ev.initialLead, ev.oppFactions, ev.initialOpposition, ev.nemeses.size(), LotrLog.id(owner), chunks, ev.deadline, tick);
-        hint(level, ev);
+        if (type.scheduled()) hint(level, ev);
         WorldEventsPayload.changed(level.getServer());
         return ev;
     }
@@ -305,7 +306,9 @@ public final class WorldEventManager {
         records(server, ev, offscreen);
         if (!offscreen && level != null) Participation.payout(level, ev);
         WorldEventSavedData data = WorldEventSavedData.get(server);
-        data.playerCooldownUntil.put(ev.owner, ev.endTick + EventsConfig.i(EventsConfig.COOLDOWN_SECONDS) * 20L);
+        WorldEventType type = TYPES.get(ev.type);
+        if (type == null || type.scheduled())
+            data.playerCooldownUntil.put(ev.owner, ev.endTick + EventsConfig.i(EventsConfig.COOLDOWN_SECONDS) * 20L);
         data.addEnded(ev.summary(), ev.endTick);
         if (level != null) rumour(level, ev);
         ev.removeNpcsAtTick = ev.endTick + 600;
@@ -320,10 +323,12 @@ public final class WorldEventManager {
         String winner = ev.outcome == WorldEvent.Outcome.LEAD_WON ? EventParticipant.LEAD
                 : ev.outcome == WorldEvent.Outcome.OPPOSITION_WON ? EventParticipant.OPPOSITION : null;
         NemesisSavedData data = NemesisSavedData.get(server);
+        WorldEventType type = TYPES.get(ev.type);
+        int renown = type == null ? NemesisConfig.i(NemesisConfig.RENOWN_EVENT_WIN) : type.winRenown();
         for (var en : ev.nemeses.entrySet()) {
             NemesisRecord r = data.find(en.getKey());
             if (r == null || !r.alive()) continue;
-            if (en.getValue().equals(winner)) Renown.add(server, r, NemesisConfig.i(NemesisConfig.RENOWN_EVENT_WIN), "won world event " + ev.shortId());
+            if (en.getValue().equals(winner) && renown > 0) Renown.add(server, r, renown, "won world event " + ev.shortId());
             if (ev.type.getPath().equals("muster") && EventParticipant.LEAD.equals(winner) && en.getValue().equals(winner)) {
                 r.extraBodyguards++;
                 LotrLog.dbg("events", "muster undisturbed: {} gains a bodyguard for its next manifestation", r.shortId());
@@ -403,10 +408,23 @@ public final class WorldEventManager {
         return l;
     }
 
+    /** Scheduled events staged for this player (an ambush is extra: at most one besides). */
     public static int countFor(UUID owner) {
         int n = 0;
-        for (WorldEvent e : ACTIVE.values()) if (e.owner.equals(owner)) n++;
+        for (WorldEvent e : ACTIVE.values()) if (e.owner.equals(owner) && scheduled(e)) n++;
         return n;
+    }
+
+    /** Active scheduled events (the server cap counts these; ambushes have their own rules). */
+    public static int scheduledCount() {
+        int n = 0;
+        for (WorldEvent e : ACTIVE.values()) if (scheduled(e)) n++;
+        return n;
+    }
+
+    public static boolean scheduled(WorldEvent e) {
+        WorldEventType t = TYPES.get(e.type);
+        return t == null || t.scheduled();
     }
 
     /** Game tests: register a hand-built event as active. */
