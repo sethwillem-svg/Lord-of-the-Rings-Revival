@@ -1,0 +1,106 @@
+# Build the add-on against the Middle-earth mod, run its game tests headless, and upload one log per system.
+# See specs/addon/debug-logging.md. The Middle-earth jar is All Rights Reserved: built here, never uploaded or committed.
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: "Systems with debug lines on (all, or a list like combat,nemesis)"
+        default: all
+      me_ref:
+        description: "Middle-earth branch or commit"
+        default: neoforge-fixes
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ME_REPO: https://github.com/Jukoz/middle-earth
+  ME_REF: ${{ inputs.me_ref || 'neoforge-fixes' }}
+  DEBUG: ${{ inputs.debug || 'all' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Middle-earth commit
+        id: me
+        run: |
+          sha=$(git ls-remote "$ME_REPO" "$ME_REF" | cut -f1)
+          [ -n "$sha" ] || sha="$ME_REF"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Middle-earth $ME_REF at $sha"
+
+      - name: Cache Middle-earth jars
+        id: mecache
+        uses: actions/cache@v4
+        with:
+          path: ~/me-jars
+          key: me-jars-${{ steps.me.outputs.sha }}
+
+      - name: Build Middle-earth
+        if: steps.mecache.outputs.cache-hit != 'true'
+        run: |
+          git clone --filter=blob:none "$ME_REPO" ~/me-src
+          cd ~/me-src && git checkout "${{ steps.me.outputs.sha }}"
+          chmod +x gradlew
+          ./gradlew --no-daemon :middle-earth:jar :sevenstars-api:jar :of-beasts-and-wild-things:jar -x test 2>&1 | tee ~/me-build.log
+          mkdir -p ~/me-jars/api
+          cp "$(ls middle-earth/build/libs/*.jar | grep -v -e sources -e javadoc | head -1)" ~/me-jars/middle-earth.jar
+          for m in sevenstars-api of-beasts-and-wild-things; do
+            cp "$(ls $m/build/libs/*.jar | grep -v -e sources -e javadoc | head -1)" ~/me-jars/api/$m.jar
+          done
+          ls -la ~/me-jars ~/me-jars/api
+
+      - name: Gradle properties
+        run: |
+          echo "ME_PROPS=-PmeJar=$HOME/me-jars/middle-earth.jar -PmeApiJars=$(ls ~/me-jars/api/*.jar | paste -sd, -)" >> "$GITHUB_ENV"
+          mkdir -p logs
+
+      - name: Compile
+        working-directory: addon
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon build $ME_PROPS -PnoSpark 2>&1 | tee ../logs/compile.log
+
+      - name: Game tests
+        id: gametest
+        working-directory: addon
+        timeout-minutes: 20
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon runGameTestServer $ME_PROPS -PnoSpark -Pdebug="$DEBUG" 2>&1 | tee ../logs/gametest-console.log
+
+      - name: Split logs per system
+        if: always()
+        run: |
+          bash .github/scripts/split-logs.sh addon/run/gametest/logs/latest.log logs
+          cat logs/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ github.run_number }}
+          path: |
+            logs/
+            addon/run/gametest/logs/latest.log
+            addon/run/gametest/crash-reports/
+          retention-days: 14
+          if-no-files-found: warn

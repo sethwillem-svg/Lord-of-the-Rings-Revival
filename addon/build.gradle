@@ -15,6 +15,7 @@ neoForge {
             client()
             gameDirectory = project.file('run')
             // ./gradlew runClient -Pautotest=100: unattended renderer benchmark (client.bench.AutoBench)
+            if (project.hasProperty('debug')) systemProperty 'lotr_revival.debug', project.property('debug').toString()
             if (project.hasProperty('autotest')) systemProperty 'lotr_revival.autotest', project.property('autotest').toString()
             if (project.hasProperty('profile')) systemProperty 'lotr_revival.profile', 'true'
             // ./gradlew runClient -Pexport=1: record every Middle-earth NPC type for the NPC clip viewer (client.bench.ExportRun)
@@ -27,6 +28,8 @@ neoForge {
             type = 'gameTestServer'
             gameDirectory = project.file('run/gametest')
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            // -Pdebug=all or -Pdebug=combat,nemesis: per-system debug lines (specs/addon/debug-logging.md)
+            if (project.hasProperty('debug')) systemProperty 'lotr_revival.debug', project.property('debug').toString()
         }
     }
     mods {
@@ -51,6 +54,9 @@ dependencies {
     }
     compileOnly files(me)
     runtimeOnly files(me)
+    // -PmeApiJars=a.jar,b.jar: the Seven Stars API (and other jars Middle-earth nests) to compile against.
+    // Compile only: at runtime they load from inside the Middle-earth jar.
+    providers.gradleProperty('meApiJars').getOrElse('').split(',').findAll { it.trim() }.each { compileOnly files(it.trim()) }
 }
 
 tasks.named('processResources', ProcessResources) {
