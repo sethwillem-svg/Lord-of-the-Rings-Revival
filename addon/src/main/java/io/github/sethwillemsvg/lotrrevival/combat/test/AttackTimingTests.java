@@ -56,7 +56,16 @@ public final class AttackTimingTests {
         h.assertTrue(due > now, "the swing's damage was not held for the hit frame");
         h.assertTrue(target.getHealth() == health, "damage was dealt at the swing, not at the hit frame");
         long wait = due - now;
-        if (wait > 2) h.runAfterDelay(wait - 2, () -> h.assertTrue(target.getHealth() == health, "damage came before the hit tick"));
+        if (wait > 2) h.runAfterDelay(wait - 2, () -> {
+            if (target.getHealth() != health) {
+                var src = target.getLastDamageSource();
+                String why = "damage came before the hit tick: health " + health + " -> " + target.getHealth() + " at tick "
+                        + h.getLevel().getGameTime() + " (due " + due + "), last source "
+                        + (src == null ? "none" : src.getMsgId() + " from " + (src.getEntity() == null ? "-" : src.getEntity().getType()));
+                LotrLog.info("test", "FAIL damageLandsOnTheHitTick: {}", why);
+                h.fail(why);
+            }
+        });
         h.runAfterDelay(wait + 2, () -> {
             h.assertTrue(target.getHealth() < health, "no damage on the hit tick");
             h.succeed();
