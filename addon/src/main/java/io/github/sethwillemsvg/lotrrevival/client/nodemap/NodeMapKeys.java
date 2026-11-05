@@ -14,10 +14,16 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
-/** Key "Open travel map" (B by default): asks the server, which opens Middle-earth's map screen and sends a fresh node_state. */
+/**
+ * Key "Open travel map" (B by default): asks the server, which opens Middle-earth's map screen and sends a fresh node_state.
+ * Key "Cancel travel" (unbound by default): sends travel_cancel while a charge runs.
+ */
 public final class NodeMapKeys {
     public static final KeyMapping OPEN = new KeyMapping("key.lotr_revival.open_node_map", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B,
             "key.categories.lotr_revival");
+    /** "Cancel travel": unbound by default (the HUD button works with chat open); cancels a running charge. */
+    public static final KeyMapping CANCEL = new KeyMapping("key.lotr_revival.cancel_travel", InputConstants.Type.KEYSYM,
+            InputConstants.UNKNOWN.getValue(), "key.categories.lotr_revival");
 
     private NodeMapKeys() {}
 
@@ -26,6 +32,7 @@ public final class NodeMapKeys {
         @SubscribeEvent
         public static void keys(RegisterKeyMappingsEvent e) {
             e.register(OPEN);
+            e.register(CANCEL);
         }
     }
 
@@ -37,6 +44,9 @@ public final class NodeMapKeys {
                 if (Minecraft.getInstance().getConnection() == null) continue;
                 LotrLog.dbg("nodemap", "client: open travel map key");
                 PacketDistributor.sendToServer(OpenNodeMapPayload.INSTANCE);
+            }
+            while (CANCEL.consumeClick()) {
+                if (TravelHud.charging()) TravelHud.sendCancel("key");
             }
         }
     }
