@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.Path;
@@ -36,7 +37,7 @@ public final class BodyguardGoals {
     private static final int DEFEND_MEMORY_TICKS = 100;
 
     /** Counters for the nemesis summary line. */
-    public static int repaths, teleports, defends;
+    public static int repaths, teleports, defends, watchdogs;
 
     private BodyguardGoals() {}
 
@@ -48,6 +49,11 @@ public final class BodyguardGoals {
         guard.addTag(GUARD_TAG);
         guard.goalSelector.addGoal(2, new Follow(guard, leader, recordId));
         guard.targetSelector.addGoal(2, new Defend(guard, leader, recordId));
+    }
+
+    /** Drives an idle follow goal (see {@link Follow#watchdog}); called for each guard from the body check. */
+    public static void watchdog(NpcEntity guard) {
+        for (WrappedGoal w : guard.goalSelector.getAvailableGoals()) if (w.getGoal() instanceof Follow f) f.watchdog();
     }
 
     static boolean leaderOk(@Nullable LivingEntity leader, NpcEntity guard) {
@@ -68,6 +74,7 @@ public final class BodyguardGoals {
         private int stuck;
         /** Last navigation result, for logs and tests. */
         public String lastNav = "none";
+        private boolean running;
 
         public Follow(NpcEntity guard, NpcEntity leader, UUID recordId) {
             this.guard = guard;
@@ -107,6 +114,7 @@ public final class BodyguardGoals {
 
         @Override
         public void start() {
+            running = true;
             leashed = guard.distanceTo(leader) > leash();
             repathIn = 0;
             pathTarget = null;
@@ -119,6 +127,7 @@ public final class BodyguardGoals {
 
         @Override
         public void stop() {
+            running = false;
             guard.getNavigation().stop();
             pathTarget = null;
             leashed = false;
@@ -167,6 +176,21 @@ public final class BodyguardGoals {
                     stuck = 1;   // try again in a few checks
                 }
             }
+        }
+
+        /**
+         * Called from the 2 s body check. CI run 221 showed the goal never started in the test world (no goals running at
+         * all on the guard), so the body check drives the same path-and-teleport logic when the goal sits idle out of range.
+         */
+        void watchdog() {
+            if (running || !leaderOk(leader, guard) || guard.isPassenger()) return;
+            double d = guard.distanceTo(leader);
+            if (d <= follow() || (fighting() && d <= leash())) return;
+            watchdogs++;
+            LotrLog.dbg("nemesis", "bodyguard watchdog: follow goal idle, guard={} nemesis={} dist={} canUse={} nav={}", LotrLog.id(guard.getUUID()),
+                    LotrLog.id(recordId), String.format("%.1f", d), canUse(), lastNav);
+            repathIn = 0;
+            tick();
         }
 
         /** Like a tamed wolf: a free spot on solid ground within 3 blocks of the nemesis. */

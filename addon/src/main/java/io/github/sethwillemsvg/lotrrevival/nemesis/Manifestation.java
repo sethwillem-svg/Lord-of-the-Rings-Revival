@@ -380,6 +380,7 @@ public final class Manifestation {
             if (TraitEffects.has(r, "unshakeable") && e.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)) e.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
             TraitEffects.bodyTick(e, r);
             b.guards.removeIf(Entity::isRemoved);   // following and defending are the guards' own goals (BodyguardGoals)
+            for (NpcEntity g : b.guards) BodyguardGoals.watchdog(g);
             NemesisBossBar.update(e, r);
         }
     }
