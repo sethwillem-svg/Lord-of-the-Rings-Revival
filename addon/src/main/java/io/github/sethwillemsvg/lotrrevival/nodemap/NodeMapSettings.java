@@ -32,4 +32,11 @@ public record NodeMapSettings(boolean enabled, int departRadius, int chargeTicks
         return new NodeMapSettings(e, departRadius, chargeTicks, minFood, hostileRange, combatTagTicks, cost, discoverInterval,
                 discoverRadius, homeRevealRadius, customMax, customSpacing, customLinkRange, customLinks, wildFactor);
     }
+
+    public NodeMapSettings withCoinPer1000(int c) {
+        TravelCost k = new TravelCost(cost.cooldownBase(), cost.cooldownPerBlock(), cost.cooldownMax(), cost.exhaustionPerBlock(),
+                cost.exhaustionCap(), c);
+        return new NodeMapSettings(enabled, departRadius, chargeTicks, minFood, hostileRange, combatTagTicks, k, discoverInterval,
+                discoverRadius, homeRevealRadius, customMax, customSpacing, customLinkRange, customLinks, wildFactor);
+    }
 }

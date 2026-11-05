@@ -17,7 +17,7 @@ public record TravelCost(int cooldownBase, double cooldownPerBlock, int cooldown
     }
 
     public int coins(double length) {
-        return coinPer1000 <= 0 ? 0 : (int) Math.ceil(Math.max(0, length) / 1000.0 * coinPer1000);
+        return coinPer1000 <= 0 ? 0 : (int) Math.ceil(Math.max(0, length) * coinPer1000 / 1000.0 - 1e-9);
     }
 
     /** m:ss for a tick count (rounded up to the second). */

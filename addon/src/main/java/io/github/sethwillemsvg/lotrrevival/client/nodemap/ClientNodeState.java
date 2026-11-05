@@ -165,6 +165,6 @@ public final class ClientNodeState {
     public static TravelCost cost() {
         if (state == null) return TravelCost.DEFAULTS;
         return new TravelCost(state.cooldownBase(), state.cooldownPerBlock(), state.cooldownMax(), state.exhaustionPerBlock(),
-                state.exhaustionCap(), 0);
+                state.exhaustionCap(), state.coinPer1000());
     }
 }

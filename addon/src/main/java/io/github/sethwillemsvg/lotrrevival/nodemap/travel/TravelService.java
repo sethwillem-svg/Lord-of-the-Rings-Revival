@@ -211,9 +211,22 @@ public final class TravelService {
         int left = CompanionMover.move(p, party, landing.get());
 
         NodeMapData data = NodeMapAttachment.get(p);
+        String paid = "0";
         if (!plan.exempt()) {
             data.setCooldown(plan.cooldown());
             p.getFoodData().addExhaustion(plan.exhaustion());
+            if (plan.coins() > 0) {
+                // checked a moment ago in TravelChecks; a null here means the purse changed within this tick
+                CoinPurse.Payment pay = CoinPurse.pay(p, plan.coins());
+                if (pay == null) {
+                    LotrLog.warn("travel", "coin payment of {} failed after the check: player={}", plan.coins(), LotrLog.id(p.getUUID()));
+                    paid = "failed";
+                } else {
+                    paid = plan.coins() + " (took " + CoinPurse.describe(pay.taken()) + ", change " + CoinPurse.describe(pay.change()) + ")";
+                    LotrLog.dbg("travel", "pay: player={} price={} took={} change={} tick={}", LotrLog.id(p.getUUID()), plan.coins(),
+                            CoinPurse.describe(pay.taken()), CoinPurse.describe(pay.change()), level.getGameTime());
+                }
+            }
         }
         data.addTrip();
         data.setLastNode(to.ref());
@@ -224,9 +237,9 @@ public final class TravelService {
                 LotrLog.id(p.getUUID()), CompanionMover.fmt(p.position()),
                 party.mount() == null ? "none" : LotrLog.id(party.mount().getUUID()), party.leashed().size(), party.pets().size(), left,
                 party.leftVehicle() == null ? "none" : party.leftVehicle().getType().toShortString(), level.getGameTime());
-        LotrLog.info("travel", "trip: player={} from={} to={} L={} chain=[{}] cooldown={} exhaustion={} companions: mount={} leashed={} pets={} ({})",
+        LotrLog.info("travel", "trip: player={} from={} to={} L={} chain=[{}] cooldown={} exhaustion={} coins={} companions: mount={} leashed={} pets={} ({})",
                 LotrLog.id(p.getUUID()), plan.from().ref(), to.ref(), Math.round(plan.path().length()), plan.path().chainIds(),
-                plan.cooldown(), plan.exhaustion(), party.mount() == null ? 0 : 1, party.leashed().size(), party.pets().size(), ctx.label);
+                plan.cooldown(), plan.exhaustion(), paid, party.mount() == null ? 0 : 1, party.leashed().size(), party.pets().size(), ctx.label);
 
         NeoForge.EVENT_BUS.post(new NodeTravelEvent.Arrive(p, plan.from().ref(), to.ref(), plan.path().length(), fromPos, fromDim,
                 p.position()));
