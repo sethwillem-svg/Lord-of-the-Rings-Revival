@@ -1,7 +1,6 @@
 {
   "key.categories.lotr_revival": "LOTR Revival",
   "key.lotr_revival.nemeses": "Nemeses",
-
   "lotr_revival.nemesis.rank.marked": "Marked",
   "lotr_revival.nemesis.rank.captain": "Captain",
   "lotr_revival.nemesis.rank.commander": "Commander",
@@ -28,7 +27,6 @@
   "lotr_revival.nemesis.sergeant_fallen": "Sergeant %s has fallen.",
   "lotr_revival.nemesis.screen.title": "Nemeses",
   "lotr_revival.nemesis.screen.empty": "No captain has marked you yet.",
-
   "lotr_revival.nemesis.trait.iron_hide": "Iron-hide",
   "lotr_revival.nemesis.trait.bloodthirsty": "Bloodthirsty",
   "lotr_revival.nemesis.trait.armour_breaker": "Armour-breaker",
@@ -49,5 +47,29 @@
   "lotr_revival.nemesis.trait.scar_fall": "Broken bones",
   "lotr_revival.nemesis.trait.scar_drowning": "Water-logged",
   "lotr_revival.nemesis.trait.scar_melee": "Blade scars",
-  "lotr_revival.nemesis.trait.scar_other": "Old wounds"
+  "lotr_revival.nemesis.trait.scar_other": "Old wounds",
+  "lotr_revival.event.hint.warband_clash": "Steel rings out to the %s, about %s blocks away.",
+  "lotr_revival.event.hint.muster": "War-drums beat to the %s, about %s blocks away.",
+  "lotr_revival.event.hint.raid": "Smoke rises to the %s, about %s blocks away.",
+  "lotr_revival.event.dir.north": "north",
+  "lotr_revival.event.dir.north_east": "north-east",
+  "lotr_revival.event.dir.east": "east",
+  "lotr_revival.event.dir.south_east": "south-east",
+  "lotr_revival.event.dir.south": "south",
+  "lotr_revival.event.dir.south_west": "south-west",
+  "lotr_revival.event.dir.west": "west",
+  "lotr_revival.event.dir.north_west": "north-west",
+  "lotr_revival.event.type.warband_clash": "The clash of warbands",
+  "lotr_revival.event.type.muster": "The muster",
+  "lotr_revival.event.type.raid": "The raid",
+  "lotr_revival.event.rumour.lead_won": "%s is over: the attackers carried the day.",
+  "lotr_revival.event.rumour.opposition_won": "%s is over: the attackers were thrown back.",
+  "lotr_revival.event.rumour.cancelled": "%s came to nothing.",
+  "lotr_revival.event.rumour.none": "%s is over.",
+  "lotr_revival.event.title.warband_clash": "Warband clash",
+  "lotr_revival.event.title.muster.lead": "Muster of the host",
+  "lotr_revival.event.title.muster.opposition": "Break the muster",
+  "lotr_revival.event.title.raid": "Raid",
+  "lotr_revival.event.title.defence": "Defend the settlement",
+  "lotr_revival.event.title.unknown": "Something stirs"
 }

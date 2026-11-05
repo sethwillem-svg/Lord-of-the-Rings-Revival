@@ -23,5 +23,6 @@ public final class NemesisClient {
                 if (Minecraft.getInstance().player != null && Minecraft.getInstance().screen == null) NemesisScreen.open();
             }
         });
+        EventMarkerCache.init();
     }
 }
