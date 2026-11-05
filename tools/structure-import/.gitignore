@@ -1,0 +1,4 @@
+work/
+blocks.json
+__pycache__/
+*.pyc
