@@ -53,6 +53,9 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     /** The pose last applied to the model this frame (NpcAnimator.apply), read by the renderer for held items. */
     @Nullable NpcPose lastPose;
     private final Map<String, Float> pendingSpeeds = new HashMap<>();
+    /** The attack overlay in its slow draw-back, and the entity tick it switches to normal speed. */
+    @Nullable private String warpAnimation;
+    private int warpEndsAt;
 
     private NpcAnimatable(LivingEntity entity) {
         this.race = NpcAnimator.raceOf(entity);
@@ -143,6 +146,7 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             warnOnce(state, e);
         }
         applyPendingSpeeds(c);
+        endWarp(entity, c);
     }
 
     /** The base state now: free, riding, a stance, bow_aim, crossbow_aim or crossbow_reload (NpcGraphs.STATES). */
@@ -158,6 +162,14 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
 
     /** The server started an attack (combat.AttackTiming): play it at speed. */
     public void attack(LivingEntity entity, String animation, float speed) {
+        attack(entity, animation, speed, 0);
+    }
+
+    /**
+     * The server started an attack: play it at speed for normalAfterTicks client ticks, then at normal speed (the time
+     * warp of combat-parry-warning.md: a slow draw-back over the wind-up, then the strike). 0 keeps the speed throughout.
+     */
+    public void attack(LivingEntity entity, String animation, float speed, int normalAfterTicks) {
         PAnimationController<NpcAnimatable> c = controller();
         if (c == null) return;
         serverAttackAt = entity.tickCount;
@@ -167,7 +179,34 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             String first = animation.replaceFirst("_\\d+$", "_1");
             animation = model.animations().containsKey(first) ? first : "attack_sword_1";
         }
-        trigger(c, handed(entity, animation), speed);
+        String played = handed(entity, animation);
+        trigger(c, played, speed);
+        if (normalAfterTicks > 0 && speed != 1f) {
+            warpAnimation = played;
+            warpEndsAt = entity.tickCount + normalAfterTicks;
+        } else {
+            warpAnimation = null;
+        }
+    }
+
+    /** A one-off overlay (stagger, parry clips) at normal speed; nothing when the rig lacks it. */
+    public void play(String animation) {
+        PAnimationController<NpcAnimatable> c = controller();
+        if (c != null) trigger(c, animation, 1f);
+    }
+
+    /** The end of a time-warped draw-back: the strike plays at normal speed. */
+    private void endWarp(LivingEntity entity, PAnimationController<NpcAnimatable> c) {
+        if (warpAnimation == null || entity.tickCount < warpEndsAt) return;
+        String animation = warpAnimation;
+        warpAnimation = null;
+        pendingSpeeds.remove(animation);
+        try {
+            var runtime = c.graphRuntime();
+            if (runtime != null) runtime.setOverlaySpeed(animation, 1f);
+        } catch (RuntimeException e) {
+            warnOnce(animation, e);   // the overlay ended or was replaced already
+        }
     }
 
     /**
