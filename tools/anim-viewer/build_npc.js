@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Builds the NPC rig and each race's clip set for PulseLib's GeckoLib loader.
  *   node tools/anim-viewer/build_npc.js     writes, under addon/src/main/resources/assets/lotr_revival/geckolib/,
- *     models/entity/npc_biped_<race>.geo.json, animations/entity/npc_biped_<race>.animation.json and .hits.json
+ *     models/entity/npc_biped_<race>.geo.json, animations/entity/npc_biped_<race>.animation.json, .hits.json and .draw.json
  * hits.json: { "<attack>": { length, hit, fadeIn, fadeOut, clip, style, missesBar?, lead?, apex, tame, ready } } — times in
  * seconds of clip time: length; hit, where in the fast part of the swing the weapon's tip is most directly in front of the
  * NPC (gecko/strike.js), which the server times damage by (combat.AttackTiming); fadeIn/fadeOut, the blend over the
@@ -21,6 +21,8 @@ const { importSeriousPlayer } = require('./import/seriousplayer.js');
 const { importEmote } = require('./import/emotecraft.js');
 const { RACES, SLOTS, STYLE, POOL, KEEP } = require('./npc_slots.js');
 const { hingeify, lowPass, limitTwist, peakTwist } = require('./hinge.js');
+const { bowArms } = require('./bow_arms.js');
+const { drawTiming } = require('./gecko/bow.js');
 
 const LIB = path.join(__dirname, 'library');
 const OUT = path.join(__dirname, '../../addon/src/main/resources/assets/lotr_revival/geckolib');
@@ -1501,6 +1503,12 @@ function buildRace(race, sources, slots = SLOTS) {
     if (leftOf.includes(slot)) clips[slot + '_l'] = mirror(c);
     if (SHIELD_SLOTS.test(slot)) clips[slot + '_shield'] = withShield(c, shield, /^attack_/.test(slot) ? swingOf(c, slot) : null);
   }
+  // the bow clips' arms hold the bow upright across the aim and draw its string to the jaw (bow_arms.js)
+  if (clips.bow_aim && clips.bow_release) {
+    const bow = bowArms(clips.bow_aim, clips.bow_release);
+    clips.bow_aim = bow.aim;
+    clips.bow_release = bow.release;
+  }
   const animations = animationJson(clips);
   const hits = {};
   const base = ['idle', 'walk'].map((n) => animations.animations[n]);
@@ -1509,7 +1517,10 @@ function buildRace(race, sources, slots = SLOTS) {
     hits[name] = { length: a.animation_length, hit: hitTime(a, name), ...fades(a, name, base, classLength(name)), ...meta[name], ...(clips[name].lead ? { lead: +clips[name].lead.toFixed(3) } : {}),
       apex: +(clips[name].apex || 0).toFixed(3), tame: +(clips[name].tame || 0).toFixed(3), ready: +(clips[name].ready || 0).toFixed(3) };
   }
-  return { geo: geoJson(RIG), animations, hits, clips };
+  // draw.json: when bow_aim's drawing hand takes and fully draws the string, and when bow_release lets it go (gecko/bow.js)
+  const A = animations.animations, draw = A.bow_aim && A.bow_release
+    ? drawTiming((clip, t) => worldBones(samplePose(A[clip], t)), A.bow_aim.animation_length, A.bow_release.animation_length) : null;
+  return { geo: geoJson(RIG), animations, hits, clips, draw };
 }
 
 /** The attacks whose source clip differs from the race's hits.json on disk, as "attack: old -> new" (none if no file).
@@ -1538,6 +1549,7 @@ function main() {
     write(`models/entity/npc_biped_${race}.geo.json`, r.geo);
     write(`animations/entity/npc_biped_${race}.animation.json`, r.animations);
     write(`animations/entity/npc_biped_${race}.hits.json`, r.hits);
+    if (r.draw) write(`animations/entity/npc_biped_${race}.draw.json`, r.draw);
     console.log(`${race}: ${Object.keys(r.animations.animations).length} animations, ${Object.keys(r.hits).length} attacks`);
   }
 }
