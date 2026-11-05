@@ -1,0 +1,31 @@
+{
+  "id": "lotr_revival:isengard_outpost",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:isengard_outpost.leader",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "faction_key": "middle-earth:isengard", "npc_identifier": "middle-earth:isengard.leader"}
+      ]
+    },
+    {
+      "id": "lotr_revival:isengard_outpost.soldier",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 3, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:isengard", "npc_identifier": "middle-earth:isengard.soldier"},
+        {"entity_type": "middle-earth:npc", "weight": 2, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:isengard", "npc_identifier": "middle-earth:isengard.warrior"},
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:isengard", "npc_identifier": "middle-earth:isengard.snaga"}
+      ]
+    },
+    {
+      "id": "lotr_revival:isengard_outpost.archer",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:isengard", "npc_identifier": "middle-earth:isengard.scout"}
+      ]
+    }
+  ]
+}

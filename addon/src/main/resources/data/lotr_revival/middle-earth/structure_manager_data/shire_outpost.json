@@ -1,0 +1,30 @@
+{
+  "id": "lotr_revival:shire_outpost",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:shire_outpost.leader",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "faction_key": "middle-earth:shire", "npc_identifier": "middle-earth:shire.shirriff"}
+      ]
+    },
+    {
+      "id": "lotr_revival:shire_outpost.soldier",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:shire", "npc_identifier": "middle-earth:shire.shirriff"},
+        {"entity_type": "middle-earth:npc", "weight": 2, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:shire", "npc_identifier": "middle-earth:shire.militia"}
+      ]
+    },
+    {
+      "id": "lotr_revival:shire_outpost.archer",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:shire", "npc_identifier": "middle-earth:shire.militia"}
+      ]
+    }
+  ]
+}

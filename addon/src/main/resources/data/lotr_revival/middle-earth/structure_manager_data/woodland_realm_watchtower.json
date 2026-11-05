@@ -1,0 +1,22 @@
+{
+  "id": "lotr_revival:woodland_realm_watchtower",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:woodland_realm_watchtower.guard",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 8,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.sentinel"}
+      ]
+    },
+    {
+      "id": "lotr_revival:woodland_realm_watchtower.archer",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 8,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 3, "amount": 1, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.ranger"},
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.hunter"}
+      ]
+    }
+  ]
+}

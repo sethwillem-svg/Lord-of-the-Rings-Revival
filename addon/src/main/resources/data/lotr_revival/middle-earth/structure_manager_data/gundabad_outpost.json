@@ -1,0 +1,31 @@
+{
+  "id": "lotr_revival:gundabad_outpost",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:gundabad_outpost.leader",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "faction_key": "middle-earth:hobgoblin_tribes.gundabad", "npc_identifier": "middle-earth:hobgoblin_tribes.gundabad.leader"}
+      ]
+    },
+    {
+      "id": "lotr_revival:gundabad_outpost.soldier",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 3, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:hobgoblin_tribes.gundabad", "npc_identifier": "middle-earth:hobgoblin_tribes.gundabad.warrior"},
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:hobgoblin_tribes.gundabad", "npc_identifier": "middle-earth:hobgoblin_tribes.gundabad.militia"},
+        {"entity_type": "middle-earth:npc", "weight": 2, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:hobgoblin_tribes.gundabad", "npc_identifier": "middle-earth:hobgoblin_tribes.gundabad.goblin"}
+      ]
+    },
+    {
+      "id": "lotr_revival:gundabad_outpost.archer",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:hobgoblin_tribes.gundabad", "npc_identifier": "middle-earth:hobgoblin_tribes.gundabad.scout"}
+      ]
+    }
+  ]
+}
