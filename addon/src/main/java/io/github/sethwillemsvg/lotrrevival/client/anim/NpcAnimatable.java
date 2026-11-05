@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -48,6 +49,8 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
     private final String idle;
     /** Holds a shield in the off hand (when its animations were set up): plays the clips' shield versions. */
     private final boolean shield;
+    /** Its weapon's stance group (stanceGroup: spear or bow, or null), when its animations were set up. */
+    @Nullable private final String group;
     private final PAnimationManager<NpcAnimatable> manager;
     @Nullable private PBakedModel bound;
     private String state = "free";
@@ -68,6 +71,7 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         this.race = NpcAnimator.raceOf(entity);
         this.idle = IDLES[Math.floorMod(entity.getId() * 0x9E3779B1, IDLES.length)];
         this.shield = "shield".equals(WeaponClass.of(Hands.other(entity)));
+        this.group = stanceGroup(WeaponClass.of(Hands.weapon(entity)));
         this.manager = new PAnimationManager<>(this, AnimManagerKey.ofObject(this));
     }
 
@@ -100,12 +104,38 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
             Set<String> overlays = model == null ? Set.of()
                     : model.animations().keySet().stream().filter(NpcGraphs::isOverlay).collect(Collectors.toSet());
             String base = model != null && model.animations().containsKey(idle) ? idle : "idle";
-            return NpcGraphs.npc(base, name -> shield && model != null && model.animations().containsKey(name + SHIELD) ? name + SHIELD : name, overlays,
+            Predicate<String> has = name -> model != null && model.animations().containsKey(name);
+            return NpcGraphs.npc(base, name -> version(name, group, shield, has), overlays,
                     name -> {
                         AttackClips.Clip c = AttackClips.clip(race, name);
                         return c == null ? new float[] {NpcGraphs.FADE_IN, NpcGraphs.FADE_OUT} : new float[] {c.fadeIn(), c.fadeOut()};
                     });
         });
+    }
+
+    /** The formation stances that have weapon-group variants (specs/addon/npc-formation-stances.md). */
+    private static final Set<String> STANCES = Set.of("guard", "march", "shield_brace", "spear_brace");
+
+    /** A weapon class's stance group: spear for the spear class (spears and glaives), bow for bows, longbows and crossbows;
+     *  null for everything else (blades, axes, daggers, fists), which play the plain stances. */
+    @Nullable
+    public static String stanceGroup(@Nullable String weaponClass) {
+        if ("spear".equals(weaponClass)) return "spear";
+        if ("bow".equals(weaponClass) || "longbow".equals(weaponClass) || "crossbow".equals(weaponClass)) return "bow";
+        return null;
+    }
+
+    /**
+     * The animation an NPC plays for a stance or movement clip (specs/addon/npc-formation-stances.md): a stance's weapon-group
+     * variant (stance_spear, stance_bow) where the race file has it, then its shield version (_shield) where the NPC holds
+     * a shield and the file has that; else the plain clip, so an older race file without variants plays as before. A spear
+     * line with a shield braces behind the shield (shield_brace_spear): a spear cannot be braced two-handed with a shield on
+     * the arm.
+     */
+    public static String version(String name, @Nullable String group, boolean shield, Predicate<String> has) {
+        if (shield && "spear".equals(group) && name.equals("spear_brace") && has.test("shield_brace_spear")) return "shield_brace_spear";
+        String base = group != null && STANCES.contains(name) && has.test(name + "_" + group) ? name + "_" + group : name;
+        return shield && has.test(base + SHIELD) ? base + SHIELD : base;
     }
 
     @Nullable

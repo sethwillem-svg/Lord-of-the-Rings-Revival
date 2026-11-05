@@ -34,7 +34,8 @@ public final class NpcGraphs {
 
     /**
      * @param idle     this NPC's idle (idle, idle_2 ...)
-     * @param version  the animation this NPC plays for a movement clip: its shield version (name_shield) when it holds one
+     * @param version  the animation this NPC plays for a movement or stance clip (NpcAnimatable.version): its weapon-group
+     *                 variant and its shield version (name_shield) when it holds one
      * @param overlays the one-shot animations the race's file has
      * @param fades    an overlay's fade-in and fade-out in seconds (attacks: from hits.json, long enough that nothing pops)
      */
@@ -43,8 +44,9 @@ public final class NpcGraphs {
         states.add(blend("free", new float[] {0f, WALK, RUN}, version.apply(idle), version.apply("walk"), version.apply("run")));
         states.add(blend("riding", new float[] {0f, RIDE_MOVE}, "ride_idle", "ride_move"));
         states.add(new PAnimationState.Clip("guard", version.apply("guard"), PAnimationType.CYCLE, PInterpolationType.LINEAR, 1f, false));
-        states.add(clip("shield_brace", PAnimationType.CYCLE));
-        states.add(clip("spear_brace", PAnimationType.CYCLE));
+        // the braces play their weapon-group and shield variants too (NpcAnimatable.version): a spear behind a shield
+        states.add(new PAnimationState.Clip("shield_brace", version.apply("shield_brace"), PAnimationType.CYCLE, PInterpolationType.LINEAR, 1f, false));
+        states.add(new PAnimationState.Clip("spear_brace", version.apply("spear_brace"), PAnimationType.CYCLE, PInterpolationType.LINEAR, 1f, false));
         states.add(blend("march", new float[] {0f, WALK}, version.apply(idle), version.apply("march")));
         states.add(clip("bow_aim", PAnimationType.HOLD_LAST_FRAME));
         states.add(clip("crossbow_aim", PAnimationType.CYCLE));
