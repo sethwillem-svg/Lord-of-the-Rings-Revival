@@ -81,7 +81,7 @@ public final class EventScheduler {
         long until = WorldEventSavedData.get(p.getServer()).playerCooldownUntil.getOrDefault(p.getUUID(), 0L);
         if (!ignoreCooldown && p.level().getGameTime() < until) return "cooldown " + (until - p.level().getGameTime()) / 20 + " s";
         int cap = serverCap(p.getServer());
-        if (WorldEventManager.active().size() >= cap) return "server cap " + cap + " reached";
+        if (WorldEventManager.scheduledCount() >= cap) return "server cap " + cap + " reached";
         return null;
     }
 

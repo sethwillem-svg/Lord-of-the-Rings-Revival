@@ -28,6 +28,17 @@ public final class Ambush {
     /** Game tests: safe radius override (-1 uses the config). */
     public static int testSafeRadius = -1;
 
+    /** Stages an ambush as a world event (spec N8); set by the events module. Returns the body, or null when nothing was staged. */
+    @FunctionalInterface
+    public interface Stager {
+        @Nullable NpcEntity stage(ServerPlayer target, NemesisRecord r, BlockPos spot);
+    }
+
+    /** The events module's {@code ambush} event type; null without it (the ambush then spawns on its own). */
+    public static volatile @Nullable Stager stager;
+    /** Record id -> whether the player won, for ambushes run as world events (read once by the event's check). */
+    public static final Map<UUID, Boolean> ENDED = new HashMap<>();
+
     private Ambush() {}
 
     public static void onLogin(ServerPlayer p) {
@@ -128,10 +139,13 @@ public final class Ambush {
             LotrLog.dbg("nemesis", "ambush skipped: no spawn spot in 16 tries near {}", p.blockPosition().toShortString());
             return null;
         }
-        NpcEntity body = Manifestation.spawn(p.serverLevel(), r, spot, "ambush on " + LotrLog.id(p.getUUID()));
-        if (body == null) return null;
-        r.ambushTarget = p.getUUID();
-        body.setTarget(p);
+        Stager s = stager;
+        NpcEntity body = s != null ? s.stage(p, r, spot) : manifest(p, r, spot, "ambush on " + LotrLog.id(p.getUUID()));
+        if (body == null) {
+            LotrLog.dbg("nemesis", "ambush not staged: id={} player={} via {}", r.shortId(), LotrLog.id(p.getUUID()),
+                    s != null ? "world event" : "direct spawn");
+            return null;
+        }
         NemesisSavedData data = NemesisSavedData.get(p.getServer());
         long online = data.onlineTicks.getOrDefault(p.getUUID(), 0L);
         data.ambushCooldownUntil.put(p.getUUID(), online + NemesisConfig.i(NemesisConfig.AMBUSH_COOLDOWN_MINUTES) * 1200L);
@@ -141,6 +155,15 @@ public final class Ambush {
         LotrLog.dbg("nemesis", "ambush: id={} name=\"{}\" player={} at {} (player at {}) dist={}", r.shortId(), r.displayName(),
                 LotrLog.id(p.getUUID()), spot.toShortString(), p.blockPosition().toShortString(),
                 String.format("%.1f", Math.sqrt(spot.distSqr(p.blockPosition()))));
+        return body;
+    }
+
+    /** Spawns the ambushing body with its bodyguards and sets it on the player (the world event's stage step calls this too). */
+    public static @Nullable NpcEntity manifest(ServerPlayer p, NemesisRecord r, BlockPos spot, String reason) {
+        NpcEntity body = Manifestation.spawn(p.serverLevel(), r, spot, reason);
+        if (body == null) return null;
+        r.ambushTarget = p.getUUID();
+        body.setTarget(p);
         return body;
     }
 
@@ -173,7 +196,9 @@ public final class Ambush {
             data.ambushCooldownUntil.put(player, online + NemesisConfig.i(NemesisConfig.AMBUSH_COOLDOWN_WON_MINUTES) * 1200L);
             data.setDirty();
         }
-        LotrLog.dbg("nemesis", "ambush ended: id={} player={} player_won={}", r.shortId(), LotrLog.id(player), playerWon);
+        LotrLog.dbg("nemesis", "ambush ended: id={} player={} player_won={} event={}", r.shortId(), LotrLog.id(player), playerWon,
+                r.eventId == null ? "-" : LotrLog.id(r.eventId));
+        if (r.eventId != null) ENDED.put(r.id, playerWon);
         r.ambushTarget = null;
     }
 }
