@@ -189,10 +189,15 @@ public final class NpcAnimatable implements PAnimatable<NpcAnimatable> {
         }
     }
 
-    /** A one-off overlay (stagger, parry clips) at normal speed; nothing when the rig lacks it. */
-    public void play(String animation) {
+    /**
+     * A one-off overlay (stagger, parry clips) at normal speed, in this NPC's version (shield, left-handed: handed); nothing
+     * when the rig lacks it. A reaction ends a time-warped draw-back still running (the swing was parried).
+     */
+    public void play(LivingEntity entity, String animation) {
         PAnimationController<NpcAnimatable> c = controller();
-        if (c != null) trigger(c, animation, 1f);
+        if (c == null) return;
+        warpAnimation = null;
+        trigger(c, handed(entity, animation), 1f);
     }
 
     /** The end of a time-warped draw-back: the strike plays at normal speed. */

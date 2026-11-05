@@ -1,7 +1,8 @@
 /* The NPC animation slots: animation name in the race files -> source clip (build_npc.js).
  * Entry: { source, clip, mirror?, loop?, hold? (seconds: a held pose of that frame), strides? (keep one of this many strides,
  * in phase with walk), races?: { race: entry } }. Every attack also gets a mirrored left-handed twin, <name>_l.
- * Sources: animationsplus (AP, MIT), mobends (MIT), seriousplayer (MIT), emotecraft (CC0); see geckolib/animations/CREDITS.md.
+ * Sources: animationsplus (AP, MIT), mobends (MIT), seriousplayer (MIT), emotecraft (CC0); see geckolib/animations/CREDITS.md;
+ * keyed: hand-keyed here (import/keyed.js).
  * Names attack_<class>_N are the attack sets combat.AttackClips picks from (by weapon class). */
 (function (root) {
   'use strict';
@@ -31,6 +32,9 @@
     guard: ap('blockR', { loop: true }), shield_brace: ap('blockL', { loop: true }), spear_brace: ap('Spear_Swing_2R', { hold: 0.19 }), march: ap('walk'),
     // reactions and social
     hurt: ap('Fall_0'),
+    // combat reactions (specs/addon/combat-parry-warning.md): hand-keyed in import/keyed.js from AP's guard poses
+    stagger: { source: 'keyed', clip: 'stagger' }, parry_blade: { source: 'keyed', clip: 'parry_blade' },
+    parry_shield: { source: 'keyed', clip: 'parry_shield' },
     taunt_1: ap('Taunt_0'), taunt_2: ap('Taunt_1'), taunt_3: ap('Taunt_2'), taunt_4: ap('Taunt_3'), taunt_5: ap('Taunt_4'), taunt_6: ap('Taunt_5'),
   };
   /** Race posture, added to every clip: hunch (upper x; the head lifts back by most of it, so eyes stay on the horizon), arms

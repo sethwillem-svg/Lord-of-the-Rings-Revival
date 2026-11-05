@@ -15,6 +15,7 @@ const { importAnimationsPlus, mirror } = require('./import/animationsplus.js');
 const { importMoBends } = require('./import/mobends.js');
 const { importSeriousPlayer } = require('./import/seriousplayer.js');
 const { importEmote } = require('./import/emotecraft.js');
+const { keyedClips } = require('./import/keyed.js');
 const { RACES, SLOTS, STYLE } = require('./npc_slots.js');
 
 const LIB = path.join(__dirname, 'library');
@@ -29,6 +30,7 @@ function loadSources() {
   for (const f of dir('mobends')) Object.assign(sources.mobends, importMoBends(json('mobends/' + f), f.replace(/\.json$/, '')));
   for (const f of dir('seriousplayer')) Object.assign(sources.seriousplayer, importSeriousPlayer(json('seriousplayer/' + f)));
   for (const f of dir('emotecraft')) Object.assign(sources.emotecraft, importEmote(json('emotecraft/' + f), f.replace(/\.json$/, '')));
+  sources.keyed = keyedClips(sources.animationsplus);   // combat reactions keyed by hand (import/keyed.js)
   return sources;
 }
 
@@ -147,8 +149,12 @@ function fought(clip, slot, style) {
   return clip;
 }
 
-/** Overlays (attacks, hurt, ranged releases) play over the legs' locomotion: posture must not add bones they leave alone. */
-const isOverlay = (slot) => /^attack_/.test(slot) || ['hurt', 'bow_release', 'crossbow_shoot'].includes(slot);
+/** Combat reactions (combat-parry-warning.md): one-shots with mirrored left-handed twins, like attacks. */
+const REACTIONS = new Set(['stagger', 'parry_blade', 'parry_shield']);
+
+/** Overlays (attacks, hurt, ranged releases, combat reactions) play over the legs' locomotion: posture must not add bones
+ * they leave alone. Keep in step with client.anim.NpcGraphs.isOverlay. */
+const isOverlay = (slot) => /^attack_/.test(slot) || ['hurt', 'bow_release', 'crossbow_shoot'].includes(slot) || REACTIONS.has(slot);
 
 /** A clip channel's value at t (linear between keys; loops wrap). */
 function valueAt(keys, t, length, loop) {
@@ -227,8 +233,8 @@ function classLength(attack) {
 /** When the swing lands: in its fast part, where the weapon tip is most directly ahead (gecko/strike.js). */
 const hitTime = (animation, attack = 'attack_sword_1') => strikeHit(animation, classLength(attack));
 
-/** Clips that get a shield version (<name>_shield): movement, the guard, and every attack. */
-const SHIELD_SLOTS = /^(idle(_\d)?|walk|run|march|guard|attack_[a-z]+_\d+)$/;
+/** Clips that get a shield version (<name>_shield): movement, the guard, every attack, and the stagger. */
+const SHIELD_SLOTS = /^(idle(_\d)?|walk|run|march|guard|stagger|attack_[a-z]+_\d+)$/;
 const SHIELD_BONES = ['left_arm', 'left_elbow', 'weapon_l'];
 
 /** The off arm holding a shield up in front: AnimationsPlus' left-hand block, with the race's arm posture. */
@@ -250,7 +256,7 @@ function buildRace(race, sources, slots = SLOTS) {
   for (const [slot, entry] of Object.entries(slots)) {
     let c = clipFor(slot, entry, race, sources);
     if (style.fight && /^attack_/.test(slot)) c = fought(c, slot, style);   // before mirroring: the twin swings the same
-    if (/^attack_/.test(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
+    if (/^attack_/.test(slot) || REACTIONS.has(slot)) {   // the left-handed twin: the same swing mirrored, item on weapon_l
       const l = mirror(c);
       applyStyle(l, slot, style);
       clips[slot + '_l'] = l;

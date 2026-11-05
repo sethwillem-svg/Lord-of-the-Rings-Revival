@@ -108,7 +108,7 @@ public final class NpcAnimator {
 
     /** Plays a one-off overlay clip (stagger, parry_shield, ...) when this NPC's rig has it. */
     public static void play(LivingEntity entity, String animation) {
-        if (isNpc(entity)) NpcAnimatable.of(entity).play(animation);
+        if (isNpc(entity)) NpcAnimatable.of(entity).play(entity, animation);
     }
 
     /** Holds a shield in its other hand. */

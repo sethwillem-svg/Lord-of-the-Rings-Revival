@@ -55,9 +55,13 @@ public final class NpcGraphs {
         return new PAnimationGraph(states, transitions);
     }
 
-    /** Animations that play as overlays: attacks, hurt and the ranged releases. */
+    /**
+     * Animations that play as overlays: attacks, hurt, the ranged releases and the combat reactions (stagger, parry_blade,
+     * parry_shield and their _l / _shield versions; tools/anim-viewer/import/keyed.js). Keep in step with build_npc.js.
+     */
     public static boolean isOverlay(String animation) {
-        return animation.startsWith("attack_") || animation.equals("hurt") || animation.equals("bow_release") || animation.equals("crossbow_shoot");
+        return animation.startsWith("attack_") || animation.equals("hurt") || animation.equals("bow_release") || animation.equals("crossbow_shoot")
+                || animation.startsWith("stagger") || animation.startsWith("parry_");
     }
 
     private static PAnimationState blend(String name, float[] at, String... animations) {

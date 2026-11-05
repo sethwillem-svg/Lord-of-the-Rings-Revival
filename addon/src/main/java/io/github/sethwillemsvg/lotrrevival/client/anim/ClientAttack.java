@@ -52,14 +52,13 @@ public final class ClientAttack {
         var level = Minecraft.getInstance().level;
         if (level == null) return;
         if (p.reasonValue() == NpcAttackEndPayload.Reason.PARRIED && level.getEntity(p.entityId()) instanceof LivingEntity e)
-            NpcAnimator.play(e, "stagger");   // TODO(spec ticket 8): stagger clips per race; a no-op until they exist
+            NpcAnimator.play(e, "stagger");   // per race, with _shield and _l versions (NpcAnimatable.handed)
     }
 
     public static void fx(ParryFxPayload p) {
         var level = Minecraft.getInstance().level;
         if (level == null || !(level.getEntity(p.defenderId()) instanceof LivingEntity e)) return;
         switch (p.kindValue()) {
-            // TODO(spec ticket 8): parry_<class> clips per race (shield, blade); a no-op until they exist
             case NPC_PARRY -> NpcAnimator.play(e, NpcAnimator.isShieldBearer(e) ? "parry_shield" : "parry_blade");
             // TODO(spec "Out of scope" / ticket 6): the player's short guard flash; the swing below stands in
             case PERFECT, GLANCE -> {
