@@ -63,12 +63,31 @@ public final class WeaponGripTests {
         return quads;
     }
 
+    /** The edge quads' points (the drawn weapon) where Minecraft draws them. */
+    private static List<Vector3f> rawBlade(List<float[]> quads) {
+        return placedBlade(quads, new Matrix4f());
+    }
+
     /** The edge quads' points (the drawn weapon) as placed. */
     private static List<Vector3f> placedBlade(List<float[]> quads, Matrix4f m) {
         List<Vector3f> out = new ArrayList<>();
         for (float[] q : quads.subList(2, quads.size()))
             for (int i = 0; i < q.length; i += 3) out.add(m.transformPosition(new Vector3f(q[i], q[i + 1], q[i + 2])));
         return out;
+    }
+
+    @GameTest(template = "empty")
+    public static void itemsKeepTheirClassProportionsUpToTheCap(GameTestHelper h) {
+        // a short spear stays short beside a long one: one factor per class (2.8 / 2.29)
+        float shortSpear = WeaponGrip.seatedLength("spear", 1.17f * 16), longSpear = WeaponGrip.seatedLength("spear", 2.43f * 16);
+        h.assertTrue(Math.abs(shortSpear - 1.17f * 16 * 2.8f / 2.29f) < 1e-3f, "short spear seated at " + shortSpear + " px");
+        h.assertTrue(Math.abs(shortSpear / longSpear - 1.17f / 2.43f) < 1e-4f, "spear proportions not kept");
+        // an outsized axe is held to 1.3x its class length
+        h.assertTrue(Math.abs(WeaponGrip.seatedLength("axe", 1.03f * 16) - 1.3f * 1.65f * 16) < 1e-3f, "outsized axe not capped");
+        // bows have no typical length here: brought to their class length; unknown classes keep their size
+        h.assertTrue(Math.abs(WeaponGrip.seatedLength("bow", 10f) - 1.2f * 16) < 1e-3f, "bow not at its class length");
+        h.assertTrue(WeaponGrip.seatedLength(null, 10f) == 10f, "unknown class resized");
+        h.succeed();
     }
 
     @GameTest(template = "empty")
@@ -85,7 +104,9 @@ public final class WeaponGripTests {
                     nearest = Math.min(nearest, a.distance(fist));
                     for (Vector3f b : blade) longest = Math.max(longest, a.distance(b));
                 }
-                float want = WeaponGrip.length(cls) * 16f;
+                float own = 0;
+                for (Vector3f a : rawBlade(quads)) for (Vector3f b : rawBlade(quads)) own = Math.max(own, a.distance(b));
+                float want = WeaponGrip.seatedLength(cls, own);
                 h.assertTrue(Math.abs(longest - want) < 1e-3f * want, cls + (left ? " (left)" : "") + ": drawn " + longest + " px, class " + want + " px");
                 h.assertTrue(nearest < 1e-3f, cls + (left ? " (left)" : "") + ": the handle is " + nearest + " px from the fist");
             }

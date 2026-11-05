@@ -26,9 +26,22 @@
     return [p[0] - l[0], p[1] - l[1], p[2] + l[2]];
   }
 
-  function itemScale(cls, grips, length) {
+  /** No item grows past this share of its class length (an outsized item in a class of smaller ones). */
+  const CAP = 1.3;
+
+  /** An item's drawn length once seated (px), from its own drawn length (px). A class with a "native" length (blocks: the
+   *  typical Middle-earth item as drawn) scales all its items by one factor, length / native, so they keep Middle-earth's
+   *  proportions (a short orc spear stays short beside a Gondor spear), at most CAP times the class length; a class
+   *  without one brings every item to its length. Unknown classes keep their size. Mirrors WeaponGrip.seatedLength. */
+  function seatedLength(cls, grips, length) {
     const g = cls && grips[cls];
-    return g && g.length && length > 1e-6 ? (g.length * 16) / length : 1;
+    if (!g || !g.length || length <= 1e-6) return length;
+    if (!g.native) return g.length * 16;
+    return Math.min((length * g.length) / g.native, CAP * g.length * 16);
+  }
+
+  function itemScale(cls, grips, length) {
+    return length > 1e-6 ? seatedLength(cls, grips, length) / length : 1;
   }
 
   const scaleAbout = (c, s, p) => p.map((x, i) => c[i] + s * (x - c[i]));
@@ -108,7 +121,7 @@
   /** An exported item's weapon class; exports made before scimitars became swords (combat.WeaponClass) still say longsword. */
   const exportClass = (weapon, label) => (weapon === 'longsword' && /scimitar/i.test(label || '') ? 'sword' : weapon);
 
-  const api = { PART_PIVOT, FIST, partToRig, itemScale, scaleAbout, quadsOf, drawnItem, seatItem, seatPoint, bendPoint, exportClass };
+  const api = { PART_PIVOT, FIST, partToRig, itemScale, seatedLength, scaleAbout, quadsOf, drawnItem, seatItem, seatPoint, bendPoint, exportClass };
   if (isNode) module.exports = api;
   else root.GeckoHeld = api;
 })(typeof window !== 'undefined' ? window : globalThis);
