@@ -117,6 +117,8 @@ jobs:
           echo "::group::summary.md"; cat logs/summary.md || true; echo "::endgroup::"
           echo "===== FAILED TESTS / ERRORS (first 150 lines of errors.log) ====="
           grep -vE '^\s+at |Ambiguity between arguments|server.properties' logs/errors.log | head -150 || true
+          echo "===== compile errors ====="
+          grep -A3 ': error:' logs/compile.log | head -120 || true
           echo "===== [test] lines ====="
           grep -h '\[test\]' addon/run/gametest/logs/latest.log | head -200 || true
 
