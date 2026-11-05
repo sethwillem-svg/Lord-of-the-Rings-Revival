@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # CI entry point for the structure import tool (specs/addon/structures.md): unit tests, then verify that every committed
 # generated file (templates, worldgen JSON, tags, data map, docs/licences/structures.md, the NOTICE block) is up to date.
+# verify also checks every palette and committed template against vanilla_block_ids.json and me_block_ids.json
+# (regenerate those with extract_vanilla_block_ids.py and extract_me_block_ids.py <middle-earth source>).
 # Standard library Python 3.11+ only; no game, no network.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

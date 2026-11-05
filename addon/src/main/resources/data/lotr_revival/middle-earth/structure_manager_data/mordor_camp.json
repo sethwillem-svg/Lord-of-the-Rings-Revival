@@ -1,0 +1,31 @@
+{
+  "id": "lotr_revival:mordor_camp",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:mordor_camp.soldier",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 10,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 3, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:mordor", "npc_identifier": "middle-earth:mordor.warrior"},
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:mordor", "npc_identifier": "middle-earth:mordor.militia"},
+        {"entity_type": "middle-earth:npc", "weight": 2, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:mordor", "npc_identifier": "middle-earth:mordor.snaga"}
+      ]
+    },
+    {
+      "id": "lotr_revival:mordor_camp.scout",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 10,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:mordor", "npc_identifier": "middle-earth:mordor.scout"}
+      ]
+    },
+    {
+      "id": "lotr_revival:mordor_camp.warg",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 10,
+      "npc_pool": [
+        {"entity_type": "middle-earth:warg", "weight": 1, "amount": 1}
+      ]
+    }
+  ]
+}

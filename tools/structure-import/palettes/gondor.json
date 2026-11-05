@@ -1,15 +1,23 @@
 {
   "id": "gondor",
   "extends": "base",
-  "description": "Grey stone bricks become Middle-earth limestone bricks; cobblestone becomes cobbled limestone with some moss. Middle-earth ids checked by name against its block sets; run the block dump to validate.",
+  "description": "Grey stone bricks become Middle-earth limestone bricks; cobblestone becomes cobbled limestone with some moss. Every id is checked against vanilla_block_ids.json and me_block_ids.json by import.py verify.",
   "blocks": {
     "minecraft:cracked_stone_bricks": "middle-earth:cracked_limestone_bricks",
-    "minecraft:mossy_stone_bricks": "middle-earth:mossy_limestone_bricks"
+    "minecraft:mossy_stone_bricks": "middle-earth:mossy_limestone_bricks",
+    "minecraft:mossy_cobblestone": "middle-earth:mossy_cobbled_limestone",
+    "minecraft:chiseled_stone_bricks": "middle-earth:chiseled_limestone_bricks",
+    "minecraft:smooth_stone": "middle-earth:smooth_limestone",
+    "minecraft:smooth_stone_slab": "middle-earth:smooth_limestone_slab"
   },
   "families": [
     {
       "from": {"base": "minecraft:stone_bricks", "stairs": "minecraft:stone_brick_stairs", "slab": "minecraft:stone_brick_slab", "wall": "minecraft:stone_brick_wall"},
       "to": {"base": "middle-earth:limestone_bricks", "stairs": "middle-earth:limestone_brick_stairs", "slab": "middle-earth:limestone_brick_slab", "wall": "middle-earth:limestone_brick_wall"}
+    },
+    {
+      "from": {"stairs": "minecraft:cobblestone_stairs", "slab": "minecraft:cobblestone_slab", "wall": "minecraft:cobblestone_wall"},
+      "to": {"stairs": "middle-earth:cobbled_limestone_stairs", "slab": "middle-earth:cobbled_limestone_slab", "wall": "middle-earth:cobbled_limestone_wall"}
     }
   ],
   "random": {

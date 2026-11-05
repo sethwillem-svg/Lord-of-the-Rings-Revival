@@ -8,7 +8,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import docs, emit, fit, formats, limits, licences, manifest, nbt, nests, remap, strip, versions
+from . import blockids, docs, emit, fit, formats, limits, licences, manifest, nbt, nests, remap, strip, versions
 from .formats import vanilla
 from .paths import Repo
 
@@ -101,6 +101,11 @@ def build(repo: Repo, m: dict, dump: dict | None) -> Result:
     errs = remap.validate(grid, dump)
     if errs:
         raise BuildError("block dump: " + "; ".join(errs))
+    known = blockids.load_known(repo.tool)
+    if known is not None:
+        errs = blockids.grid_problems((st.name for st in grid.blocks), known)
+        if errs:
+            raise BuildError("block ids: " + "; ".join(errs))
     errs, warns = limits.check_grid(grid)
     log += [f"WARN {w}" for w in warns]
     if errs:
@@ -191,9 +196,20 @@ def same_content(rel: str, a: bytes, b: bytes) -> bool:
     return a == b
 
 
+def id_problems(repo: Repo) -> list:
+    """Palettes and committed templates checked against the vanilla and Middle-earth id lists."""
+    known = blockids.load_known(repo.tool)
+    if known is None:
+        return [f"missing {blockids.VANILLA_FILE} or {blockids.ME_FILE} in {repo.rel(repo.tool)}"]
+    out = blockids.palettes_problems(repo.palettes, known)
+    for p in sorted((repo.root / emit.d("structure/build")).glob("*.nbt")):
+        out += blockids.template_problems(p, known)
+    return out
+
+
 def verify(repo: Repo, log=print) -> list:
     """Rebuilds everything in a temporary copy of the tool folder and compares with the committed files."""
-    problems = []
+    problems = id_problems(repo)
     for m in load_manifests(repo):
         if manifest.buildable(m):
             errs = manifest.gate(m, repo.builds / m["id"])

@@ -1,0 +1,55 @@
+{
+  "id": "rohan",
+  "extends": "base",
+  "description": "Rohan: grey stone bricks become gneiss bricks, cobblestone cobbled gneiss with some moss. First pick, to review at the first playtest. Wood and thatch stay as built (base).",
+  "blocks": {
+    "minecraft:cracked_stone_bricks": "middle-earth:cracked_gneiss_bricks",
+    "minecraft:mossy_stone_bricks": "middle-earth:mossy_gneiss_bricks",
+    "minecraft:mossy_cobblestone": "middle-earth:mossy_cobbled_gneiss",
+    "minecraft:chiseled_stone_bricks": "middle-earth:chiseled_gneiss_bricks",
+    "minecraft:smooth_stone": "middle-earth:smooth_gneiss",
+    "minecraft:smooth_stone_slab": "middle-earth:smooth_gneiss_slab"
+  },
+  "families": [
+    {
+      "from": {
+        "base": "minecraft:stone_bricks",
+        "stairs": "minecraft:stone_brick_stairs",
+        "slab": "minecraft:stone_brick_slab",
+        "wall": "minecraft:stone_brick_wall"
+      },
+      "to": {
+        "base": "middle-earth:gneiss_bricks",
+        "stairs": "middle-earth:gneiss_brick_stairs",
+        "slab": "middle-earth:gneiss_brick_slab",
+        "wall": "middle-earth:gneiss_brick_wall"
+      }
+    },
+    {
+      "from": {
+        "stairs": "minecraft:cobblestone_stairs",
+        "slab": "minecraft:cobblestone_slab",
+        "wall": "minecraft:cobblestone_wall"
+      },
+      "to": {
+        "stairs": "middle-earth:cobbled_gneiss_stairs",
+        "slab": "middle-earth:cobbled_gneiss_slab",
+        "wall": "middle-earth:cobbled_gneiss_wall"
+      }
+    }
+  ],
+  "random": {
+    "minecraft:cobblestone": [
+      [
+        "middle-earth:cobbled_gneiss",
+        3
+      ],
+      [
+        "middle-earth:mossy_cobbled_gneiss",
+        1
+      ]
+    ]
+  },
+  "keep": [],
+  "valuable_fallback": "middle-earth:gneiss_bricks"
+}

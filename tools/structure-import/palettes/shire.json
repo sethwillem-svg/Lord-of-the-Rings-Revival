@@ -1,0 +1,55 @@
+{
+  "id": "shire",
+  "extends": "base",
+  "description": "Shire: stone bricks become warm dolomite bricks, cobblestone cobbled dolomite. Shire builds are mostly wood and earth (base). First pick, to review at the first playtest.",
+  "blocks": {
+    "minecraft:cracked_stone_bricks": "middle-earth:cracked_dolomite_bricks",
+    "minecraft:mossy_stone_bricks": "middle-earth:mossy_dolomite_bricks",
+    "minecraft:mossy_cobblestone": "middle-earth:mossy_cobbled_dolomite",
+    "minecraft:chiseled_stone_bricks": "middle-earth:chiseled_dolomite_bricks",
+    "minecraft:smooth_stone": "middle-earth:smooth_dolomite",
+    "minecraft:smooth_stone_slab": "middle-earth:smooth_dolomite_slab"
+  },
+  "families": [
+    {
+      "from": {
+        "base": "minecraft:stone_bricks",
+        "stairs": "minecraft:stone_brick_stairs",
+        "slab": "minecraft:stone_brick_slab",
+        "wall": "minecraft:stone_brick_wall"
+      },
+      "to": {
+        "base": "middle-earth:dolomite_bricks",
+        "stairs": "middle-earth:dolomite_brick_stairs",
+        "slab": "middle-earth:dolomite_brick_slab",
+        "wall": "middle-earth:dolomite_brick_wall"
+      }
+    },
+    {
+      "from": {
+        "stairs": "minecraft:cobblestone_stairs",
+        "slab": "minecraft:cobblestone_slab",
+        "wall": "minecraft:cobblestone_wall"
+      },
+      "to": {
+        "stairs": "middle-earth:cobbled_dolomite_stairs",
+        "slab": "middle-earth:cobbled_dolomite_slab",
+        "wall": "middle-earth:cobbled_dolomite_wall"
+      }
+    }
+  ],
+  "random": {
+    "minecraft:cobblestone": [
+      [
+        "middle-earth:cobbled_dolomite",
+        3
+      ],
+      [
+        "middle-earth:mossy_cobbled_dolomite",
+        1
+      ]
+    ]
+  },
+  "keep": [],
+  "valuable_fallback": "middle-earth:dolomite_bricks"
+}

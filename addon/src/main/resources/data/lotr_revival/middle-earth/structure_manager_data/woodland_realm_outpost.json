@@ -1,0 +1,31 @@
+{
+  "id": "lotr_revival:woodland_realm_outpost",
+  "spawn_nest": [
+    {
+      "id": "lotr_revival:woodland_realm_outpost.leader",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.commander"}
+      ]
+    },
+    {
+      "id": "lotr_revival:woodland_realm_outpost.soldier",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 3, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.warrior"},
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 2, "max_amount": 3, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.lancer"}
+      ]
+    },
+    {
+      "id": "lotr_revival:woodland_realm_outpost.archer",
+      "respawn_tick_delay": 72000,
+      "bed_radius": 12,
+      "npc_pool": [
+        {"entity_type": "middle-earth:npc", "weight": 3, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.ranger"},
+        {"entity_type": "middle-earth:npc", "weight": 1, "amount": 1, "max_amount": 2, "faction_key": "middle-earth:woodland_realm", "npc_identifier": "middle-earth:woodland_realm.hunter"}
+      ]
+    }
+  ]
+}
