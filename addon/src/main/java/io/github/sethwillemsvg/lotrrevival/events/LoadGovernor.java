@@ -15,6 +15,9 @@ public final class LoadGovernor {
     /** Average tick time in ms; the default reads the server's own average (last 100 ticks). */
     public static ToDoubleFunction<MinecraftServer> tickSource = s -> s.getAverageTickTimeNanos() / 1_000_000.0;
 
+    /** Game tests: stop the real tick source from moving the state (a slow CI server must not block test events). */
+    public static volatile boolean frozen;
+
     private static State state = State.GREEN;
     private static long since;
     private static long redSince = -1;
@@ -37,6 +40,7 @@ public final class LoadGovernor {
 
     /** Once a second from the events tick. */
     public static void tick(MinecraftServer server) {
+        if (frozen) return;
         update(server.getTickCount(), tickSource.applyAsDouble(server), EventChunkTickets.budgetFraction());
     }
 
@@ -66,6 +70,13 @@ public final class LoadGovernor {
             redSince = want == State.RED ? tick : -1;
         }
         return state;
+    }
+
+    /** Game tests: jump straight to a state (no hold afterwards). */
+    public static void forceForTest(State s) {
+        state = s;
+        since = Long.MIN_VALUE / 2;
+        redSince = s == State.RED ? Long.MIN_VALUE / 4 : -1;
     }
 
     /** Game tests: back to Green with no hold. */

@@ -403,6 +403,11 @@ public final class WorldEventManager {
         return n;
     }
 
+    /** Game tests: register a hand-built event as active. */
+    public static void putForTest(WorldEvent ev) {
+        ACTIVE.put(ev.id, ev);
+    }
+
     /** Hard reset (tests). */
     public static void clearForTest(MinecraftServer server) {
         for (WorldEvent ev : new ArrayList<>(ACTIVE.values())) {

@@ -59,6 +59,8 @@ public final class NemesisTestPlayers {
     public static void begin(GameTestHelper h, String name) {
         LotrLog.info("test", "START {}", name);
         NemesisConfig.testAnyDimension = true;
+        io.github.sethwillemsvg.lotrrevival.events.LoadGovernor.frozen = true;
+        io.github.sethwillemsvg.lotrrevival.events.LoadGovernor.reset();
         NemesisRandom.forTest(name.hashCode());
         MinecraftServer s = h.getLevel().getServer();
         if (s.getWorldData().getDifficulty() == Difficulty.PEACEFUL) {
