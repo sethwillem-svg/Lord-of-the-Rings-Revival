@@ -137,6 +137,10 @@ public final class TravelService {
             cancel(p, "dimension");
             return;
         }
+        if (p.isSleeping()) {
+            cancel(p, "bed");
+            return;
+        }
         if (p.getVehicle() != c.mount) {
             cancel(p, c.mount == null ? "mount" : "dismount");
             return;
