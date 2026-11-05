@@ -208,9 +208,15 @@ public final class WorldEventManager {
                     continue;
                 }
                 if (!ownerRules(server, level, ev, now)) continue;
-                if (!shedDone && LoadGovernor.shedding(tick) && level.getNearestPlayer(ev.centre.getX(), ev.centre.getY(), ev.centre.getZ(), 64, false) == null) {
-                    shedDone = true;
-                    end(server, ev, null, true, "governor red: shed (no player within 64)");
+                if (!shedDone && LoadGovernor.shedding(tick)) {
+                    var near = level.getNearestPlayer(ev.centre.getX(), ev.centre.getY(), ev.centre.getZ(), 64, false);
+                    if (near == null) {
+                        shedDone = true;
+                        end(server, ev, null, true, "governor red: shed (no player within 64)");
+                    } else {
+                        LotrLog.dbg("events", "shed skipped: event {} has player {} at {} blocks ({})", ev.shortId(), LotrLog.id(near.getUUID()),
+                                String.format("%.1f", Math.sqrt(near.distanceToSqr(ev.centre.getCenter()))), LoadGovernor.describe(tick));
+                    }
                 }
             } catch (RuntimeException e) {
                 LotrLog.error("events", "event " + ev.shortId() + " tick failed; resolving off-screen", e);

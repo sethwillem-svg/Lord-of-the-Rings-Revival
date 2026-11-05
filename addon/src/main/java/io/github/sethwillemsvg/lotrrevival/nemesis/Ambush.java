@@ -87,10 +87,15 @@ public final class Ambush {
         if (session < NemesisConfig.i(NemesisConfig.AMBUSH_MIN_ONLINE_MINUTES) * 1200L) return "online " + session / 20 + " s this session";
         int safe = testSafeRadius >= 0 ? testSafeRadius : NemesisConfig.i(NemesisConfig.SAFE_RADIUS);
         BlockPos spawn = p.serverLevel().getSharedSpawnPos();
-        if (p.blockPosition().distSqr(spawn) < (double) safe * safe) return "within " + safe + " of world spawn";
+        double toSpawn = Math.sqrt(p.blockPosition().distSqr(spawn));
+        if (toSpawn < safe) return "within " + safe + " of world spawn (" + String.format("%.1f", toSpawn) + " blocks: player at "
+                + p.blockPosition().toShortString() + ", spawn " + spawn.toShortString() + " in " + p.level().dimension().location() + ")";
         BlockPos respawn = p.getRespawnPosition();
-        if (respawn != null && p.getRespawnDimension() == p.level().dimension() && p.blockPosition().distSqr(respawn) < (double) safe * safe)
-            return "within " + safe + " of respawn point";
+        if (respawn != null && p.getRespawnDimension() == p.level().dimension()) {
+            double toRespawn = Math.sqrt(p.blockPosition().distSqr(respawn));
+            if (toRespawn < safe) return "within " + safe + " of respawn point (" + String.format("%.1f", toRespawn) + " blocks: respawn "
+                    + respawn.toShortString() + ")";
+        }
         if (FastTravel.isTravelling(p)) return "fast travelling";
         if (governorRed.getAsBoolean()) return "governor red";
         long until = data.ambushCooldownUntil.getOrDefault(p.getUUID(), 0L);

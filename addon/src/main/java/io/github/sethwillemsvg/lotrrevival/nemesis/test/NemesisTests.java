@@ -411,14 +411,22 @@ public final class NemesisTests {
             NemesisRecord r = record(h, MORDOR, WARRIOR, 0);
             r.weakness = null;
             NpcEntity e = body(h, r, P);
+            // the player hits from the front: without this the combat NPC parry roll can turn the hit into 0 damage
+            io.github.sethwillemsvg.lotrrevival.combat.NpcParry.chanceOverride(e, 0.0);
             NemesisRandom.force(0.99, 0.99);   // no escape, no cheat-death
-            e.hurt(e.damageSources().playerAttack(p), 10000);
-            h.assertTrue(calls[0] == 1 && calls[1] == 25, "onKill calls=" + calls[0] + " multiplier=" + calls[1]);
+            float before = e.getHealth();
+            boolean hurt = e.hurt(e.damageSources().playerAttack(p), 10000);
+            h.assertTrue(calls[0] == 1 && calls[1] == 25, "onKill calls=" + calls[0] + " multiplier=" + calls[1] + " delegate="
+                    + ReputationHooks.get().getClass().getName() + " hurt()=" + hurt + " health " + before + "->" + e.getHealth()
+                    + " dead=" + e.isDeadOrDying() + " status=" + r.status + " escape_tried=" + r.escapeTried + " cheat_deaths=" + r.cheatDeaths
+                    + " killer=" + LotrLog.id(p.getUUID()) + " killer_mode=" + p.gameMode.getGameModeForPlayer());
             NemesisRecord r2 = record(h, MORDOR, WARRIOR, 0);
             NpcEntity e2 = body(h, r2, new BlockPos(2, 1, 1));
+            io.github.sethwillemsvg.lotrrevival.combat.NpcParry.chanceOverride(e2, 0.0);
             NemesisRandom.force(0.0);   // escape
             e2.hurt(e2.damageSources().playerAttack(p), 10000);
-            h.assertTrue(calls[0] == 1, "an escape called onKill");
+            h.assertTrue(r2.escapeTried, "no escape roll on the second body: health=" + e2.getHealth() + " status=" + r2.status);
+            h.assertTrue(calls[0] == 1, "an escape called onKill: calls=" + calls[0] + " status=" + r2.status);
         }, () -> {
             ReputationHooks.set(prev);
             cleanup(h, ps);
@@ -499,12 +507,21 @@ public final class NemesisTests {
             h.assertTrue(Ambush.whyNotEligible(p, data) != null, "eligible with 0 minutes online");
             Ambush.SESSION_START.put(p.getUUID(), (long) server(h).getTickCount() - 20 * 60 * 20);
             String why = Ambush.whyNotEligible(p, data);
-            h.assertTrue(why == null, "not eligible: " + why);
+            h.assertTrue(why == null, "not eligible: " + why + " (player at " + p.blockPosition().toShortString() + " in "
+                    + p.level().dimension().location() + ")");
             p.setGameMode(GameType.CREATIVE);
             h.assertTrue(Ambush.whyNotEligible(p, data) != null, "eligible in creative");
             p.setGameMode(GameType.SURVIVAL);
-            Ambush.testSafeRadius = 100000;
-            h.assertTrue(Ambush.whyNotEligible(p, data) != null, "eligible inside the safe radius");
+            // a radius just past the player's real distance to world spawn (the test level's spawn can be anywhere)
+            BlockPos spawn = p.serverLevel().getSharedSpawnPos();
+            double toSpawn = Math.sqrt(p.blockPosition().distSqr(spawn));
+            Ambush.testSafeRadius = (int) Math.ceil(toSpawn) + 16;
+            String inside = Ambush.whyNotEligible(p, data);
+            h.assertTrue(inside != null, "eligible inside the safe radius: radius=" + Ambush.testSafeRadius + " player at "
+                    + p.blockPosition().toShortString() + " in " + p.level().dimension().location() + " spawn " + spawn.toShortString()
+                    + " dist=" + String.format("%.1f", toSpawn) + " session_start=" + Ambush.SESSION_START.get(p.getUUID())
+                    + " tick=" + server(h).getTickCount() + " game_mode=" + p.gameMode.getGameModeForPlayer());
+            LotrLog.info("test", "ambush_eligibility: inside the safe radius -> {}", inside);
             Ambush.testSafeRadius = 0;
             data.ambushCooldownUntil.put(p.getUUID(), data.onlineTicks.getOrDefault(p.getUUID(), 0L) + 1000);
             h.assertTrue(Ambush.whyNotEligible(p, data) != null, "eligible inside the cooldown");

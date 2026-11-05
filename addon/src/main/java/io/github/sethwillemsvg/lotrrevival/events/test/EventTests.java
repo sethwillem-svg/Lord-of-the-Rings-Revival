@@ -113,8 +113,14 @@ public final class EventTests {
             h.assertTrue(EventChunkTickets.forcedFor(ev.id) > 0, "no chunks forced");
             LoadGovernor.forceForTest(LoadGovernor.State.RED);
             WorldEventManager.tick(server(h));
-            h.assertTrue(ev.state == WorldEvent.State.ENDED && ev.offscreen, "red did not shed the event: " + ev.state);
-            h.assertTrue(EventChunkTickets.forcedFor(ev.id) == 0, "chunks not released");
+            long tick = server(h).getTickCount();
+            var near = h.getLevel().getNearestPlayer(c.getX(), c.getY(), c.getZ(), 64, false);
+            h.assertTrue(ev.state == WorldEvent.State.ENDED && ev.offscreen, "red did not shed the event: state=" + ev.state + " outcome="
+                    + ev.outcome + " offscreen=" + ev.offscreen + " " + LoadGovernor.describe(tick) + " centre=" + c.toShortString()
+                    + " owner at " + owner.blockPosition().toShortString() + " in " + owner.level().dimension().location()
+                    + " nearest player within 64=" + (near == null ? "none" : LotrLog.id(near.getUUID()) + " at " + near.blockPosition().toShortString())
+                    + " lead=" + ev.count(EventParticipant.LEAD) + " opposition=" + ev.count(EventParticipant.OPPOSITION));
+            h.assertTrue(EventChunkTickets.forcedFor(ev.id) == 0, "chunks not released: " + EventChunkTickets.forcedFor(ev.id));
         }, () -> cleanup(h, ps));
     }
 

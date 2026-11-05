@@ -91,6 +91,9 @@ public final class DeathRules {
             if (!(e.getEntity() instanceof NpcEntity npc) || npc.getServer() == null) return;
             NemesisRecord r = NemesisApi.bodyOf(npc);
             if (r == null) {
+                NemesisLink link = NemesisLink.of(npc);
+                if (link != null) LotrLog.dbg("nemesis", "death of a linked body that is not live: entity={} id={} manifestation={}",
+                        LotrLog.id(npc.getUUID()), LotrLog.id(link.id()), link.manifestation());
                 Sergeants.onUnitDeath(npc);
                 return;
             }
@@ -108,7 +111,11 @@ public final class DeathRules {
         if (byPlayerOrUnit) {
             int mult = NemesisConfig.i(NemesisConfig.REPUTATION_MULTIPLIER);
             ReputationHooks.get().onKill((LivingEntity) killer, npc, mult);
-            LotrLog.dbg("nemesis", "reputation: onKill(killer={}, victim={}, x{})", LotrLog.id(killer.getUUID()), r.shortId(), mult);
+            LotrLog.dbg("nemesis", "reputation: onKill(killer={}, victim={}, x{}) via {}", LotrLog.id(killer.getUUID()), r.shortId(), mult,
+                    ReputationHooks.get().getClass().getSimpleName());
+        } else {
+            LotrLog.dbg("nemesis", "reputation: none for {} (killer {} is not a player or hired unit; source {})", r.shortId(),
+                    killer == null ? "-" : killer.getType().toShortString() + ":" + LotrLog.id(killer.getUUID()), src.getMsgId());
         }
         Sergeants.onNemesisDown(server, r, npc);
         if (r.ambushTarget != null) Ambush.onAmbushEnded(server, r, r.ambushTarget, true);
