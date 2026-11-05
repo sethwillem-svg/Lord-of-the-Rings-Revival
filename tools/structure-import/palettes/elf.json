@@ -1,0 +1,55 @@
+{
+  "id": "elf",
+  "extends": "base",
+  "description": "Elves (Lothlorien, Woodland Realm): stone bricks become pale calcite bricks (the base calcite block is vanilla), cobblestone cobbled calcite. First pick, to review at the first playtest.",
+  "blocks": {
+    "minecraft:cracked_stone_bricks": "middle-earth:cracked_calcite_bricks",
+    "minecraft:mossy_stone_bricks": "middle-earth:mossy_calcite_bricks",
+    "minecraft:mossy_cobblestone": "middle-earth:mossy_cobbled_calcite",
+    "minecraft:chiseled_stone_bricks": "middle-earth:chiseled_calcite_bricks",
+    "minecraft:smooth_stone": "middle-earth:smooth_calcite",
+    "minecraft:smooth_stone_slab": "middle-earth:smooth_calcite_slab"
+  },
+  "families": [
+    {
+      "from": {
+        "base": "minecraft:stone_bricks",
+        "stairs": "minecraft:stone_brick_stairs",
+        "slab": "minecraft:stone_brick_slab",
+        "wall": "minecraft:stone_brick_wall"
+      },
+      "to": {
+        "base": "middle-earth:calcite_bricks",
+        "stairs": "middle-earth:calcite_brick_stairs",
+        "slab": "middle-earth:calcite_brick_slab",
+        "wall": "middle-earth:calcite_brick_wall"
+      }
+    },
+    {
+      "from": {
+        "stairs": "minecraft:cobblestone_stairs",
+        "slab": "minecraft:cobblestone_slab",
+        "wall": "minecraft:cobblestone_wall"
+      },
+      "to": {
+        "stairs": "middle-earth:cobbled_calcite_stairs",
+        "slab": "middle-earth:cobbled_calcite_slab",
+        "wall": "middle-earth:cobbled_calcite_wall"
+      }
+    }
+  ],
+  "random": {
+    "minecraft:cobblestone": [
+      [
+        "middle-earth:cobbled_calcite",
+        3
+      ],
+      [
+        "middle-earth:mossy_cobbled_calcite",
+        1
+      ]
+    ]
+  },
+  "keep": [],
+  "valuable_fallback": "middle-earth:calcite_bricks"
+}

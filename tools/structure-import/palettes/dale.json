@@ -1,0 +1,55 @@
+{
+  "id": "dale",
+  "extends": "base",
+  "description": "Dale: stone bricks become Middle-earth granite bricks (the base granite block is vanilla), cobblestone cobbled granite. First pick, to review at the first playtest.",
+  "blocks": {
+    "minecraft:cracked_stone_bricks": "middle-earth:cracked_granite_bricks",
+    "minecraft:mossy_stone_bricks": "middle-earth:mossy_granite_bricks",
+    "minecraft:mossy_cobblestone": "middle-earth:mossy_cobbled_granite",
+    "minecraft:chiseled_stone_bricks": "middle-earth:chiseled_granite_bricks",
+    "minecraft:smooth_stone": "middle-earth:smooth_granite",
+    "minecraft:smooth_stone_slab": "middle-earth:smooth_granite_slab"
+  },
+  "families": [
+    {
+      "from": {
+        "base": "minecraft:stone_bricks",
+        "stairs": "minecraft:stone_brick_stairs",
+        "slab": "minecraft:stone_brick_slab",
+        "wall": "minecraft:stone_brick_wall"
+      },
+      "to": {
+        "base": "middle-earth:granite_bricks",
+        "stairs": "middle-earth:granite_brick_stairs",
+        "slab": "middle-earth:granite_brick_slab",
+        "wall": "middle-earth:granite_brick_wall"
+      }
+    },
+    {
+      "from": {
+        "stairs": "minecraft:cobblestone_stairs",
+        "slab": "minecraft:cobblestone_slab",
+        "wall": "minecraft:cobblestone_wall"
+      },
+      "to": {
+        "stairs": "middle-earth:cobbled_granite_stairs",
+        "slab": "middle-earth:cobbled_granite_slab",
+        "wall": "middle-earth:cobbled_granite_wall"
+      }
+    }
+  ],
+  "random": {
+    "minecraft:cobblestone": [
+      [
+        "middle-earth:cobbled_granite",
+        3
+      ],
+      [
+        "middle-earth:mossy_cobbled_granite",
+        1
+      ]
+    ]
+  },
+  "keep": [],
+  "valuable_fallback": "middle-earth:granite_bricks"
+}
