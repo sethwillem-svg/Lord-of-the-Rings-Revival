@@ -49,9 +49,9 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "Middle-earth $ME_REF at $sha"
 
-      - name: Cache Middle-earth jars
+      - name: Restore Middle-earth jars
         id: mecache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ~/me-jars
           key: me-jars-${{ steps.me.outputs.sha }}
@@ -77,6 +77,14 @@ jobs:
             cp "$(ls $m/build/libs/*.jar | grep -v -e sources -e javadoc | head -1)" ~/me-jars/api/$m.jar
           done
           ls -la ~/me-jars ~/me-jars/api
+
+      # saved right away, so a failing test later does not throw away the 5-minute Middle-earth build
+      - name: Save Middle-earth jars
+        if: steps.mecache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/me-jars
+          key: me-jars-${{ steps.me.outputs.sha }}
 
       - name: Gradle properties
         run: |

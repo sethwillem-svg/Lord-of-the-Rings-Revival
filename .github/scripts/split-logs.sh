@@ -43,7 +43,7 @@ grep -nE '/(WARN|ERROR|FATAL)\]|^\s+at |^Caused by|Exception' "$log" > "$out/err
     grep -E '\[test\] (PASS|FAIL)' "$log" | sed -E 's/.*\[test\] /- /'
   fi
   # NeoForge/vanilla game test runner lines
-  grep -E 'tests? (passed|failed)|required tests failed|All [0-9]+ required tests passed|::' "$log" | sed -E 's/^.*\]: /- /' | head -100
+  grep -E 'GAME TESTS COMPLETE|required tests (failed|passed)|LogTestReporter|GameTestServer]:    - ' "$log" | sed -E 's/^.*\]: /- /' | head -100
   echo
   echo "Errors and warnings: $(wc -l < "$out/errors.log") lines in errors.log"
 } >> "$summary"
