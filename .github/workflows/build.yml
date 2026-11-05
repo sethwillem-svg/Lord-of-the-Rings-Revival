@@ -4,7 +4,9 @@ name: build
 
 on:
   push:
+    paths-ignore: ['specs/**', 'docs/**', '**/*.md']
   pull_request:
+    paths-ignore: ['specs/**', 'docs/**', '**/*.md']
   workflow_dispatch:
     inputs:
       debug:
