@@ -1025,9 +1025,282 @@ function bestAttack(c, slot, entry, race, sources, style, clips, used, slots = S
   return { ...f, source: entry.clip, missesBar: true };
 }
 
+/* ==== Formation stances (specs/addon/npc-formation-stances.md) ====
+ * Each stance slot (npc_slots.js SLOTS entries with `stance`) is picked per race from its STANCE_POOL by the stance rules
+ * and score of test/lib/stance.js, the same measures test/stances.test.js judges the race files with. A candidate is one
+ * pool entry, or a pair: one entry's upper body over another's legs (split as posture splits them, STANCE.LOWER_BONES).
+ * Each is finished as every clip is (race posture, the hips following the torso, true hinges), its grip set (an entry's
+ * `grip`: how the hand turns what it holds), and, where its upper body is a held frame, given the breathing of a source
+ * idle (STANCE_BREATH). Shield versions take the shield arm from the shield code path (withShield). */
+const MOCAP = require('./import/mocap.js');
+const STANCE = require('./test/lib/stance.js');
+const { STANCE_POOL, STANCE_BREATH, MARCH_STRIDE } = require('./npc_slots.js');
+const BVH_SOURCES = new Set(['ual', 'kaykit', 'cmu']);
+
+/** A pool entry's name in the build's printout and in npc_slots.js STANCE_PICKS. */
+const stanceId = (e) => `${e.source}:${e.clip}${e.hold !== undefined ? '@' + e.hold : ''}${e.mirror ? ' mirrored' : ''}${e.grip ? ' grip ' + e.grip : ''}`;
+const pairId = (up, low) => (up === low ? stanceId(up) : `${stanceId(up)} over ${stanceId(low)}`);
+
+/** The turn that levels a library's heads (degrees up; import/mocap.js headPitch): UAL's head-top joint sits ahead of the
+ *  head, so its neutral idle (Idle_Loop) looks 15° down, and every UAL head is lifted by that. KayKit's idles read within 4°
+ *  of level, and CMU's actors each carry their own head: those are left as they are. */
+const HEAD_NEUTRAL = { ual: 'Idle_Loop' }, headLevels = {};
+function headLevel(source) {
+  if (!HEAD_NEUTRAL[source]) return 0;
+  if (headLevels[source] === undefined) headLevels[source] = -MOCAP.headPitch(MOCAP.importBvh(fs.readFileSync(path.join(LIB, source, HEAD_NEUTRAL[source] + '.bvh'), 'utf8'), {}));
+  return headLevels[source];
+}
+
+/** A pool entry's clip as its source has it (no posture), cached: the library BVH retargeted (import/mocap.js), or a source
+ *  clip; held at a frame (hold, s), mirrored, cut to whole gait cycles (cycles), its seam spread (close). Always loops. */
+const stanceRawCache = new Map();
+function stanceRaw(e, sources) {
+  const key = JSON.stringify([e.source, e.clip, e.hold, e.mirror, e.cycles, e.close, e.range]);
+  if (stanceRawCache.has(key)) return clone(stanceRawCache.get(key));
+  let c;
+  if (BVH_SOURCES.has(e.source)) {
+    const text = fs.readFileSync(path.join(LIB, e.source, e.clip + '.bvh'), 'utf8');
+    c = MOCAP.importBvh(text, { loop: e.hold === undefined, cycles: e.cycles, range: e.range, headLift: headLevel(e.source) });
+    if (e.mirror) c = { ...mirror(c), length: c.length };
+  } else {
+    const one = (n) => { const x = sources[e.source] && sources[e.source][n]; if (!x) throw new Error(`STANCE_POOL: no clip ${e.source}/${n}`); return x; };
+    // layers (Mo' Bends builds a pose of several): merged bone by bone, a later layer's bone over an earlier one's
+    const src = Array.isArray(e.clip) ? e.clip.map(one).reduce((a, b) => ({ length: Math.max(a.length, b.length), loop: true, bones: { ...a.bones, ...b.bones } })) : one(e.clip);
+    c = clone(e.mirror ? mirror(src) : src);
+    if (e.cycles) c = MOCAP.loopCycle(c, e.cycles);
+    else if (e.close) c = MOCAP.closeLoop(c);
+  }
+  if (e.hold !== undefined) c = MOCAP.holdFrame(c, e.hold);
+  c = { length: Math.max(c.length || 0, 0.05), loop: true, bones: c.bones };
+  stanceRawCache.set(key, c);
+  return clone(c);
+}
+
+/** Does a clip hold every channel of these bones still (one value throughout)? */
+const stillIn = (c, bones) => Object.entries(c.bones).every(([b, ch]) => !bones(b) || Object.values(ch).every((keys) => keys.every((k) => k.v.every((x, j) => Math.abs(x - keys[0].v[j]) < 1e-6))));
+const isLower = (b) => STANCE.LOWER_BONES.has(b), isUpper = (b) => !STANCE.LOWER_BONES.has(b);
+
+/** A channel's keys over a loop of length P played k times within L (a still channel stays as it is). */
+function fitKeys(keys, P, L) {
+  if (keys.length < 2 || P <= 0.05 + 1e-9) return keys.map((k) => ({ ...k, v: k.v.slice() }));
+  const k = Math.max(1, Math.round(L / P)), s = L / (k * P), out = [];
+  for (let r = 0; r < k; r++) for (const key of keys) {
+    const t = (r * P + key.t) * s;
+    if (out.length && t <= out[out.length - 1].t + 1e-9) continue;   // a cycle's end is the next one's start
+    out.push({ t, v: key.v.slice(), lerp: key.lerp });
+  }
+  return out;
+}
+
+/** One entry's upper body over another's legs. The clip runs as long as the part that moves (the legs first); the other
+ *  part's loop is fitted to it, played a whole number of times. */
+function stanceCombine(up, low) {
+  if (up === low) return clone(up);
+  const upStill = stillIn(up, isUpper), lowStill = stillIn(low, isLower);
+  const L = !lowStill ? low.length : !upStill ? up.length : 0.05;
+  const c = { length: L, loop: true, bones: {} };
+  for (const [part, from, test] of [['upper', up, isUpper], ['lower', low, isLower]]) {
+    for (const [b, ch] of Object.entries(from.bones)) if (test(b)) {
+      c.bones[b] = {};
+      for (const [kind, keys] of Object.entries(ch)) c.bones[b][kind] = fitKeys(keys, from.length, L);
+    }
+  }
+  return c;
+}
+
+/**
+ * The breathing a held upper body is given (spec "Combining"): the source idle's (STANCE_BREATH, UAL Idle_Loop) turns of the
+ * torso and head about their mean, scaled so the neck sways at most STANCE_BREATH.sway px. Cached.
+ */
+let breathCache = null;
+function stanceBreath() {
+  if (breathCache) return breathCache;
+  const e = STANCE_BREATH, src = MOCAP.importBvh(fs.readFileSync(path.join(LIB, e.source, e.clip + '.bvh'), 'utf8'), { loop: true });
+  const bones = {};
+  for (const b of e.bones) {
+    const keys = (src.bones[b] && src.bones[b].rotation) || [];
+    if (!keys.length) continue;
+    const mean = [0, 1, 2].map((j) => keys.reduce((s, k) => s + k.v[j], 0) / keys.length);
+    bones[b] = keys.map((k) => ({ t: k.t, d: k.v.map((x, j) => x - mean[j]) }));
+  }
+  // the neck's sway with the offsets alone (a still body otherwise), and the scale that keeps it within the limit
+  const probe = { length: src.length, loop: true, bones: Object.fromEntries(Object.entries(bones).map(([b, ks]) => [b, { rotation: ks.map((k) => ({ t: k.t, v: k.d, lerp: 'linear' })) }])) };
+  const a = animationJson({ p: probe }).animations.p, neck = [];
+  for (let t = 0; t < src.length; t += 1 / 60) neck.push(point(worldBones(samplePose(a, t)).body, [0, 24, 0]));
+  let sway = 0;
+  for (const p of neck) for (const q of neck) sway = Math.max(sway, Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]));
+  breathCache = { length: src.length, bones, scale: sway > e.sway ? e.sway / sway : 1 };
+  return breathCache;
+}
+/** A clip whose upper body is held still, breathing: the breath's offsets added to its torso and head, over the clip's loop
+ *  (the legs' cycle, a whole number of breaths) or, all of it held, one breath. */
+function stanceBreathe(c, slot) {
+  if (!stillIn(c, isUpper)) return c;
+  const b = stanceBreath(), L = stillIn(c, isLower) ? b.length : c.length;
+  const at = (scale) => {
+    const out = clone(c);
+    out.length = L;
+    for (const [bone, ks] of Object.entries(b.bones)) {
+      const ch = (out.bones[bone] = out.bones[bone] || {}), base = ch.rotation && ch.rotation.length ? ch.rotation[0].v.slice() : [0, 0, 0];
+      ch.rotation = fitKeys(ks.map((k) => ({ t: k.t, v: k.d, lerp: 'linear' })), b.length, L).map((k) => ({ t: k.t, v: base.map((x, j) => x + scale * k.v[j]), lerp: 'linear' }));
+    }
+    return out;
+  };
+  // and no more than leaves the weapon's tip swaying BREATH_TIP px: a spear's tip, 45 px out, would sway four times the neck
+  const out = at(b.scale), sway = stanceTipSway(out, slot);
+  return sway > BREATH_TIP ? at((b.scale * BREATH_TIP) / sway) : out;
+}
+/** The most the breathing may sway the slot's weapon tip (px): the middle of the spec's 0.2-2 px for a still stance. */
+const BREATH_TIP = 1.1;
+/** How far the slot's weapon tip (test/lib/stance.js: its first class, or the bow's upper limb) wanders over a clip (px). */
+function stanceTipSway(c, slot) {
+  const rule = STANCE.SLOT[slot], a = animationJson({ c }).animations.c, pts = [];
+  for (let t = 0; t < c.length; t += 1 / 30) {
+    const w = worldBones(samplePose(a, t));
+    pts.push(rule.bow ? STANCE.bowAt(w).top : STANCE.weapon(w, rule.classes[0]).tip);
+  }
+  let d = 0;
+  for (const p of pts) for (const q of pts) d = Math.max(d, Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]));
+  return d;
+}
+
+/**
+ * How the hand turns what it holds (a pool entry's grip): retarget.js's weapon angle, solved at each key for a direction
+ * instead of set by hand, and within a wrist's range (the item turned at most GRIP_MAX from where the fist seats it).
+ *   shaft  a two-handed hold: the item runs from the right fist through the left one (a spear held in both hands)
+ *   up     the item points straight up (a spear carried upright)
+ *   level  the item points straight ahead, level (a spear levelled over a shield)
+ *   bow    the flat bow's limbs (test/lib/flatbow.js) stand upright, its string toward the archer
+ */
+const GRIP_MAX = 80;
+const RIGHT_FIST = [6, 12, -2];
+function stanceGrip(c, mode) {
+  if (!mode) return c;
+  const out = clone(c), wr = out.bones.weapon_r = out.bones.weapon_r || {};
+  const moving = !stillIn(c, () => true), times = moving ? Array.from({ length: Math.max(1, Math.round(c.length * 30)) + 1 }, (_, i) => (i * c.length) / Math.max(1, Math.round(c.length * 30))) : [0];
+  const anim = animationJson({ c }).animations.c;
+  const rest = mode === 'bow' ? [0, 0, -1] : STRIKE_DIR;   // the item's axis in the weapon bone's frame (flatbow.js AXIS)
+  const keys = times.map((t) => {
+    const w = worldBones(samplePose(anim, Math.min(t, c.length - 1e-6))), R = w.weapon_r.R;
+    const d0 = mulVec(R, rest);
+    let d1;
+    if (mode === 'shaft') { const a = point(w.weapon_r, RIGHT_FIST), b = point(w.weapon_l, [-6, 12, -2]); d1 = vsub(b, a); }
+    else if (mode === 'level') d1 = [0, 0, -1];
+    else d1 = [0, 1, 0];
+    const n = Math.hypot(...d1);
+    d1 = n > 1e-6 ? d1.map((x) => x / n) : d0;
+    // the shortest turn taking d0 to d1, at most as far as keeps the item within GRIP_MAX of its seat in the fist
+    const ax = [d0[1] * d1[2] - d0[2] * d1[1], d0[2] * d1[0] - d0[0] * d1[2], d0[0] * d1[1] - d0[1] * d1[0]], s = Math.hypot(...ax);
+    const full = Math.atan2(s, d0[0] * d1[0] + d0[1] * d1[1] + d0[2] * d1[2]) / RAD, axis = s > 1e-9 ? ax.map((x) => x / s) : [1, 0, 0];
+    const E = w.right_elbow.R, local = (a) => mul3(transpose(E), mul3(axisAngle(axis, a), R));
+    let a = full;
+    for (let lo = 0, hi = full, i = 0; i < 30 && turnAngle(local(a), [1, 0, 0, 0, 1, 0, 0, 0, 1]) > GRIP_MAX; i++) { a = (lo + hi) / 2; if (turnAngle(local(a), [1, 0, 0, 0, 1, 0, 0, 0, 1]) > GRIP_MAX) hi = a; else lo = a; }
+    return { t, v: fromTrue(local(a)), lerp: 'linear' };
+  });
+  wr.rotation = keys;
+  return out;
+}
+
+/** A candidate posed for a race (not yet breathing): posture (march slots with the race's march stride), its grip, the
+ *  hips following the torso, true hinges with the arms swivelled within the shoulder's range and out of the body as far as
+ *  a swivel brings them (hinge.js limitTwist with anatomy, as every attack ships), a still stance's feet on the floor. */
+function stancePose(raw, slot, race, grip) {
+  const c = clone(raw), style = STYLE[race] || {}, march = /^march/.test(slot);
+  applyStyle(c, march ? 'march' : slot, march ? { ...style, stride: MARCH_STRIDE[race] || style.stride } : style);
+  let g = stanceGrip(c, grip);
+  hipsFollow(g);
+  g = limitTwist(hingeify(g), { anatomy: true });
+  // a still stance stands on the floor as the tests measure the foot (the sole's middle): the retarget plants the lowest
+  // corner of the boot, which on a shin bent deep (a crouch) leaves the sole's middle 3 px up
+  if (STANCE.SLOT[slot].still) groundFeet(g);
+  return g;
+}
+
+/** The shield version of a posed stance: the shield arm as every shield clip holds it (withShield). It goes on before the
+ *  breathing, so a held pose keeps one shield arm (the arm's search, faceFront, solves each key on its own, and over a
+ *  breath's 75 keys would not come back to where it started), which then breathes with the body. */
+const stanceShield = (c) => withShield(c, shieldArm(), null);
+
+/** A candidate built (an upper body and legs, the same entry or two), breathing: { clip, shield () (its shield version,
+ *  built when first asked, for slots that have one) }. The brace slots carry their own shield in the clip itself. */
+function stanceBuilt(up, low, slot, race, sources) {
+  const pose = stancePose(stanceCombine(stanceRaw(up, sources), stanceRaw(low, sources)), slot, race, up.grip);
+  if (STANCE.SLOT[slot].shield) return { clip: stanceBreathe(stanceShield(pose), slot), shield: () => null };
+  let s;
+  const shield = STANCE.SHIELD_VERSIONS.includes(slot) ? () => s || (s = stanceBreathe(stanceShield(pose), slot)) : () => null;
+  return { clip: stanceBreathe(pose, slot), shield };
+}
+
+/** The stance rules for one slot and race (test/lib/stance.js judge, against the race's idle and walk) on a built candidate
+ *  and on its shield version where the slot has one: { fails, measures, score }. The shield version is judged only where
+ *  the plain clip's upper body passes (`always`: every time): the shield arm's search is the slow part, and an upper body
+ *  that fails is never used. */
+function stanceJudge(slot, race, clips) {
+  const style = STYLE[race] || {};
+  const ctx = { idle: animationJson({ i: clips.idle }).animations.i, walk: animationJson({ w: clips.walk }).animations.w, hunch: style.hunch || 0 };
+  return (b, always = true) => {
+    const plain = STANCE.judge(slot, animationJson({ c: b.clip }).animations.c, ctx);
+    if (!always && plain.fails.some((f) => f.part === 'upper')) return plain;
+    const s = b.shield();
+    if (!s) return plain;
+    const js = STANCE.judge(slot + '_shield', animationJson({ s }).animations.s, ctx);
+    return { fails: [...plain.fails, ...js.fails], measures: plain.measures, score: plain.score };
+  };
+}
+
+/**
+ * The pick for one stance slot and race: every pool entry built and judged whole, every pairing (an entry's upper body,
+ * another's legs) estimated from its parts' results, then the candidates that pass in estimate built in full, best first,
+ * until the best two that pass in full are found (with their shield versions, where the slot has one). Ties go to the
+ * earlier pool entry. Returns { clip, shield, pick: { id, score, runnerUp, passes } }.
+ */
+function stancePick(slot, race, sources, clips) {
+  const pool = STANCE_POOL[slot], judgeAll = stanceJudge(slot, race, clips);
+  const singles = pool.map((e, i) => {
+    const b = stanceBuilt(e, e, slot, race, sources), j = judgeAll(b, false);
+    return { e, i, b, j, up: j.fails.filter((f) => f.part === 'upper'), low: j.fails.filter((f) => f.part === 'lower') };
+  });
+  const LOWER_MEASURES = new Set(['rightFoot', 'leftFoot', 'knees', 'hipsDown', 'lead', 'braceDown', 'apart', 'irregular', 'skate', 'walkSkate']);
+  const options = [];
+  for (const a of singles) for (const b of singles) {
+    if (a.e.part === 'lower' || b.e.part === 'upper' || (a === b && a.e.part)) continue;
+    if (a.up.length || b.low.length) continue;
+    const m = { ...Object.fromEntries(Object.entries(a.j.measures).filter(([k]) => !LOWER_MEASURES.has(k))), ...Object.fromEntries(Object.entries(b.j.measures).filter(([k]) => LOWER_MEASURES.has(k))) };
+    options.push({ a, b, est: STANCE.score(slot, m, false) });
+  }
+  options.sort((x, y) => x.est - y.est || x.a.i - y.a.i || x.b.i - y.b.i);
+  const passed = [];
+  for (const o of options) {
+    if (passed.length >= 2 || (passed.length && o.est > passed[0].score + 0.25)) break;
+    const b = o.a === o.b ? o.a.b : stanceBuilt(o.a.e, o.b.e, slot, race, sources);
+    const j = judgeAll(b);
+    if (!j.fails.length) passed.push({ id: pairId(o.a.e, o.b.e), b, score: j.score, order: [o.a.i, o.b.i] });
+  }
+  passed.sort((x, y) => x.score - y.score || x.order[0] - y.order[0] || x.order[1] - y.order[1]);
+  const best = passed[0];
+  if (!best) {   // none passes: the whole entry with the fewest failures ships, and the tests say why
+    const s = singles.reduce((x, y) => (y.j.fails.length < x.j.fails.length ? y : x));
+    console.log(`${race}: ${slot}: no candidate passes every stance rule; ${stanceId(s.e)} ships (${s.j.fails.slice(0, 3).map((f) => f.msg).join('; ')})`);
+    return { clip: s.b.clip, shield: s.b.shield(), pick: { id: stanceId(s.e), score: +s.j.score.toFixed(4), runnerUp: null, passes: false } };
+  }
+  const second = passed[1];
+  return { clip: best.b.clip, shield: best.b.shield(), pick: { id: best.id, score: +best.score.toFixed(4), runnerUp: second ? { id: second.id, score: +second.score.toFixed(4) } : null, passes: true } };
+}
+
+/** Builds a race's stance slot (and its shield version) into clips, and prints the pick. */
+function buildStance(slot, race, sources, clips) {
+  const p = stancePick(slot, race, sources, clips);
+  clips[slot] = { ...p.clip, pick: p.pick };
+  if (p.shield) clips[slot + '_shield'] = p.shield;
+  const r = p.pick.runnerUp;
+  console.log(`${race}: ${slot}: ${p.pick.id} (${p.pick.score.toFixed(3)})${r ? `, runner-up ${r.id} (${r.score.toFixed(3)})` : ', no runner-up'}`);
+}
+
+
 function buildRace(race, sources, slots = SLOTS) {
   const clips = {}, style = STYLE[race] || {}, shield = shieldArm(), used = new Set(), leftOf = [], meta = {};
   for (const [slot, entry] of Object.entries(slots)) {
+    if (entry.stance) { buildStance(slot, race, sources, clips); continue; }   // formation stances: picked by measurement
     let c = clipFor(slot, entry, race, sources);
     if (/^attack_/.test(slot)) {   // before mirroring
       const best = bestAttack(c, slot, entry, race, sources, style, clips, used, slots);
@@ -1098,5 +1371,7 @@ function main() {
   }
 }
 
-module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: (c, slot, style, idle, side, walk) => finishAttack(c, slot, style, idle, side, walk, true), _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo, unwarpSpan }, _shield: { SHIELD_POSE, armFor, twistOf, faceFront } };
+module.exports = { loadSources, buildRace, hitTime, applyStyle, classLength, _fight: fight, _finish: (c, slot, style, idle, side, walk) => finishAttack(c, slot, style, idle, side, walk, true), _clipFor: clipFor, _tempo: { warp, apexOf, apply: tempo, unwarpSpan }, _shield: { SHIELD_POSE, armFor, twistOf, faceFront },
+  _stance: { stanceId, stancePick, single: (e, slot, race, sources, clips) => stanceJudge(slot, race, clips)(stanceBuilt(e, e, slot, race, sources)),
+    pair: (up, low, slot, race, sources, clips) => stanceJudge(slot, race, clips)(stanceBuilt(up, low, slot, race, sources)), stanceBuilt } };
 if (require.main === module) main();

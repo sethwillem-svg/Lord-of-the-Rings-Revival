@@ -140,6 +140,13 @@ function crosses(a, b, q) {
   return true;
 }
 const blocks = (faces, a, b) => faces.some((q) => crosses(a, b, q));
+/** Points over the face (the head box's front, 8 x 8 px), a 5 x 5 grid 1 px in from its edges (rest, head frame). */
+const FACE = [];
+for (const x of [-3, -1.5, 0, 1.5, 3]) for (const y of [25, 26.5, 28, 29.5, 31]) FACE.push([x, y, -4]);
+/** The share of the face that must be seen past an element shield: two rows of five, the eyes' row up to the brow. Not
+ *  half: the shield code straps the plate's top at the eyes of an elf (whose posture leans the chest back), and the elves'
+ *  own walk_shield shows 12 of the 25 points (man's 15, dwarves' 19). */
+const FACE_SEEN = 0.4;
 
 // ---- the frames ----
 /** The frames a measure walks: the 60 Hz grid and every key (test/lib/motion.js), the loop's end left out (it is its start). */
@@ -247,7 +254,8 @@ const RULES = ['loop', 'feet', 'sway', 'anatomy', 'blade', 'head', 'guard', 'gua
 
 /**
  * Every hard rule for one stance clip (name: the slot, or its _shield version), and the score of its key pose:
- * { fails: [{ rule, part ('upper' or 'lower'), msg }], measures: { name: value }, score } (lower is better).
+ * { fails: [{ rule, part ('upper', 'lower', or 'both': a pairing's, judged once built in full), msg }], measures: { name: value },
+ * score } (lower is better).
  * ctx: { idle, walk } (the race's idle and walk, GeckoLib JSON), hunch (the race's posture, degrees), key (a
  * test/lib/motion.js cache key, or null).
  */
@@ -278,6 +286,15 @@ function judge(name, anim, ctx = {}) {
     if (o.d > 0.5) fail('anatomy', 'upper', `${o.what} ${o.d.toFixed(1)} px deep`);
   }
   for (const f of fs0) { const b = bladeIn(f.w); if (b) { fail('blade', 'upper', `${b} at t=${f.t.toFixed(2)}`); break; } }
+  // the torso over the hips within a spine's range (motion.test.js: twist 60°, forward 45°, back 25°, sideways 30°): it
+  // takes both halves, so a pairing is judged on it only when built in full ('both')
+  for (const f of fs0) {
+    const v = M.waist(f.w);
+    if (Math.abs(v.twist) > 60 || v.flex > 45 || v.flex < -25 || Math.abs(v.side) > 30) {
+      fail('anatomy', 'both', `torso over the hips: twist ${v.twist.toFixed(0)} flex ${v.flex.toFixed(0)} side ${v.side.toFixed(0)}`);
+      break;
+    }
+  }
   // the weapon of the slot's first class
   const cls = rule.classes[0];
   const tipOf = (w) => (rule.bow ? bowAt(w).top : weapon(w, cls).tip);
@@ -359,10 +376,17 @@ function judge(name, anim, ctx = {}) {
       if (p.angle > 35) fail('shield', 'upper', `${plate.kind} shield faces ${p.angle.toFixed(0)}° from the front`);
       const c = point(f.w.body, [0, 18, 0]);
       if (!blocks(p.faces, [c[0], c[1], c[2] - 16], c)) fail('shield', 'upper', `${plate.kind} shield leaves the chest open`);
-      const eye = point(f.w.head, [0, 28, -4]);
-      if (blocks(p.faces, [eye[0], eye[1], eye[2] - 16], eye)) fail('shield', 'upper', `${plate.kind} shield covers the face`);
+      // the face clear: at least FACE_SEEN of it seen from straight ahead past the plate (FACE: points over the head's front),
+      // judged on the element shields (103 of Middle-earth's 106): the three entity-model shields are 22 px tall, and strapped
+      // to cover the chest (gecko/shield.js place) their top stands 3.5 px above the eyes in every shield clip
+      if (plate.kind === 'element') {
+        const seen = FACE.filter((q) => { const e = point(f.w.head, q); return !blocks(p.faces, [e[0], e[1], e[2] - 16], e); }).length;
+        if (seen < FACE_SEEN * FACE.length) fail('shield', 'upper', `${plate.kind} shield hides the face (${seen} of ${FACE.length} points seen)`);
+      }
       if (blocks(p.faces, point(f.w.right_elbow, [6, 18, 0]), point(f.w.weapon_r, FIST.right))) fail('shield', 'upper', `${plate.kind} shield: the weapon arm passes through the plate`);
-      if (slot === 'shield_brace_spear') {
+      // the spear over the shield's top edge: judged on the element shields too, as the face is (the entity-model shields'
+      // top stands above the eyes; only a fist held over the head clears it)
+      if (slot === 'shield_brace_spear' && plate.kind === 'element') {
         const wp = weapon(f.w, cls), front = Math.min(...p.faces.flat().map((q) => q[2])), top = Math.max(...p.faces.flat().map((q) => q[1]));
         if (front - wp.tip[2] < 20) fail('shield_brace_spear', 'upper', `spear tip ${(front - wp.tip[2]).toFixed(1)} px in front of the ${plate.kind} shield (≥ 20)`);
         if (blocks(p.faces, wp.butt, wp.tip)) fail('shield_brace_spear', 'upper', `spear shaft through the ${plate.kind} shield`);
@@ -407,7 +431,7 @@ function judge(name, anim, ctx = {}) {
     if (slot === 'march_bow') {
       every('march_bow', 'upper', 'bow limb axis from vertical °', (v) => v <= 30, (w) => bowTilt(bowAt(w)));
       every('march_bow', 'upper', 'bow hand out at the side by', (v) => v >= 4, (w) => local(w.body, bowAt(w).grip)[0]);
-      every('march_bow', 'upper', 'bow hand below the chest by', (v) => v > 0, (w) => 18 - local(w.body, bowAt(w).grip)[1]);
+      every('march_bow', 'upper', 'bow hand below the armpit by', (v) => v > 0, (w) => 20 - local(w.body, bowAt(w).grip)[1]);
     }
   }
   return { fails, measures: m, score: score(slot, m, shield) };

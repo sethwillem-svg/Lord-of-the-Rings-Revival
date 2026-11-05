@@ -27,6 +27,7 @@
   const LIB = isNode ? require('../library.js') : root.ANIM_LIBRARY;
   const { RIG } = isNode ? require('../gecko/rig.js') : root.GeckoRig;
   const P = isNode ? require('./parts.js') : root.ImportParts;
+  const W = isNode ? require('../gecko/write.js') : root.GeckoWrite;
 
   /** rigs.js spec-biped, bone for bone on the NPC rig: its body (the pelvis) is the rig's lower, its torso the rig's upper
    *  (which carries body and the arms), the forearms the elbows, the shins the knees. No hand and no weapon bone: the
@@ -115,11 +116,33 @@
     bvh.frames = bvh.data.length;
     if (opts.speed) bvh.dt /= opts.speed;
     const raw = fromBvh(bvh, opts);
+    if (opts.headLift) liftHead(raw, opts.headLift);
     let c = raw;
     if (opts.loop && opts.cycles) c = loopCycle(raw, opts.cycles);
     else if (opts.loop) c = closeLoop(raw);
     c.travels = raw.travels;
     return c;
+  }
+
+  /** The head's mean pitch over a clip (degrees, + looking up): retarget.js aims the head along the skeleton's head-top
+   *  joint, which some skeletons place ahead of the head (UAL's neutral idle reads 15° down). */
+  function headPitch(clip) {
+    const keys = (clip.bones.head && clip.bones.head.rotation) || [];
+    const up = (clip.bones.upper && clip.bones.upper.rotation) || [];
+    if (!keys.length) return 0;
+    let s = 0;
+    for (const k of keys) {
+      const U = W.trueRotation(up.length ? valueAt(up, k.t) : [0, 0, 0]), H = W.mul3(U, W.trueRotation(k.v));
+      s += (Math.asin(Math.max(-1, Math.min(1, -H[5]))) * 180) / Math.PI;   // the face's direction (rest -z) above level
+    }
+    return s / keys.length;
+  }
+  /** The head turned up by `deg` about its own x (a skeleton's head-top joint calibrated: headPitch of its neutral idle). */
+  function liftHead(clip, deg) {
+    const keys = clip.bones.head && clip.bones.head.rotation;
+    if (!keys) return;
+    const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a), Rx = [1, 0, 0, 0, c, -s, 0, s, c];   // true Rx(+a) lifts -z up
+    for (const k of keys) k.v = W.fromTrue(W.mul3(W.trueRotation(k.v), Rx));
   }
 
   /** A channel's value at t (linear; keys sorted). */
@@ -196,7 +219,7 @@
     return { length: 0.05, loop: true, bones };
   }
 
-  const api = { NPC_MAP, SETTINGS, npcRig, importBvh, fromBvh, loopCycle, closeLoop, holdFrame, travels, valueAt };
+  const api = { NPC_MAP, SETTINGS, npcRig, importBvh, fromBvh, loopCycle, closeLoop, holdFrame, travels, valueAt, headPitch, liftHead };
   if (isNode) module.exports = api;
   else root.ImportMocap = api;
 })(typeof window !== 'undefined' ? window : globalThis);

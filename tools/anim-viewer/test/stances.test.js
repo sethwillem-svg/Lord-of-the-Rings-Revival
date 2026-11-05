@@ -5,7 +5,7 @@
  * are recorded in npc_slots.js (STANCE_PICKS), checked against the build here. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { RACES, STYLE } = require('../npc_slots.js');
+const { RACES, STYLE, STANCE_POOL, STANCE_PICKS } = require('../npc_slots.js');
 const ST = require('./lib/stance.js');
 const { shipped } = require('./lib/shipped.js');   // the files the game ships
 
@@ -51,3 +51,14 @@ test('spear_brace: shaft 5-25° above level, tip ≥ 28 px in front, both hands 
 test('march: in phase with walk, torso within 8° of the race’s upright, arms swing ≤ 60% of walk’s, weapon tip ≤ 4 px a stride against the chest, no foot skate beyond walk’s', () => row('march', (j) => !still(j)));
 test('march_spear: shaft within 20° of vertical, tip up, butt below the hip', () => row('march_spear', (j) => slot(j) === 'march_spear'));
 test('march_bow: bow in the hand at the side, limb axis within 30° of vertical', () => row('march_bow', (j) => slot(j) === 'march_bow'));
+
+test('each pick is the build’s, as npc_slots.js STANCE_PICKS records it, and passed every rule in the build’s own judging', () => {
+  const { built } = require('./lib/built.js');   // every race as the build makes it today (cached by its inputs)
+  const bad = [];
+  for (const race of RACES) for (const s of Object.keys(STANCE_POOL)) {
+    const p = built[race].clips[s].pick, want = STANCE_PICKS[s] && STANCE_PICKS[s][race];
+    if (!p || p.id !== want) bad.push(`${race} ${s}: the build picks ${p && p.id}, npc_slots.js records ${want}`);
+    else if (!p.passes) bad.push(`${race} ${s}: no candidate passed, ${p.id} ships`);
+  }
+  assert.deepEqual(bad, []);
+});
