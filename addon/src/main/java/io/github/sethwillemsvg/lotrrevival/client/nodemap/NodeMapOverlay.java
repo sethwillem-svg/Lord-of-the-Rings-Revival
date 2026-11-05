@@ -231,11 +231,18 @@ public final class NodeMapOverlay {
     }
 
     @SubscribeEvent
+    public static void scrolled(ScreenEvent.MouseScrolled.Pre e) {
+        if (!(e.getScreen() instanceof MapScreen ms) || ms.mapWidget == null) return;
+        if (NodePanel.scroll(e.getMouseX(), e.getMouseY(), e.getScrollDeltaY())) e.setCanceled(true);   // no map zoom under the panel
+    }
+
+    @SubscribeEvent
     public static void closed(ScreenEvent.Closing e) {
         if (e.getScreen() instanceof MapScreen) {
             selected = null;
             hovered = null;
             loggedFor = null;
+            NodePanel.closed();
         }
     }
 }
