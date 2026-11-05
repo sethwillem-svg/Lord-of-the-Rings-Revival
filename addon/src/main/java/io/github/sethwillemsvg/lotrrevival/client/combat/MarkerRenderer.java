@@ -1,10 +1,15 @@
 package io.github.sethwillemsvg.lotrrevival.client.combat;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import io.github.sethwillemsvg.lotrrevival.LotrRevival;
 import io.github.sethwillemsvg.lotrrevival.core.log.LotrLog;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
@@ -21,9 +26,10 @@ import java.util.List;
  * Draws the attack warning markers as a GUI layer: each NPC's head point is projected to the screen with the camera's
  * rotation and field of view, so a marker keeps a fixed pixel size (14-24 px by distance) and needs no world-space render
  * state. Normal: white diamond with a ring closing on it. Heavy: red diamond with four spikes, thicker ring, gentle pulse
- * (shape differs, not only colour). Swings at the local player draw at full size; others at 60% and half opacity.
+ * (shape differs, not only colour). The shapes are our textures (textures/combat/warn_*.png, drawn by
+ * tools/sfx/make_combat_textures.py), scaled and tinted here. Swings at the local player draw at full size; others at 60% and half opacity.
  * Occlusion is one block ray per marker (config through_walls). Swings at you from outside the view go to OffscreenArrows.
- * TODO(spec ticket 4/8): textured markers (warn_normal/warn_heavy/warn_ring.png), FOV effects (sprint, zoom), bobbing.
+ * TODO(spec ticket 4): FOV effects (sprint, zoom) and view bobbing in the projection.
  */
 public final class MarkerRenderer {
     private MarkerRenderer() {}
@@ -69,6 +75,8 @@ public final class MarkerRenderer {
         float tanHalf = (float) Math.tan(Math.toRadians(mc.options.fov().get()) / 2.0);
         float aspect = (float) w / h;
         List<OffscreenArrows.Arrow> arrows = new ArrayList<>();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         for (Shown s : shown) {
             Vector3f v = new Vector3f((float) (s.at().x - camPos.x), (float) (s.at().y - camPos.y), (float) (s.at().z - camPos.z)).rotate(toCamera);
             float bearing = (float) Math.atan2(v.x, -v.z);   // 0 ahead, +pi/2 right, pi behind
@@ -94,6 +102,7 @@ public final class MarkerRenderer {
             else normal(g, sx, sy, size, progress, alpha);
         }
         if (WarningConfig.offscreenArrow() && !arrows.isEmpty()) OffscreenArrows.draw(g, arrows, time);
+        RenderSystem.disableBlend();
     }
 
     private static boolean blocked(Minecraft mc, Vec3 from, Vec3 to) {
@@ -106,51 +115,48 @@ public final class MarkerRenderer {
         }
     }
 
+    static final ResourceLocation WARN_NORMAL = LotrRevival.id("textures/combat/warn_normal.png");
+    static final ResourceLocation WARN_HEAVY = LotrRevival.id("textures/combat/warn_heavy.png");
+    static final ResourceLocation WARN_RING = LotrRevival.id("textures/combat/warn_ring.png");
+    static final ResourceLocation WARN_RING_HEAVY = LotrRevival.id("textures/combat/warn_ring_heavy.png");
+    /** Texture sizes and how far each shape reaches from the texture's centre, as a share of its half-width. */
+    private static final int MARK_TEX = 32, RING_TEX = 64;
+    private static final float NORMAL_REACH = 0.78f, HEAVY_REACH = 0.98f, RING_REACH = 0.97f;
+
     private static void normal(GuiGraphics g, float x, float y, float size, float progress, float alpha) {
-        int white = argb(alpha, 255, 255, 255), outline = argb(alpha * 0.8f, 20, 20, 20);
-        diamond(g, x, y, size / 2f + 1f, outline);
-        diamond(g, x, y, size / 2f, white);
-        float ring = size / 2f + (1f - progress) * size * 1.2f + 2f;
-        diamondOutline(g, x, y, ring, progress >= 1f ? 2 : 1, argb(alpha * (0.4f + 0.6f * progress), 255, 255, 255));
+        float r = size / 2f;
+        sprite(g, WARN_NORMAL, MARK_TEX, x, y, 2f * (r + 1f) / NORMAL_REACH, 1f, 1f, 1f, alpha);
+        float ring = r + (1f - progress) * size * 1.2f + 2f;
+        sprite(g, WARN_RING, RING_TEX, x, y, 2f * ring / RING_REACH, 1f, 1f, 1f, alpha * (0.4f + 0.6f * progress));
     }
 
     private static void heavy(GuiGraphics g, float x, float y, float size, float progress, float alpha, double time) {
         float pulse = 0.8f + 0.2f * (float) Math.sin(time * 0.8);
-        int red = argb(alpha * pulse, 230, 40, 30), dark = argb(alpha * 0.8f, 40, 0, 0);
         float r = size / 2f;
-        // four spikes (the shape cue), then the diamond over them
-        int spike = Math.max(1, Math.round(size / 10f));
-        g.fill(Math.round(x - spike), Math.round(y - r * 1.6f), Math.round(x + spike), Math.round(y + r * 1.6f), red);
-        g.fill(Math.round(x - r * 1.6f), Math.round(y - spike), Math.round(x + r * 1.6f), Math.round(y + spike), red);
-        diamond(g, x, y, r + 1f, dark);
-        diamond(g, x, y, r, red);
+        // the spikes reach 1.6 r: the shape cue, not only the colour
+        sprite(g, WARN_HEAVY, MARK_TEX, x, y, 2f * r * 1.6f / HEAVY_REACH * (0.95f + 0.05f * pulse), 1f, 1f, 1f, alpha * pulse);
         float ring = r + (1f - progress) * size * 1.2f + 2f;
-        diamondOutline(g, x, y, ring, progress >= 1f ? 3 : 2, argb(alpha * (0.5f + 0.5f * progress), 230, 40, 30));
+        sprite(g, WARN_RING_HEAVY, RING_TEX, x, y, 2f * ring / RING_REACH, 230 / 255f, 40 / 255f, 30 / 255f, alpha * (0.5f + 0.5f * progress));
     }
 
-    /** A filled diamond of half-diagonal r, drawn as horizontal rows. */
-    private static void diamond(GuiGraphics g, float x, float y, float r, int color) {
-        int rows = Math.max(1, Math.round(r));
-        for (int i = -rows; i <= rows; i++) {
-            float half = r * (1f - Math.abs(i) / (float) rows);
-            if (half < 0.5f) half = 0.5f;
-            g.fill(Math.round(x - half), Math.round(y + i), Math.round(x + half), Math.round(y + i + 1), color);
-        }
+    /** One texture centred on (x, y), drawn drawSize GUI pixels wide, tinted and faded. */
+    static void sprite(GuiGraphics g, ResourceLocation tex, int texSize, float x, float y, float drawSize, float r, float gr, float b, float a) {
+        sprite(g, tex, texSize, x, y, drawSize, 0f, r, gr, b, a);
     }
 
-    /** A diamond outline of half-diagonal r and the given thickness. */
-    private static void diamondOutline(GuiGraphics g, float x, float y, float r, int thickness, int color) {
-        int rows = Math.max(1, Math.round(r));
-        for (int i = -rows; i <= rows; i++) {
-            float half = r * (1f - Math.abs(i) / (float) rows);
-            int left = Math.round(x - half), right = Math.round(x + half), yy = Math.round(y + i);
-            g.fill(left - thickness / 2, yy, left + (thickness + 1) / 2, yy + 1, color);
-            if (right != left) g.fill(right - thickness / 2, yy, right + (thickness + 1) / 2, yy + 1, color);
-        }
-    }
-
-    static int argb(float alpha, int r, int g, int b) {
-        int a = Math.max(0, Math.min(255, Math.round(alpha * 255)));
-        return a << 24 | r << 16 | g << 8 | b;
+    /** As sprite, turned by angle radians (clockwise on screen). */
+    static void sprite(GuiGraphics g, ResourceLocation tex, int texSize, float x, float y, float drawSize, float angle, float r, float gr,
+                       float b, float a) {
+        if (a <= 0.01f || drawSize <= 0.5f) return;
+        PoseStack pose = g.pose();
+        pose.pushPose();
+        pose.translate(x, y, 0f);
+        if (angle != 0f) pose.mulPose(Axis.ZP.rotation(angle));
+        float s = drawSize / texSize;
+        pose.scale(s, s, 1f);
+        g.setColor(r, gr, b, Math.min(1f, a));
+        g.blit(tex, -texSize / 2, -texSize / 2, 0f, 0f, texSize, texSize, texSize, texSize);
+        g.setColor(1f, 1f, 1f, 1f);
+        pose.popPose();
     }
 }
