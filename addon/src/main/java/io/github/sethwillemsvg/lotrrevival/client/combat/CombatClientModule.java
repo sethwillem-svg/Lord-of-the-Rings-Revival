@@ -16,7 +16,7 @@ public final class CombatClientModule {
     private CombatClientModule() {}
 
     public static void init(IEventBus modBus, ModContainer container) {
-        container.registerConfig(ModConfig.Type.CLIENT, WarningConfig.SPEC);
+        container.registerConfig(ModConfig.Type.CLIENT, WarningConfig.SPEC, "lotr_revival-combat-client.toml");
         modBus.addListener((ModConfigEvent.Loading e) -> {
             if (e.getConfig().getSpec() == WarningConfig.SPEC) WarningConfig.logInUse();
         });

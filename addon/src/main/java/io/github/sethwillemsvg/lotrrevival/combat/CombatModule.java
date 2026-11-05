@@ -24,7 +24,7 @@ public final class CombatModule {
 
     public static void init(IEventBus modBus) {
         ModContainer container = ModLoadingContext.get().getActiveContainer();
-        container.registerConfig(ModConfig.Type.COMMON, CombatConfig.SPEC);
+        container.registerConfig(ModConfig.Type.COMMON, CombatConfig.SPEC, "lotr_revival-combat.toml");
         modBus.addListener((ModConfigEvent.Loading e) -> {
             if (e.getConfig().getSpec() == CombatConfig.SPEC) CombatConfig.logInUse();
         });
