@@ -34,6 +34,7 @@ import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.sevenstars.middleearth.entity.npcs.NpcEntity;
@@ -67,7 +68,11 @@ public final class NemesisLeaderTests {
     }
 
     private static NemesisRecord record(GameTestHelper h, Rank rank) {
-        NemesisRecord r = NemesisFactory.create(h.getLevel(), MORDOR, WARRIOR, NemesisFactory.raceOfType(h.getLevel(), WARRIOR));
+        return record(h, rank, WARRIOR);
+    }
+
+    private static NemesisRecord record(GameTestHelper h, Rank rank, ResourceLocation type) {
+        NemesisRecord r = NemesisFactory.create(h.getLevel(), MORDOR, type, NemesisFactory.raceOfType(h.getLevel(), type));
         r.renown = rank.threshold();
         Renown.setRank(server(h), r, rank, "test");
         return r;
@@ -120,14 +125,19 @@ public final class NemesisLeaderTests {
             LeaderGear.lastGearType = null;
             NpcEntity c = body(h, cmd, new BlockPos(3, 1, 1), false);
             h.assertTrue(cmd.gearRerolled, "Commander gear not re-rolled");
-            h.assertTrue(LeaderGear.lastGearType != null, "no LEADER or VETERAN type of the warrior's race with gear in Mordor's pools "
+            h.assertTrue(LeaderGear.lastGearType != null, "no LEADER or VETERAN type with gear in Mordor's pools "
                     + "(LEADER " + MeRanks.pool(f, NpcRank.LEADER) + ", VETERAN " + MeRanks.pool(f, NpcRank.VETERAN) + ")");
             h.assertTrue(LeaderGear.lastGearRank == NpcRank.LEADER || LeaderGear.lastGearRank == NpcRank.VETERAN,
                     "gear from rank " + LeaderGear.lastGearRank);
             h.assertTrue(MeRanks.pool(f, LeaderGear.lastGearRank).contains(LeaderGear.lastGearType),
                     LeaderGear.lastGearType + " is not in Mordor's " + LeaderGear.lastGearRank + " pool");
-            if (LeaderGear.lastGearRank == NpcRank.VETERAN) h.assertTrue(LeaderGearTestView.noLeaderOfRace(h, f, WARRIOR),
-                    "VETERAN gear used although a LEADER type of the race exists");
+            // Mordor's warriors are orcs, its captains and veterans uruks: an orc commander falls back to any race's LEADER gear
+            boolean orcLeader = LeaderGearTestView.hasGearOfRace(h, f, NpcRank.LEADER, WARRIOR);
+            boolean orcVeteran = LeaderGearTestView.hasGearOfRace(h, f, NpcRank.VETERAN, WARRIOR);
+            NpcRank expected = orcLeader ? NpcRank.LEADER : orcVeteran ? NpcRank.VETERAN : NpcRank.LEADER;
+            h.assertTrue(LeaderGear.lastGearSameRace == (orcLeader || orcVeteran) && LeaderGear.lastGearRank == expected,
+                    "warrior commander: gear from " + LeaderGear.lastGearRank + " " + LeaderGear.lastGearType + " same_race="
+                            + LeaderGear.lastGearSameRace + ", expected " + expected + " same_race=" + (orcLeader || orcVeteran));
             Map<EquipmentSlot, ItemStack> rolled = worn(c);
             h.assertTrue(sameGear(cmd.gear, rolled), "record gear " + gear(cmd.gear) + " != body " + gear(rolled));
             LotrLog.info("test", "gear_reroll: {} from {} {} -> {}", cmd.shortId(), LeaderGear.lastGearRank, LeaderGear.lastGearType, gear(rolled));
@@ -137,6 +147,19 @@ public final class NemesisLeaderTests {
             NpcEntity c2 = body(h, cmd, new BlockPos(3, 1, 1), false);
             h.assertTrue(LeaderGear.lastGearType == null, "gear re-rolled a second time from " + LeaderGear.lastGearType);
             h.assertTrue(sameGear(rolled, worn(c2)), "second body " + gear(worn(c2)) + " != first " + gear(rolled));
+            // a veteran (uruk) commander finds same-race LEADER gear (the uruk captain) when Mordor has it
+            ResourceLocation veteranType = me("mordor.veteran");
+            if (LeaderGearTestView.hasGearOfRace(h, f, NpcRank.LEADER, veteranType)) {
+                NemesisRecord vet = record(h, Rank.COMMANDER, veteranType);
+                LeaderGear.lastGearType = null;
+                body(h, vet, new BlockPos(7, 1, 1), false);
+                h.assertTrue(LeaderGear.lastGearSameRace && LeaderGear.lastGearRank == NpcRank.LEADER,
+                        "uruk commander: gear from " + LeaderGear.lastGearRank + " " + LeaderGear.lastGearType + " same_race="
+                                + LeaderGear.lastGearSameRace + ", expected a same-race LEADER type");
+                Manifestation.retreat(server(h), vet, "test");
+            } else {
+                LotrLog.info("test", "gear_reroll: Mordor has no LEADER type of the veteran's race with gear; same-race case skipped");
+            }
             // mounts: none below Warlord; a Warlord rides when its type or a LEADER type of Mordor has mount data
             h.assertTrue(c2.getVehicle() == null, "a Commander rides " + (c2.getVehicle() == null ? "" : c2.getVehicle().getType().toShortString()));
             NemesisRecord war = record(h, Rank.WARLORD);
@@ -163,14 +186,16 @@ public final class NemesisLeaderTests {
             return t != null && t.hasMount();
         }
 
-        static boolean noLeaderOfRace(GameTestHelper h, net.sevenstars.middleearth.resources.datas.factions.Faction f, ResourceLocation type) {
+        /** A type of this rank pool, of the same race as {@code type}, with gear. */
+        static boolean hasGearOfRace(GameTestHelper h, net.sevenstars.middleearth.resources.datas.factions.Faction f, NpcRank pool,
+                                     ResourceLocation type) {
             NpcType own = NpcTypeLookup.getNpcType(h.getLevel(), type);
-            if (own == null) return true;
-            for (ResourceLocation id : MeRanks.pool(f, NpcRank.LEADER)) {
+            if (own == null) return false;
+            for (ResourceLocation id : MeRanks.pool(f, pool)) {
                 NpcType t = NpcTypeLookup.getNpcType(h.getLevel(), id);
-                if (t != null && own.getRace().equals(t.getRace()) && t.getGear() != null) return false;
+                if (t != null && own.getRace().equals(t.getRace()) && t.getGear() != null) return true;
             }
-            return true;
+            return false;
         }
     }
 
@@ -197,8 +222,10 @@ public final class NemesisLeaderTests {
                 h.assertTrue(hasFollow && hasDefend, "guard " + LotrLog.id(g.getUUID()) + " follow=" + hasFollow + " defend=" + hasDefend);
                 NpcParry.chanceOverride(g, 0.0);
             }
-            // the nemesis walks off (moved 12 blocks): its guards must catch up
-            e.teleportTo(e.getX() + 12, e.getY(), e.getZ());
+            // the nemesis walks off (moved 12 blocks, onto the ground there): its guards must catch up
+            BlockPos to = h.getLevel().getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, e.blockPosition().offset(12, 0, 0));
+            e.teleportTo(to.getX() + 0.5, to.getY(), to.getZ() + 0.5);
+            for (NpcEntity g : guards) g.setTarget(null);
             double far = 0;
             for (NpcEntity g : guards) far = Math.max(far, g.distanceTo(e));
             LotrLog.info("test", "{}: nemesis moved to {}, farthest guard {} blocks", name, e.blockPosition().toShortString(), String.format("%.1f", far));
@@ -211,12 +238,17 @@ public final class NemesisLeaderTests {
         NpcEntity body = e;
         List<NpcEntity> gs = guards;
         Zombie[] attacker = new Zombie[1];
+        long start = h.getLevel().getGameTime();
         h.startSequence()
                 .thenWaitUntil(() -> {
                     for (NpcEntity g : gs) {
                         h.assertTrue(g.isAlive(), "a guard died");
-                        h.assertTrue(g.distanceTo(body) <= follow + 1, "guard " + LotrLog.id(g.getUUID()) + " is "
-                                + String.format("%.1f", g.distanceTo(body)) + " from its nemesis (follow " + follow + ")");
+                        if (g.distanceTo(body) > follow + 1) {
+                            String state = guardState(g, body, h.getLevel().getGameTime() - start);
+                            long waited = h.getLevel().getGameTime() - start;
+                            if (waited % 100 == 0) LotrLog.info("test", "{}: waiting: {}", name, state);
+                            h.fail(state);
+                        }
                     }
                 })
                 .thenExecute(() -> {
@@ -238,6 +270,25 @@ public final class NemesisLeaderTests {
                     if (attacker[0] != null) attacker[0].discard();
                 })
                 .thenSucceed();
+    }
+
+    /** Why a guard is not where it should be: distance, AI, target, running goals and its path. */
+    private static String guardState(NpcEntity g, NpcEntity leader, long waited) {
+        List<String> running = new ArrayList<>();
+        String nav = "-";
+        for (WrappedGoal w : g.goalSelector.getAvailableGoals()) {
+            if (w.isRunning()) running.add(w.getGoal().getClass().getSimpleName());
+            if (w.getGoal() instanceof BodyguardGoals.Follow f) nav = f.lastNav;
+        }
+        for (WrappedGoal w : g.targetSelector.getAvailableGoals()) if (w.isRunning()) running.add(w.getGoal().getClass().getSimpleName());
+        var path = g.getNavigation().getPath();
+        return "guard " + LotrLog.id(g.getUUID()) + " is " + String.format("%.1f", g.distanceTo(leader)) + " from its nemesis after "
+                + waited + " ticks: guard at " + g.blockPosition().toShortString() + " nemesis at " + leader.blockPosition().toShortString()
+                + " no_ai=" + g.isNoAi() + " passenger=" + g.isPassenger() + " target=" + (g.getTarget() == null ? "-"
+                : g.getTarget().getType().toShortString() + ":" + LotrLog.id(g.getTarget().getUUID())) + " running=" + running
+                + " follow_nav=" + nav + " nav_done=" + g.getNavigation().isDone() + " path=" + (path == null ? "none"
+                : (path.canReach() ? "reaches" : "cannot reach") + " " + path.getNextNodeIndex() + "/" + path.getNodeCount())
+                + " speed=" + String.format("%.3f", g.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED));
     }
 
     // ------------------------------------------------------------------ N8: ambush as a world event

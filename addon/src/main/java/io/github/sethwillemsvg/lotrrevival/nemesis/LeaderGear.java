@@ -33,6 +33,8 @@ public final class LeaderGear {
     /** Game tests: the NPC type the last re-roll took its gear from, and its rank pool (null when none was found). */
     public static @Nullable ResourceLocation lastGearType;
     public static @Nullable NpcRank lastGearRank;
+    /** Game tests: whether the last re-roll found a type of the nemesis's own race. */
+    public static boolean lastGearSameRace;
 
     private LeaderGear() {}
 
@@ -40,7 +42,8 @@ public final class LeaderGear {
 
     /**
      * From {@code gear_reroll_rank} (Commander) up, once per record: the body's gear is re-rolled from a type of the faction's
-     * LEADER rank pool of the record's race (else VETERAN), then saved in the record and kept for every later manifestation.
+     * LEADER rank pool of the record's race (else VETERAN; else either pool, any race), then saved in the record and kept for
+     * every later manifestation.
      * Returns true when the gear changed.
      */
     public static boolean rerollIfDue(ServerLevel level, NpcEntity npc, NemesisRecord r, Faction f) {
@@ -51,37 +54,64 @@ public final class LeaderGear {
             return false;
         }
         ResourceLocation race = raceOf(level, r);
-        for (NpcRank pool : new NpcRank[]{NpcRank.LEADER, NpcRank.VETERAN}) {
-            List<NpcType> types = typesOfRace(level, f, pool, race, r.race);
-            List<ResourceLocation> ids = new ArrayList<>();
-            for (NpcType t : types) ids.add(t.getId());
-            if (types.isEmpty()) {
-                LotrLog.dbg("nemesis", "gear: id={} faction={} has no {} type of race {} ({} in pool)", r.shortId(), r.faction, pool,
-                        race == null ? r.race : race, MeRanks.pool(f, pool).size());
-                continue;
+        Object raceDesc = race == null ? r.race : race;
+        // same race first (armour fits the body); Middle-earth factions often lead with another race (Mordor: orc warriors,
+        // uruk captains and veterans, a human Black Numenorean), so then any race of the faction's leaders
+        for (boolean sameRace : new boolean[]{true, false}) {
+            for (NpcRank pool : new NpcRank[]{NpcRank.LEADER, NpcRank.VETERAN}) {
+                List<NpcType> types = sameRace ? typesOfRace(level, f, pool, race, r.race) : typesOfAnyRace(level, f, pool);
+                List<ResourceLocation> ids = new ArrayList<>();
+                List<NpcType> withGear = new ArrayList<>();
+                for (NpcType t : types) {
+                    ids.add(t.getId());
+                    if (gearOf(t) != null) withGear.add(t);
+                }
+                if (withGear.isEmpty()) {
+                    LotrLog.dbg("nemesis", "gear: id={} faction={} has no {} type {} with gear (types {}, {} in pool)", r.shortId(), r.faction,
+                            pool, sameRace ? "of race " + raceDesc : "of any race", ids, MeRanks.pool(f, pool).size());
+                    continue;
+                }
+                NpcType pick = NemesisRandom.pick(withGear);
+                WeightedGearData gear = gearOf(pick);
+                if (gear == null) continue;
+                NpcUtil.equipAll(npc, gear);
+                npc.updateAttackType();
+                snapshot(npc, r);
+                r.gearRerolled = true;
+                lastGearType = pick.getId();
+                lastGearRank = pool;
+                lastGearSameRace = sameRace;
+                if (!sameRace) LotrLog.dbg("nemesis", "gear: id={} no LEADER/VETERAN type of race {} with gear in {}: fallback to {} type {} "
+                        + "of race {}", r.shortId(), raceDesc, r.faction, pool, pick.getId(), pick.getRace());
+                LotrLog.dbg("nemesis", "gear re-roll: id={} name=\"{}\" rank={} from {} type {} (race {}, same_race={}, candidates {}) -> {}",
+                        r.shortId(), r.displayName(), r.rank, pool, pick.getId(), pick.getRace(), sameRace, ids, describe(r));
+                return true;
             }
-            NpcType pick = NemesisRandom.pick(types);
-            WeightedGearData gear = pick.getGear();
-            if (gear == null) {
-                LotrLog.dbg("nemesis", "gear: id={} type {} ({}) has no gear data", r.shortId(), pick.getId(), pool);
-                continue;
-            }
-            NpcUtil.equipAll(npc, gear);
-            npc.updateAttackType();
-            snapshot(npc, r);
-            r.gearRerolled = true;
-            lastGearType = pick.getId();
-            lastGearRank = pool;
-            LotrLog.dbg("nemesis", "gear re-roll: id={} name=\"{}\" rank={} from {} type {} (race {}, candidates {}) -> {}", r.shortId(),
-                    r.displayName(), r.rank, pool, pick.getId(), race == null ? r.race : race, ids, describe(r));
-            return true;
         }
         r.gearRerolled = true;   // nothing to roll from: do not try again on every manifestation
         lastGearType = null;
         lastGearRank = null;
-        LotrLog.warn("nemesis", "gear re-roll for {} ({} of {}): no LEADER or VETERAN type of race {} with gear; keeps its own gear",
-                r.shortId(), r.rank, r.faction, race == null ? r.race : race);
+        LotrLog.warn("nemesis", "gear re-roll for {} ({} of {}): no LEADER or VETERAN type with gear; keeps its own gear",
+                r.shortId(), r.rank, r.faction);
         return false;
+    }
+
+    /** One weighted gear set of the type (Middle-earth rolls one per call), or null when it has none. */
+    static @Nullable WeightedGearData gearOf(NpcType t) {
+        try {
+            return t.getGear();
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    static List<NpcType> typesOfAnyRace(ServerLevel level, Faction f, NpcRank pool) {
+        List<NpcType> out = new ArrayList<>();
+        for (ResourceLocation id : MeRanks.pool(f, pool)) {
+            NpcType t = type(level, id);
+            if (t != null) out.add(t);
+        }
+        return out;
     }
 
     /** Saves what the body wears now as the record's gear. */
