@@ -109,6 +109,11 @@
     spearLunge: CMU('144_11', 'CMU spear-thrust lunges, held at full stretch', { part: 'lower', hold: 0.9 }),
     crouch: UAL('Crouch_Idle_Loop', 'UAL crouch, held: low, one foot ahead (its hips tip forward: an upright chest over them bends back)', { part: 'lower', hold: 1 }),
     block: UAL('Sword_Block', 'UAL sword block’s legs, held braced: knees bent, a short step forward', { part: 'lower', hold: 0.3 }),
+    front: CMU('135_09', 'CMU lunge punch, held in its front stance (zenkutsu dachi): long and low, the front knee bent over the foot, the back leg straight and planted', { part: 'lower', hold: 2.5 }),
+    lungeDeep: CMU('144_17', 'CMU lunging footwork, held as the lunge lands', { part: 'lower', hold: 0.88 }),
+    front2: CMU('135_09', 'CMU lunge punch, held stepping into its front stance: a little shorter and higher', { part: 'lower', hold: 1.8 }),
+    lunge2: CMU('144_17', 'CMU lunging footwork, held in its second lunge', { part: 'lower', hold: 1.63 }),
+    lunge3: CMU('144_17', 'CMU lunging footwork, held in its last lunge', { part: 'lower', hold: 2.75 }),
     dash: UAL('Shield_Dash', 'UAL shield charge’s legs, held as it starts: deep, a long step forward', { part: 'lower', hold: 0.3 }),
   };
   const WALKS = [
@@ -171,7 +176,7 @@
       UAL('Idle_Loop', 'UAL idle held, arms by bow_arms.js: the bow in front of the chest’s middle, an arrow nocked', { hold: 0, part: 'upper', bowArms: [0, 20, -11] }),
       LEGS.idle,
     ],
-    shield_brace: [...SHIELDS, LEGS.crouch, LEGS.lunge, LEGS.block, LEGS.dash],
+    shield_brace: [...SHIELDS, LEGS.crouch, LEGS.lunge, LEGS.block, LEGS.dash, LEGS.front, LEGS.lungeDeep, LEGS.front2, LEGS.lunge2, LEGS.lunge3],
     shield_brace_spear: [
       ...SHIELDS,
       SP('trident', 'SP trident raised to throw, levelled', { grip: 'level', part: 'upper' }),
@@ -182,7 +187,7 @@
       CMU('79_45', 'CMU bear, held with the right paw raised, levelled overhand', { hold: 1.39, grip: 'level', part: 'upper' }),
       CMU('79_45', 'CMU bear, held as the right paw tops its rise, levelled overhand', { hold: 1.45, grip: 'level', part: 'upper' }),
       AP('Spear_Swing_1R', 'AP thrust held at its strike, levelled', { hold: 0.2, grip: 'level', part: 'upper' }),
-      LEGS.crouch, LEGS.lunge, LEGS.block, LEGS.dash,
+      LEGS.crouch, LEGS.lunge, LEGS.block, LEGS.dash, LEGS.front, LEGS.lungeDeep, LEGS.front2, LEGS.lunge2, LEGS.lunge3,
     ],
     spear_brace: [
       AP('Spear_Swing_1R', 'AP thrust held at its strike', { hold: 0.2 }),
@@ -203,7 +208,7 @@
       UAL('Idle_Loop', 'UAL idle held, hands on the shaft: right at the hip, left 13 px along it tipped 4° down, a little across (for a posture that leans back)', { hold: 0, part: 'upper', onShaft: { right: [6, 16, -4], rise: -4, d: 13, toward: 15 }, grip: 'shaft' }),
       UAL('Idle_Loop', 'UAL idle held, hands on the shaft: right by the hip, left 13 px along it levelled 8° up, across the body', { hold: 0, part: 'upper', onShaft: { right: [6, 16, -2], rise: 8, d: 13, toward: 30 }, grip: 'shaft' }),
       UAL('Idle_Loop', 'UAL idle held, hands on the shaft: right by the hip, left 17 px along it levelled 2° up, a little across', { hold: 0, part: 'upper', onShaft: { right: [6, 16, -2], rise: 2, d: 17, toward: 20 }, grip: 'shaft' }),
-      LEGS.crouch, LEGS.lunge, LEGS.spearLunge, LEGS.block, LEGS.dash,
+      LEGS.crouch, LEGS.lunge, LEGS.spearLunge, LEGS.block, LEGS.dash, LEGS.front, LEGS.lungeDeep, LEGS.front2, LEGS.lunge2, LEGS.lunge3,
     ],
     march: [
       ...WALKS,
@@ -233,9 +238,9 @@
    *  guard_spear:
    *    man 0.303 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 40° 40° left over kaykit:2H_Melee_Idle grip shaft, 0.338)
    *    elf 0.346 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 40° 40° left over kaykit:2H_Melee_Idle grip shaft, 0.379)
-   *    dwarf 0.278 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 40° 40° left over kaykit:2H_Melee_Idle grip shaft, 0.328)
-   *    hobbit 0.303 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 40° 40° left over kaykit:2H_Melee_Idle grip shaft, 0.346)
-   *    orc 0.276 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 30° over kaykit:2H_Melee_Idle grip shaft, 0.325)
+   *    dwarf 0.278 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 40° 40° left over animationsplus:Spear_Swing_2R@0, 0.278)
+   *    hobbit 0.303 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 40° 40° left over animationsplus:Spear_Swing_3R@0.3, 0.303)
+   *    orc 0.276 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising 30° over animationsplus:Spear_Swing_2R@0, 0.276)
    *  guard_bow:
    *    man 0.180 (runner-up ual:Idle_Loop@0 bow arms at 1,19,-10 over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.209)
    *    elf 0.228 (runner-up ual:Idle_Loop@0 bow arms at 1,20,-10 over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.249)
@@ -243,23 +248,23 @@
    *    hobbit 0.180 (runner-up ual:Idle_Loop@0 bow arms at 1,19,-10 over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.214)
    *    orc 0.260 (runner-up ual:Idle_Loop@0 bow arms at 1,20,-12 over kaykit:Ranged_Bow_Aiming_Idle mirrored grip bow, 0.299)
    *  shield_brace:
-   *    man 0.869 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.900)
-   *    elf 0.888 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.938)
-   *    dwarf 0.738 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.801)
-   *    hobbit 0.778 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.808)
-   *    orc 0.765 (runner-up ual:Idle_Shield_Loop over cmu:144_17@1, 0.836)
+   *    man 0.475 (runner-up ual:Idle_Shield_Loop over cmu:135_09@2.5, 0.536)
+   *    elf 0.495 (runner-up ual:Idle_Shield_Loop over cmu:135_09@2.5, 0.574)
+   *    dwarf 0.524 (runner-up animationsplus:blockL over cmu:144_17@1.63, 0.543)
+   *    hobbit 0.512 (runner-up animationsplus:blockL over cmu:144_17@1.63, 0.565)
+   *    orc 0.556 (runner-up animationsplus:blockL over cmu:144_17@1.63, 0.567)
    *  shield_brace_spear:
-   *    man 0.661 (runner-up cmu:79_45@1.45 grip level over cmu:144_17@1, 0.661)
-   *    elf 0.694 (runner-up seriousplayer:swimming@0 grip level over ual:Shield_Dash@0.3, 0.780)
-   *    dwarf 0.602 (runner-up cmu:79_45@1.39 grip level over cmu:144_17@1, 0.715)
-   *    hobbit 0.600 (runner-up cmu:79_45@1.45 grip level over cmu:144_17@1, 0.600)
-   *    orc 0.771 (runner-up cmu:79_45@1.45 grip level over ual:Crouch_Idle_Loop@1, 0.941)
+   *    man 0.415 (runner-up cmu:79_45@1.39 grip level over cmu:135_09@2.5, 0.415)
+   *    elf 0.452 (no runner-up)
+   *    dwarf 0.427 (runner-up cmu:79_45@1.39 grip level over cmu:144_17@1.63, 0.539)
+   *    hobbit 0.411 (runner-up cmu:79_45@1.45 grip level over cmu:144_17@1.63, 0.412)
+   *    orc 0.594 (runner-up cmu:79_45@1.45 grip level over cmu:144_17@2.75, 0.803)
    *  spear_brace:
-   *    man 0.553 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over ual:Shield_Dash@0.3, 0.563)
-   *    elf 0.597 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over ual:Shield_Dash@0.3, 0.599)
-   *    dwarf 0.561 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over cmu:144_17@1, 0.564)
-   *    hobbit 0.557 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over cmu:144_17@1, 0.615)
-   *    orc 0.487 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over ual:Crouch_Idle_Loop@1, 0.489)
+   *    man 0.431 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over cmu:135_09@2.5, 0.442)
+   *    elf 0.475 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over cmu:135_09@2.5, 0.478)
+   *    dwarf 0.467 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over cmu:144_17@1.63, 0.469)
+   *    hobbit 0.615 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over cmu:144_17@0.88, 0.618)
+   *    orc 0.580 (runner-up ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over cmu:144_17@2.75, 0.582)
    *  march:
    *    man 0.025 (runner-up seriousplayer:walking over cmu:142_11, 0.098)
    *    elf 0.025 (runner-up seriousplayer:walking over cmu:142_11, 0.098)
@@ -302,25 +307,25 @@
       orc: 'ual:Idle_Loop@0 bow arms at 1,20,-12 over kaykit:Ranged_Bow_Idle mirrored grip bow'
     },
     shield_brace: {
-      man: 'animationsplus:blockL over cmu:144_17@1',
-      elf: 'animationsplus:blockL over cmu:144_17@1',
-      dwarf: 'animationsplus:blockL over cmu:144_17@1',
-      hobbit: 'animationsplus:blockL over cmu:144_17@1',
-      orc: 'animationsplus:blockL over cmu:144_17@1'
+      man: 'animationsplus:blockL over cmu:135_09@2.5',
+      elf: 'animationsplus:blockL over cmu:135_09@2.5',
+      dwarf: 'ual:Idle_Shield_Loop over cmu:144_17@1.63',
+      hobbit: 'ual:Idle_Shield_Loop over cmu:144_17@1.63',
+      orc: 'ual:Idle_Shield_Loop over cmu:144_17@1.63'
     },
     shield_brace_spear: {
-      man: 'cmu:79_45@1.39 grip level over cmu:144_17@1',
-      elf: 'seriousplayer:swimming@0 grip level over cmu:144_17@1',
-      dwarf: 'cmu:79_45@1.45 grip level over cmu:144_17@1',
-      hobbit: 'cmu:79_45@1.39 grip level over cmu:144_17@1',
-      orc: 'cmu:79_45@1.45 grip level over cmu:144_17@1'
+      man: 'cmu:79_45@1.45 grip level over cmu:135_09@2.5',
+      elf: 'seriousplayer:swimming@0 grip level over cmu:135_09@2.5',
+      dwarf: 'cmu:79_45@1.45 grip level over cmu:144_17@1.63',
+      hobbit: 'cmu:79_45@1.39 grip level over cmu:144_17@1.63',
+      orc: 'cmu:79_45@1.45 grip level over cmu:144_17@1.63'
     },
     spear_brace: {
-      man: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over ual:Shield_Dash@0.3',
-      elf: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over ual:Shield_Dash@0.3',
-      dwarf: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over cmu:144_17@1',
-      hobbit: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over ual:Shield_Dash@0.3',
-      orc: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising -4° 15° left over ual:Crouch_Idle_Loop@1'
+      man: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over cmu:135_09@2.5',
+      elf: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over cmu:135_09@2.5',
+      dwarf: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 2° 20° left over cmu:144_17@1.63',
+      hobbit: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-2 rising 8° 30° left over cmu:144_17@1',
+      orc: 'ual:Idle_Loop@0 grip shaft hands on a shaft from 6,16,-4 rising -4° 15° left over cmu:144_17@2.75'
     },
     march: {
       man: 'seriousplayer:walking over cmu:132_37',

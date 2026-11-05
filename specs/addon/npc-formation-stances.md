@@ -158,6 +158,17 @@ right hand at 1.6 px over the hip joint. Three rules catch these (test/lib/stanc
 - *guard_spear*: the spear's tip within 45 degrees of straight ahead, as the guard's blade (the merged shaft pointed 46-52
   degrees across the body for man, elf and hobbit: 6 of 10 clips). It also joins the guard_spear score (range -45..45).
 
+**Both feet planted (2026-11-05, after a second render review).** Man's spear brace stood on UAL `Shield_Dash`'s legs, a
+dash frame: the back shin lay 26 degrees under level behind the hip, the knee 2.6 px over the floor, while the lower-foot rule
+(the only foot rule) passed. Every still stance now stands on both feet (`planted`): each sole within -1.5..2 px of the floor
+(measured as the lower foot is), each thigh at most 70 degrees from straight down (a deep lunge's back thigh stands 30-50
+degrees from it), and each knee at least 4 px over the floor. The knee clause is the lead's: the dash legs pass the soles and
+thighs, and only the knee (the shin within about 48 degrees of upright) tells a foot standing on the floor from one dragged
+behind. On the files at 41e5c39 it failed 9 of 40 still clips: spear_brace 5/5, shield_brace 2/5 (dwarf, orc),
+shield_brace_spear 2/5 (dwarf, orc). The braces now stand on CMU front stances: 135_09 (a karate lunge punch held in its
+front stance, zenkutsu dachi: long and low, the front knee over the foot, the back leg straight and planted) for man and
+elf, and CMU 144_17's lunges for dwarves, hobbits and orcs, whose posture bends the knees further.
+
 **Measures.** "Guard" tip rules hold for every class that plays it (dagger, sword, axe, longsword). "Within N°" is the signed
 range −N..N, so its middle is its aim. Knee bend is each knee's hinge. "In front" is the world's −z. March: "first foot" is the
 foot ahead at the loop's start; strides per loop count the feet's order flipping; the torso's lean is from the race's own
