@@ -243,8 +243,14 @@ public final class AttackTiming {
             }
             if (now < p.due) continue;
             if (!p.reachChecked) {
+                // the reach check is on the hit frame itself (not the deferred resolution): stepping back avoids the hit
                 double dist = npc.distanceTo(target), reach = reach(npc, target);
-                if (dist > reach) {
+                boolean inReach = dist <= reach;
+                LotrLog.dbg("combat", "reach check: npc={} target={} dist={} reach={} (range {} + mounted {} + slack {}) npc={} target_at={} -> {} tick={} due={}",
+                        LotrLog.id(npc.getUUID()), LotrLog.id(target.getUUID()), String.format("%.2f", dist), String.format("%.2f", reach),
+                        String.format("%.2f", baseRange(npc)), npc.getVehicle() != null || target.getVehicle() != null, CombatConfig.reachSlack(),
+                        pos(npc), pos(target), inReach ? "in reach" : "MISS", now, p.due);
+                if (!inReach) {
                     it.remove();
                     CombatStats.misses++;
                     LotrLog.dbg("combat", "miss: npc={} target={} dist={} reach={} heavy={} tick={}", LotrLog.id(npc.getUUID()),
@@ -301,9 +307,23 @@ public final class AttackTiming {
 
     /** Reach at the hit frame: Middle-earth's melee range (+ mounted bonus when either rides) plus the slack. */
     static double reach(NpcEntity npc, LivingEntity target) {
-        var range = npc.getAttribute(Attributes.ENTITY_INTERACTION_RANGE);
-        double r = range != null ? range.getValue() : 1.75;
+        double r = baseRange(npc);
         if (npc.getVehicle() != null || target.getVehicle() != null) r += CombatConfig.mountedReach();
         return r + CombatConfig.reachSlack();
+    }
+
+    /** The reach (with slack) a held swing of this NPC on this target is checked against at the hit frame (tests, logs). */
+    public static double reachFor(NpcEntity npc, LivingEntity target) {
+        return reach(npc, target);
+    }
+
+    /** Middle-earth's melee range for this NPC (its race's ENTITY_INTERACTION_RANGE), 1.75 without the attribute. */
+    static double baseRange(NpcEntity npc) {
+        var range = npc.getAttribute(Attributes.ENTITY_INTERACTION_RANGE);
+        return range != null ? range.getValue() : 1.75;
+    }
+
+    private static String pos(LivingEntity e) {
+        return String.format("%.2f,%.2f,%.2f", e.getX(), e.getY(), e.getZ());
     }
 }

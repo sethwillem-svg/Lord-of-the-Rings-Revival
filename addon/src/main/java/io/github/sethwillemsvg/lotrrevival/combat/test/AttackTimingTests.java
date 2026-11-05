@@ -2,6 +2,7 @@ package io.github.sethwillemsvg.lotrrevival.combat.test;
 
 import io.github.sethwillemsvg.lotrrevival.LotrRevival;
 import io.github.sethwillemsvg.lotrrevival.combat.AttackTiming;
+import io.github.sethwillemsvg.lotrrevival.core.log.LotrLog;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -33,12 +34,15 @@ public final class AttackTimingTests {
         npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
         npc.setNoAi(true);
         h.getLevel().addFreshEntity(npc);
+        AttackTiming.heavyChanceOverride(npc, 0.0);   // normal wind-up every run (weak map: cleared with the NPC)
         return npc;
     }
 
     private static Zombie target(GameTestHelper h) {
         Zombie z = h.spawnWithNoFreeWill(EntityType.ZOMBIE, new BlockPos(1, 1, 2));   // one block in front
         z.setSilent(true);
+        // a helmet keeps it from burning in daylight: fire damage must not pass for an NPC hit (stepOutOfReachAndItMisses)
+        z.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
         return z;
     }
 
@@ -61,6 +65,7 @@ public final class AttackTimingTests {
 
     @GameTest(template = "empty", timeoutTicks = 80)
     public static void stepOutOfReachAndItMisses(GameTestHelper h) {
+        LotrLog.info("test", "START stepOutOfReachAndItMisses");
         NpcEntity npc = soldier(h);
         Zombie target = target(h);
         float health = target.getHealth();
@@ -68,8 +73,21 @@ public final class AttackTimingTests {
         long wait = AttackTiming.dueTick(npc) - h.getLevel().getGameTime();
         h.assertTrue(wait > 0, "the swing's damage was not held for the hit frame");
         target.teleportTo(target.getX() + 6, target.getY(), target.getZ());   // well past reach plus slack
+        LotrLog.info("test", "stepOutOfReachAndItMisses: moved target to dist {} (reach + slack {}), due in {} ticks",
+                String.format("%.2f", npc.distanceTo(target)), String.format("%.2f", AttackTiming.reachFor(npc, target)), wait);
         h.runAfterDelay(wait + 2, () -> {
-            h.assertTrue(target.getHealth() == health, "a target out of reach was still hit");
+            // judged by our replayed hit, not by health: anything else hurting the zombie (sunlight, a neighbour test) is not a hit
+            AttackTiming.ReplayHit hit = AttackTiming.lastReplay(target);
+            String why = hit != null ? "a target out of reach was still hit (dist " + String.format("%.2f", npc.distanceTo(target)) + ", dealt "
+                    + hit.dealt() + ")" : null;
+            if (why == null && target.getHealth() != health)
+                LotrLog.info("test", "stepOutOfReachAndItMisses: zombie lost {} health to {} (not the NPC swing)", health - target.getHealth(),
+                        target.getLastDamageSource() == null ? "?" : target.getLastDamageSource().getMsgId());
+            if (why != null) {
+                LotrLog.info("test", "FAIL stepOutOfReachAndItMisses: {}", why);
+                h.fail(why);
+            }
+            LotrLog.info("test", "PASS stepOutOfReachAndItMisses: no hit landed");
             h.succeed();
         });
     }
