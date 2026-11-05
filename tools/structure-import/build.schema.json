@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sethwillem-svg/Lord-of-the-Rings-Revival/tools/structure-import/build.schema.json",
+  "title": "Structure build manifest (specs/addon/structures.md, Licence log)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "status", "title", "author", "licence", "own_work", "region", "kinds", "palette", "site", "weight", "output"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+    "status": {"enum": ["candidate", "approved", "imported", "rejected", "withdrawn"]},
+    "title": {"type": "string", "minLength": 1},
+    "author": {"type": "string", "minLength": 1},
+    "author_url": {"type": ["string", "null"]},
+    "co_authors": {"type": "array", "items": {"type": "string"}},
+    "source_url": {"type": ["string", "null"]},
+    "archive_url": {"type": ["string", "null"]},
+    "licence": {"type": "string"},
+    "licence_url": {"type": ["string", "null"]},
+    "licence_evidence": {"type": ["string", "null"]},
+    "attribution": {"type": ["string", "null"]},
+    "retrieved": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "source_file": {"type": ["string", "null"]},
+    "source_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "own_work": {"type": "boolean"},
+    "approved_by": {"type": ["string", "null"]},
+    "approved_on": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "withdrawn_on": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "region": {"type": "string", "pattern": "^[a-z_]+$"},
+    "kinds": {"type": "array", "minItems": 1,
+              "items": {"enum": ["outpost", "castle", "camp", "bridge", "ruin", "watchtower", "tower", "hideout", "village"]}},
+    "faction": {"type": ["string", "null"]},
+    "palette": {"type": "string", "pattern": "^[a-z_]+$"},
+    "site": {"enum": ["land", "river_crossing"]},
+    "max_slope": {"type": "integer", "minimum": 0, "maximum": 64},
+    "ground_y": {"type": ["integer", "null"], "minimum": 0},
+    "weight": {"type": "integer", "minimum": 1, "maximum": 100},
+    "processors": {"type": ["string", "null"]},
+    "keep_sign_text": {"type": "boolean"},
+    "keep_entities": {"type": "array", "items": {"enum": ["painting", "item_frame", "glow_item_frame", "armor_stand",
+      "minecraft:painting", "minecraft:item_frame", "minecraft:glow_item_frame", "minecraft:armor_stand"]}},
+    "manager": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["pos", "block", "pool"],
+      "properties": {
+        "pos": {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3},
+        "block": {"enum": ["middle-earth:structure_manager", "middle-earth:orc_structure_manager"]},
+        "facing": {"enum": ["north", "south", "east", "west"]},
+        "pool": {"type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"}
+      }
+    },
+    "nests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pos", "nest", "radius"],
+        "properties": {
+          "pos": {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3},
+          "nest": {"type": "string", "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"},
+          "radius": {"type": "integer", "minimum": 0, "maximum": 16}
+        }
+      }
+    },
+    "manual_changes": {"type": "array", "items": {"type": "string"}},
+    "changes": {"type": "array", "items": {"type": "string"}},
+    "output": {"type": "string"},
+    "output_licence": {"type": ["string", "null"]},
+    "output_info": {
+      "type": ["object", "null"],
+      "description": "written by the tool: size of the template and the ground offset used at placement",
+      "properties": {
+        "size": {"type": "array", "items": {"type": "integer"}},
+        "ground_offset": {"type": "integer"},
+        "blocks": {"type": "integer"},
+        "block_entities": {"type": "integer"},
+        "npc_max": {"type": "integer"}
+      }
+    },
+    "notes": {"type": "string"}
+  }
+}
