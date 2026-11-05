@@ -37,6 +37,7 @@ test('every race file has every stance slot and its shield version', () => {
 });
 test('stances loop without a pop: every bone within 0.5 px end to start', () => row('loop'));
 test('still stances keep their feet planted: each foot moves ≤ 0.5 px over the loop, the lower foot -1.5..3.5 px of the floor', () => row('feet', still));
+test('still stances stand on both feet: each sole within -1.5..2 px of the floor, each thigh at most 70° from straight down, each knee at least 4 px over the floor', () => row('planted', still));
 test('still stances face the front: the chest turned at most 15° from the facing', () => row('facing', still));
 test('still stances are steady but alive: the weapon tip sways 0.2-2 px over the loop', () => row('sway', still));
 test('stances keep the arms in the shoulder’s range (10° slack) and out of the body (0.5 px)', () => row('anatomy'));

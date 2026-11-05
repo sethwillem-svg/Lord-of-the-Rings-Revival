@@ -124,6 +124,16 @@ function bowAt(w) {
  *  Minecraft skin's torso are the belt and the trousers' top). A spear's lower hand 1.6 px over the joint (the UAL lantern
  *  guard) reads in a render as a shaft rising from the crotch. */
 const WAIST = 3;
+/** Both soles on the floor in a still stance: each within this of it (px, measured as the lower foot is). */
+const SOLE = [-1.5, 2];
+/** How high a still stance's knees stand at least (px; the knee joint, 6 px up an upright shin): with the sole on the
+ *  floor, a shin more than about 48° off upright. UAL's Shield_Dash legs (the merged spear brace) lay man's back shin 26°
+ *  under level, its knee 2.6 px over the floor, a foot dragged behind a dash: their soles and thighs pass. */
+const KNEE_MIN = 4;
+/** The most a still stance's thigh may swing from straight down (degrees). */
+const THIGH_MAX = 70;
+/** A thigh's swing from straight down (degrees): the leg bone's rest down (-y) in the world, against the world's down. */
+const thighDown = (w, side) => deg(Math.acos(Math.max(-1, Math.min(1, w[side + '_leg'].R[4]))));
 /** The most a still stance's chest may turn from the NPC's facing (degrees). */
 const YAW_MAX = 15;
 /** The chest's turn from the facing about the vertical (degrees, + to the right): its forward (rest -z) on the ground. */
@@ -268,7 +278,7 @@ function torsoLean(w, hunch = 0) {
 const LOWER_BONES = new Set(['root', 'lower', 'right_leg', 'right_knee', 'left_leg', 'left_knee']);
 
 /** The rows of the spec's hard-rule table: each failure names one, and the half of the body it is about. */
-const RULES = ['loop', 'feet', 'facing', 'sway', 'anatomy', 'blade', 'head', 'guard', 'guard_spear', 'guard_bow', 'shield', 'shield_brace',
+const RULES = ['loop', 'feet', 'planted', 'facing', 'sway', 'anatomy', 'blade', 'head', 'guard', 'guard_spear', 'guard_bow', 'shield', 'shield_brace',
   'shield_brace_spear', 'spear_brace', 'march', 'march_spear', 'march_bow'];
 
 /**
@@ -325,6 +335,14 @@ function judge(name, anim, ctx = {}) {
       if (d > 0.5) fail('feet', 'lower', `${side} foot moves ${d.toFixed(2)} px`);
     }
     every('feet', 'lower', 'lower foot at y', (v) => v >= -1.5 && v <= 3.5, (w) => Math.min(footOf(w, 'right')[1], footOf(w, 'left')[1]));
+    // both feet on the floor (a braced stance, not a dash with the back foot kicked up): each sole within SOLE of it, each
+    // thigh at most THIGH_MAX from straight down (a deep lunge's back thigh stands 30-50° from it), and each knee KNEE_MIN
+    // over the floor (the shin within about 48° of upright: a leg standing on its foot, not lying back along the ground)
+    for (const side of ['right', 'left']) {
+      every('planted', 'lower', `${side} sole at y`, (v) => v >= SOLE[0] && v <= SOLE[1], (w) => footOf(w, side)[1]);
+      every('planted', 'lower', `${side} thigh from straight down °`, (v) => v <= THIGH_MAX, (w) => thighDown(w, side));
+      every('planted', 'lower', `${side} knee over the floor by`, (v) => v >= KNEE_MIN, (w) => point(w[side + '_knee'], [side === 'right' ? 1.9 : -1.9, 6, 0])[1]);
+    }
     // facing the front: the chest turned at most YAW_MAX from the NPC's facing (a still stance faces the enemy)
     m.yaw = Math.max(...ws.map(torsoYaw).map(Math.abs));
     if (m.yaw > YAW_MAX) fail('facing', 'upper', `chest turned ${m.yaw.toFixed(0)}° from the facing (≤ ${YAW_MAX}°)`);
