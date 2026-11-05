@@ -43,9 +43,14 @@ public final class NemesisRosterPayloads {
         }
     }
 
-    /** One card on the Nemeses screen. Hidden traits are sent as "?". */
+    /**
+     * One card on the Nemeses screen. Hidden traits are sent as "?": strengths once any player has fought it, the weakness only to a
+     * viewer who has hit its weak spot (spec Traits: Intel). {@code lastSeenAgo} is in ticks, -1 when it was never seen;
+     * {@code lastSeenDim} is empty then.
+     */
     public record Card(String id, String name, String rank, boolean challenger, String factionId, Component faction, String side,
-                       String status, List<String> scars, List<String> strengths, String weakness, int grudge, boolean ownSide) {
+                       String status, List<String> scars, List<String> strengths, String weakness, int grudge, boolean ownSide,
+                       boolean grudgeDormant, int renown, int lastX, int lastZ, String lastSeenDim, long lastSeenAgo) {
         static void write(RegistryFriendlyByteBuf b, Card c) {
             b.writeUtf(c.id);
             b.writeUtf(c.name);
@@ -60,12 +65,18 @@ public final class NemesisRosterPayloads {
             b.writeUtf(c.weakness);
             b.writeVarInt(c.grudge);
             b.writeBoolean(c.ownSide);
+            b.writeBoolean(c.grudgeDormant);
+            b.writeVarInt(c.renown);
+            b.writeVarInt(c.lastX);
+            b.writeVarInt(c.lastZ);
+            b.writeUtf(c.lastSeenDim);
+            b.writeVarLong(c.lastSeenAgo + 1);
         }
 
         static Card read(RegistryFriendlyByteBuf b) {
             return new Card(b.readUtf(), b.readUtf(), b.readUtf(), b.readBoolean(), b.readUtf(), ComponentSerialization.TRUSTED_STREAM_CODEC.decode(b),
                     b.readUtf(), b.readUtf(), b.readList(FriendlyByteBuf::readUtf), b.readList(FriendlyByteBuf::readUtf), b.readUtf(), b.readVarInt(),
-                    b.readBoolean());
+                    b.readBoolean(), b.readBoolean(), b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readUtf(), b.readVarLong() - 1);
         }
     }
 
@@ -104,12 +115,20 @@ public final class NemesisRosterPayloads {
     public static List<Card> build(ServerPlayer viewer) {
         NemesisSavedData data = NemesisSavedData.get(viewer.getServer());
         Sides.Side mySide = Sides.side(viewer);
-        List<NemesisRecord> recs = new ArrayList<>();
-        for (NemesisRecord r : data.records.values()) recs.add(r);
+        UUID me = viewer.getUUID();
+        long now = viewer.level().getGameTime();
+        List<NemesisRecord> recs = new ArrayList<>(data.records.values());
+        // over the card limit: the ones hunting the viewer first, then the living, then by rank and renown
+        recs.sort(Comparator.comparing((NemesisRecord r) -> -r.grudge(me)).thenComparing(r -> r.alive() ? 0 : 1)
+                .thenComparing(r -> -r.rank.ordinal()).thenComparing(r -> -r.renown));
+        if (recs.size() > MAX_CARDS) {
+            LotrLog.dbg("nemesis", "roster for {}: {} records, {} cards sent", LotrLog.id(me), recs.size(), MAX_CARDS);
+            recs = new ArrayList<>(recs.subList(0, MAX_CARDS));
+        }
+        // shown by faction, then rank (highest first), then renown
         recs.sort(Comparator.comparing((NemesisRecord r) -> r.faction.toString()).thenComparing(r -> -r.rank.ordinal()).thenComparing(r -> -r.renown));
         List<Card> out = new ArrayList<>();
         for (NemesisRecord r : recs) {
-            if (out.size() >= MAX_CARDS) break;
             var f = Sides.faction(viewer.level(), r.faction);
             Sides.Side side = Sides.sideOf(f);
             boolean strengthsKnown = !r.knowsStrengths.isEmpty();
@@ -122,9 +141,12 @@ public final class NemesisRosterPayloads {
             String weak = r.knowsWeakness.contains(viewer.getUUID()) && w != null ? w.nameKey() : "?";
             List<String> scars = new ArrayList<>();
             r.scars.forEach(k -> scars.add(k.key()));
+            var g = r.grudges.get(me);
+            boolean seen = r.manifestation > 0 && r.lastDimension != null;
             out.add(new Card(r.shortId(), r.displayName(), r.rank.key(), r.challenger, r.faction.toString(),
                     f == null ? Component.literal(r.faction.toString()) : f.tryGetShortName(), side.name(), r.status.name(), scars, strengths, weak,
-                    r.grudge(viewer.getUUID()), side == mySide && side != Sides.Side.NONE));
+                    r.grudge(me), side == mySide && side != Sides.Side.NONE, g != null && g.dormant, r.renown, r.lastPos.getX(),
+                    r.lastPos.getZ(), seen ? r.lastDimension.getPath() : "", seen ? Math.max(0, now - r.lastSeenTick) : -1));
         }
         return out;
     }
