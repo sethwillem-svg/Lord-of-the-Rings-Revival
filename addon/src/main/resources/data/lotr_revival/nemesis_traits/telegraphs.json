@@ -1,0 +1,7 @@
+{
+  "kind": "weakness",
+  "effect": "telegraphs",
+  "numbers": {
+    "stagger": 2.0
+  }
+}

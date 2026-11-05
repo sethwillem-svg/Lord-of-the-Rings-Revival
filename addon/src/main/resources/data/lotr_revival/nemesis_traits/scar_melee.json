@@ -1,0 +1,9 @@
+{
+  "kind": "scar",
+  "effect": "scar",
+  "damage": "melee",
+  "title": "the Scarred",
+  "numbers": {
+    "taken": 0.5
+  }
+}

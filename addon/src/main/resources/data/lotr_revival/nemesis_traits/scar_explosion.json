@@ -1,0 +1,9 @@
+{
+  "kind": "scar",
+  "effect": "scar",
+  "damage": "explosion",
+  "title": "the Shattered",
+  "numbers": {
+    "taken": 0.5
+  }
+}

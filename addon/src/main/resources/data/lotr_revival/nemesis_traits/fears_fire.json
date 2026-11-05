@@ -1,0 +1,8 @@
+{
+  "kind": "weakness",
+  "effect": "fears_fire",
+  "numbers": {
+    "fire_taken": 1.5,
+    "flee_ticks": 100
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "weakness",
+  "effect": "sun_sick",
+  "numbers": {
+    "damage_dealt": 0.75
+  },
+  "races": [
+    "orc",
+    "uruk",
+    "goblin",
+    "snaga"
+  ]
+}

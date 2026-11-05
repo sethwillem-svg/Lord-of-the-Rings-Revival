@@ -1,0 +1,135 @@
+[
+  {
+    "text": "Skull-Splitter",
+    "side": "evil",
+    "traits": [
+      "armour_breaker",
+      "crushing_blow"
+    ]
+  },
+  {
+    "text": "the Grim",
+    "side": "any"
+  },
+  {
+    "text": "Blood-Drinker",
+    "side": "evil",
+    "traits": [
+      "bloodthirsty"
+    ]
+  },
+  {
+    "text": "Iron-Hide",
+    "side": "any",
+    "traits": [
+      "iron_hide"
+    ]
+  },
+  {
+    "text": "Shield-Breaker",
+    "side": "any",
+    "traits": [
+      "armour_breaker"
+    ]
+  },
+  {
+    "text": "Horn-Blower",
+    "side": "evil",
+    "traits": [
+      "war_horn"
+    ]
+  },
+  {
+    "text": "the Horn-Bearer",
+    "side": "good",
+    "traits": [
+      "war_horn"
+    ]
+  },
+  {
+    "text": "the Unmoved",
+    "side": "any",
+    "traits": [
+      "unshakeable"
+    ]
+  },
+  {
+    "text": "Blade-Dancer",
+    "side": "any",
+    "traits": [
+      "parry_master"
+    ]
+  },
+  {
+    "text": "the Crusher",
+    "side": "evil",
+    "traits": [
+      "crushing_blow"
+    ]
+  },
+  {
+    "text": "the Hammer",
+    "side": "good",
+    "traits": [
+      "crushing_blow"
+    ]
+  },
+  {
+    "text": "the Vengeful",
+    "side": "evil",
+    "traits": [
+      "hate_fuelled"
+    ]
+  },
+  {
+    "text": "the Oath-Keeper",
+    "side": "good",
+    "traits": [
+      "oath_bound"
+    ]
+  },
+  {
+    "text": "Bone-Gnawer",
+    "side": "evil"
+  },
+  {
+    "text": "the Cruel",
+    "side": "evil"
+  },
+  {
+    "text": "Black-Tooth",
+    "side": "evil"
+  },
+  {
+    "text": "the Rotten",
+    "side": "evil"
+  },
+  {
+    "text": "Eye-Gouger",
+    "side": "evil"
+  },
+  {
+    "text": "the Unbending",
+    "side": "good"
+  },
+  {
+    "text": "the Steadfast",
+    "side": "good"
+  },
+  {
+    "text": "the Bold",
+    "side": "good"
+  },
+  {
+    "text": "the Watchful",
+    "side": "good"
+  },
+  {
+    "text": "Grey-Cloak",
+    "side": "good"
+  },
+  {
+    "text": "the Swift",
+    "side": "any"
+  }
+]

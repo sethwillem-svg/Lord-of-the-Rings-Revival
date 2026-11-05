@@ -1,0 +1,8 @@
+{
+  "kind": "weakness",
+  "effect": "open_guard",
+  "numbers": {
+    "behind_taken": 1.5,
+    "angle": 90
+  }
+}
