@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.erebor",
+    "fallback": "Erebor"
+  },
+  "description": {
+    "translate": "node.lotr_revival.erebor.desc",
+    "fallback": "The Lonely Mountain, its front gate guarded by stone and dwarves."
+  },
+  "kind": "stronghold",
+  "map": [
+    1870.0,
+    680.0
+  ],
+  "faction": "middle-earth:longbeards.erebor"
+}

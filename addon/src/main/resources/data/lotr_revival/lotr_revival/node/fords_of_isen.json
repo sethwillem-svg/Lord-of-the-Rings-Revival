@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.fords_of_isen",
+    "fallback": "Fords of Isen"
+  },
+  "description": {
+    "translate": "node.lotr_revival.fords_of_isen.desc",
+    "fallback": "Stony shallows where the river runs out of the gap below the mountains."
+  },
+  "kind": "crossing",
+  "map": [
+    1370.0,
+    1500.0
+  ]
+}

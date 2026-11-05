@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.dead_marshes",
+    "fallback": "Dead Marshes"
+  },
+  "description": {
+    "translate": "node.lotr_revival.dead_marshes.desc",
+    "fallback": "Pools and reeds and pale lights over the faces of an old battle."
+  },
+  "kind": "landmark",
+  "map": [
+    1800.0,
+    1420.0
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.minas_morgul",
+    "fallback": "Minas Morgul"
+  },
+  "description": {
+    "translate": "node.lotr_revival.minas_morgul.desc",
+    "fallback": "A pale tower in a poisoned vale, glowing faintly at night."
+  },
+  "kind": "stronghold",
+  "map": [
+    1920.0,
+    1690.0
+  ],
+  "faction": "middle-earth:mordor"
+}

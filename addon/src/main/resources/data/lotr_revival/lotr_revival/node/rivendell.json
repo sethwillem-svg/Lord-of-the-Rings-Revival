@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.rivendell",
+    "fallback": "Rivendell"
+  },
+  "description": {
+    "translate": "node.lotr_revival.rivendell.desc",
+    "fallback": "A deep green valley of falling water and old wisdom, hard to find on purpose."
+  },
+  "kind": "town",
+  "map": [
+    1300.0,
+    850.0
+  ],
+  "hidden": true
+}

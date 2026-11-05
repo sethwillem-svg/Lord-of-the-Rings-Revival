@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.grey_havens",
+    "fallback": "Grey Havens"
+  },
+  "description": {
+    "translate": "node.lotr_revival.grey_havens.desc",
+    "fallback": "White quays on the Gulf of Lune, where grey ships wait for the West."
+  },
+  "kind": "town",
+  "map": [
+    560.0,
+    900.0
+  ]
+}

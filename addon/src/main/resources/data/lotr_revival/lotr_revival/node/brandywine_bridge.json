@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.brandywine_bridge",
+    "fallback": "Brandywine Bridge"
+  },
+  "description": {
+    "translate": "node.lotr_revival.brandywine_bridge.desc",
+    "fallback": "A stone bridge of many arches carrying the road over the river."
+  },
+  "kind": "crossing",
+  "map": [
+    860.0,
+    880.0
+  ]
+}

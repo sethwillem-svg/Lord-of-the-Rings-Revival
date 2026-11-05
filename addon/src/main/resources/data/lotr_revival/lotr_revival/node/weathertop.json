@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.weathertop",
+    "fallback": "Weathertop"
+  },
+  "description": {
+    "translate": "node.lotr_revival.weathertop.desc",
+    "fallback": "A bald hill crowned with the broken ring of an old watchtower."
+  },
+  "kind": "ruin",
+  "map": [
+    1070.0,
+    870.0
+  ]
+}

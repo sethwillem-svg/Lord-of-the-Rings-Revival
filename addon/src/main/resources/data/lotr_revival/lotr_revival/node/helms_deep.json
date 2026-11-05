@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.helms_deep",
+    "fallback": "Helm's Deep"
+  },
+  "description": {
+    "translate": "node.lotr_revival.helms_deep.desc",
+    "fallback": "A walled gorge and a keep that has never fallen to a siege."
+  },
+  "kind": "stronghold",
+  "map": [
+    1440.0,
+    1520.0
+  ],
+  "faction": "middle-earth:rohan"
+}

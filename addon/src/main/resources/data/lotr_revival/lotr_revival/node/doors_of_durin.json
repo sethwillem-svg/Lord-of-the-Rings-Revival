@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.doors_of_durin",
+    "fallback": "Doors of Durin"
+  },
+  "description": {
+    "translate": "node.lotr_revival.doors_of_durin.desc",
+    "fallback": "A sheer cliff by a dark lake, where a hidden door opens on a word."
+  },
+  "kind": "stronghold",
+  "map": [
+    1340.0,
+    1080.0
+  ],
+  "faction": "middle-earth:moria"
+}

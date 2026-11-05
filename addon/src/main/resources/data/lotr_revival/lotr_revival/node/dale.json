@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.dale",
+    "fallback": "Dale"
+  },
+  "description": {
+    "translate": "node.lotr_revival.dale.desc",
+    "fallback": "A bright town of bells and markets beneath the Lonely Mountain."
+  },
+  "kind": "town",
+  "map": [
+    1860.0,
+    705.0
+  ],
+  "faction": "middle-earth:dale"
+}

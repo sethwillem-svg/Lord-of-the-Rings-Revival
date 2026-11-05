@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.pelargir",
+    "fallback": "Pelargir"
+  },
+  "description": {
+    "translate": "node.lotr_revival.pelargir.desc",
+    "fallback": "An old harbour town on the lower Anduin, full of ships and rope."
+  },
+  "kind": "town",
+  "map": [
+    1840.0,
+    1820.0
+  ],
+  "faction": "middle-earth:gondor"
+}

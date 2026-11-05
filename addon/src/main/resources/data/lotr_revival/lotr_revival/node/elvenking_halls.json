@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.elvenking_halls",
+    "fallback": "Halls of the Elvenking"
+  },
+  "description": {
+    "translate": "node.lotr_revival.elvenking_halls.desc",
+    "fallback": "A cavern palace behind a great gate, beside the forest river."
+  },
+  "kind": "stronghold",
+  "map": [
+    1720.0,
+    740.0
+  ],
+  "faction": "middle-earth:woodland_realm"
+}

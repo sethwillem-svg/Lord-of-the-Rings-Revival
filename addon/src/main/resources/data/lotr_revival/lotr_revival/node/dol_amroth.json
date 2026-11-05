@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.dol_amroth",
+    "fallback": "Dol Amroth"
+  },
+  "description": {
+    "translate": "node.lotr_revival.dol_amroth.desc",
+    "fallback": "A sea-castle on a headland, home of a proud and fair-spoken line."
+  },
+  "kind": "town",
+  "map": [
+    1600.0,
+    1860.0
+  ],
+  "faction": "middle-earth:gondor"
+}

@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.minas_tirith",
+    "fallback": "Minas Tirith"
+  },
+  "description": {
+    "translate": "node.lotr_revival.minas_tirith.desc",
+    "fallback": "Seven white walls climbing the shoulder of Mount Mindolluin."
+  },
+  "kind": "town",
+  "map": [
+    1820.0,
+    1690.0
+  ],
+  "faction": "middle-earth:gondor"
+}

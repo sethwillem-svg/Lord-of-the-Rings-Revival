@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.bree",
+    "fallback": "Bree"
+  },
+  "description": {
+    "translate": "node.lotr_revival.bree.desc",
+    "fallback": "A crossroads village of men and hobbits under Bree-hill."
+  },
+  "kind": "town",
+  "map": [
+    960.0,
+    880.0
+  ]
+}

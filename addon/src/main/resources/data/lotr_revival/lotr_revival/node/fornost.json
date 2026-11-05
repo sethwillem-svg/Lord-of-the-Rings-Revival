@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.fornost",
+    "fallback": "Fornost"
+  },
+  "description": {
+    "translate": "node.lotr_revival.fornost.desc",
+    "fallback": "Grass-grown walls of a northern king's city, abandoned for an age."
+  },
+  "kind": "ruin",
+  "map": [
+    960.0,
+    760.0
+  ]
+}

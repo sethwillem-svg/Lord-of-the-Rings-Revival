@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.barad_dur",
+    "fallback": "Barad-dûr"
+  },
+  "description": {
+    "translate": "node.lotr_revival.barad_dur.desc",
+    "fallback": "A fortress of iron and shadow on the plain of Gorgoroth."
+  },
+  "kind": "stronghold",
+  "map": [
+    2120.0,
+    1600.0
+  ],
+  "faction": "middle-earth:mordor"
+}

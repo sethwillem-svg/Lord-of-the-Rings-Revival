@@ -1,0 +1,5 @@
+{
+  "from": "lotr_revival:weathertop",
+  "to": "lotr_revival:last_bridge",
+  "kind": "road"
+}

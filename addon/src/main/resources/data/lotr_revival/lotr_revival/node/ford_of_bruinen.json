@@ -1,0 +1,15 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.ford_of_bruinen",
+    "fallback": "Ford of Bruinen"
+  },
+  "description": {
+    "translate": "node.lotr_revival.ford_of_bruinen.desc",
+    "fallback": "A shallow, fast ford where the road leaves the wild for the hidden valley."
+  },
+  "kind": "crossing",
+  "map": [
+    1260.0,
+    860.0
+  ]
+}

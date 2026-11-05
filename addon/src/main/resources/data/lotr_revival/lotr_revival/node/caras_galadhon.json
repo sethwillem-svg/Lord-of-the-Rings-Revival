@@ -1,0 +1,16 @@
+{
+  "name": {
+    "translate": "node.lotr_revival.caras_galadhon",
+    "fallback": "Caras Galadhon"
+  },
+  "description": {
+    "translate": "node.lotr_revival.caras_galadhon.desc",
+    "fallback": "A city of lamps and stairways in the crowns of golden trees."
+  },
+  "kind": "town",
+  "map": [
+    1480.0,
+    1130.0
+  ],
+  "faction": "middle-earth:lothlorien"
+}
